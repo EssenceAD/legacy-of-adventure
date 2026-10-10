@@ -11,8 +11,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="모험의 유산" />
-    <script type="module" crossorigin src="./assets/index-DP7DoVSP.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-eeUwSBIT.css">
+    <script type="module" crossorigin src="./assets/index-BabuPetN.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CVrg5P52.css">
   </head>
   <body>
     <div id="view">
@@ -39,6 +39,7 @@
         <div id="visitbar" class="px" hidden><span id="vName"></span><button id="vLike">♥</button><button id="vHome">집으로</button></div>
         <div id="chatlog" aria-label="채팅 열기"></div>
         <nav class="dk px">
+          <button id="bOwner"><img id="bOwnerImg" alt="" />주인</button>
           <button id="bBuild"><canvas width="16" height="16" data-ic="hammer"></canvas>건설</button>
           <button id="bExp"><canvas width="16" height="16" data-ic="sword"></canvas>원정</button>
           <button id="bGuest"><canvas width="16" height="16" data-ic="guest"></canvas>손님</button>
@@ -61,6 +62,7 @@
 
       <div id="dlg" hidden>
         <div class="keys">Z NEXT<button id="dSkip">X SKIP</button></div>
+        <div id="dDuo" hidden><img id="dDuoL" alt="" /><img id="dDuoR" alt="" /></div>
         <div class="box px"><img id="dPort" alt="" /><span id="dName"></span><p id="dText"></p><span class="more">▼</span></div>
         <div id="dChoice" hidden></div>
       </div>
@@ -79,7 +81,7 @@
           <button class="px" id="tStart">새 여관 열기<small>오프닝부터</small></button>
           <button class="px" id="tCont">이어하기<small id="tContSub">저장된 마을이 없어요</small></button>
         </div>
-        <div class="ver">v0.4.0</div>
+        <div class="ver">v0.5.0</div>
       </div>
       <div id="loading">불러오는 중…</div>
       <div id="fade"></div>
