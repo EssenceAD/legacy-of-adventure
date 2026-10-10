@@ -12,8 +12,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="모험의 유산" />
-    <script type="module" crossorigin src="./assets/index-DfG4kBCK.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CCKRMI0E.css">
+    <script type="module" crossorigin src="./assets/index-CD6f6L0B.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-9k6FmjQ4.css">
   </head>
   <body>
     <div id="view">
@@ -32,12 +32,12 @@
             </div>
           </div>
           <div class="sp"></div>
-          <button class="ibtn px" id="bNotice" aria-label="새 소식">!<span class="dot" hidden></span></button>
-          <button class="ibtn px" id="bDN" aria-label="낮과 밤">☾</button>
-          <button class="ibtn px" id="bMenu" aria-label="메뉴">≡</button>
+          <button class="ibtn px hb" id="bNotice" aria-label="새 소식"><img src="assets/icons/m_notice_16.png" alt="" /><small>소식</small><span class="dot" hidden></span></button>
+          <button class="ibtn px hb" id="bDN" aria-label="낮과 밤"><b id="bDNi">☾</b><small id="bDNl">밤</small></button>
+          <button class="ibtn px hb" id="bMenu" aria-label="메뉴"><img src="assets/icons/m_settings_16.png" alt="" /><small>메뉴</small></button>
         </div>
-        <button class="ibtn px" id="bHarm" aria-label="어울림 보기" aria-pressed="false"><img src="assets/icons/harmony_16.png" alt="" /></button>
-        <button class="spk ibtn px" id="hSpk" aria-label="소리 끄기"><img alt="" /></button>
+        <button class="ibtn px hb" id="bHarm" aria-label="어울림 보기" aria-pressed="false"><img src="assets/icons/harmony_16.png" alt="" /><small>어울림</small></button>
+        <button class="spk ibtn px hb" id="hSpk" aria-label="소리 끄기"><img alt="" /><small>소리</small></button>
         <div id="hBanner" hidden></div>
         <div id="settle" hidden></div>
         <div id="pcard" hidden></div>
@@ -66,7 +66,7 @@
       <img id="hand" alt="" hidden />
       <div id="scrim"></div>
       <section class="win px" id="win" role="dialog" aria-modal="true">
-        <div class="hd"><b id="winT"></b><button id="winHelp" aria-label="안내서" hidden>?</button><button id="winX" aria-label="닫기">✕</button></div>
+        <div class="hd"><button id="winBack" aria-label="뒤로" hidden>←</button><b id="winT"></b><button id="winHelp" aria-label="안내서" hidden>?</button><button id="winX" aria-label="닫기">✕</button></div>
         <div id="winB"></div>
       </section>
 
@@ -94,7 +94,7 @@
           <button class="px sm" id="tTeaser">미리보기<small>이런 게임이에요 (40초)</small></button>
           <button class="px sm" id="tLetter">모모에게 편지<small>버그 · 의견 보내기</small></button>
         </div>
-        <div class="ver">v0.8.0-beta</div>
+        <button class="ver" id="tVer">v0.8.1-beta</button>
         <button class="spk ibtn px" id="tSpk" aria-label="소리 끄기"><img alt="" /></button>
       </div>
       <div id="teaser" hidden>
