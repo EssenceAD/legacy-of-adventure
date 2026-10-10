@@ -434,8 +434,8 @@ export const CONFIG = {
   /** 5단계 2장: 사냥 (스테이지 돌파형) */
   hunt: {
     stages: 10,
-    /** 추천 전투력 = basePower × regionPower^지역 × (1 + stagePower × (스테이지-1)) */
-    basePower: 70,
+    /** 추천 전투력 = basePower × regionPower^지역 × (1 + stagePower × (스테이지-1)) — 1-1은 처음 단골 한 명으로도 */
+    basePower: 35,
     regionPower: 2.2,
     stagePower: 0.17,
     /** 한 판 제한 시간(초) · 웨이브 수 · 웨이브마다 몬스터 수 */
@@ -458,6 +458,9 @@ export const CONFIG = {
     /** 첫 돌파: 잿빛 가루 × (지역+1) · 증표 조각 (보스는 3개, 10개 = 인연의 증표 1) */
     firstDust: 30,
     firstShards: 1,
+    /** 첫 돌파 평판 (보스는 더) */
+    firstRep: 2,
+    firstRepBoss: 5,
     bossShards: 3,
     shardsPerToken: 10,
     /** 자동 사냥: 이 초마다 한 판 (전투력이 추천 × autoRatio 이상일 때) · 방치는 이 비율로 */

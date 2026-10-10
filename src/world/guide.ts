@@ -4,6 +4,7 @@ import { CHAPTERS, MISSIONS, type GuideCtx, type Mission } from '../data/guide';
 import { HEROES } from '../data/heroes';
 import { LEGENDS } from '../data/legends';
 import { stars } from './progress';
+import { CONFIG } from '../data/config';
 import { markDirty, P, S, uiHooks, world, type TalkLine } from './state';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -24,6 +25,8 @@ export function guideCtx(): GuideCtx {
     regulars: regs.length,
     land: world.home?.land ?? S.land,
     stars: stars(),
+    rep: Math.floor(P.rep),
+    repFor: (s) => CONFIG.reputation.stars[s - 1] ?? 0,
     regionWins: (r) => (r === 'all' ? Object.values(C.regionWins).reduce((s, v) => s + v, 0) : C.regionWins[r as keyof typeof C.regionWins] ?? 0),
     salvaged: C.salvaged,
     enhanceMax: C.enhanceMax,

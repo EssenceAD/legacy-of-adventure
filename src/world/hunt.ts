@@ -6,6 +6,7 @@ import { REGIONS, type Grade, type RegionId } from '../data/items';
 import { gainXp, powerOf } from './adventurers';
 import { partyChemMult } from './chem';
 import { feature } from './guide';
+import { addRep } from './progress';
 import { addToBag, makeItem, rollGrade } from './items';
 import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type Item } from './state';
 
@@ -56,6 +57,7 @@ export interface HuntReward {
   token: boolean;
   levelUps: string[];
   first: boolean;
+  bossMats: number;
 }
 
 /** 한 판 보상 (mult = 방치처럼 비율을 낮출 때) */
@@ -68,6 +70,13 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   S.ledger.dungeon += g;
   gotGold(g);
   P.mats[r] += mats;
+  // 지역 보스(x-10): 토벌 보스 재료도 (세트 제작에 필요 — 토벌이 열리기 전에도 만들 수 있게)
+  let bossMats = 0;
+  if (isBoss(s) && mult >= 1) {
+    bossMats = first ? 3 : 1;
+    const bid = regionBossOf(r).id;
+    P.bossMats[bid] = (P.bossMats[bid] ?? 0) + bossMats;
+  }
   const levelUps: string[] = [];
   for (const m of members) if (gainXp(m, xp)) levelUps.push(`${m.name} Lv.${m.lvl}`);
   const items: Item[] = [];
@@ -80,6 +89,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   let shards = 0;
   let token = false;
   if (first) {
+    // 첫 돌파는 평판도 조금 (사냥이 별·땅 넓히기로 이어지게)
+    addRep(isBoss(s) ? H.firstRepBoss : H.firstRep);
     firstDust = H.firstDust * (ri + 1) * (isBoss(s) ? 3 : 1);
     P.dust.n += firstDust;
     shards = isBoss(s) ? H.bossShards : H.firstShards;
@@ -90,7 +101,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
       token = true;
     }
   }
-  return { gold: g, xp, mats, items, firstDust, shards, token, levelUps, first };
+  return { gold: g, xp, mats, items, firstDust, shards, token, levelUps, first, bossMats };
 }
 
 /** 스테이지 돌파 (직접·자동 전투 한 판) */

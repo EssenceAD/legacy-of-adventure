@@ -4,6 +4,8 @@
 import { CHAPTERS, GRADE_NAMES } from '../data/guide';
 import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, rewardText, skipDone } from '../world/guide';
 import { P, S, uiHooks, type TalkLine } from '../world/state';
+import { huntCrew } from '../world/hunt';
+import { josa } from '../data/josa';
 import { $, esc } from './common';
 import { isTalking, talk } from './dialogue';
 import { iconSrc, px, uiSrc } from './kit';
@@ -16,7 +18,7 @@ let handUntil = 0;
 export function initGuide() {
   guideHooks.chapterDone = (no) => {
     const c = chapterOf(no);
-    uiHooks.announce(`★ ${S.innName || '여관'}이(가) 장부 ${no}장 「${c.name}」을 마쳤습니다!`);
+    uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 장부 ${no}장 「${c.name}」${josa(c.name, '을')} 마쳤습니다!`);
     queueChapter(no);
   };
   $('#mission').onclick = onCard;
@@ -37,7 +39,7 @@ function queueChapter(no: number) {
 function playChapterEnd(no: number, then: () => void) {
   const c = chapterOf(no);
   const lines: TalkLine[] = [['narr', `장부 ${no}장 「${c.name}」 완료!`], ['narr', `장 보상 — ${c.rewardText}`]];
-  if (c.grade != null) lines.push(['narr', `마을 등급이 「${GRADE_NAMES[c.grade]}」이 되었다!`]);
+  if (c.grade != null) lines.push(['narr', `마을 등급이 「${GRADE_NAMES[c.grade]}」${josa(GRADE_NAMES[c.grade], '가')} 되었다!`]);
   talk(lines, then);
 }
 /** 새 장 시작 컷 (2~3줄) */
@@ -83,6 +85,16 @@ export function point(sel: string | null, ms = 2600) {
   handUntil = Date.now() + ms;
 }
 
+/** 사냥·토벌 임무인데 단골이 모두 원정 중이면: 가장 빨리 돌아오는 시간 */
+function waitNote(place: string): string {
+  if (place !== 'hunt' && place !== 'raid') return '';
+  if (huntCrew().length) return '';
+  const runs = P.runs.filter((r) => !r.result);
+  if (!runs.length) return '';
+  const s = Math.max(0, Math.ceil((Math.min(...runs.map((r) => r.end)) - Date.now()) / 1000));
+  return ` · 단골 귀환까지 ${s}초`;
+}
+
 /** 0.5초마다 (hud): 카드 글자 · 반짝 · 손가락 자리 */
 export function syncGuide(force = false) {
   const card = $('#mission');
@@ -103,7 +115,7 @@ export function syncGuide(force = false) {
   card.classList.toggle('done', pr.done);
   const ch = chapterOf(m.ch);
   const inCh = ch.missions.findIndex((x) => x.id === m.id) + 1;
-  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : `${pr.cur}/${pr.need}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
+  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : `${pr.cur}/${pr.need}${waitNote(m.place)}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
   // 손가락: 1~3장은 창·대화가 없을 때 저절로, 그 뒤엔 카드를 눌렀을 때만
   const auto = m.ch <= 3 && !pr.done && !isWinOpen() && !isTalking();
   const sel = Date.now() < handUntil ? handTarget : auto ? PLACE_BTN[m.place] ?? null : pr.done ? '#mission' : null;

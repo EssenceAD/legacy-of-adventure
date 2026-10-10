@@ -21,11 +21,14 @@ const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
 let curRegion: RegionId = 'forest';
 let picked: number[] = [];
+/** 이번에 사용자가 파티를 직접 고쳤나 (지도로 돌아가면 풀린다) */
+let manualPick = false;
 
 // ───────── 스테이지 지도 ─────────
 
 export function openHunt(region?: RegionId) {
   if (!huntRegionOpen(0)) return toast(`사냥터는 장부 ${featureChapter('hunt')}장을 마치면 열려요`);
+  manualPick = false;
   if (region) curRegion = region;
   if (!huntRegionOpen(regionIdx(curRegion))) curRegion = 'forest';
   const tabs = REGIONS.map((r, i) => {
@@ -63,10 +66,19 @@ export function openHunt(region?: RegionId) {
 
 // ───────── 파티 고르기 ─────────
 
+/** 사냥 갈 단골이 없을 때: 모두 원정 중이면 가장 빨리 돌아오는 시간 */
+function awayNote(): string {
+  const runs = P.runs.filter((r) => !r.result);
+  if (!runs.length) return '단골이 없어요 · 손님이 단골이 되면 데려갈 수 있어요';
+  const soon = Math.max(0, Math.min(...runs.map((r) => r.end)) - Date.now());
+  return `단골이 모두 원정 중이에요 · ${Math.ceil(soon / 1000)}초 뒤 돌아와요`;
+}
+
 function openHuntPrep(r: RegionId, s: number) {
   const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id));
-  if (!picked.length) picked = crew.slice(0, 3).map((a) => a.id);
+  // 직접 고친 파티가 아니면, 빈자리는 돌아온 단골 중 가장 센 순서로 채운다
+  if (!manualPick) for (const a of crew) if (picked.length < 3 && !picked.includes(a.id)) picked.push(a.id);
   const ms = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const rec = recPower(r, s);
   const pw = ms.length ? partyPower(ms) : 0;
@@ -86,7 +98,7 @@ function openHuntPrep(r: RegionId, s: number) {
     <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>
-    <div class="plist">${rows || '<p class="note">단골이 없어요</p>'}</div>
+    <div class="plist">${rows || `<p class="note">${awayNote()}</p>`}</div>
     <div class="btnrow raidgo">
       <button class="bigbtn red" id="hMan" ${ms.length ? '' : 'disabled'}>직접 사냥</button>
       <button class="bigbtn" id="hAuto1" ${ms.length ? '' : 'disabled'}>자동 전투</button>
@@ -100,6 +112,7 @@ function openHuntPrep(r: RegionId, s: number) {
       (el.onclick = () => {
         const id = +el.dataset.id!;
         picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < 3 ? [...picked, id] : picked;
+        manualPick = true;
         openHuntPrep(r, s);
       }),
   );
@@ -423,7 +436,7 @@ function showHuntResult(view: BattleView, r: RegionId, s: number, members: Actor
   const items = out.items.map((it) => itemCell(it)).join('');
   const html = `<h2>${win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>
     ${win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}
-    <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}</div>
+    <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>
     ${items ? `<div class="loot">${items}</div>` : ''}
     ${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}
     ${win ? '' : `<p class="cen">전투력이 부족해요 (추천 ${fmt(recPower(r, s))}) · 장비·레벨을 올리고 다시!</p>`}

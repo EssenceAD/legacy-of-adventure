@@ -679,6 +679,27 @@ function heroCheck() {
 // ───────── 게임 시간 흐름: 욕구 · 도착 · 영웅 ─────────
 
 let hourAcc = 0;
+/**
+ * 5단계: 단골이 3명이 될 때까지는, 몇 시간 묵으며 기분이 좋았던 손님이 하루를 기다리지 않고 바로 제안한다
+ * (새 게임 첫 10분 안에 「단골 3명」 임무가 이어지게)
+ */
+const EARLY_REGULARS = 3;
+const EARLY_HOURS = 1;
+function earlyRegular() {
+  if (S.visiting || regularsCount() >= Math.min(EARLY_REGULARS, capacity())) return;
+  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId);
+  const a = stay.find((g) => g.moodN >= EARLY_HOURS && g.moodSum / g.moodN >= regularNeed());
+  if (a) return propose(a);
+  // 머무는 손님이 없으면: 소문을 듣고 온 모험가가 바로 찾아온다 (기분 좋게)
+  if (!stay.length) {
+    const g = arrive();
+    if (g) {
+      g.mood = Math.max(g.mood, 85);
+      say(g, '여기가 소문난 그 여관인가요?', 0.3);
+    }
+  }
+}
+
 function tickGuests(dt: number) {
   const gh = dt / CONFIG.clock.realSecondsPerGameHour;
   const list = guestsOf();
@@ -700,6 +721,7 @@ function tickGuests(dt: number) {
   }
   passersLeave();
   callWaitlist();
+  earlyRegular();
   const h = absHours();
   if (h - P.lastArriveHour >= G.arriveEveryGameHours || h < P.lastArriveHour) {
     P.lastArriveHour = h;

@@ -261,7 +261,14 @@ function updateRunbar() {
   const runs = S.visiting ? [] : PG.runs.filter((r) => !r.claimed).slice(0, CONFIG.expedition.maxParties);
   const au = S.visiting ? null : PG.hunt.auto;
   bar.hidden = !runs.length && !au;
-  if (bar.hidden) return;
+  if (bar.hidden) {
+    // 숨길 땐 예전 버튼도 치운다 (끝난 원정이 남아 보이지 않게)
+    if (runbarKey) {
+      runbarKey = '';
+      bar.innerHTML = '';
+    }
+    return;
+  }
   const now = Date.now();
   const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '');
   if (key !== runbarKey) {
