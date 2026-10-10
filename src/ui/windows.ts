@@ -12,6 +12,8 @@ import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
 import { decoLock } from '../world/harmony';
 import { online, sendLetter } from '../net/server';
+import { openAccount } from './account';
+import { APP_VERSION } from './update';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -368,6 +370,14 @@ export function showObj(o: Building) {
 // ───────── 우체부 모모: 제보 편지 ─────────
 
 export function openReport() {
+  // 핫픽스 7 (8-4): 편지는 로그인한 사람만 (손님에게 "잘 받았어요"라고 거짓 안내하지 않는다)
+  if (!online()) {
+    talk([['post', '편지는 계정이 있어야 배달할 수 있어요. 로그인하고 다시 와 주세요!']], () => {
+      openWin('모모에게 편지', `<p class="sub">로그인하면 편지가 개발자님께 바로 배달돼요.</p><div class="menu"><button class="bigbtn" id="repLogin">로그인/가입하기</button></div>`);
+      $('#repLogin').onclick = () => openAccount();
+    });
+    return;
+  }
   talk(
     [
       ['post', '안녕하세요! 우체부 모모예요.'],
@@ -386,11 +396,21 @@ export function openReport() {
           return;
         }
         const kind = ($('#rk') as HTMLSelectElement).value;
-        addReport({ kind, text, at: Date.now() });
-        // 로그인했으면 서버(bug_letters)로도
-        if (online()) void sendLetter(`[${kind}] ${text}`, document.querySelector('.ver')?.textContent ?? '');
-        closeWin();
-        talk([['post', '편지 잘 받았어요! 답장은 공지에서 확인해 주세요~']]);
+        const btn = $('#rep button') as HTMLButtonElement;
+        btn.disabled = true;
+        btn.textContent = '배달 중…';
+        // 서버(bug_letters) 결과를 확인하고 나서만 "잘 받았어요"
+        void sendLetter(`[${kind}] ${text.slice(0, 300)}`, `v${APP_VERSION}`).then((ok) => {
+          if (ok) {
+            addReport({ kind, text, at: Date.now() });
+            closeWin();
+            talk([['post', '편지 잘 받았어요! 답장은 공지에서 확인해 주세요~']]);
+          } else {
+            btn.disabled = false;
+            btn.textContent = '편지 보내기';
+            talk([['post', '배달에 실패했어요. 잠시 뒤 다시 보내 주세요']]);
+          }
+        });
       };
     },
   );

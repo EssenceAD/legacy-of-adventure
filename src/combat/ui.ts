@@ -10,6 +10,7 @@ import type { Actor } from '../world/state';
 import { attack, dodge, grade, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type Unit } from './field';
 import { digits, draw, numsOut, sheets } from './draw';
 import { JOB_COLOR, skillIcon } from './icons';
+import { afterBusy } from '../ui/update';
 import { loadMon } from './mon';
 
 const C = CONFIG.combat;
@@ -447,6 +448,8 @@ export function closeCombat() {
   root?.remove();
   root = null;
   F = null;
+  // 전투 중 미뤄 둔 새 버전 띠
+  afterBusy();
 }
 export const combatOn = () => !!F;
 export type { Unit };

@@ -980,3 +980,18 @@ body.winopen :is(#mission,#evalbar,#runbar,#chatlog,#bHarm,#hSpk,#pcard,#hBanner
 .cbnames span{font-size:13px;font-weight:700;color:#fff;background:rgba(10,8,20,.82);padding:3px 7px;box-shadow:0 0 0 2px var(--jc);white-space:nowrap}
 .cbcast{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 214px);transform:translateX(-50%);font-size:17px;font-weight:700;color:#fff;text-shadow:2px 2px 0 #140c18,-1px -1px 0 #140c18;background:rgba(10,8,20,.6);padding:4px 12px;pointer-events:none;z-index:5;white-space:nowrap}
 html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
+/* ── 핫픽스 7 (8-2·8-3): 새 버전 띠 · 패치노트 ── */
+#updBar{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);transform:translateX(-50%);z-index:60;padding:8px 16px;font-size:15px;font-weight:700;color:var(--ink);border:0 solid transparent;border-image:var(--ui-btn-primary) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;white-space:nowrap;cursor:pointer;animation:updIn .3s steps(3)}
+#updBar[hidden]{display:none}
+@keyframes updIn{from{transform:translate(-50%,-30px)}to{transform:translate(-50%,0)}}
+.pnlist{display:flex;flex-direction:column;gap:8px}
+.pn{padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+.pn summary{cursor:pointer;font-size:var(--f-ui);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;list-style:none}
+.pn summary b{color:var(--gold)}
+.pn summary small{margin-left:auto;color:#9aa6d8;font-size:var(--f-small)}
+.pn ul,.pncard ul{margin:6px 0 0;padding-left:18px;font-size:var(--f-ui);line-height:1.5}
+.pn-h{margin:8px 0 0;color:var(--gold);font-size:var(--f-small)}
+.pn-fixes{color:#c9d0ee}
+.pn-title{font-size:var(--f-big);color:var(--gold);margin:0 0 4px}
+#nbody .pnlist{margin-top:4px}
+.ver{border:0;background:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-size:13px;color:#b9c3ea}

@@ -3,6 +3,7 @@
 import { getPref, setPref } from '../save/save';
 import { openWin } from './windows';
 import { listNotices } from '../net/server';
+import { loadPatchNotes, notesListHtml } from './update';
 
 interface Notice {
   id: number;
@@ -18,7 +19,7 @@ const NOTICES: Notice[] = [
   { id: 2, tag: '이벤트', t: '주말 던전 보상 2배 (예시)', d: '2026. 10. 11.', b: '예시 공지예요. 이벤트는 다음 단계에서 열려요.' },
   { id: 1, tag: '제보', t: '버그 · 건의는 우체부 모모에게', d: '상시', b: '마을의 모모(머리 위 !)를 누르면 편지를 쓸 수 있어요.' },
 ];
-const TABS = ['전체', '공지', '업데이트', '이벤트', '제보'];
+const TABS = ['전체', '공지', '업데이트', '이벤트', '제보', '패치노트'];
 let latest = Math.max(...NOTICES.map((n) => n.id));
 
 /** 서버 공지(notices, 운영자가 대시보드에서 씀)를 맨 위에 더한다 */
@@ -69,6 +70,13 @@ export function openNotices() {
     (t) =>
       (t.onclick = () => {
         tabs.forEach((x) => x.classList.toggle('on', x === t));
+        // 패치노트 탭: 버전별로 접고 펼치기 (운영자 공지는 「공지」 탭 그대로)
+        const list = document.querySelector<HTMLElement>('.nlist')!;
+        list.hidden = t.dataset.t === '패치노트';
+        if (t.dataset.t === '패치노트') {
+          void loadPatchNotes().then((n) => (document.getElementById('nbody')!.innerHTML = notesListHtml(n)));
+          return;
+        }
         rows.forEach((r) => (r.hidden = t.dataset.t !== '전체' && NOTICES[+r.dataset.i!].tag !== t.dataset.t));
         const first = rows.find((r) => !r.hidden);
         if (first) show(+first.dataset.i!);

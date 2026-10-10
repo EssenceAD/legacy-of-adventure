@@ -29,6 +29,8 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
+import { APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
+import { combatOn } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
@@ -409,6 +411,13 @@ async function boot() {
   onNightChange(() => game.syncHud());
 
   document.getElementById('tLetter')!.onclick = () => openReport();
+  // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
+  initUpdate(() => combatOn());
+  const ver = document.getElementById('tVer');
+  if (ver) {
+    ver.textContent = `v${APP_VERSION} · 패치노트`;
+    ver.onclick = () => void openPatchNotes();
+  }
   document.getElementById('tStart')!.onclick = () => {
     if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?')) return;
     game.newGame();

@@ -23,6 +23,7 @@ import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
+import { maybeShowPatchCard } from './ui/update';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -165,6 +166,8 @@ export function continueGame() {
     syncOwnerButton();
     syncHud();
     refreshNoticeDot();
+    // 업데이트 후 첫 화면: 패치노트 카드 한 번
+    setTimeout(() => void maybeShowPatchCard(), 1200);
   };
   // 4단계 전 저장: 한 번만 「당신은 누구였나요?」 (마을·진행은 그대로)
   if (!P.owner) openCreate('existing', after);
