@@ -9,6 +9,7 @@ import { buildableKinds, maxLevel, nextLevelCost } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
+import { decoLock } from '../world/harmony';
 import { online, sendLetter } from '../net/server';
 import * as game from '../game';
 import { addReport } from '../save/save';
@@ -117,27 +118,35 @@ const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 's
 
 export function openBuild() {
   if (S.visiting) return;
-  const items = buildableKinds()
-    .map((k) => {
+  const card = (k: Kind) => {
       const d = def(k);
+      // 베타: 어울림 장식 열림 조건
+      const dl = decoLock(k);
       const noStar = (d.stars ?? 0) > stars();
       // 5단계: 장부 장 보상으로 여는 건물 (대장간 3장 · 텃밭·별채 5장)
       const gate = GATED[k];
       const noGuide = !!gate && !feature(gate);
-      const locked = d.unlock > S.land || noStar || noGuide;
+      const locked = d.unlock > S.land || noStar || noGuide || !!dl;
       const poor = S.gold < d.cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
-      const why = noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
+      const why = dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
       const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(d.cost)} G</small>`;
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
-    })
-    .join('');
+    };
+  const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
+  // 건물 → 장식 (장식은 어울림 재료)
+  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
   openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
   $$('.cat button').forEach(
     (b) =>
       (b.onclick = () => {
         const k = b.dataset.k as Kind;
+        const dl = decoLock(k);
+        if (dl && dl !== 'hide') {
+          toast(dl);
+          return;
+        }
         const gate = GATED[k];
         if (gate && !feature(gate)) {
           toast(`버나드의 장부 ${featureChapter(gate)}장을 마치면 지을 수 있어요`);
@@ -198,6 +207,9 @@ const portrait = (k: string) => PORTRAITS[k] || '';
 
 // ───────── 건물 안 엿보기 ─────────
 
+/** 건물 창 아래에 덧붙일 줄 (베타: 어울림 — ui/harmony가 채운다) */
+export const objExtra = { html: (_o: Building) => '' };
+
 export function showObj(o: Building) {
   const d = def(o.kind);
   if (!S.visiting) {
@@ -224,7 +236,7 @@ export function showObj(o: Building) {
   const up = canUp && !S.visiting ? `<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${grows}${d.levelText ?? ''} (${fmt(cost!)} G)</button>` : '';
   openWin(
     d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
-    `<p class="sub">${d.desc}</p>${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
+    `<p class="sub">${d.desc}</p>${S.visiting ? '' : objExtra.html(o)}${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
   );
   $$('.roofs button').forEach(
     (b) =>

@@ -10,7 +10,7 @@ import { CONFIG } from '../data/config';
 import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
-import { blocksDoor, canPlace, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
+import { blocksDoor, canPlace, gateOk, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, openRunLog, runsWaiting } from './expedition';
@@ -42,6 +42,7 @@ function whyNot(pl: Placement): string | null {
       const g = grid[pl.ty + j]?.[pl.tx + i];
       if (g && g !== ign) return '다른 건물과 겹쳐요';
     }
+  if (pl.kind === 'gate' && !gateOk(pl)) return '정문은 마을 입구 길 위에만 놓아요';
   if (!canPlace(pl, ign)) return '문 앞 칸이 막혀 있어요';
   if (blocksDoor(pl, ign)) return '다른 건물의 문 앞을 막아요';
   return null;
@@ -55,7 +56,7 @@ function check(pl: Placement) {
 function placeText(pl: Placement) {
   $('#placeOk').toggleAttribute('disabled', !pl.ok);
   $('#placeRot').toggleAttribute('disabled', !pl.sprite);
-  $('#placeTxt').textContent = `${def(pl.kind).name}${pl.move ? ' 옮기기' : ''} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}`;
+  $('#placeTxt').textContent = `${def(pl.kind).name}${pl.move || pl.prop ? ' 옮기기' : ''} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}`;
   const w = $('#placeWhy');
   w.textContent = pl.why ?? '';
   w.hidden = pl.ok;
@@ -70,9 +71,9 @@ function openPlace(pl: Placement) {
   if (pl.tx != null) game.focusTile(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
 }
 
-export function startPlace(kind: Kind) {
+export function startPlace(kind: Kind, prop?: string) {
   const d = def(kind);
-  const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false };
+  const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false, prop };
   suggestSpot(pl);
   openPlace(pl);
 }

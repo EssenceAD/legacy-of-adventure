@@ -204,7 +204,7 @@ export interface RunResult {
   newChem: string[];
 }
 
-export type IncomeKind = 'sleep' | 'drink' | 'forge' | 'bath' | 'dungeon';
+export type IncomeKind = 'sleep' | 'drink' | 'forge' | 'bath' | 'dungeon' | 'stall';
 
 export const S = {
   land: 1,
@@ -219,7 +219,7 @@ export const S = {
   started: false,
   zoom: CONFIG.view.defaultZoom,
   /** 오늘의 수입 (장부) */
-  ledger: { sleep: 0, drink: 0, forge: 0, bath: 0, dungeon: 0 } as Record<IncomeKind, number>,
+  ledger: { sleep: 0, drink: 0, forge: 0, bath: 0, dungeon: 0, stall: 0 } as Record<IncomeKind, number>,
   /** 게임 시간 (초, 멈춰 있으면 안 흐름) */
   time: 0,
   /** 화면 애니메이션 시간 (초) */
@@ -281,6 +281,8 @@ export function freshProgress() {
       raidTries: 0,
       giftsGiven: 0,
       shopBuys: 0,
+      /** 베타: 구경거리 사건 해결 */
+      eventsSolved: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {
@@ -371,6 +373,25 @@ export function freshProgress() {
      * album·cards = 엔딩 앨범(지금까지 본 엔딩 전부, 새 여관 열기를 해도 남는다) · 앞 주인
      */
     legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
+    /**
+     * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
+     * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
+     */
+    harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[] },
+    /**
+     * 베타 2장 여관 평가단: 이번 시즌(실제 주) · 테마 · 암행 보너스 · 평가를 마친 시즌 · 최고 등급(0 없음~4 전설) · 지난 결과
+     */
+    evaluation: {
+      season: '',
+      theme: 0,
+      bonus: 0,
+      secretDone: false,
+      judged: '',
+      best: 0,
+      history: [] as { season: string; theme: number; score: number; tier: number }[],
+      /** 시즌 시작 시점 수치 (이번 시즌에 늘어난 만큼만 센다) */
+      base: {} as Record<string, number>,
+    },
   };
 }
 

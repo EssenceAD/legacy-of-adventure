@@ -1,6 +1,7 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
+import { hfx } from '../world/harmony';
 import { REGIONS, type RegionId } from '../data/items';
 import { BOSS_IMG, MOB_IMG, RAID_BG, scaled } from '../engine/assets';
 import { P as Paint } from '../engine/pixel';
@@ -166,7 +167,8 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
   const leader = members[0];
   const rec = recPower(r, s);
   const power = partyPower(members);
-  const dps = power * H.dpsK;
+  // 깃발 아래: 사냥 피해 +5%
+  const dps = power * H.dpsK * (1 + hfx('dmg'));
   const total = rec * H.dpsK * H.stageHpSec;
   const danger = Math.pow(rec / Math.max(1, power), H.dangerExp);
   const boss = isBoss(s);

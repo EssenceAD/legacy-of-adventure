@@ -176,7 +176,7 @@ export function walkable(x: number, y: number, free = false): boolean {
   if (!inMap(x, y)) return false;
   if (!free && !inLand(x, y) && !pathT.has(y * N + x)) return false;
   const o = grid[y][x];
-  return !o || o.kind === 'training' || o.kind === 'garden';
+  return !o || o.kind === 'training' || o.kind === 'garden' || o.kind === 'gate';
 }
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
@@ -253,7 +253,7 @@ export function rebuildPaths() {
   // 마을 입구 → 여관 문 (손님이 걸어 들어오는 길)
   const [ex, ey] = entrance();
   const pe = astar(ex, ey, hub[0], hub[1]);
-  if (pe) for (const [x, y] of pe) if (!grid[y][x]) pathT.add(y * N + x);
+  if (pe) for (const [x, y] of pe) if (!grid[y][x] || grid[y][x]!.kind === 'gate') pathT.add(y * N + x);
   pathT.add(hub[1] * N + hub[0]);
 }
 
@@ -264,7 +264,7 @@ export function entrance(): [number, number] {
   const hx = inn ? doorOf(inn)[0] : Math.floor((a + b) / 2);
   const y = b - 1;
   for (let d = 0; d < b - a; d++)
-    for (const x of [hx - d, hx + d]) if (x >= a && x < b && !grid[y]?.[x]) return [x, y];
+    for (const x of [hx - d, hx + d]) if (x >= a && x < b && (!grid[y]?.[x] || grid[y][x]!.kind === 'gate')) return [x, y];
   return [hx, y];
 }
 
@@ -282,6 +282,8 @@ export interface Placement {
   flip?: boolean;
   /** 옮기는 중인 기존 건물 (새로 짓기면 없음) */
   move?: Building;
+  /** 베타: 마을 등급 장식을 마을 안으로 옮기는 중 (k@x,y) — 무료 */
+  prop?: string;
   /** 놓을 수 없는 까닭 */
   why?: string;
   /** 칸이 바뀐 순간 (톡 튕기는 연출) */
@@ -302,6 +304,7 @@ export function canPlace(o: { kind: Kind; tx: number | null; ty: number | null; 
       const g = grid[y]?.[x];
       if (g && g !== ignore) return false;
     }
+  if (o.kind === 'gate' && !gateOk(o)) return false;
   if (!def(o.kind).deco) {
     const [dx, dy] = doorOf({ tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, flip: o.flip });
     if (!inLand(dx, dy)) return false;
@@ -309,6 +312,13 @@ export function canPlace(o: { kind: Kind; tx: number | null; ty: number | null; 
     if (g && g !== ignore) return false;
   }
   return true;
+}
+
+/** 정문: 마을 입구 길 위에만 — 발자국이 울타리 앞줄의 입구 칸을 덮어야 한다 */
+export function gateOk(o: { tx: number | null; ty: number | null; fw: number; fh: number }): boolean {
+  if (o.tx == null || o.ty == null) return false;
+  const [ex, ey] = entrance();
+  return ex >= o.tx && ex < o.tx + o.fw && ey >= o.ty && ey < o.ty + o.fh;
 }
 
 /** 다른 건물의 문 앞을 막지 않는지 */
@@ -325,6 +335,14 @@ export function blocksDoor(o: { tx: number | null; ty: number | null; fw: number
 /** 맵 가운데에서 가까운 첫 빈자리 */
 export function suggestSpot(pl: Placement) {
   const [a, b] = landBounds();
+  if (pl.kind === 'gate') {
+    const [ex, ey] = entrance();
+    for (const [dx, dy] of [[0, 1], [1, 1], [0, 0], [1, 0]]) {
+      pl.tx = ex - dx;
+      pl.ty = ey - dy;
+      if (canPlace(pl) && !blocksDoor(pl)) return;
+    }
+  }
   const mid = N / 2;
   for (let r = 0; r < N * 2; r++)
     for (let y = a; y < b; y++)

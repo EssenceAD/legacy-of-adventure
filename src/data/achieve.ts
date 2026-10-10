@@ -4,7 +4,7 @@ export interface AchCtx {
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest';
 
 export interface AchDef {
   id: string;
@@ -85,6 +85,15 @@ export const ACHIEVEMENTS: AchDef[] = [
   A('ties5', '인연 부자', '인연 5단계 5명', 'ties5', 5, { gold: 5000 }, true),
   A('end1', '첫 엔딩', '엔딩 1개 보기', 'endings', 1, { gold: 1000, title: '유산을 남긴 자' }),
   A('end10', '이야기 수집가', '엔딩 10개 보기', 'endings', 10, { gold: 6000 }, true),
+  // 베타: 어울림 · 평가단 · 구경거리 (8)
+  A('harm1', '첫 어울림', '어울림 1개 발견', 'harmony', 1, { gold: 200 }),
+  A('harm6', '배치의 감', '어울림 6개 발견', 'harmony', 6, { gold: 800 }),
+  A('harm12', '마을 설계가', '어울림 12개 발견', 'harmony', 12, { gold: 2000, title: '마을 설계가' }),
+  A('harm24', '완벽한 조화', '어울림 24개 모두 발견', 'harmony', 24, { gold: 8000, dust: 500, title: '조화의 여관' }, true),
+  A('evt10', '구경꾼 사절', '구경거리 사건 10번 해결', 'events', 10, { gold: 500 }),
+  A('evt50', '마을의 해결사', '구경거리 사건 50번 해결', 'events', 50, { gold: 2500, title: '마을의 해결사' }),
+  A('eval1', '평가단의 눈', '여관 평가단 브론즈', 'evalBest', 1, { gold: 500 }),
+  A('eval3', '안내서의 별', '여관 평가단 골드', 'evalBest', 3, { gold: 3000, title: '안내서의 별' }),
   // 출석·상점 (3)
   A('att7', '일주일 개근', '출석 7일', 'attend', 7, { gold: 500 }),
   A('att28', '한 달 개근', '출석 28일', 'attend', 28, { gold: 3000, title: '개근 여관주인' }),

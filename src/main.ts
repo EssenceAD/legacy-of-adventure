@@ -14,13 +14,17 @@ import { pendingEvents, pumpEvents } from './world/events';
 import { posBubbles } from './world/fx';
 import { buildingAt, renderFrame } from './world/render';
 import { P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
+import { def, type Kind } from './data/catalog';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
-import { initHud, movePlacement, setOnZoom, setZoom, syncZoomLabel, tickHud } from './ui/hud';
+import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tickHud } from './ui/hud';
 import { initScreen, screen, setOnScreenChange } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
+import { initHarmonyUI, openPropInfo } from './ui/harmony';
+import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
+import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
 import { dailyAttend, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
@@ -158,6 +162,7 @@ function frame(now: number) {
 
 function tick(dt: number) {
   stepGradeAnim(dt);
+  tickHarmony(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -309,7 +314,11 @@ function tap(e: PointerEvent) {
     return;
   }
   const o = buildingAt(mx, my, alphaAt);
-  if (o) showObj(o);
+  if (o) return showObj(o);
+  // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
+  const [fx, fy] = toTile(cv, e.clientX, e.clientY);
+  const pr = propsNow().find((p) => fx >= p.x && fx < p.x + p.fw && fy >= p.y && fy < p.y + p.fh);
+  if (pr) openPropInfo(pr);
 }
 
 // ───────── 부팅 ─────────
@@ -365,6 +374,7 @@ async function boot() {
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu() });
   initMenu();
+  initHarmonyUI();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));
@@ -417,6 +427,13 @@ async function boot() {
       __hunt: _huntAdvance,
       __grade: (g: number) => (gradeDev.g = g),
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
+      __harm: { sets: harmonySets, computeSets, checkDiscover, props: propsNow, openPropInfo },
+      /** 개발용: 그 칸에 짓기 미리보기 (확정은 #placeOk) */
+      __place: (k: Kind, x: number, y: number) => {
+        startPlace(k);
+        movePlacement(x + def(k).size[0] / 2 - 0.5, y + def(k).size[1] / 2 - 0.5);
+        return placing.pl?.why ?? 'ok';
+      },
       __step: (sec: number) => { for (let i = 0; i < sec * 60; i++) stepGradeAnim(1 / 60); },
       // 방치 시험: sec초 꺼져 있었던 것처럼 정산
       __offline: (sec: number) => {

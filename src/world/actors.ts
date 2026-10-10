@@ -17,6 +17,7 @@ import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type A
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
 import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
+import { bfx, hfx, incMult } from './harmony';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -259,7 +260,7 @@ export function enter(a: Actor, o: Building) {
       legendHooks.bond('train');
       track('train');
       // 훈련장 레벨마다 수련 경험치 +20%
-      if (gainXp(a, NE.trainXp * (1 + 0.2 * (o.lvl - 1)) * trainMult())) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
+      if (gainXp(a, NE.trainXp * (1 + 0.2 * (o.lvl - 1)) * trainMult() * (1 + bfx(o, 'trainXp')))) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
     });
     return;
   }
@@ -293,7 +294,8 @@ export function enter(a: Actor, o: Building) {
 /** 건물 안에서 욕구가 채워진다 */
 function fillNeeds(a: Actor, act: Act | undefined) {
   const tired = a.hp < 30;
-  const bathLv = world.objs.find((o) => o.kind === 'bath')?.lvl ?? 1;
+  const bathO = world.objs.find((o) => o.kind === 'bath');
+  const bathLv = bathO?.lvl ?? 1;
   if (act === 'sleep') {
     a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp));
     // 주점이 없으면 여관에서 간단한 끼니가 나온다
@@ -312,7 +314,8 @@ function fillNeeds(a: Actor, act: Act | undefined) {
     }
   } else if (act === 'bath') {
     // 온천 레벨마다 회복·기분 +15%
-    const k = 1 + 0.15 * (bathLv - 1);
+    // 꽃향기 온천: 기분·회복 +20%
+    const k = (1 + 0.15 * (bathLv - 1)) * (1 + (bathO ? bfx(bathO, 'bath') : 0));
     a.hp = clamp(a.hp + NE.bathHp * k);
     a.mood = clamp(a.mood + NE.bathMood * k * moodMult());
     if (!S.visiting && a.id) legendHooks.bond('bathUse');
@@ -340,7 +343,7 @@ function goInside(a: Actor, o: Building) {
     if (a.kind === 'rogue') legendHooks.bond('serveRogue');
   }
   // 4단계: 요리(주점) · 계절 행사 · 유산 보너스
-  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * incomeMult(act)) : 0;
+  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * incomeMult(act) * incMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '+' + income);
@@ -599,7 +602,7 @@ function propose(a: Actor) {
 }
 
 /** 단골이 되고 싶어 하는 기분 기준 (주인 말솜씨가 높을수록 낮다) */
-const regularNeed = () => G.regularMood - regularCut();
+const regularNeed = () => G.regularMood * (1 - hfx('regular')) - regularCut();
 
 /** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
 export function dailyGuests() {
@@ -725,7 +728,7 @@ function tickGuests(dt: number) {
   const h = absHours();
   if (h - P.lastArriveHour >= G.arriveEveryGameHours || h < P.lastArriveHour) {
     P.lastArriveHour = h;
-    if (Math.random() < G.arriveChance) arrive();
+    if (Math.random() < G.arriveChance * (1 + hfx('arrive'))) arrive();
   }
   const hero = heroReady();
   if (hero) heroArrive(hero);

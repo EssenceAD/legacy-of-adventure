@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { CONFIG } from '../data/config';
+import { hfx } from './harmony';
 import { fillNames, josa } from '../data/josa';
 import { hourNow } from './clock';
 import { maybeWander } from './raid';
@@ -121,11 +122,11 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
   power = Math.round(power * chem);
   // 4단계: 사냥꾼 출신 원정 시간 -5%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut());
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime'));
   return {
     power,
     chem,
-    success: Math.max(E.successMin, Math.min(E.successMax, (power / q.power) * E.successScale)),
+    success: Math.max(E.successMin, Math.min(E.successMax, (power / q.power) * E.successScale + hfx('expSuccess'))),
     minutes: q.minutes * (1 - cut),
   };
 }

@@ -264,11 +264,14 @@ export function expandLand(l: number) {
 
 export function placeBuilding(pl: Placement): boolean {
   const d = def(pl.kind);
-  if (S.gold < d.cost) {
+  // 베타: 마을 등급 장식을 마을 안으로 옮기면 무료 (그 자리 장식은 사라진다)
+  const cost = pl.prop ? 0 : d.cost;
+  if (S.gold < cost) {
     toast('금화가 모자라요');
     return false;
   }
-  S.gold -= d.cost;
+  S.gold -= cost;
+  if (pl.prop) P.harmony.moved.push(pl.prop);
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
   if (pl.kind === 'fire') track('buildFire');
   rebuildPaths();

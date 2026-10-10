@@ -2,7 +2,7 @@
 // 등급이 오르면 길·울타리·바깥 숲·장식·NPC가 바뀐다. 장식은 울타리 밖 개간지와 입구 길에만 놓아 건물과 겹치지 않는다.
 import { GRADE_NAMES } from '../data/guide';
 import { townGrade } from './guide';
-import { S } from './state';
+import { P as PG, S } from './state';
 import { entrance, landBounds } from './town';
 
 export { GRADE_NAMES };
@@ -37,6 +37,11 @@ export interface Prop {
   fw: number;
   fh: number;
 }
+
+/** 등급 장식 하나의 이름표 (옮겼는지 기억) */
+export const propKey = (p: Prop) => `${p.k}@${p.x},${p.y}`;
+/** 마을 안으로 옮길 수 있는 장식 (건설 목록에도 있는 것) */
+export const MOVABLE_PROPS: Prop['k'][] = ['lamppost', 'bench', 'flowerbed', 'banner', 'stall', 'fountain', 'gate'];
 
 /** 입구 길: 여관 앞 울타리 밖으로 곧게 (쉼터부터 다져진 길) */
 export function outerRoad(g = gradeNow()): [number, number][] {
@@ -73,7 +78,9 @@ export function gradeProps(g = gradeNow()): Prop[] {
     // 도시: 마을 정문(아치)
     list.push(P('gate', ex, b + 1));
   }
-  return list;
+  // 베타: 마을 안으로 옮긴 장식은 여기서 빠진다 (내 마을만)
+  if (S.visiting) return list;
+  return list.filter((p) => !PG.harmony.moved.includes(propKey(p)));
 }
 
 /** 등급 NPC (코드 도트): 상인(마을) · 경비병(고을) · 음유시인(도시) */

@@ -11,6 +11,8 @@ import {
 } from '../world/progress';
 import { markDirty, P, S, world } from '../world/state';
 import { LEGENDS } from '../data/legends';
+import { HARMONIES } from '../data/harmony';
+import { hintLv, hintText, partsText } from '../world/harmony';
 import { PORTRAITS } from '../engine/assets';
 import { $$, bindTabs, fmt, pct, tabs } from './common';
 import { openWin, toast } from './windows';
@@ -82,6 +84,16 @@ export function openDex(tab = dTab) {
       return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · 오늘 밤 방문 ${g >= 100 ? '확정' : `${(g / CONFIG.legends.judgeDiv).toFixed(1)}%`}</em></div></div>`;
     }).join('');
     body = `<p class="sub">전설 ${Object.values(P.legends).filter((l) => l.st === 'joined').length}/${LEGENDS.length} · 인연의 증표 ${P.tokens}개</p><p class="note">소문이 열리면 인연 활동으로 게이지가 차요. 실제 날짜로 하루 한 번, 게임 속 밤 10시에 방문 판정(게이지÷${CONFIG.legends.judgeDiv}%) · 100%면 확정. 밤하늘의 별똥별을 누르면 +1~10%</p><div class="lcards">${cards}</div>`;
+  } else if (tab === 5) {
+    // 베타 1장: 어울림 24칸 — 발견한 것은 구성·효과, 아직은 ???와 힌트
+    const cells = HARMONIES.map((h) => {
+      const found = P.harmony.found.includes(h.id);
+      const lv = hintLv(h);
+      if (found) return `<div class="hcell on"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small class="g">${h.text}</small></div>`;
+      if (h.open) return `<div class="hcell open"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small>${h.text}</small></div>`;
+      return `<div class="hcell"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
+    }).join('');
+    body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · 한 건물에 최대 ${CONFIG.harmony.perBuilding}개</p><div class="hgrid">${cells}</div>`;
   } else {
     const cards = HEROES.map((h) => {
       const st = P.dex.heroes[h.id];
@@ -97,7 +109,7 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅', '전설'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
   $$('[data-rw]').forEach(
@@ -160,6 +172,7 @@ export function openLedger(tab = lTab) {
       ['주점', L.drink, '#e8a23a'],
       ['대장간', L.forge, '#e8a23a'],
       ['온천', L.bath, '#e8a23a'],
+      ['노점', L.stall ?? 0, '#e8a23a'],
       ['원정', L.dungeon, '#9a7aff'],
     ];
     const max = Math.max(1, ...rows.map((r) => r[1]));

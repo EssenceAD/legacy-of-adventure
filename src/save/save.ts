@@ -199,7 +199,7 @@ function validate(d: any): SaveData | null {
     night: !!d.night,
     adventurers,
     innName: typeof d.innName === 'string' ? d.innName : '',
-    ledger: { sleep: num(L.sleep, 0), drink: num(L.drink, 0), forge: num(L.forge, 0), bath: num(L.bath, 0), dungeon: num(L.dungeon, 0) },
+    ledger: { sleep: num(L.sleep, 0), drink: num(L.drink, 0), forge: num(L.forge, 0), bath: num(L.bath, 0), dungeon: num(L.dungeon, 0), stall: num(L.stall, 0) },
     progress,
   };
 }

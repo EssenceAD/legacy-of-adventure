@@ -19,6 +19,7 @@ import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeD
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
+import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
 type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] });
@@ -157,6 +158,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   drawAmbient(ctx, T, LW, LH);
   drawStar(ctx, T);
   drawNamePlate(ctx, nt);
+  // 베타: 어울림 점선 (보기 토글 · 발견 연출)
+  drawHarmonyLines(ctx);
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
 }
@@ -383,6 +386,8 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
     ctx.drawImage(baseImage({ sprite: pl.sprite, hue }), x, y + bob);
   }
   ctx.globalAlpha = 1;
+  // 베타: 어울림 범위 · 짝 건물 초록 · 미리보기 말풍선 (유령 위에)
+  drawPlacementHarmony(ctx, pl);
 }
 
 /** pose: 문 연출 중일 때 발 위치(월드 원점 기준)·뒷모습·방향 */

@@ -1,5 +1,6 @@
 // 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, 24시간) · 하루 3번 · 소탕 · 보상
 import { BOSSES, bossById, type BossDef } from '../data/bosses';
+import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { REGIONS, type RegionId } from '../data/items';
@@ -134,7 +135,7 @@ export function expectOf(members: Actor[], b: BossDef): RaidExpect {
   const chem = partyChemMult(members);
   const affinity = power ? members.reduce((s, m, i) => s + pw[i] * affinityOf(m, b), 0) / power : 1;
   // 4단계: 전사 출신 토벌 피해 +5%
-  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult();
+  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult() * (1 + hfx('dmg') + hfx('raidDmg'));
   return {
     power: Math.round(power * chem),
     chem,

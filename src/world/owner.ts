@@ -2,6 +2,7 @@
 // 주인 능력치는 전투력에 「주인 보너스 최대 +15%」로만 들어가고, 인연 단계는 그 영웅 전투력 +2%/단계.
 // 다른 world 모듈이 import해도 꼬이지 않게: state · data · events · clock · progress만 쓴다. 창은 ownerHooks로.
 import { BONDS, bondById, GIFTS, REPLY, STAGE_NAMES, type BondDef, type GiftKey, type ReplyStyle } from '../data/bonds';
+import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
 import { ENDINGS, endingById, type EndingDef } from '../data/endings';
 import { HEROES } from '../data/heroes';
@@ -355,7 +356,7 @@ export function talkTo(id: string): string | null {
     label: REPLY[st],
     fn: () => {
       const ok = st === d.style;
-      uiHooks.talk([[d.port, fillT(ok ? d.good : d.meh), undefined, d.name]], () => addTie(id, ok ? T.talkGood : T.talkMeh));
+      uiHooks.talk([[d.port, fillT(ok ? d.good : d.meh), undefined, d.name]], () => addTie(id, (ok ? T.talkGood : T.talkMeh) + hfx('talkBond')));
     },
   })));
   return null;

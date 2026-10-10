@@ -1,6 +1,7 @@
 // 전설 영웅 14명 (3단계 8장): 소문 → 인연 게이지 → 밤 판정(실제 날짜 하루 1번) → 방문 → 부탁 → 영입 → 증표로 ★
 // 다른 모듈은 legendHooks.bond / legendHooks.req 로만 알린다 (import가 꼬이지 않게).
 import { CONFIG } from '../data/config';
+import { hfx } from './harmony';
 import { josa } from '../data/josa';
 import { LEGENDS, legendByKey, type BondEvent, type LegendCtx, type RequestEvent } from '../data/legends';
 import { REGIONS } from '../data/items';
@@ -81,7 +82,7 @@ export function bond(e: BondEvent, times = 1) {
   for (const d of LEGENDS) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
-    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key)));
+    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend'))));
     markDirty();
   }
 }

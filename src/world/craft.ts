@@ -7,6 +7,7 @@ import { addToBag, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
 import { enhanceBonus, ownerGain, stat } from './owner';
+import { bfx, hfx } from './harmony';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -47,7 +48,7 @@ export function salvageAllCommon(): { count: number; dust: number } {
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
 /** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
-export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus()));
+export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance')));
 
 export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
@@ -151,7 +152,7 @@ export function plant(o: Building, i: number, crop: string): string | null {
 export function harvest(o: Building, i: number): number {
   const p = plotsOf(o)[i];
   if (!p || plotLeft(p) !== 0) return 0;
-  const n = GD.crops[p.crop!].yield;
+  const n = GD.crops[p.crop!].yield + bfx(o, 'harvest');
   P.pantry += n;
   P.counters.harvests++;
   legendHooks.bond('harvest');

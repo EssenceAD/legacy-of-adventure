@@ -45,6 +45,9 @@ function stat(k: AchStat): number {
     case 'shop': return C.shopBuys;
     case 'talks': return C.guestTalks;
     case 'grade': return townGrade();
+    case 'harmony': return P.harmony.found.length;
+    case 'events': return C.eventsSolved ?? 0;
+    case 'evalBest': return P.evaluation.best;
   }
 }
 

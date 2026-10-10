@@ -1,5 +1,32 @@
 // 모든 숫자(가격·속도·확률·시간)를 이 파일 한 곳에 모은다. 밸런스는 여기서만 고친다.
 
+/** 어울림 효과 한 벌 (incKind 건물 수입 · 나머지는 이름 그대로) */
+export interface HarmonyFx {
+  incKind?: string;
+  inc?: number;
+  /** 밤에만 */
+  night?: boolean;
+  mood?: number;
+  moodNight?: boolean;
+  regular?: number;
+  trainXp?: number;
+  bath?: number;
+  repDay?: number;
+  harvest?: number;
+  expSuccess?: number;
+  scenery?: number;
+  expTime?: number;
+  dmg?: number;
+  raidDmg?: number;
+  talkBond?: number;
+  enhance?: number;
+  legend?: number;
+  gold?: number;
+  stayH?: number;
+  arrive?: number;
+  drunk?: number;
+}
+
 export const CONFIG = {
   map: {
     /** 맵 최대 크기 (타일) */
@@ -548,6 +575,51 @@ export const CONFIG = {
     soloNerve: 90,
     /** 앞 주인 편지 확률 (하루) */
     letterChance: 0.15,
+  },
+  /** 베타 1장: 어울림 — 거리·한 건물 최대 개수·발견 보상·조합별 효과 */
+  harmony: {
+    /** 발자국 가장자리 사이 빈칸이 이 이하면 어울린다 (대각선 포함) */
+    range: 2,
+    perBuilding: 3,
+    /** 발견 보상: 금화 goldStep × ceil(번호/6) · 평판 */
+    goldStep: 100,
+    rep: 3,
+    /** 손님 기분 어울림: 범위 안 손님에게 게임 1시간마다 */
+    auraHours: 1,
+    /** 노점: 지나가는 손님이 들러 내는 금화 (게임 1시간마다 · 노점 하나당) */
+    stallGold: 14,
+    /** 온천 마을(체류 +1시간): 숙박비가 이만큼 더 (시간당) */
+    stayIncome: 0.5,
+    /** 밤 = 20~04시 */
+    nightFrom: 20,
+    nightTo: 4,
+    /** 조합별 효과 (data/harmony.ts의 id) */
+    fx: {
+      1: { incKind: 'tavern', inc: 0.2 },
+      2: { mood: 10, regular: 0.1 },
+      3: { trainXp: 0.2 },
+      4: { bath: 0.2 },
+      5: { incKind: 'inn', inc: 0.15, repDay: 1 },
+      6: { harvest: 1, mood: 5 },
+      7: { incKind: 'tavern', inc: 0.15, drunk: 1 },
+      8: { trainXp: 0.15, expSuccess: 0.03 },
+      9: { incKind: 'stall', inc: 0.3, night: true },
+      10: { repDay: 2, scenery: 15 },
+      11: { expTime: -0.1 },
+      12: { dmg: 0.05 },
+      13: { incKind: 'cottage', inc: 0.15 },
+      14: { mood: 10, moodNight: true, talkBond: 1 },
+      15: { enhance: 0.02 },
+      16: { incKind: 'inn', inc: 0.2, night: true },
+      17: { mood: 10, scenery: 10 },
+      18: { incKind: 'tavern', inc: 0.1 },
+      19: { legend: 0.1 },
+      20: { raidDmg: 0.05 },
+      21: { gold: 0.1 },
+      22: { trainXp: 0.1 },
+      23: { stayH: 1 },
+      24: { arrive: 0.2 },
+    } as Record<number, HarmonyFx>,
   },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
