@@ -440,6 +440,9 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
   const hooks: Hooks = {
     num(x, y, u, cls, text) {
       view.num(x, y, text ?? fmt(u * scale), cls);
+      // 세로 화면 기록창: 알림 · 맞은 피해만 (때린 숫자는 장면에)
+      if (cls === 'msg') view.log(text === '!' ? '보스가 번쩍인다 · 막기 꾹!' : text ?? '', text === '!' ? 'bad' : 'kill');
+      else if (cls === 'hurt') view.log(`파티가 맞았다 ${text ?? ''}`, 'bad');
       // 치명타: 노랗게 2배 + 화면 2px 흔들림
       if (cls === 'crit' || cls === 'big') {
         S.shake = Math.max(S.shake, 0.1);
@@ -448,7 +451,10 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
     },
     warnBlock: (on) => view.warnBlock(on),
     chemReady: () => {},
-    joint: () => view.cutin(pair ? [pic(pair[0]), pic(pair[1])] : [pic(leader)], '합동기 · 마음을 하나로!'),
+    joint: () => {
+      view.cutin(pair ? [pic(pair[0]), pic(pair[1])] : [pic(leader)], '합동기 · 마음을 하나로!');
+      view.log('합동기 · 마음을 하나로!', 'wave');
+    },
     perfectBlock: () => {
       stop = 0.15;
       sfx('perfect');
@@ -458,8 +464,19 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
     },
   };
 
+  let logState = '';
+  let logQ = Math.ceil((hpNow() / t.max) * 4);
   const ui = () => {
     const p = hpNow() / t.max;
+    if (S.bstate !== logState) {
+      logState = S.bstate;
+      if (S.bstate === 'warn') view.log(`${['위', '가운데', '아래'][S.warnLane] ?? ''} 줄로 돌진 예고 · 줄을 옮겨요!`, 'bad');
+    }
+    const qn = Math.ceil(p * 4);
+    if (qn < logQ) {
+      logQ = qn;
+      view.log(`${b.name} 체력 ${qn * 25}% 아래로!`, 'wave');
+    }
     view.setHp(p, `${fmt(hpNow())} / ${fmt(t.max)} · 누적 ${pct(1 - p)} 처치`);
     view.setTimer(S.t);
     view.setParty(members.map(() => S.php / 1000));
@@ -659,6 +676,8 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
     if (killedNow) view.cutin([pic(leader), bossPic(b)], `${b.name} 처치!`);
     sfx(killedNow ? 'win' : survived ? 'win' : 'lose');
     const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex);
+    view.log(killedNow ? `${b.name} 처치!` : survived ? '시간 종료' : '파티가 쓰러졌어요…', killedNow ? 'wave' : survived ? 'kill' : 'bad');
+    view.log(`가한 피해 ${fmt(damage)}`, 'loot');
     setTimeout(() => showResult(t, out, ex, manual ? 'manual' : 'auto', members, true, S.died, S.bestStreak), killedNow ? 1400 : 500);
   }
 }

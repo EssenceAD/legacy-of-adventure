@@ -707,3 +707,42 @@ html:not([data-size="phone"]) #mission{top:calc(env(safe-area-inset-top,0px) + 8
 .win .hd #winHelp{font-size:var(--f-body);color:var(--gold);border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;box-shadow:none;width:36px;height:36px;color:var(--gold);font-weight:700;margin-right:4px;cursor:pointer}
 html:not([data-size="phone"]) .win .hd #winHelp{width:44px;height:44px}
 .hauto button{white-space:nowrap;flex:none}
+
+/* ── 핫픽스 6: 세로 폰 전투 — 장면 위쪽 · 하늘/땅 이어 그림 · 기록창 · 엄지 영역 스킬 ── */
+.battle .bedge,.battle .blog,.battle .bpad{display:none}
+.battle.tall .bedge{display:block;position:absolute;image-rendering:pixelated;pointer-events:none}
+.battle.tall .blog{display:flex;position:absolute;left:12px;right:12px;bottom:128px;flex-direction:column;justify-content:flex-end;gap:4px;overflow:hidden;pointer-events:none;z-index:2}
+.battle .bl{align-self:flex-start;max-width:100%;padding:3px 10px;background:rgba(10,8,20,.62);box-shadow:0 0 0 2px rgba(22,20,32,.8);color:var(--cream);font-size:var(--f-small);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:blup .3s ease-out}
+.battle .bl:nth-last-child(n+3){opacity:.75}.battle .bl:nth-last-child(n+4){opacity:.5}.battle .bl:nth-last-child(n+5){opacity:.3}
+.battle .bl.wave{color:#ffd36b;font-weight:700}.battle .bl.kill{color:#fff}.battle .bl.loot{color:#8fe08f}.battle .bl.bad{color:#ff9a9a}
+@keyframes blup{from{transform:translateY(8px);opacity:0}}
+.battle.tall .bpad{display:block;position:absolute;left:0;right:0;bottom:0;padding:10px 14px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,rgba(5,6,20,.35));z-index:3}
+.battle.tall .bskills{position:relative;right:auto;bottom:auto;width:auto;height:auto;display:flex;justify-content:space-between;align-items:flex-end;zoom:1}
+.battle.tall .bskills .sk{position:relative;right:auto;bottom:auto}
+.battle.tall .bskills .sk-auto{order:1;width:48px;height:48px}
+.battle.tall .bskills .sk-combo{order:2;width:60px;height:60px}
+.battle.tall .bskills .sk-s1{order:3;width:64px;height:64px}
+.battle.tall .bskills .sk-s2{order:4;width:64px;height:64px}
+.battle.tall .bskills .sk-block{order:5;width:84px;height:84px}
+.battle.tall .bskills .sk img{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+.battle.tall .bskills .sk-auto img{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+.battle.tall .bskills .sk .cdn{font-size:var(--f-big)}
+
+/* ── 핫픽스 6: 마을 아래 — 채팅 1줄 + 접히는 「진행 중」 띠 1줄 (아래 메뉴 위 최대 2줄) ── */
+#chatlog{min-height:calc(1.4em + 8px);padding:4px 8px}
+#runbar{display:block;bottom:calc(env(safe-area-inset-bottom,0px) + 86px + 1.4 * var(--f-chat) + 14px);pointer-events:none}
+html:not([data-size="phone"]) #runbar{bottom:calc(env(safe-area-inset-bottom,0px) + 132px + 1.4 * var(--f-chat) + 14px)}
+#runbar .rbstrip{display:flex;align-items:center;gap:10px;max-width:100%;min-height:32px;padding:3px 10px;background:rgba(7,9,26,.82);overflow:hidden;white-space:nowrap}
+#runbar .rbstrip.done{background:rgba(58,40,10,.9);box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold)}
+#runbar .rc{display:inline-flex;align-items:center;gap:3px;flex:none}
+#runbar .rc img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+#runbar .rc em{font-style:normal;color:#9ab0ff;font-variant-numeric:tabular-nums}
+#runbar .rc.done em{color:var(--gold);font-weight:700}#runbar .rc.hunt em{color:#8fe08f}
+#runbar .rbstrip s{text-decoration:none;color:var(--gold);margin-left:2px}
+#runbar .rblist{position:absolute;left:0;right:0;bottom:calc(100% + 4px);display:flex;flex-direction:column;gap:4px}
+#runbar .rblist[hidden]{display:none}
+#runbar .rblist button{max-width:none;flex:none}
+html[data-size="phone"] #bZoom{bottom:calc(env(safe-area-inset-bottom,0px) + 86px + 1.4 * var(--f-chat) + 14px)}
+.battle .btouch{display:none}
+.battle.tall .btouch{display:grid;place-items:center;position:absolute;left:0;right:0;bottom:120px;touch-action:none;z-index:1}
+.battle.tall .btouch span{color:rgba(255,240,210,.28);font-size:var(--f-small);pointer-events:none}

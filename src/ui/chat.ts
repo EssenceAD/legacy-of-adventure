@@ -101,7 +101,7 @@ function push(m: Msg) {
   const d = document.createElement('div');
   d.innerHTML = line(m);
   el.appendChild(d);
-  while (el.children.length > 2) el.firstChild!.remove();
+  while (el.children.length > 1) el.firstChild!.remove();
   const full = document.querySelector('.chatfull');
   if (full) {
     const r = document.createElement('div');

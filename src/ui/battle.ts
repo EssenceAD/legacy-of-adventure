@@ -43,6 +43,8 @@ export interface BattleView {
   num: (x: number, y: number, text: string, cls: string) => void;
   cutin: (imgs: string[], text: string) => void;
   flash: () => void;
+  /** 세로 화면 기록창에 한 줄 (웨이브 · 처치 · 전리품) */
+  log: (text: string, cls?: string) => void;
   destroy: () => void;
 }
 
@@ -65,6 +67,8 @@ export function mountBattle(opt: { id: string; title: string; members: Actor[]; 
       <div class="bskills">${opt.skills.map(btn).join('')}</div>
       <div class="btip" id="bTip" hidden></div>
     </div>
+    <canvas class="bedge" id="bEdgeL"></canvas><canvas class="bedge" id="bEdgeR"></canvas>
+    <div class="btouch" id="bTouch"><span>${opt.id === 'hunt' ? '여기를 탭해도 공격' : '탭: 공격 · 위아래로 밀기: 줄 옮기기'}</span></div><div class="blog" id="bLog"></div><div class="bpad" id="bPad"></div>
     <div id="rFlash"></div><div id="rCutin" hidden></div>
     <div class="rov" id="rResult" hidden><div class="card px res" id="rResBody"></div></div>`;
   document.getElementById('view')!.appendChild(root);
@@ -76,26 +80,75 @@ export function mountBattle(opt: { id: string; title: string; members: Actor[]; 
   ctx.imageSmoothingEnabled = false;
   let SC = 1;
 
-  // 장면: 가로형 고정 비율. 기기 픽셀 정수 배율로 화면 너비에 맞추고, 남는 위아래는 어두운 단색
-  // 세로 화면(폰)은 엄지가 닿게 장면을 아래쪽에 둔다
+  // 장면: 가로형 고정 비율. 기기 픽셀 정수 배율로 화면 너비에 맞춘다
+  // 세로 화면(핫픽스 6): 장면은 위쪽 · 아래는 기록창 + 엄지 영역 스킬 버튼. 장면 밖은 하늘/땅 색으로 이어 그린다
+  const edgeL = q<HTMLCanvasElement>('#bEdgeL');
+  const edgeR = q<HTMLCanvasElement>('#bEdgeR');
+  for (const e of [edgeL, edgeR]) {
+    e.width = 1;
+    e.height = LH;
+  }
+  let tall = false;
+  let geo = { top: 0, h: 0 };
   const fit = () => {
     const r = root.getBoundingClientRect();
-    const k = Math.max(1, Math.floor(Math.min((r.width * dpr()) / LW, (r.height * 0.9 * dpr()) / LH)));
+    tall = r.height / r.width > 1.3;
+    root.classList.toggle('tall', tall);
+    const k = Math.max(1, Math.floor(Math.min((r.width * dpr()) / LW, ((tall ? r.height * 0.42 : r.height * 0.9) * dpr()) / LH)));
     SC = k / dpr();
     const w = LW * SC;
     const h = LH * SC;
     const st = q('#bStage');
     st.style.width = w + 'px';
     st.style.height = h + 'px';
-    st.style.left = px((r.width - w) / 2) + 'px';
-    const tall = r.height / r.width > 1.3;
-    st.style.top = px(tall ? r.height - h - Math.max(24, r.height * 0.12) : (r.height - h) / 2) + 'px';
+    const left = px((r.width - w) / 2);
+    st.style.left = left + 'px';
+    const top = px(tall ? Math.max(8, r.height * 0.04) : (r.height - h) / 2);
+    st.style.top = top + 'px';
+    geo = { top, h };
     cv.style.width = w + 'px';
     cv.style.height = h + 'px';
     root.style.setProperty('--sc', String(SC));
     // HUD도 장면과 함께 정수 배율로 (폰 1 · 장면이 4배면 2)
     root.style.setProperty('--hz', String(Math.max(1, Math.floor(SC / 2))));
+    // 장면 양옆: 가장자리 한 줄을 옆으로 늘려 이어 붙인다
+    edgeL.style.cssText = `left:0;top:${top}px;width:${left}px;height:${h}px`;
+    edgeR.style.cssText = `left:${left + w}px;top:${top}px;width:${r.width - left - w}px;height:${h}px`;
+    // 스킬 버튼: 세로면 장면 아래 엄지 영역으로
+    const sk = q('.bskills');
+    const home = tall ? q('#bPad') : st;
+    if (sk.parentElement !== home) home.insertBefore(sk, tall ? null : q('#bTip'));
+    q('#bLog').style.top = top + h + 8 + 'px';
+    q('#bTouch').style.top = top + h + 'px';
+    paintBack();
   };
+  /** 장면 맨 윗줄·아랫줄 평균색 → 하늘/땅 배경, 양옆 가장자리 복사 */
+  const avg = (y: number) => {
+    const d = ctx.getImageData(0, y, LW, 1).data;
+    let R = 0, G = 0, B = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) (R += d[i], G += d[i + 1], B += d[i + 2], n++);
+    return n ? [R / n, G / n, B / n].map(Math.round) : null;
+  };
+  let lastBack = '';
+  const paintBack = () => {
+    if (!tall) {
+      root.style.background = '';
+      return;
+    }
+    edgeL.getContext('2d')!.drawImage(cv, 0, 0, 1, LH, 0, 0, 1, LH);
+    edgeR.getContext('2d')!.drawImage(cv, LW - 1, 0, 1, LH, 0, 0, 1, LH);
+    const sky = avg(0);
+    const gr = avg(LH - 1);
+    if (!sky || !gr) return;
+    const c = (v: number[], f = 1) => `rgb(${v.map((x) => Math.round(x * f)).join(',')})`;
+    const mid = geo.top + geo.h / 2;
+    const bg = `linear-gradient(to bottom, ${c(sky)} 0, ${c(sky)} ${mid}px, ${c(gr)} ${mid}px, ${c(gr)} ${geo.top + geo.h + 4}px, ${c(gr, 0.45)} 100%)`;
+    if (bg !== lastBack) root.style.background = lastBack = bg;
+  };
+  const backT = window.setInterval(paintBack, 300);
+  // 세로 화면: 장면 아래 빈 땅도 장면처럼 (탭 = 공격 · 위아래 밀기 = 줄 이동) → 장면 캔버스로 넘긴다
+  const pass = (e: PointerEvent) => cv.dispatchEvent(new PointerEvent(e.type, { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, bubbles: true }));
+  for (const t of ['pointerdown', 'pointerup'] as const) q('#bTouch').addEventListener(t, pass);
   addEventListener('resize', fit);
 
   // 길게 누르면 이름·설명 말풍선 (그때는 눌림으로 치지 않는다)
@@ -211,7 +264,16 @@ export function mountBattle(opt: { id: string; title: string; members: Actor[]; 
       void f.offsetWidth;
       f.classList.add('go');
     },
+    log(text, cls = '') {
+      const box = q('#bLog');
+      const e = document.createElement('div');
+      e.className = 'bl ' + cls;
+      e.textContent = text;
+      box.appendChild(e);
+      while (box.children.length > 5) box.firstElementChild!.remove();
+    },
     destroy() {
+      clearInterval(backT);
       removeEventListener('resize', fit);
       root.remove();
     },

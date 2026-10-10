@@ -282,12 +282,16 @@ function updateRunbar() {
     return;
   }
   const now = Date.now();
+  // 핫픽스 6: 접힌 「진행 중」 띠 한 줄(아이콘 + 남은 시간) · 누르면 위로 펼쳐 원정·자동 사냥 줄이 나온다
   const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '');
   if (key !== runbarKey) {
     runbarKey = key;
-    bar.innerHTML = runs
+    const chips =
+      runs.map((r) => `<span class="rc" data-rc="${r.id}"><img src="${iconSrc('m_expedition', true)}" alt=""><em></em></span>`).join('') +
+      (au ? `<span class="rc hunt" id="rcHunt"><img src="${iconSrc('m_hunt', true)}" alt=""><em></em></span>` : '');
+    bar.innerHTML = `<div class="rblist" id="rbList"${rbOpen ? '' : ' hidden'}>${runs
       .map((r) => `<button class="px" data-rb="${r.id}"><b>${esc(r.quest.name ?? regionById(r.quest.region).name)}</b><i><u></u></i><em></em></button>`)
-      .join('');
+      .join('')}</div><button class="px rbstrip" id="rbStrip" aria-label="진행 중 펼치기">${chips}<s>${rbOpen ? '▾' : '▴'}</s></button>`;
     bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => (b.onclick = () => openRunLog(PG.runs.find((r) => r.id === +b.dataset.rb!)!)));
     if (au) {
       const hb = document.createElement('button');
@@ -295,24 +299,40 @@ function updateRunbar() {
       hb.id = 'rbHunt';
       hb.innerHTML = `<b>자동 사냥 ${regionById(au.region as never).name.slice(0, 2)} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage}</b><i><u></u></i><em></em>`;
       hb.onclick = () => openHunt(au.region as never);
-      bar.appendChild(hb);
+      $('#rbList').appendChild(hb);
     }
+    $('#rbStrip').onclick = () => {
+      rbOpen = !rbOpen;
+      $('#rbList').hidden = !rbOpen;
+      $('#rbStrip s').textContent = rbOpen ? '▾' : '▴';
+    };
   }
   const hb = document.getElementById('rbHunt');
   if (hb && au) {
     const f = Math.min(1, (now - PG.hunt.idleAt) / (CONFIG.hunt.autoSeconds * 1000));
     (hb.querySelector('u') as HTMLElement).style.width = f * 100 + '%';
-    hb.querySelector('em')!.textContent = `${Math.max(0, Math.ceil(CONFIG.hunt.autoSeconds * (1 - f)))}초`;
+    const t = `${Math.max(0, Math.ceil(CONFIG.hunt.autoSeconds * (1 - f)))}초`;
+    hb.querySelector('em')!.textContent = t;
+    $('#rcHunt em').textContent = t;
   }
+  let anyDone = false;
   bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => {
     const r = PG.runs.find((x) => x.id === +b.dataset.rb!);
     if (!r) return;
     const done = !!r.result || now >= r.end;
+    anyDone ||= !!r.result;
     b.classList.toggle('done', done);
     (b.querySelector('u') as HTMLElement).style.width = `${Math.min(100, ((now - r.start) / Math.max(1, r.end - r.start)) * 100)}%`;
     b.querySelector('em')!.textContent = r.result ? '도착! 보고서' : done ? '돌아오는 중' : clockText(r.end - now);
+    const c = bar.querySelector<HTMLElement>(`[data-rc="${r.id}"]`);
+    if (c) {
+      c.classList.toggle('done', !!r.result);
+      c.querySelector('em')!.textContent = r.result ? '도착!' : done ? '귀환' : clockText(r.end - now);
+    }
   });
+  $('#rbStrip').classList.toggle('done', anyDone);
 }
+let rbOpen = false;
 const clockText = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;

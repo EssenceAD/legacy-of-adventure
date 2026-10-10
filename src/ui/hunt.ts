@@ -191,6 +191,8 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
   const bossImg = BOSS_IMG[regionBossOf(r).id] ? scaled(BOSS_IMG[regionBossOf(r).id], 0.6) : null;
   const W = { t: H.seconds, php: 1000, wave: 0, mobs: [] as Mob[], left: total, auto: !manual, on: false, cd1: 0, cd2: 0, cdb: 0, shield: 0, guard: 0, chem: 0, atk: 0, ally: 0, heal: 6, shake: 0, lane: 1, done: false, win: false };
   let T = 0;
+  let kills = 0;
+  const mobLabel = (m: Mob) => (m.boss ? `${regionBossOf(r).name}(새끼)` : MOB_NAME[m.key] ?? '몬스터');
 
   const spawnWave = () => {
     W.wave++;
@@ -207,6 +209,9 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
       W.mobs.push({ key: bossMob ? 'boss' : k, img, white: whiteOf(img), x: LW - 30 + i * 30, lane: bossMob ? 1 : i % 3, hp, max: hp, boss: bossMob, stop: (bossMob ? 168 : 132) + (i % 3) * 22, hit: 0, dead: 0 });
     }
     if (isBossWave) view.cutin([pic(leader), ''], `${regionBossOf(r).name}(새끼) 등장!`);
+    // 세로 화면 기록창
+    const names = [...new Set(W.mobs.filter((m) => m.hp > 0).map((m) => mobLabel(m)))].join(' · ');
+    view.log(`웨이브 ${W.wave}/${H.waves} · ${names} ${n}마리`, 'wave');
   };
   const alive = () => W.mobs.filter((m) => m.hp > 0);
   /** 앞줄에 닿은 몬스터만 칠 수 있다 (걸어오는 동안엔 못 친다 → 맞고 때리는 교환이 생긴다) */
@@ -218,7 +223,11 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
     W.left = Math.max(0, W.left - Math.min(v, m.hp + v));
     m.hit = 0.08;
     view.num(m.x + m.img.width / 2, LANES[m.lane] - m.img.height - 4, fmt(v * 10), cls);
-    if (m.hp <= 0) m.dead = 0.6;
+    if (m.hp <= 0) {
+      m.dead = 0.6;
+      kills++;
+      view.log(`${mobLabel(m)} 처치 · ${kills}마리째`, 'kill');
+    }
     W.chem = Math.min(100, W.chem + (cls ? 3 : 1));
   };
   const attack = () => {
@@ -423,6 +432,10 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
     const out = win ? clearStage(r, s, members) : failStage(r, s, members);
     for (const m of members) m.hp = Math.max(1, m.hp - (win ? 5 : 15));
     markDirty();
+    if (win) {
+      view.log(`전리품 · 금화 +${fmt(out.gold)} · ${REGIONS[regionIdx(r)].mat} ×${out.mats}`, 'loot');
+      for (const it of out.items) view.log(`전리품 · ${it.name}`, 'loot');
+    } else view.log(W.php <= 0 ? '파티가 쓰러졌어요…' : '시간이 다 됐어요…', 'bad');
     setTimeout(() => showHuntResult(view, r, s, members, win, out), 600);
   }
 }

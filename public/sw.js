@@ -1,5 +1,5 @@
 // 서비스워커: 에셋 캐시. 페이지(HTML)는 네트워크 먼저(업데이트가 바로 반영), 나머지는 캐시 먼저 + 뒤에서 새로 받아 둠.
-const CACHE = 'legacy-v11';
+const CACHE = 'legacy-v12';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
