@@ -1,9 +1,9 @@
 {
  "frameW": 50,
- "frameH": 50,
+ "frameH": 52,
  "anchor": [
   25,
-  42
+  50
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) DemonCyclop",

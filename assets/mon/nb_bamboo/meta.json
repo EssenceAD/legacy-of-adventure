@@ -1,9 +1,9 @@
 {
  "frameW": 62,
- "frameH": 62,
+ "frameH": 64,
  "anchor": [
   31,
-  56
+  62
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) GiantBamboo",

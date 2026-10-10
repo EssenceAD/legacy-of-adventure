@@ -1,9 +1,9 @@
 {
  "frameW": 96,
- "frameH": 96,
+ "frameH": 98,
  "anchor": [
   48,
-  91
+  96
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) GiantRedSamurai",

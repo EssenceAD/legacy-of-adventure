@@ -1,9 +1,9 @@
 {
  "frameW": 62,
- "frameH": 52,
+ "frameH": 54,
  "anchor": [
   31,
-  45
+  52
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) GiantSlime",

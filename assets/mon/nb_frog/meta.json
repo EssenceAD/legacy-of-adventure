@@ -1,9 +1,9 @@
 {
  "frameW": 40,
- "frameH": 40,
+ "frameH": 42,
  "anchor": [
   20,
-  32
+  40
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) GiantFrog",
