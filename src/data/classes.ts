@@ -26,7 +26,7 @@ export interface ClassDef {
   weapon: 'sword' | 'staff' | 'axe' | 'dagger' | 'book' | null;
   shield?: boolean;
   robe?: boolean;
-  hat?: 'wizard';
+  hat?: 'wizard' | 'feather';
   hatc?: string;
   elf?: boolean;
   dwarf?: boolean;

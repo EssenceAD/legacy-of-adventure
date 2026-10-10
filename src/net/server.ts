@@ -200,7 +200,7 @@ export async function likeVillage(uid: string): Promise<number | { error: string
 
 // ───────── 랭킹 ─────────
 
-export type Board = 'raidWeek' | 'reputation' | 'dex';
+export type Board = 'raidWeek' | 'reputation' | 'dex' | 'evalWeek';
 export interface RankRow {
   rank: number;
   user_id: string;
@@ -214,13 +214,17 @@ const BOARD = {
   raidWeek: { view: 'rank_weekly_raid', col: 'best_damage' },
   reputation: { view: 'rank_reputation', col: 'reputation' },
   dex: { view: 'rank_codex', col: 'codex_pct' },
+  // 베타 2장: 여관 평가단 주간 점수 (서버: eval_scores 테이블 · rank_eval 뷰 · submit_eval_score 함수)
+  evalWeek: { view: 'rank_eval', col: 'score' },
 } as const;
+/** 주마다 갈리는 판 */
+const weekly = (b: Board) => b === 'raidWeek' || b === 'evalWeek';
 
 export async function top(board: Board, n: number, week?: string): Promise<RankRow[]> {
   if (!sb) return [];
   const B = BOARD[board];
   let q = sb.from(B.view).select(`user_id,nickname,inn_name,rep_hero,${B.col}`).order(B.col, { ascending: false }).limit(n);
-  if (board === 'raidWeek') q = q.eq('week', week ?? '');
+  if (weekly(board)) q = q.eq('week', week ?? '');
   else q = q.gt(B.col, 0);
   const { data } = await q;
   return ((data as unknown as Record<string, unknown>[]) ?? []).map((r, i) => ({
@@ -239,10 +243,10 @@ export async function mine(board: Board, week?: string): Promise<{ row: RankRow 
   const B = BOARD[board];
   const base = () => {
     const q = sb!.from(B.view).select('user_id', { count: 'exact', head: true });
-    return board === 'raidWeek' ? q.eq('week', week ?? '') : q.gt(B.col, 0);
+    return weekly(board) ? q.eq('week', week ?? '') : q.gt(B.col, 0);
   };
   let mq = sb.from(B.view).select(`user_id,nickname,inn_name,rep_hero,${B.col}`).eq('user_id', me.profile.id);
-  if (board === 'raidWeek') mq = mq.eq('week', week ?? '');
+  if (weekly(board)) mq = mq.eq('week', week ?? '');
   const { data } = await mq.maybeSingle();
   const { count: total } = await base();
   if (!data) return { row: null, total: total ?? 0 };
@@ -261,6 +265,14 @@ export async function submitRaid(rec: { week: string; bossId: string; damage: nu
   const { data, error } = await sb.rpc('submit_raid_score', {
     p_week: rec.week, p_boss: rec.bossId, p_damage: Math.round(rec.damage), p_power: Math.round(rec.power), p_theory: Math.round(rec.theory), p_manual: rec.manual,
   });
+  if (error) return 'error';
+  return data === 'ok' ? 'ok' : 'rejected';
+}
+
+/** 평가단 점수 올리기 (서버가 0~1030 범위 · 테마 · 주 1행을 다시 검사, 더 높을 때만 바꾼다) */
+export async function submitEval(rec: { week: string; theme: number; score: number; parts: Record<string, number> }): Promise<'ok' | 'rejected' | 'error'> {
+  if (!sb || !me.profile) return 'error';
+  const { data, error } = await sb.rpc('submit_eval_score', { p_week: rec.week, p_theme: rec.theme, p_score: Math.round(rec.score), p_parts: rec.parts });
   if (error) return 'error';
   return data === 'ok' ? 'ok' : 'rejected';
 }

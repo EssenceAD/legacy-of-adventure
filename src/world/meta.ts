@@ -1,5 +1,6 @@
 // 5단계 4장: 업적 · 칭호 · 출석(7일·28일) · 상점(일일 진열) · 우편함 — 가볍게, 전부 progress 안이라 클라우드 저장에도 같이
 import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
+import { evalTitles } from './evaluation';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
 import { CONFIG } from '../data/config';
 import { HEROES, HERO_SETS } from '../data/heroes';
@@ -77,6 +78,7 @@ export function titlesOwned(): { t: string; from: string }[] {
   const out: { t: string; from: string }[] = [];
   for (const d of ACHIEVEMENTS) if (d.reward.title && P.meta.ach.includes(d.id)) out.push({ t: d.reward.title, from: `업적 「${d.name}」` });
   for (const t of P.titles) out.push({ t, from: '토벌 첫 처치' });
+  for (const t of evalTitles()) out.push({ t, from: '여관 평가단 골드' });
   for (const s of HERO_SETS) if (s.members.every((m) => P.dex.heroes[m]?.recruited)) out.push({ t: s.title, from: `영웅 세트 「${s.name}」` });
   if (P.legacy.album.length) out.push({ t: '이야기를 끝맺은 자', from: '엔딩 1개 이상' });
   if (P.guide.claimed.length >= 40) out.push({ t: '버나드의 후계자', from: '장부 7장' });

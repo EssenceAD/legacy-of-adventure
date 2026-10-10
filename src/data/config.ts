@@ -621,6 +621,34 @@ export const CONFIG = {
       24: { arrive: 0.2 },
     } as Record<number, HarmonyFx>,
   },
+  /**
+   * 베타 2장: 여관 평가단 — 실제 1주 = 한 시즌, 테마 순환(미식 → 휴양 → 모험가 → 풍경). 점수 0~1000(+암행 보너스)
+   * 재료마다 [목표치, 배점]: 목표치에 닿으면 배점 만점. 시즌 동안 늘어난 만큼(원정 성공·식사 등) 또는 지금 상태(장식·등급 등)
+   * 맞춤: 한 시즌 꾸준히 = 실버(550) 근처 · 어울림을 노리고 배치 = 골드(800)
+   */
+  evaluation: {
+    tiers: [300, 550, 800, 950],
+    tierNames: ['브론즈', '실버', '골드', '전설'],
+    themes: ['미식', '휴양', '모험가', '풍경'],
+    /** 장부 몇 장을 마치면 평가단이 오기 시작하나 (5단계 전 저장은 바로) */
+    fromChapter: 3,
+    /** 마지막 날(일요일) 게임 속 이 시각 이후 마을을 보고 있으면 평가단이 온다 */
+    tourHour: 17,
+    secretBonus: 30,
+    gourmet: { meals: [120, 300], harvests: [24, 200], harmonies: [3, 250], mood: [100, 250] },
+    relax: { mood: [100, 400], harmonies: [4, 300], decos: [12, 300] },
+    adventure: { wins: [25, 300], huntBest: [20, 250], trains: [50, 200], raids: [6, 250] },
+    scenery: { decos: [15, 150], kinds: [8, 150], found: [12, 250], grade: [4, 250], roofs: [4, 200] },
+    /** 테마별 어울림 (data/harmony 번호) */
+    themeHarmony: { gourmet: [1, 6, 7, 18], relax: [2, 4, 5, 13, 14, 16, 17, 23] },
+    /** 보상: 등급별 금화 · 잿빛 가루 · 증표 조각 */
+    rewards: [
+      { gold: 800, dust: 60, shards: 2 },
+      { gold: 1600, dust: 120, shards: 4 },
+      { gold: 3000, dust: 220, shards: 7 },
+      { gold: 5000, dust: 400, shards: 10 },
+    ],
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

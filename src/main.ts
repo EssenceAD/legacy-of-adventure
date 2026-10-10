@@ -23,6 +23,8 @@ import { initScreen, screen, setOnScreenChange } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
+import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
+import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
@@ -163,6 +165,7 @@ function frame(now: number) {
 function tick(dt: number) {
   stepGradeAnim(dt);
   tickHarmony(dt);
+  tickEval(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -375,6 +378,7 @@ async function boot() {
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu() });
   initMenu();
   initHarmonyUI();
+  initEvalUI();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));
@@ -427,6 +431,7 @@ async function boot() {
       __hunt: _huntAdvance,
       __grade: (g: number) => (gradeDev.g = g),
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
+      __eval: { ...evalW, beginTour, openEval },
       __harm: { sets: harmonySets, computeSets, checkDiscover, props: propsNow, openPropInfo },
       /** 개발용: 그 칸에 짓기 미리보기 (확정은 #placeOk) */
       __place: (k: Kind, x: number, y: number) => {

@@ -4,6 +4,7 @@ import { me, mine, online, sb, top, type Board, type RankRow } from '../net/serv
 import { myTitle } from '../world/meta';
 import { P } from '../world/state';
 import { mondayKey } from '../world/raid';
+import { themeName, themeOf } from '../world/evaluation';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
 import { openWin, toast } from './windows';
 import { visitUser } from './neighbors';
@@ -13,6 +14,7 @@ const BOARDS: [Board, string, (n: number) => string][] = [
   ['raidWeek', '주간 토벌', (n) => fmt(n)],
   ['reputation', '마을 평판', (n) => fmt(n)],
   ['dex', '도감', (n) => n.toFixed(1) + '%'],
+  ['evalWeek', '평가단', (n) => fmt(n)],
 ];
 
 const row = (r: RankRow, f: (n: number) => string, mineRow = false) =>
@@ -30,9 +32,9 @@ export async function openRank(i = cur) {
   const myLine = online()
     ? my.row
       ? `<p class="sub">내 순위</p>${row(my.row, f, true)}<p class="note">전체 ${fmt(my.total)}명 중 상위 ${Math.max(1, Math.round((my.row.rank / Math.max(1, my.total)) * 100))}%</p>`
-      : `<p class="note">${board === 'raidWeek' ? '이번 주 토벌 기록이 아직 없어요' : '아직 기록이 없어요 (하루에 한 번 올라가요)'}</p>`
+      : `<p class="note">${board === 'raidWeek' ? '이번 주 토벌 기록이 아직 없어요' : board === 'evalWeek' ? '이번 주 평가 점수가 아직 없어요 (평가단이 오면 올라가요)' : '아직 기록이 없어요 (하루에 한 번 올라가요)'}</p>`
     : '<p class="note">로그인하면 내 이름이 랭킹에 올라가요 (메뉴 → 계정)</p>';
-  const note = board === 'raidWeek' ? `이번 주(${week} 월요일부터) 보스에게 준 한 판 최고 피해량 · 매주 월요일 초기화` : board === 'reputation' ? '여관 평판 점수' : '손님·아이템·영웅 도감 평균 완성률';
+  const note = board === 'raidWeek' ? `이번 주(${week} 월요일부터) 보스에게 준 한 판 최고 피해량 · 매주 월요일 초기화` : board === 'reputation' ? '여관 평판 점수' : board === 'evalWeek' ? `이번 주 여관 평가단 점수 (테마 「${themeName(themeOf(week))}」) · 매주 월요일 새 시즌` : '손님·아이템·영웅 도감 평균 완성률';
   openWin(
     '랭킹',
     `${tabs(BOARDS.map((b) => b[1]), i, 'rkT')}<p class="note">${note}</p>${myLine}<p class="sub">${name} 상위 100</p>

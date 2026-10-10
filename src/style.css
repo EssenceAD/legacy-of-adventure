@@ -767,3 +767,22 @@ html:not([data-size="phone"]) #bHarm{top:calc(env(safe-area-inset-top,0px) + 80p
 .hcell.open b{color:var(--cream)}.hcell.on{background:#2a2440;box-shadow:0 0 0 2px var(--ink),0 0 0 3px #e2aa4e}.hcell.on b{color:var(--gold)}
 .hrows{margin:6px 0;display:flex;flex-direction:column;gap:3px}.hrows p{margin:0;display:flex;align-items:center;gap:6px;padding:3px 6px;background:#2a2440}
 .hrows img{width:calc(16px * var(--k1));height:calc(16px * var(--k1))}.hrows small{color:#cfd8ff}
+
+/* ── 베타 2장: 여관 평가단 ── */
+#evalbar{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:6px;align-items:center;padding:4px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;z-index:4;min-width:150px;text-align:left}
+html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 150px)}
+#evalbar img{grid-row:1/3;width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+#evalbar small{color:#9aa6d8;margin-left:3px}
+#evalbar i{display:block;height:calc(4px * var(--k1));background:#161420}#evalbar u{display:block;height:100%;background:var(--ui-bar-fill-xp) 0 0 / 100% 100%;text-decoration:none}
+.talking #evalbar,.placing #evalbar{visibility:hidden}
+.evhd{display:flex;gap:10px;align-items:center;margin-bottom:6px}.evhd img{width:calc(24px * var(--k));height:calc(24px * var(--k))}.evhd span{display:flex;flex-direction:column}.evhd small{color:#9aa6d8}
+.evrows{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.evrow{display:grid;grid-template-columns:7.5em 1fr auto;gap:2px 8px;align-items:center}
+.evrow i{display:block;height:calc(6px * var(--k1));background:#161420}.evrow i b{display:block;height:100%;background:var(--ui-bar-fill-xp) 0 0 / 100% 100%}
+.evrow em{font-style:normal;color:var(--gold);font-variant-numeric:tabular-nums}.evrow small{grid-column:2/4;color:#9aa6d8;font-size:var(--f-tiny)}
+.evhist p{margin:2px 0;display:flex;align-items:center;gap:6px}.evhist img{width:calc(16px * var(--k1));height:calc(16px * var(--k1))}
+.evres{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;margin-bottom:6px;background:#161a30;box-shadow:0 0 0 2px var(--ink)}
+.evres img{width:calc(24px * var(--k));height:calc(24px * var(--k))}.evres small{color:#9aa6d8}.evres b{font-size:calc(var(--f-big) * 1.5);color:#c98a4a}.evres em{font-style:normal;color:var(--cream)}
+.evres.t2 b{color:#cfd8e8}.evres.t3 b{color:var(--gold)}.evres.t4 b{color:#ff9ad0}.evres.t0 b{color:#8a8fa8}
+.evres.t3,.evres.t4{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:hban .45s cubic-bezier(.2,1.6,.4,1)}
+.evmiss{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#2a2440;margin:6px 0}.evmiss img{width:calc(11px * var(--k));height:calc(11px * var(--k))}.evmiss span{display:flex;flex-direction:column;gap:2px}.evmiss small{color:#cfd8ff}

@@ -107,6 +107,14 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     G.tri(6, headCY - 4.5, 16, headCY - 4.5, 7, headCY - 13, def.hatc!);
     G.rect(7, headCY - 6, 9, 1, def.accent, 'flat');
   }
+  // 베타: 평가단 — 챙 넓은 모자 + 깃털
+  if (def.hat === 'feather') {
+    G.rect(3, headCY - 5, 16, 2, def.hatc!);
+    G.rect(6, headCY - 9, 10, 4, def.hatc!);
+    G.rect(6, headCY - 6, 10, 1, def.accent, 'flat');
+    for (const [x, y] of [[15, -10], [16, -11], [17, -12], [18, -13], [16, -10], [17, -11], [18, -12]]) G.set(x, headCY + y, '#f3ead3');
+    G.set(19, headCY - 14, '#e8a23a');
+  }
   if (pose.back) {
     // 뒷모습: 얼굴 자리를 머리카락(또는 두건)으로 덮는다
     if (def.style !== 'bald') {
