@@ -22,7 +22,9 @@ import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { openBuild, openMenu, toast, toastHtml } from './windows';
+import { openBuild, toast, toastHtml } from './windows';
+import { openGridMenu } from './menu';
+import { achReady, mailWaiting } from '../world/meta';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -245,9 +247,9 @@ export function initHud() {
   $('#bExp').onclick = () => openBoard();
   $('#bGuest').onclick = () => openGuests();
   $('#bVillage').onclick = () => void openVillage();
-  $('#bMenu2').onclick = openMenu;
+  $('#bMenu2').onclick = openGridMenu;
   $('#bNotice').onclick = openNotices;
-  $('#bMenu').onclick = openMenu;
+  $('#bMenu').onclick = openGridMenu;
   $('#bDN').onclick = () => {
     setNight(!S.night);
     game.syncHud();
@@ -328,6 +330,8 @@ export function tickHud() {
     $('#bExp').classList.toggle('ready', runsWaiting() || (S.started && !S.visiting && PG.counters.expeditions === 0));
     updateRunbar();
     syncGuide();
+    // 메뉴 빨간 점: 받을 업적 · 우편
+    $('#bMenu2 .ndot').hidden = !(achReady() + mailWaiting());
     // 5단계: 자동 사냥 — 켜 있으면 30초마다 한 판
     const hr = autoTick();
     if (hr) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>자동 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);

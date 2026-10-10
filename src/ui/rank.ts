@@ -1,6 +1,7 @@
 // 랭킹 창 (3단계 6장): 주간 토벌 · 마을 평판 · 도감 — 상위 100 + 내 순위. 누르면 그 마을 방문
 import { PORTRAITS } from '../engine/assets';
 import { me, mine, online, sb, top, type Board, type RankRow } from '../net/server';
+import { myTitle } from '../world/meta';
 import { P } from '../world/state';
 import { mondayKey } from '../world/raid';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
@@ -15,7 +16,7 @@ const BOARDS: [Board, string, (n: number) => string][] = [
 ];
 
 const row = (r: RankRow, f: (n: number) => string, mineRow = false) =>
-  `<button class="rkrow ${mineRow ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${r.user_id}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${esc(r.nickname)}</small></span><i>${f(r.score)}</i></button>`;
+  `<button class="rkrow ${mineRow ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${r.user_id}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${mineRow && myTitle() ? `「${esc(myTitle())}」 ` : ''}${esc(r.nickname)}</small></span><i>${f(r.score)}</i></button>`;
 
 export async function openRank(i = cur) {
   cur = i;

@@ -4,19 +4,12 @@ import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
-import { markDirty, P as Prog, S, type Building } from '../world/state';
+import { S, type Building } from '../world/state';
 import { buildableKinds, maxLevel, nextLevelCost } from '../world/town';
-import { openDex, openGoals, openLedger } from './book';
 import { openBoard } from './expedition';
-import { openBag } from './guests';
 import { openGarden, openSmith } from './smith';
-import { openAccount } from './account';
-import { resetBattleHints } from './battle';
 import { feature, featureChapter } from '../world/guide';
-import { openRank } from './rank';
-import { rumorEnabled, setRumor } from './chat';
-import { me, online, sendLetter } from '../net/server';
-import { screen, setFontStep } from './screen';
+import { online, sendLetter } from '../net/server';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -27,8 +20,15 @@ const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.quer
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
+/** 창 제목 → 안내서 쪽 (ui/menu가 채운다): 「?」 버튼 */
+export const helpHook = { page: (_title: string): string | null => null, open: (_key: string) => {} };
+
 export function openWin(title: string, html: string, cls = '') {
   $('#winT').textContent = title;
+  const hp = helpHook.page(title);
+  const hb = $('#winHelp');
+  hb.hidden = !hp;
+  if (hp) hb.onclick = () => helpHook.open(hp);
   $('#winB').innerHTML = html;
   $('#win').className = 'win px on ' + cls;
   $('#scrim').classList.add('on');
@@ -240,45 +240,6 @@ export function showObj(o: Building) {
 
 // ───────── 메뉴·계정 ─────────
 
-export function openMenu() {
-  openWin(
-    '메뉴',
-    `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button><button id="mRank">랭킹</button><button id="mAcc">${online() ? `계정 · ${esc(me.profile!.nickname)}` : '로그인 · 가입'}</button></div>
-    <p class="sub" style="margin-top:10px">설정</p>
-    <div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mTitle">타이틀로</button></div>`,
-  );
-  $$('[data-fs]').forEach(
-    (b) =>
-      (b.onclick = () => {
-        setFontStep(+b.dataset.fs!);
-        $$('[data-fs]').forEach((x) => x.classList.toggle('on', x === b));
-      }),
-  );
-  $('#mGoal').onclick = () => openGoals();
-  $('#mBag').onclick = () => openBag();
-  $('#mDex').onclick = () => openDex();
-  $('#mBook').onclick = () => openLedger();
-  ($('#mAuto') as HTMLInputElement).onchange = (e) => {
-    Prog.autoSalvage = (e.target as HTMLInputElement).checked;
-    markDirty();
-  };
-  $('#mHints').onclick = () => {
-    resetBattleHints();
-    toast('다음 토벌·사냥 첫 판에 안내가 다시 나와요');
-  };
-  $('#mIntro').onclick = () => {
-    closeWin();
-    game.replayOpening();
-  };
-  $('#mTitle').onclick = () => {
-    closeWin();
-    game.toTitle();
-  };
-  $('#mAcc').onclick = () => openAccount();
-  $('#mRank').onclick = () => void openRank();
-  ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
-}
 
 // ───────── 우체부 모모: 제보 편지 ─────────
 

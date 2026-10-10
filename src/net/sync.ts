@@ -8,6 +8,7 @@ import { P, S, world, type RaidRecord } from '../world/state';
 import { getPref, readSave, setPref, snapshot } from '../save/save';
 import { validRecord } from './local';
 import { townGrade } from '../world/guide';
+import { addMail, myTitle } from '../world/meta';
 import { me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
@@ -28,8 +29,9 @@ export function villageSnapshot() {
     innName: S.innName,
     owner: me.profile?.nickname ?? '',
     repHero: repHero(),
-    // 5단계: 마을 등급 (이웃이 보러 오면 비교하는 맛)
+    // 5단계: 마을 등급 (이웃이 보러 오면 비교하는 맛) · 칭호
     grade: townGrade(),
+    title: myTitle(),
     trophies: [...P.trophies],
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.tx, o.ty, o.lvl, o.hue, !!o.flip]),
   };
@@ -166,7 +168,11 @@ export async function checkLastWeek() {
   if (!online() || !wk || P.raid.rankChecked === wk) return;
   const { row, total } = await mine('raidWeek', wk);
   P.raid.rankChecked = wk;
-  if (row && total > 0 && row.rank / total <= CONFIG.cloud.topRankShare) P.raid.topWeeks++;
+  if (row && total > 0 && row.rank / total <= CONFIG.cloud.topRankShare) {
+    P.raid.topWeeks++;
+    // 5단계: 랭킹 보상은 우편함으로
+    addMail({ from: 'rank', title: `지난주 토벌 ${row.rank}위 (상위 ${Math.max(1, Math.round((row.rank / total) * 100))}%)`, body: '주간 토벌 랭킹 상위 30% 보상이에요.', reward: { tokens: 1, gold: 1000 } });
+  }
 }
 
 /** 하루 한 번 평판·도감 통계 */

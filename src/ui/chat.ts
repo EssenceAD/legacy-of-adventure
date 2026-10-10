@@ -179,7 +179,7 @@ export async function initChat() {
   subscribeChat((r) => push(fromRow(r)));
 }
 
-function openChat() {
+export function openChat() {
   openWin(
     '채팅',
     `<p class="note">[세계] 실제 유저 · [소문] 마을 사람들의 수다(실제 유저 아님) · [알림] 소식${online() ? ' · 남의 말을 누르면 차단·신고' : ''}</p>

@@ -232,6 +232,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   legendHooks.req('goldEarned', gold);
   // 4단계: 함께 싸운 영웅·전설 인연 + · 주인 담력 · 직접 조작은 불씨 +
   if (mode !== 'sweep') {
+    P.counters.raidTries++;
     tieRaid(members);
     ownerGain('raid');
     if (mode === 'manual') {

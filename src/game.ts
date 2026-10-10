@@ -352,7 +352,7 @@ export function visit(v: Neighbor) {
     spawnExtras();
     resetCamera();
     $('#visitbar').hidden = false;
-    $('#vName').textContent = `${v.name} · ${v.owner} · 「${gradeName(v.grade ?? Math.max(0, v.land - 1))}」`;
+    $('#vName').textContent = `${v.name} · ${v.title ? `「${v.title}」 ` : ''}${v.owner} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
   });

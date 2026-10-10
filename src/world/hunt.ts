@@ -112,6 +112,7 @@ export function clearStage(r: RegionId, s: number, members: Actor[]): HuntReward
   P.hunt.best[r] = Math.max(best(r), s);
   // 숲 사냥도 숲 원정처럼 셈 (전설 루나 소문)
   if (r === 'forest') P.counters.forestSends++;
+  P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
   const out = reward(r, s, members, first);
   markDirty();

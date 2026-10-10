@@ -26,6 +26,8 @@ export const ownerHooks = {
   duo: (_lines: TalkLine[], _right: string, _done?: () => void, _choices?: TalkChoice[]) => {},
   partner: (_list: BondDef[], _solo: boolean, _done: (id: string | null) => void) => {},
   ending: (_ids: string[], _partner: string | null, _rel: 'lover' | 'comrade' | undefined) => {},
+  /** 우편함 (world/meta가 채운다) */
+  mail: (_title: string, _body: string, _reward: { gold?: number }) => {},
 };
 
 // ───────── 글자 ─────────
@@ -378,6 +380,7 @@ export function giveGift(id: string, g: GiftKey): { err?: string; kind?: 'like' 
   if (energyLeft() <= 0) return { err: '오늘은 기운이 없어요 (내일 또)' };
   useEnergy();
   P.gifts[g]--;
+  P.counters.giftsGiven++;
   t.giftDay = today();
   ownerGain('gift');
   const kind = g === d.likes ? 'like' : g === d.hates ? 'hate' : 'normal';
@@ -617,6 +620,8 @@ function prevLetter() {
   if (Math.random() >= E.letterChance) return;
   const t = LETTERS[(Math.random() * LETTERS.length) | 0];
   queueEvent(() => uiHooks.talk([['post', `편지 왔어요! 앞 주인 ${p.name}님이 보냈어요!`], ['narr', fillT(t)]]));
+  // 우편함에도 남긴다 (작은 용돈과 함께)
+  ownerHooks.mail(`앞 주인 ${p.name}의 편지`, fillT(t), { gold: 300 });
 }
 
 // 평판 + (유산 보너스): progress.addRep이 부른다

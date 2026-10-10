@@ -19,7 +19,10 @@ import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, setZoom, syncZoomLabel, tickHud } from './ui/hud';
 import { initScreen, screen, setOnScreenChange } from './ui/screen';
-import { buildThumbs, initWindows, isWinOpen, openMenu, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { initMenu, openAttend, openGridMenu } from './ui/menu';
+import { queueEvent } from './world/events';
+import { dailyAttend, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
@@ -109,6 +112,9 @@ function update(dt: number) {
       if (S.night) nightOwner(true);
       // 5단계: 장부 — 이미 해 둔 일은 바로 완료
       skipDone();
+      // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
+      welcomeMail();
+      if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
@@ -118,6 +124,7 @@ function update(dt: number) {
         tickLegends();
         maybeAlarm();
         dailyOwner();
+        if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
         void dailyStats();
         void checkLastWeek();
       }
@@ -356,7 +363,8 @@ async function boot() {
   initOwnerUi();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
-  Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openMenu() });
+  Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu() });
+  initMenu();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));

@@ -9,8 +9,9 @@ export interface Neighbor {
   uid?: string;
   /** 대표 영웅 초상화 키 */
   repHero?: string | null;
-  /** 5단계 마을 등급 (0 오두막 ~ 4 도시) */
+  /** 5단계 마을 등급 (0 오두막 ~ 4 도시) · 주인 칭호 */
   grade?: number;
+  title?: string;
   name: string;
   owner: string;
   land: number;

@@ -17,6 +17,7 @@ import { markDirty, P, S, type TalkLine } from '../world/state';
 import { $, $$, esc, fmt } from './common';
 import { talk, talkDuo } from './dialogue';
 import { closeWin, openWin, setWinLock, toast } from './windows';
+import { myTitle } from '../world/meta';
 
 const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender)] : PORTRAITS.hero) || '';
 const portOf = (d: BondDef) => PORTRAITS[d.port] || '';
@@ -177,7 +178,7 @@ export function openOwner() {
   const tied = BONDS.filter((d) => tieAvailable(d.id) && tieStage(d.id) >= 2).length;
   openWin(
     '주인 정보',
-    `<div class="ohd"><img src="${myPort()}" alt=""><div><b>${esc(o.name)}</b><small>${esc(originTitle(o))} · 전직 ${JOB_NAME[o.job] ?? ''}${P.legacy.gen > 1 ? ` · ${P.legacy.gen}대 주인` : ''}</small>
+    `<div class="ohd"><img src="${myPort()}" alt=""><div>${myTitle() ? `<small class="g">「${esc(myTitle())}」</small>` : ''}<b>${esc(o.name)}</b><small>${esc(originTitle(o))} · 전직 ${JOB_NAME[o.job] ?? ''}${P.legacy.gen > 1 ? ` · ${P.legacy.gen}대 주인` : ''}</small>
       <small>${c.year}년 차 ${c.name} ${c.dayIn}일째 · 계절 행사 ${SEASON_EVENT[c.season]} +${Math.round(CONFIG.owner.seasonBonus * 100)}%</small></div></div>
     ${hexagon(o.stats)}
     <div class="acc"><div>주인 보너스<b>전투력 +${(ownerBonus() * 100).toFixed(1)}%</b></div><div>오늘 행동력<b>${energyLeft()}/${energyMax()}</b></div>

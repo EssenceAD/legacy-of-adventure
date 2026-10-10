@@ -673,3 +673,37 @@ html:not([data-size="phone"]) #mission{top:calc(env(safe-area-inset-top,0px) + 8
 .gradeban{position:absolute;left:50%;top:32%;transform:translateX(-50%);z-index:45;padding:12px 22px;display:flex;flex-direction:column;align-items:center;gap:4px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k)) / 0 stretch;pointer-events:none;animation:gban 2.6s ease forwards;white-space:nowrap}
 .gradeban small{color:#e2aa4e;font-size:var(--f-small)}.gradeban b{font-size:var(--f-big);color:var(--cream);text-shadow:2px 2px 0 var(--ink)}
 @keyframes gban{0%{opacity:0;margin-top:10px}12%{opacity:1;margin-top:0}85%{opacity:1}100%{opacity:0}}
+
+/* ── 5단계 4장: 격자 메뉴 · 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 ── */
+.mgrp{margin:8px 2px 4px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(36px * var(--k)),1fr));gap:6px}
+.mtile{position:relative;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:var(--cream);min-height:calc(36px * var(--k))}
+.mtile img{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+.mtile span{font-size:var(--f-small);line-height:1.15;text-align:center;word-break:keep-all}
+.mtile small{font-size:var(--f-tiny);color:#e2aa4e;line-height:1.1;text-align:center}
+.mtile:active{border-image-source:var(--ui-tile-pressed);transform:translateY(1px)}
+.mtile.lock{border-image-source:var(--ui-tile-locked)}.mtile.lock img{filter:grayscale(1);opacity:.4}.mtile.lock span{color:#8a8fa8}
+.mtile .lk{position:absolute;right:4px;top:4px;width:calc(8px * var(--k1));height:calc(10px * var(--k1));background:var(--ui-lock) 0 0 / 100% 100%}
+.mdot,.ndot{position:absolute;right:4px;top:4px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
+.dk button{position:relative}
+.mlist{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.mrow{display:grid;grid-template-columns:1.2em 1fr auto;gap:6px;padding:3px 6px;background:#161a30}.mrow.done{opacity:.6}.mrow.now{background:#2a2440;box-shadow:inset 0 0 0 1px #e2aa4e}
+.mrow em{font-style:normal;color:var(--gold);font-size:var(--f-small)}
+.alist,.mails{display:flex;flex-direction:column;gap:6px}
+.arow,.mail{display:flex;gap:8px;align-items:center;padding:6px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+.arow>span,.mail>span{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.arow small,.mail small{color:#9aa6d8;font-size:var(--f-small)}.mail small.g{color:var(--gold)}
+.arow.ready{border-image-source:var(--ui-tile-selected)}.arow.got,.mail.got{opacity:.55}
+.arow em,.mail em{font-style:normal;color:#8fe08f;font-size:var(--f-small)}
+.arow button,.mail button{border:0 solid transparent;border-image:var(--ui-btn-primary) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;color:var(--ink);font-weight:700;padding:4px 10px;min-height:32px;cursor:pointer}
+.abar{display:block;height:calc(4px * var(--k1));background:#161420;margin:2px 0}.abar u{display:block;height:100%;background:var(--ui-bar-fill-xp) 0 0 / 100% 100%;text-decoration:none}
+.attend{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px}.attend.big{grid-template-columns:repeat(4,1fr)}
+.atc{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;text-align:center}
+.atc b{font-size:var(--f-small)}.atc small{font-size:var(--f-tiny);color:#9aa6d8;line-height:1.1}
+.atc.got{border-image-source:var(--ui-tile-selected)}.atc i{position:absolute;right:3px;top:1px;font-style:normal;color:#8fe08f}
+.shopi{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}.shopi img{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+.shopi.sold{opacity:.5}
+.mpage{display:flex;gap:12px;align-items:flex-start}.mpage img{width:calc(24px * var(--k));height:calc(24px * var(--k));flex:none}.mpage p{margin:0 0 6px}
+.win .hd #winHelp{font-size:var(--f-body);color:var(--gold);border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;box-shadow:none;width:36px;height:36px;color:var(--gold);font-weight:700;margin-right:4px;cursor:pointer}
+html:not([data-size="phone"]) .win .hd #winHelp{width:44px;height:44px}
+.hauto button{white-space:nowrap;flex:none}

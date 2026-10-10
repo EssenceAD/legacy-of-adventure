@@ -276,6 +276,11 @@ export function freshProgress() {
       goalsClaimed: 0,
       salvaged: 0,
       huntAutoUsed: 0,
+      // 5단계 2차: 업적용
+      huntClears: 0,
+      raidTries: 0,
+      giftsGiven: 0,
+      shopBuys: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {
@@ -340,6 +345,18 @@ export function freshProgress() {
      * legacy = 5단계 전 저장 (기능을 잠그지 않는다 — 이미 쓰던 걸 막으면 안 된다)
      */
     guide: { idx: 0, claimed: [] as string[], cut: 0, legacy: false, unlocked: [] as string[] },
+    /**
+     * 5단계 2차: 업적(받은 것) · 칭호(달고 있는 것) · 출석 · 상점(오늘 진열·산 것) · 우편함 · 안내서(본 쪽)
+     */
+    meta: {
+      ach: [] as string[],
+      title: '',
+      attend: { total: 0, last: '' },
+      shop: { day: '', items: [] as string[], bought: [] as string[] },
+      mail: [] as Mail[],
+      mailNext: 1,
+      welcome: false,
+    },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {
       best: {} as Record<string, number>,
@@ -355,6 +372,17 @@ export function freshProgress() {
      */
     legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
   };
+}
+
+/** 우편함: 출석·랭킹·운영자 선물·앞 주인 편지 */
+export interface Mail {
+  id: number;
+  from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
+  title: string;
+  body: string;
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string };
+  at: number;
+  claimed: boolean;
 }
 
 export interface OwnerState {

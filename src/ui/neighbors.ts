@@ -26,6 +26,7 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     like: r.likes ?? 0,
     repHero: s.repHero ?? null,
     grade: Math.max(0, Math.min(4, Math.floor(Number(s.grade) || 0))),
+    title: typeof (s as { title?: unknown }).title === 'string' ? ((s as { title: string }).title).slice(0, 12) : '',
     layout,
   };
 }
