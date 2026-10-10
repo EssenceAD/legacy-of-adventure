@@ -142,13 +142,15 @@ interface Sim {
   blk: boolean;
   aiT: number;
   died: boolean;
+  /** 보스 그림 위쪽 y (피해 숫자·! 위치) */
+  btop: number;
 }
 
 function newSim(): Sim {
   return {
     on: false, auto: false, t: R.seconds, units: 0, php: 1000, chem: 0, lane: 1, combo: 0, lastHit: 0, cd1: 0, cd2: 0, shield: 0, stun: 0,
     bx: 108, bstate: 'idle', bt: 2.2, pattern: 0, warnLane: -1, charge: 0, hit: 0, heroAtk: 0, ally: 0, heal: 0, shake: 0,
-    holding: false, pressAt: -9, perfect: 0, streak: 0, bestStreak: 0, parts: [], dodge: false, blk: false, aiT: 0, died: false,
+    holding: false, pressAt: -9, perfect: 0, streak: 0, bestStreak: 0, parts: [], dodge: false, blk: false, aiT: 0, died: false, btop: 100,
   };
 }
 
@@ -166,7 +168,7 @@ function hurtBoss(S: Sim, v: number, cls: string, h: Hooks) {
   const u = v * (S.stun > 0 ? 2 : 1);
   S.units += u;
   S.hit = 0.12;
-  h.num(S.bx + Math.random() * 30 - 10, 110 + Math.random() * 20, u, cls);
+  h.num(S.bx + Math.random() * 30 - 10, S.btop + 10 + Math.random() * 20, u, cls);
   for (let i = 0; i < 5; i++) S.parts.push({ x: S.bx + 5 + Math.random() * 20, y: 140 + Math.random() * 20, vx: (Math.random() - 0.3) * 60, vy: -Math.random() * 60, l: 0.4, c: '#fff3b0' });
 }
 function hurtParty(S: Sim, v: number, danger: number, h: Hooks) {
@@ -232,7 +234,7 @@ function bossAI(S: Sim, dt: number, danger: number, h: Hooks) {
       S.perfect = 0;
       S.pressAt = -9;
       h.warnBlock(true);
-      h.num(S.bx + 20, 95, 0, 'msg', '!');
+      h.num(S.bx + 20, S.btop - 6, 0, 'msg', '!');
     } else {
       S.bstate = 'warn';
       S.warnLane = (Math.random() * 3) | 0;
@@ -456,6 +458,11 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
 
   const S = newSim();
   S.auto = !manual;
+  // 큰 보스도 화면 오른쪽 안에 들어오게, 위쪽 y는 그림 높이로
+  if (boss) {
+    S.bx = Math.min(108, LW - boss.width + 8);
+    S.btop = LANES[1] + 8 - boss.height - (b.float ?? 0);
+  }
   let T = 0;
   const hpNow = () => Math.max(0, t.hpLeft - S.units * scale);
   const hooks: Hooks = {
@@ -552,12 +559,8 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
     const sh = S.shake > 0 ? ((T * 60) | 0) % 2 ? 2 : -2 : 0;
     ctx.save();
     ctx.translate(sh, 0);
-    const bg = RAID_BG.img;
+    const bg = RAID_BG[b.region] ?? RAID_BG.forest;
     if (bg) ctx.drawImage(bg, -((bg.width - LW) / 2) | 0, 0);
-    if (b.bgTint) {
-      ctx.fillStyle = b.bgTint;
-      ctx.fillRect(0, 0, LW, LH);
-    }
     const p = Paint(ctx);
     if (S.bstate === 'warn' && S.warnLane >= 0 && ((T * 8) | 0) % 2) {
       ctx.globalAlpha = 0.45;
@@ -570,8 +573,10 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
     if (S.bstate === 'back') bx = S.bx - (S.bt / 0.5) * 70;
     const bob = Math.round(Math.sin(T * 3) * 1.5);
     if (boss) {
-      const img = (S.bstate === 'windup' && ((T * 10) | 0) % 2) || S.hit > 0.06 ? white ?? boss : boss;
-      const yy = (S.bstate === 'charge' ? LANES[2] + 6 : LANES[1] + 8) - boss.height + bob;
+      const img = (S.bstate === 'windup' && ((T * 10) | 0) % 2) || S.hit > 0.09 ? white ?? boss : boss;
+      // 발 기준(그림 아래 끝)으로 줄에 세운다. 떠 있는 보스는 더 띄우고 크게 둥실
+      const fl = b.float ? b.float + Math.round(Math.sin(T * 2) * 3) : 0;
+      const yy = (S.bstate === 'charge' ? LANES[2] + 6 : LANES[1] + 8) - boss.height + bob - fl;
       ctx.drawImage(img, Math.round(bx - 10 + (S.hit > 0 ? 2 : 0)), Math.round(yy));
       if (S.bstate === 'stun')
         for (let i = 0; i < 3; i++) {

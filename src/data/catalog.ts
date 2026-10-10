@@ -62,6 +62,7 @@ export const CATALOG = {
   trophy_golem: { name: '골렘 주먹', sprite: 'trophy_golem', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_wyvern: { name: '얼음 와이번 뿔', sprite: 'trophy_wyvern', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_eye: { name: '심연의 눈 조각', sprite: 'trophy_eye', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  monument: { name: '유산의 기념비', sprite: 'monument', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '도감 100% 보상 · 밤엔 책이 은은하게 빛나요' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
 } satisfies Record<string, BuildingDef>;
 
@@ -69,7 +70,7 @@ export type Kind = keyof typeof CATALOG;
 export const def = (k: Kind): BuildingDef => CATALOG[k];
 
 /** 밤에 창문 불이 켜지는 그림 */
-export const LIT_SPRITES = ['inn', 'inn3', 'tavern', 'tavern2', 'smith', 'cottage', 'bath'];
+export const LIT_SPRITES = ['inn', 'inn3', 'tavern', 'tavern2', 'smith', 'cottage', 'bath', 'monument'];
 
 /** 굴뚝 연기 자리 (그림 왼쪽 위 기준) */
 export const SMOKE: Record<string, [number, number][]> = {

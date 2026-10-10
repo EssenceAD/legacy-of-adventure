@@ -5,6 +5,7 @@ import type { Neighbor } from '../data/neighbors';
 import { baseKey, FLIP, META } from '../engine/assets';
 import { N, sx, sy, TW } from '../engine/iso';
 import { P, S, world, type Building } from './state';
+import { monumentUnlocked } from './progress';
 
 // ───────── 땅 ─────────
 
@@ -364,6 +365,8 @@ export function buildableKinds(): Kind[] {
     const d = def(k);
     // 트로피는 그 보스를 처치했을 때만
     if (k.startsWith('trophy_') && !P.trophies.includes(k.slice(7))) return false;
+    // 기념비는 손님·아이템·영웅 도감 중 하나를 100% 채웠을 때
+    if (k === 'monument' && !monumentUnlocked()) return false;
     return !d.fixed && !(d.unique && world.objs.some((o) => o.kind === k));
   });
 }

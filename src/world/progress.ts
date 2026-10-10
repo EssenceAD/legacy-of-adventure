@@ -79,6 +79,10 @@ export const DEX_REWARDS = [
   { id: 'i75', book: 'items', at: 0.75, gold: 3000, dust: 600 },
   { id: 'i100', book: 'items', at: 1, gold: 8000, dust: 1500 },
 ] as const;
+/** 「유산의 기념비」: 손님·아이템·영웅 도감 중 하나라도 100% */
+export function monumentUnlocked(): boolean {
+  return dexRatio('guests') >= 1 || dexRatio('items') >= 1 || HEROES.every((h) => P.dex.heroes[h.id]?.recruited);
+}
 export function dexRatio(book: 'guests' | 'items') {
   return book === 'guests' ? P.dex.guests.length / GUEST_DEX_TOTAL : P.dex.items.length / ITEM_DEX_TOTAL;
 }

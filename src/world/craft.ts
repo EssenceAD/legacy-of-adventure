@@ -1,5 +1,7 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
 import { CONFIG } from '../data/config';
+import { BOSSES, bossById } from '../data/bosses';
+import { josa } from '../data/josa';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
@@ -45,12 +47,15 @@ export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanc
 /** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
 export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : SM.enhanceRates[it.enh - 5] ?? 0);
 
-export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'nosmith' {
+export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
   if (it.enh >= SM.maxEnhance) return 'max';
   const cost = enhanceCost(it);
   if (P.dust[it.grade] < cost) return 'poor';
+  const bc = enhanceBossCost(it);
+  if (bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n) return 'boss';
   P.dust[it.grade] -= cost;
+  if (bc) P.bossMats[bc.boss.id] -= bc.n;
   track('enhance');
   legendHooks.bond('enhanceTry');
   markDirty();
@@ -63,9 +68,21 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'nosmith' {
 
 // ───────── 제작 ─────────
 
+/** 그 지역 보스 (재료를 주는 보스) */
+export const regionBoss = (r: RegionId) => BOSSES.find((b) => b.region === r)!;
+
 export const craftCost = (r: RegionId) => {
   const i = REGIONS.findIndex((x) => x.id === r);
-  return { mats: SM.craftMats, dust: SM.craftDust * (i + 1), gold: SM.craftGold * (i + 1) };
+  return { mats: SM.craftMats, dust: SM.craftDust * (i + 1), gold: SM.craftGold * (i + 1), boss: regionBoss(r), bossMats: SM.craftBossMats };
+};
+
+/** 강화 한 번에 드는 보스 재료 (+10 이상 올릴 때만) */
+export const enhanceBossCost = (it: Item) => (it.enh + 1 >= SM.bossEnhanceFrom ? { boss: regionBoss(it.region), n: SM.bossEnhanceMats } : null);
+
+/** 보스 재료가 모자랄 때 안내 */
+export const bossHint = (id: string) => {
+  const m = bossById(id)?.mat ?? '보스 재료';
+  return `${m}${josa(m, '는')} 「${bossById(id)?.name ?? '보스'}」 토벌에서 얻을 수 있어요`;
 };
 
 /** 그 지역 세트 부위를 만든다 (대장간 레벨이 높을수록 좋은 등급) */
@@ -75,9 +92,11 @@ export function craft(r: RegionId, slot: Slot): Item | string {
   if (P.mats[r] < c.mats) return '재료가 모자라요';
   if (P.dust.n < c.dust) return '가루가 모자라요';
   if (S.gold < c.gold) return '금화가 모자라요';
+  if ((P.bossMats[c.boss.id] ?? 0) < c.bossMats) return bossHint(c.boss.id);
   P.mats[r] -= c.mats;
   P.dust.n -= c.dust;
   S.gold -= c.gold;
+  P.bossMats[c.boss.id] -= c.bossMats;
   const g = rollGrade(r, 1, Math.pow(SM.craftLevelBoost, smithLvl() - 1));
   const it = makeItem(r, g, slot, true);
   addToBag(it);

@@ -302,6 +302,10 @@ export const CONFIG = {
     craftGold: 80,
     /** 대장간 레벨이 오를 때마다 상위 등급 확률 배수 */
     craftLevelBoost: 1.35,
+    /** 3단계: 세트 부위 하나에 그 지역 보스 재료 · 강화로 +bossEnhanceFrom 이상 올릴 때 1번마다 보스 재료 */
+    craftBossMats: 3,
+    bossEnhanceFrom: 10,
+    bossEnhanceMats: 1,
     levelCosts: [0, 500, 900, 1500, 2500, 4000, 6000],
   },
   garden: {

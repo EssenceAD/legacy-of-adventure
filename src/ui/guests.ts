@@ -10,7 +10,7 @@ import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, sendAway } from '../world/actors';
 import { bondsOf } from '../world/chem';
-import { enhance, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
 import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
 import { markDirty, P, world, type Actor, type Item } from '../world/state';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, tabs } from './common';
@@ -249,6 +249,7 @@ export function showItem(it: Item, back: () => void = openBag) {
   $('#iEnh').onclick = () => {
     const r = enhance(it);
     if (r === 'poor') return toast('가루가 모자라요');
+    if (r === 'boss') return toast(bossHint(enhanceBossCost(it)!.boss.id));
     toast(r === 'ok' ? `강화 성공! +${it.enh}` : r === 'fail' ? '강화 실패… (단계는 그대로)' : '강화할 수 없어요');
     showItem(it, back);
   };

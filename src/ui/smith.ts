@@ -1,7 +1,8 @@
 // 대장간 창(분해·강화·제작 탭 + 레벨) · 텃밭 창(심기·수확)
 import { CONFIG } from '../data/config';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type RegionId, type Slot } from '../data/items';
-import { craft, craftCost, enhance, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, salvageAllCommon, smithLvl } from '../world/craft';
+import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, salvageAllCommon, smithLvl } from '../world/craft';
+import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
 import * as game from '../game';
@@ -37,18 +38,23 @@ export function openSmith(o: Building, tab = smTab) {
         const max = it.enh >= CONFIG.smith.maxEnhance;
         const cost = enhanceCost(it);
         const own = ownerName(it.owner);
-        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화' : `${DUST_NAME[it.grade]} ${cost} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small></span><button data-enh="${it.id}" ${max || P.dust[it.grade] < cost ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
+        const bc = enhanceBossCost(it);
+        const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
+        const bossTxt = bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : '';
+        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span><button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
       })
       .join('');
-    body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요</p><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
+    body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요 · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
   } else {
     const c = craftCost(craftRegion);
     const regs = REGIONS.map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
     const reg = REGIONS.find((r) => r.id === craftRegion)!;
-    const next = o.lvl < 5 ? CONFIG.smith.levelCosts[o.lvl] : null;
+    const next = nextLevelCost(o);
+    const have = P.bossMats[c.boss.id] ?? 0;
     body = `<p class="sub"><b class="g">세트 제작</b> — 「${reg.set.name}」 부위를 골라 만들어요</p>
     <div class="regs">${regs}</div>
-    <p class="note">${reg.mat} ${c.mats} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
+    <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
+    ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
     <div class="btnrow">${SLOTS.map((s) => `<button class="bigbtn sm" data-s="${s}">${SLOT_NAME[s]} 만들기</button>`).join('')}</div>
     ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
   }
@@ -69,7 +75,7 @@ export function openSmith(o: Building, tab = smTab) {
       (b.onclick = () => {
         const it = P.bag.find((x) => x.id === +b.dataset.enh!)!;
         const r = enhance(it);
-        toast(r === 'ok' ? `강화 성공! ${it.name} +${it.enh}` : r === 'fail' ? '강화 실패… (장비는 그대로)' : r === 'poor' ? '가루가 모자라요' : '강화할 수 없어요');
+        toast(r === 'ok' ? `강화 성공! ${it.name} +${it.enh}` : r === 'fail' ? '강화 실패… (장비는 그대로)' : r === 'poor' ? '가루가 모자라요' : r === 'boss' ? bossHint(enhanceBossCost(it)!.boss.id) : '강화할 수 없어요');
         openSmith(o);
       }),
   );

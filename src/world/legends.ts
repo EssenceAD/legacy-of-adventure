@@ -192,6 +192,7 @@ export function decoScore(): number {
     else if (o.kind === 'board') s += 3;
     else if (o.kind === 'fire') s += 4;
     else if (o.kind.startsWith('trophy')) s += 8;
+    else if (o.kind === 'monument') s += 20;
     if (o.hue != null) s += 2;
   }
   return s;

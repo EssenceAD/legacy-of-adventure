@@ -7,7 +7,7 @@ import { HERO_SETS, HEROES } from '../data/heroes';
 import { GRADE_INFO, OPT_INFO, REGIONS, SLOT_NAME, SLOTS, type Grade } from '../data/items';
 import { itemIcon } from '../world/items';
 import {
-  claimGoal, DEX_REWARDS, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
+  claimGoal, DEX_REWARDS, monumentUnlocked, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
 } from '../world/progress';
 import { markDirty, P, S, world } from '../world/state';
 import { LEGENDS } from '../data/legends';
@@ -19,7 +19,7 @@ let dTab = 0;
 
 function rewardsRow(book: 'guests' | 'items') {
   const r = dexRatio(book);
-  return `<div class="dexrw">${DEX_REWARDS.filter((x) => x.book === book)
+  return `<p class="note">100%를 채우면 장식 건물 「유산의 기념비」가 열려요${monumentUnlocked() ? ' · <b class="g">열림! 건설 목록에서 무료</b>' : ''}</p><div class="dexrw">${DEX_REWARDS.filter((x) => x.book === book)
     .map((x) => {
       const got = P.dex.claimed.includes(x.id);
       const ok = r >= x.at;
