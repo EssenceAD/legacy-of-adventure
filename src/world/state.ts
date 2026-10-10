@@ -23,7 +23,22 @@ export interface Building {
   pop?: number;
 }
 
-export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit';
+export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';
+
+/**
+ * 문 열고 들어가기/나오기 연출.
+ * 들어가기: walk(문 앞 칸 → 실제 문 앞까지 걸음) → step(문 열림, 문 안쪽으로 몇 px, 문 영역으로 가려짐)
+ * 나오기:   step(문 열림, 문 안에서 걸어 나옴) → walk(문 앞 칸으로)
+ */
+export interface DoorAnim {
+  o: Building;
+  dir: 'in' | 'out';
+  phase: 'walk' | 'step';
+  /** 지금 단계에서 흐른 시간 / 단계 길이 (초) */
+  t: number;
+  dur: number;
+  then: () => void;
+}
 
 export interface Actor {
   kind: ClassKey;
@@ -55,6 +70,8 @@ export interface Actor {
   bub?: HTMLElement | null;
   /** 노주인 퇴장처럼 사라지는 중 */
   fading?: number;
+  /** 문 열고 들어가기/나오기 중 */
+  door?: DoorAnim | null;
 }
 
 export type IncomeKind = 'sleep' | 'drink' | 'forge' | 'bath' | 'dungeon';

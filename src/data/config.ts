@@ -82,6 +82,14 @@ export const CONFIG = {
     /** 수련 중 레벨이 오를 확률 */
     trainLevelUpChance: 0.3,
     bubbleMs: 2800,
+    /** 문 열고 들어가기·나오기: 문턱을 넘는 시간(초), 문 안쪽으로 걸어 들어가는 거리(px) */
+    doorSeconds: 0.6,
+    doorStepPx: 7,
+    /** 문 앞 칸에서 실제 문 앞까지 걸어가는 속도 (px/초) */
+    doorWalkPxPerSec: 40,
+    /** 밤에 열린 문 안쪽 불빛 */
+    doorNightLight: '#ffb860',
+    doorNightAlpha: 0.6,
   },
   dungeon: {
     /** 파티 출발 간격 (초) */

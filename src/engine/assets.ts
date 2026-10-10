@@ -15,6 +15,10 @@ export const IMG: Record<string, HTMLImageElement> = {};
 export const META: Record<string, SpriteMeta> = {};
 /** 창문 불빛 마스크 (그림과 같은 크기, 창문 픽셀만 밝게) */
 export const LIGHTS: Record<string, HTMLCanvasElement> = {};
+/** 문 영역 [x0, y0, x1, y1] (그림 왼쪽 위 기준, 끝 포함) — sprites/doors.json */
+export const DOORS: Record<string, [number, number, number, number]> = {};
+/** 앞이 트인 입구(대장간·온천): 문을 "여는" 표시 없이 들어가는 모습만 가린다 */
+export const OPEN_FRONT = new Set<string>();
 export const PORTRAITS: Record<string, string> = {};
 /** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
 const PORTRAIT_IMGS: HTMLImageElement[] = [];
@@ -29,10 +33,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export async function loadAssets(onProgress?: (p: number) => void) {
-  const [meta, windows] = await Promise.all([
+  const [meta, windows, doors] = await Promise.all([
     fetch(BASE + 'sprites/meta.json').then((r) => r.json() as Promise<Record<string, SpriteMeta>>),
     fetch(BASE + 'sprites/windows.json').then((r) => r.json() as Promise<Record<string, [number, number][]>>),
+    fetch(BASE + 'sprites/doors.json').then((r) => r.json() as Promise<Record<string, unknown>>),
   ]);
+  for (const [k, v] of Object.entries(doors)) {
+    if (k === '_open') (v as string[]).forEach((x) => OPEN_FRONT.add(x));
+    else DOORS[k] = v as [number, number, number, number];
+  }
   Object.assign(META, meta);
   const keys = Object.keys(meta);
   const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue'];
@@ -48,7 +57,8 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     ...ports.map(async (k) => {
       const src = `${BASE}portraits/${k}.png`;
       const im = await loadImage(src);
-      await im.decode?.().catch(() => {});
+      // 디코드는 기다리지 않는다 (화면이 숨어 있으면 끝나지 않아 로딩이 멈춘다)
+      im.decode?.().catch(() => {});
       PORTRAIT_IMGS.push(im);
       PORTRAITS[k] = src;
       tick();

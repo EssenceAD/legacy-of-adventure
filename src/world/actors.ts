@@ -6,6 +6,7 @@ import { sx } from '../engine/iso';
 import { canvas, dk, P } from '../engine/pixel';
 import { bldSay, floatW, puffAt, say } from './fx';
 import { earn, later, pick, S, uiHooks, world, type Actor, type ActorState, type Building } from './state';
+import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { astar, capacity, doorOf, findKind, landBounds, walkable } from './town';
 
 const A = CONFIG.actors;
@@ -128,7 +129,7 @@ function choose(a: Actor) {
 }
 
 /** 목적지 도착: 들어가거나 바깥 행동 */
-function enter(a: Actor, o: Building) {
+export function enter(a: Actor, o: Building) {
   if (!world.objs.includes(o)) return choose(a);
   const act = def(o.kind).act;
   a.at = o;
@@ -156,7 +157,18 @@ function enter(a: Actor, o: Building) {
     if (!chem(a)) say(a, pick(LINES.fire), 0.5);
     return;
   }
-  // 안으로 들어간다 (사라지고 지붕 위 숫자가 오른다)
+  // 문이 있는 건물은 문을 열고 걸어 들어간다
+  if (hasDoor(o)) {
+    startDoor(a, o, 'in', () => goInside(a, o));
+    return;
+  }
+  goInside(a, o);
+}
+
+/** 안으로 들어간다 (사라지고 지붕 위 숫자가 오른다) */
+function goInside(a: Actor, o: Building) {
+  if (!world.objs.includes(o)) return choose(a);
+  const act = def(o.kind).act;
   a.st = 'in';
   a.hidden = true;
   o.inside.push(a);
@@ -173,6 +185,17 @@ function enter(a: Actor, o: Building) {
 /** 건물에서 나온다: 문 앞에 다시 나타남 */
 export function leave(a: Actor) {
   const o = a.at;
+  if (o && a.hidden && hasDoor(o) && world.objs.includes(o)) {
+    // 문을 열고 걸어 나온다
+    o.inside = o.inside.filter((x) => x !== a);
+    const d = doorOf(o);
+    a.x = d[0];
+    a.y = d[1];
+    a.hidden = false;
+    a.at = null;
+    startDoor(a, o, 'out', () => choose(a));
+    return;
+  }
   if (o) {
     o.inside = o.inside.filter((x) => x !== a);
     if (a.hidden) {
@@ -185,6 +208,32 @@ export function leave(a: Actor) {
   a.hidden = false;
   a.at = null;
   choose(a);
+}
+
+/** 문 연출 시작 */
+function startDoor(a: Actor, o: Building, dir: 'in' | 'out', then: () => void) {
+  a.st = 'door';
+  a.path = null;
+  a.door = dir === 'in'
+    ? { o, dir, phase: 'walk', t: 0, dur: doorWalkSeconds(o), then }
+    : { o, dir, phase: 'step', t: 0, dur: A.doorSeconds, then };
+}
+
+/** 문 연출 진행: 들어가기 walk→step→안으로, 나오기 step→walk→다음 할 일 */
+function stepDoor(a: Actor, dt: number) {
+  const d = a.door!;
+  d.t += dt;
+  if (d.t < d.dur) return;
+  const pose = doorPose(a);
+  a.dir = pose.dir;
+  if (d.dir === 'in' && d.phase === 'walk') Object.assign(d, { phase: 'step', t: 0, dur: A.doorSeconds });
+  else if (d.dir === 'out' && d.phase === 'step') Object.assign(d, { phase: 'walk', t: 0, dur: doorWalkSeconds(d.o) });
+  else {
+    a.door = null;
+    a.st = 'idle';
+    a.back = false;
+    d.then();
+  }
 }
 
 /** 케미: 궁합 쌍이 가까이서 쉬면(서 있거나 모닥불에 앉아 있거나) 마주 보고 대사 + ♥ */
@@ -236,6 +285,10 @@ export function updActors(dt: number) {
     if (a.pop) a.pop = Math.max(0, a.pop - dt);
     if (a.fading !== undefined) {
       a.fading -= dt;
+      continue;
+    }
+    if (a.door) {
+      stepDoor(a, dt);
       continue;
     }
     if (a.st === 'walk') {
@@ -345,7 +398,7 @@ export function launchParty(blocked: boolean) {
   const dg = findKind('dungeon');
   if (!dg) return;
   const D = CONFIG.dungeon;
-  const pool = world.actors.filter((a) => !a.role && !a.hidden && !a.party && a.st !== 'in');
+  const pool = world.actors.filter((a) => !a.role && !a.hidden && !a.party && a.st !== 'in' && a.st !== 'door');
   if (pool.length < D.partyMin) return;
   const size = Math.min(D.partyMin + ((Math.random() * (D.partyMax - D.partyMin + 1)) | 0), pool.length);
   const team = pool.sort(() => Math.random() - 0.5).slice(0, size);
@@ -407,6 +460,7 @@ export const ACT_TEXT: Record<string, string> = { walk: '걷는 중', idle: '쉬
 /** 지금 하는 일 (창에 표시) */
 export function doingText(a: Actor): string {
   if (a.party) return a.hidden ? '던전 원정 중' : '던전으로 가는 중';
+  if (a.door) return a.door.dir === 'in' ? '들어가는 중' : '나오는 중';
   if (a.st === 'in' && a.at) return INSIDE_TEXT[def(a.at.kind).act!] ?? '머무는 중';
   return ACT_TEXT[a.st] ?? '';
 }

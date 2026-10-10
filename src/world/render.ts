@@ -6,28 +6,48 @@
 import { SMOKE } from '../data/catalog';
 import { CONFIG } from '../data/config';
 import { IMG, META, recolored, tinted, tintColor } from '../engine/assets';
-import { depthActor, depthBuilding, depthWild, sx, sy, TH, TW, view } from '../engine/iso';
+import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
 import { P } from '../engine/pixel';
 import { charFrames } from '../engine/sprites';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, type Wild } from './ground';
 import { S, world, type Actor, type Building } from './state';
-import { placing, type Placement } from './town';
+import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
+import { placing, spriteOrigin, type Placement } from './town';
 
-type Item =
-  | { d: number; o: Building }
-  | { d: number; w: Wild }
-  | { d: number; a: Actor }
-  | { d: number; ghost: Placement };
+/** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { ghost: Placement });
+
+/**
+ * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
+ *  · 캐릭터 칸이 발판의 오른쪽(ax ≥ tx+fw) 또는 앞쪽(ay ≥ ty+fh) → 앞
+ *  · 발판의 왼쪽(ax < tx) 또는 뒤쪽(ay < ty) → 뒤
+ *  · 발판 안(훈련장·텃밭) → 예전처럼 x+y 비교
+ * 단, 한 축은 앞인데 다른 축은 뒤인 "대각선" 자리(오른쪽-뒤, 왼쪽-앞)는 화면에서 겹치지 않으므로
+ * 판정에서 뺀다(null). 넣으면 멀리 있는 나무가 "앞에 있어야 할 건물"로 잡혀 캐릭터가 지붕 위로 올라온다.
+ */
+function inFrontOf(a: Actor, b: Thing): boolean | null {
+  const ax = Math.round(a.x);
+  const ay = Math.round(a.y);
+  const frontX = ax >= b.tx + b.fw;
+  const frontY = ay >= b.ty + b.fh;
+  const behindX = ax < b.tx;
+  const behindY = ay < b.ty;
+  if ((frontX && behindY) || (frontY && behindX)) return null;
+  if (frontX || frontY) return true;
+  if (behindX || behindY) return false;
+  return depthActor(a.x, a.y) > b.d;
+}
+
+/** ?debug=doors 로 열면 문 영역을 분홍 사각형으로 그린다 (doors.json 맞추기용) */
+const DEBUG_DOORS = new URLSearchParams(location.search).get('debug') === 'doors';
 
 /** 건물 그림의 왼쪽 위: 그림의 아래 가운데를 발판 마름모의 앞 꼭짓점에 맞춘다 */
 export function objTL(o: { sprite: string | null; tx: number; ty: number; fw: number; fh: number }): [number, number] {
-  const m = o.sprite ? META[o.sprite] : null;
-  if (!m) return [0, 0];
-  const X = view.OX + sx(o.tx, o.ty) + ((o.fw - o.fh) * TW) / 4;
-  const Yb = view.OY + sy(o.tx + o.fw, o.ty + o.fh);
-  return [Math.round(X - m.w / 2), Math.round(Yb - m.h + 2)];
+  if (!o.sprite || !META[o.sprite]) return [0, 0];
+  const [x, y] = spriteOrigin(o);
+  return [view.OX + Math.round(x), view.OY + Math.round(y)];
 }
 
 export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
@@ -49,17 +69,39 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const pl = placing.pl;
   if (pl && pl.tx != null) drawGhostTiles(ctx, pl);
 
-  // 2) 깊이 정렬
-  const list: Item[] = [];
-  for (const o of world.objs) list.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), o });
-  for (const w of ground.wild) list.push({ d: depthWild(w.x, w.y), w });
-  for (const a of world.actors) if (!a.hidden) list.push({ d: depthActor(a.x, a.y), a });
-  if (pl && pl.tx != null && pl.ty != null) list.push({ d: depthBuilding(pl.tx, pl.ty, pl.fw, pl.fh) + 0.1, ghost: pl });
-  list.sort((p, q) => p.d - q.d);
-  for (const it of list) {
-    if ('o' in it) drawObj(ctx, it.o);
-    else if ('a' in it) drawActor(ctx, it.a);
-    else if ('w' in it) drawWild(ctx, it.w);
+  // 2) 깊이 정렬: 건물·나무를 먼저 기존 키로 정렬하고,
+  //    캐릭터는 하나씩 "자기가 앞에 있어야 하는 마지막 건물" 바로 뒤에 끼워 넣는다
+  const things: Thing[] = [];
+  for (const o of world.objs) things.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
+  for (const w of ground.wild) things.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
+  if (pl && pl.tx != null && pl.ty != null) things.push({ d: depthBuilding(pl.tx, pl.ty, pl.fw, pl.fh) + 0.1, tx: pl.tx, ty: pl.ty, fw: pl.fw, fh: pl.fh, ghost: pl });
+  things.sort((p, q) => p.d - q.d);
+  /** slots[k] = things[k] 앞에 그릴 캐릭터들 (마지막 칸은 맨 끝) */
+  const slots: Actor[][] = Array.from({ length: things.length + 1 }, () => []);
+  /** 문으로 드나드는 중인 손님은 그 건물 바로 다음에 그린다 (문 영역으로 가려야 해서) */
+  const atDoor = new Map<Building, Actor[]>();
+  const walkers = world.actors.filter((a) => !a.hidden).sort((p, q) => depthActor(p.x, p.y) - depthActor(q.x, q.y));
+  for (const a of walkers) {
+    if (a.door) {
+      const l = atDoor.get(a.door.o);
+      if (l) l.push(a);
+      else atDoor.set(a.door.o, [a]);
+      continue;
+    }
+    let last = -1;
+    for (let i = 0; i < things.length; i++) if (inFrontOf(a, things[i]) === true) last = i;
+    slots[last + 1].push(a);
+  }
+  for (let k = 0; k <= things.length; k++) {
+    for (const a of slots[k]) drawActor(ctx, a);
+    const it = things[k];
+    if (!it) break;
+    if ('o' in it) {
+      drawObj(ctx, it.o);
+      const ds = atDoor.get(it.o);
+      if (ds) drawDoorActors(ctx, it.o, ds);
+      if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
+    } else if ('w' in it) drawWild(ctx, it.w);
     else drawGhost(ctx, it.ghost);
   }
 
@@ -203,18 +245,21 @@ function drawGhostTiles(ctx: CanvasRenderingContext2D, pl: Placement) {
     }
 }
 
-function drawActor(ctx: CanvasRenderingContext2D, a: Actor) {
+/** pose: 문 연출 중일 때 발 위치(월드 원점 기준)·뒷모습·방향 */
+function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
   const s = charFrames(a.kind);
   const T = S.T;
   let fr: HTMLCanvasElement;
-  if (a.st === 'walk') fr = (a.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
+  const dir = pose ? pose.dir : a.dir;
+  if (pose) fr = (pose.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
+  else if (a.st === 'walk') fr = (a.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
   else if (a.st === 'idle' && a.back && !a.role) fr = s.idleB[Math.floor(T * 1.6 + a.ph) % 2];
   else if (a.st === 'atk') fr = s.atk[Math.floor(T * 3 + a.ph) % 2];
   else if (a.st === 'pray') fr = s.pray[Math.floor(T * 1.5 + a.ph) % 2];
   else if (a.st === 'sit') fr = s.sit[Math.floor(T * 2 + a.ph) % 2];
   else fr = s.idle[Math.floor(T * 1.6 + a.ph) % 2];
-  const X = Math.round(view.OX + sx(a.x, a.y));
-  const Y = Math.round(view.OY + sy(a.x, a.y) + TH / 2);
+  const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
+  const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));
   const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
   ctx.globalAlpha = 0.25 * fade;
   ctx.fillStyle = '#1c1018';
@@ -223,7 +268,7 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor) {
   const img = tinted(fr, NL);
   const x = X - 12;
   const y = Y - 32 + (a.st === 'sit' ? 3 : 0);
-  if (a.dir < 0) {
+  if (dir < 0) {
     ctx.save();
     ctx.translate(x + 24, y);
     ctx.scale(-1, 1);
@@ -287,3 +332,51 @@ export function buildingAt(mx: number, my: number, alphaAt: (k: string, x: numbe
   return null;
 }
 
+
+/**
+ * 문으로 드나드는 손님 (그 건물을 그린 직후):
+ * 문턱을 넘는 동안 문 열림(어두운 안쪽, 밤엔 따뜻한 불빛) + 문 영역으로 가려서 그린다
+ */
+function drawDoorActors(ctx: CanvasRenderingContext2D, o: Building, list: Actor[]) {
+  if (!hasDoor(o)) return list.forEach((a) => drawActor(ctx, a));
+  const r = doorRect(o);
+  const x0 = view.OX + r.x0;
+  const y0 = view.OY + r.y0;
+  const w = r.x1 - r.x0 + 1;
+  const h = r.y1 - r.y0 + 1;
+  if (list.some((a) => a.door!.phase === 'step') && !isOpenFront(o)) {
+    ctx.fillStyle = '#1c1018';
+    ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = '#3a2418';
+    ctx.fillRect(x0, y0, w, 1);
+    if (S.nightT > 0.01) {
+      ctx.globalAlpha = CONFIG.actors.doorNightAlpha * S.nightT;
+      ctx.fillStyle = CONFIG.actors.doorNightLight;
+      ctx.fillRect(x0, y0 + 1, w, h - 1);
+      ctx.globalAlpha = 1;
+    }
+  }
+  for (const a of list) {
+    const pose = doorPose(a);
+    if (!pose.clipped) {
+      drawActor(ctx, a, pose);
+      continue;
+    }
+    // 문 안쪽 + 문턱 아래(바깥 땅)만 보이게: 문 옆 벽에 겹친 몸은 가려진다
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, y0, w, h);
+    ctx.rect(0, y0 + h, view.LW, view.LH);
+    ctx.clip();
+    drawActor(ctx, a, pose);
+    ctx.restore();
+  }
+}
+
+function drawDoorDebug(ctx: CanvasRenderingContext2D, o: Building) {
+  if (!hasDoor(o)) return;
+  const r = doorRect(o);
+  ctx.strokeStyle = '#ff00ff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(view.OX + r.x0 + 0.5, view.OY + r.y0 + 0.5, r.x1 - r.x0, r.y1 - r.y0);
+}

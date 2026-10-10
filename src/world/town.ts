@@ -2,7 +2,8 @@
 import { CATALOG, def, START_TOWN, type Kind } from '../data/catalog';
 import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
-import { N } from '../engine/iso';
+import { META } from '../engine/assets';
+import { N, sx, sy, TW } from '../engine/iso';
 import { S, world, type Building } from './state';
 
 // ───────── 땅 ─────────
@@ -241,4 +242,13 @@ export function buildableKinds(): Kind[] {
     const d = def(k);
     return !d.fixed && !(d.unique && world.objs.some((o) => o.kind === k));
   });
+}
+
+/** 건물 그림의 왼쪽 위 (월드 원점 기준 논리 px): 그림의 아래 가운데 = 발판 마름모의 앞 꼭짓점 */
+export function spriteOrigin(o: { sprite: string | null; tx: number; ty: number; fw: number; fh: number }): [number, number] {
+  const m = o.sprite ? META[o.sprite] : null;
+  if (!m) return [0, 0];
+  const X = sx(o.tx, o.ty) + ((o.fw - o.fh) * TW) / 4;
+  const Yb = sy(o.tx + o.fw, o.ty + o.fh);
+  return [X - m.w / 2, Yb - m.h + 2];
 }

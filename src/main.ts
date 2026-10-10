@@ -7,12 +7,12 @@ import { charFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { getPref, writeSave } from './save/save';
-import { launchParty, updActors, warmItemIcons } from './world/actors';
+import { enter, launchParty, updActors, warmItemIcons } from './world/actors';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
 import { posBubbles } from './world/fx';
 import { buildingAt, renderFrame } from './world/render';
 import { runJobs, S, takeDirty, uiHooks, world } from './world/state';
-import { placing } from './world/town';
+import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, tickHud } from './ui/hud';
@@ -260,6 +260,12 @@ async function boot() {
   // 개발 중 콘솔에서 살펴보기용
   if (import.meta.env.DEV) Object.assign(window, { __S: S, __world: world, __game: game, __view: view, __stats: stats,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
+      // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
+      __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {
+        const [dx, dy] = doorOf(o);
+        Object.assign(a, { x: dx, y: dy, hidden: false, path: null, door: null, party: false });
+        enter(a, o);
+      },
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);
       },
