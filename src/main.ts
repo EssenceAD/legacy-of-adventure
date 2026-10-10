@@ -16,7 +16,7 @@ import { placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, tickHud } from './ui/hud';
-import { initWindows, isWinOpen, openReport, showActor, showObj, toast, toastHtml } from './ui/windows';
+import { buildThumbs, initWindows, isWinOpen, openReport, showActor, showObj, toast, toastHtml } from './ui/windows';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -48,6 +48,8 @@ function resize() {
 
 const STEP = CONFIG.loop.updateStep;
 let acc = 0;
+/** 지난 그리기 이후 흐른 시간 (창이 열리면 30fps로 묶어 그린다) */
+let drawAcc = 0;
 let partyClock = 0;
 let saveClock = 0;
 let last = 0;
@@ -103,16 +105,22 @@ function tick(dt: number) {
     acc -= STEP;
   }
   t = mark('update', t);
-  // 그리기는 화면 주사율대로
-  S.T += dt;
-  blendNight(dt);
+  // 그리기는 화면 주사율대로 — 단, 창이 열려 있으면 30fps로 낮춰 창 애니메이션에 여유를 준다
+  drawAcc += dt;
+  const winOpen = isWinOpen();
+  if (winOpen && drawAcc < CONFIG.loop.drawStepWhileWindow) return;
+  const ddt = drawAcc;
+  drawAcc = 0;
+  S.T += ddt;
+  blendNight(ddt);
   updateOrigin();
-  renderFrame(ctx, dt);
+  renderFrame(ctx, ddt);
   t = mark('render', t);
   posBubbles();
   tickHud();
   t = mark('dom', t);
-  pumpTintWarmup(3);
+  // 밤 색조 미리 만들기도 창이 열려 있는 동안엔 쉰다
+  if (!winOpen) pumpTintWarmup(3);
   mark('warm', t);
   const w = performance.now() - t0;
   stats.frames++;
@@ -203,6 +211,7 @@ async function boot() {
   });
   queueTintWarmup([...Object.values(IMG), ...frames]);
   warmItemIcons();
+  buildThumbs();
 
   // 배율은 기기마다 기억 (1·2·3 중 하나)
   const z = getPref<number>('zoom', CONFIG.view.defaultZoom);

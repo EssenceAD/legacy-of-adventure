@@ -16,6 +16,8 @@ export const META: Record<string, SpriteMeta> = {};
 /** 창문 불빛 마스크 (그림과 같은 크기, 창문 픽셀만 밝게) */
 export const LIGHTS: Record<string, HTMLCanvasElement> = {};
 export const PORTRAITS: Record<string, string> = {};
+/** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
+const PORTRAIT_IMGS: HTMLImageElement[] = [];
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((ok, fail) => {
@@ -45,7 +47,9 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     }),
     ...ports.map(async (k) => {
       const src = `${BASE}portraits/${k}.png`;
-      await loadImage(src);
+      const im = await loadImage(src);
+      await im.decode?.().catch(() => {});
+      PORTRAIT_IMGS.push(im);
       PORTRAITS[k] = src;
       tick();
     }),

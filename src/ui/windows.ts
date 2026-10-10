@@ -46,17 +46,42 @@ export function initWindows() {
 
 // ───────── 건설 ─────────
 
-let fireThumbUrl = '';
+/** 건설 목록 썸네일: 부팅 직후 한 번 만들어 둔다 (창을 열 때 만들면 열리는 순간 끊긴다) */
+const THUMBS: Partial<Record<Kind, string>> = {};
+const THUMB_W = 96;
+const THUMB_H = 56;
+
 function fireThumb() {
-  if (fireThumbUrl) return fireThumbUrl;
   const c = canvas(24, 20);
   const p = P(c.getContext('2d')!);
   p.rect(6, 14, 12, 3, '#7a7480');
   p.rect(7, 12, 10, 2, '#6a4428');
   for (let i = -3; i <= 3; i++) for (let j = 0; j < 6 - Math.abs(i); j++) p.px(12 + i, 11 - j, j < 2 ? '#ffe08a' : j < 4 ? '#ff9a3c' : '#e0482e');
-  return (fireThumbUrl = c.toDataURL());
+  return c;
 }
-const thumb = (k: Kind) => (CATALOG[k].sprite ? IMG[CATALOG[k].sprite!].src : fireThumb());
+
+/** 그림을 썸네일 칸 크기에 맞춰 정수 배율로(도트가 뭉개지지 않게) 미리 그려 둔다 */
+export function buildThumbs() {
+  for (const k of Object.keys(CATALOG) as Kind[]) {
+    const sp = CATALOG[k].sprite;
+    const src: CanvasImageSource & { width: number; height: number } = sp ? IMG[sp] : fireThumb();
+    if (!src) continue;
+    const s = Math.max(1, Math.floor(Math.min((THUMB_W * 2) / src.width, (THUMB_H * 2) / src.height)));
+    const c = canvas(src.width * s, src.height * s);
+    const x = c.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    x.drawImage(src, 0, 0, c.width, c.height);
+    THUMBS[k] = c.toDataURL();
+    // 미리 디코드해 두면 창을 여는 프레임에서 이미지 풀기가 일어나지 않는다
+    const im = new Image();
+    im.src = THUMBS[k]!;
+    im.decode?.().catch(() => {});
+    decoded.push(im);
+  }
+}
+/** 디코드된 썸네일을 붙잡아 둔다 (가비지로 버려지지 않게) */
+const decoded: HTMLImageElement[] = [];
+const thumb = (k: Kind) => THUMBS[k] ?? '';
 
 export function openBuild() {
   if (S.visiting) return;

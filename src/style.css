@@ -67,7 +67,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .dk canvas{width:32px;height:32px;image-rendering:pixelated}
 .dk button.ready canvas{animation:rdy 1s steps(2) infinite}
 @keyframes rdy{50%{filter:brightness(1.5)}}
-#toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 96px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity .2s steps(2);pointer-events:none}
+#toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 96px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity .2s ease;pointer-events:none}
 #toast.on{opacity:1}#toast img{width:32px;height:32px;image-rendering:pixelated}
 .r-n{color:#cfc2a8}.r-r{color:#6fb0ff}.r-e{color:#d08aff}.r-l{color:#ffb04a}
 #visitbar{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 8px;font-size:11px;white-space:nowrap}
@@ -75,10 +75,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 #visitbar #vLike{background:#7a2a40}
 
 /* windows */
-#scrim{position:absolute;inset:0;background:rgba(5,6,20,.55);opacity:0;pointer-events:none;transition:opacity .15s steps(2)}
+#scrim{position:absolute;inset:0;background:rgba(5,6,20,.55);opacity:0;pointer-events:none;transition:opacity .18s ease;will-change:opacity}
 #scrim.on{opacity:1;pointer-events:auto}
-.win{visibility:hidden;position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-height:76%;display:flex;flex-direction:column;transform:translateY(120%);transition:transform .25s steps(5)}
-.win.on{transform:none;visibility:visible}
+.win{visibility:hidden;position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-height:76%;display:flex;flex-direction:column;
+  /* 자기 합성 레이어로 올려서, 움직이는 동안 테두리 그림자(box-shadow)를 다시 그리지 않게 */
+  will-change:transform;backface-visibility:hidden;transform:translate3d(0,120%,0);
+  /* 닫힐 때는 다 내려간 뒤에 숨긴다 */
+  transition:transform .22s cubic-bezier(.2,.9,.3,1),visibility 0s linear .22s}
+.win.on{transform:translate3d(0,0,0);visibility:visible;transition:transform .22s cubic-bezier(.2,.9,.3,1),visibility 0s}
 .win .hd{display:flex;align-items:center;padding:8px 10px 6px;border-bottom:2px solid var(--navy2)}
 .win .hd b{font-size:22px;font-weight:700;color:var(--gold);flex:1;line-height:24px}
 .win .hd button{border:0;background:var(--navy2);width:28px;height:28px;cursor:pointer;box-shadow:0 0 0 2px var(--ink)}
@@ -138,7 +142,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 #namebox .row{display:flex;gap:8px}
 
 /* title */
-#title{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:22% 0 calc(env(safe-area-inset-bottom,0px) + 70px);background:radial-gradient(ellipse at 50% 120%,rgba(20,30,80,0) 0,rgba(5,6,20,.55) 70%);transition:opacity .6s steps(6)}
+#title{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:22% 0 calc(env(safe-area-inset-bottom,0px) + 70px);background:radial-gradient(ellipse at 50% 120%,rgba(20,30,80,0) 0,rgba(5,6,20,.55) 70%);transition:opacity .6s ease}
 #title.out{opacity:0;pointer-events:none}
 .logo{text-align:center}
 .logo .ko{font-size:44px;line-height:48px;font-weight:700;background:linear-gradient(180deg,#ffffff 0 40%,#bfe4ff 40% 70%,#7fb6ff 70%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(3px 0 0 #0a1030) drop-shadow(-3px 0 0 #0a1030) drop-shadow(0 3px 0 #0a1030) drop-shadow(0 -3px 0 #0a1030) drop-shadow(0 5px 0 #000)}
@@ -151,7 +155,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ver{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);font-size:11px;color:#8a96c8}
 #flash{position:absolute;inset:0;background:#fff8e0;opacity:0;pointer-events:none}
 #flash.go{animation:fl .6s steps(6)}@keyframes fl{0%{opacity:.9}100%{opacity:0}}
-#fade{position:absolute;inset:0;background:#05061a;opacity:0;pointer-events:none;transition:opacity .3s steps(4);z-index:40}#fade.on{opacity:1}
+#fade{position:absolute;inset:0;background:#05061a;opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:40}#fade.on{opacity:1}
 #banner{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);text-align:center;opacity:0;pointer-events:none;white-space:nowrap}
 #banner.on{animation:ban 2.4s steps(24) forwards}
 #banner small{display:block;font-size:11px;color:var(--gold)}#banner span{font-size:22px;font-weight:700;text-shadow:2px 2px 0 var(--ink),-2px 0 var(--ink),0 -2px var(--ink),2px 0 var(--ink)}

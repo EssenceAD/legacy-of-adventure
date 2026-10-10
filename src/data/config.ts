@@ -17,6 +17,8 @@ export const CONFIG = {
   loop: {
     /** 게임 규칙 갱신 주기 (초) — 화면은 rAF로 따로 그린다 */
     updateStep: 1 / 30,
+    /** 창(건설·땅·손님…)이 열려 있는 동안 마을 그리기 간격 (초) — 30fps. 0.002는 rAF 흔들림 여유 */
+    drawStepWhileWindow: 1 / 30 - 0.002,
   },
   /** 땅 넓히기 5단계: 울타리 범위 [시작, 끝) 과 비용 */
   land: [
