@@ -1,0 +1,48 @@
+{
+ "frameW": 96,
+ "frameH": 96,
+ "anchor": [
+  48,
+  91
+ ],
+ "boss": true,
+ "source": "Ninja Adventure (CC0) GiantRedSamurai",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 6,
+   "fps": 6,
+   "loop": true
+  },
+  "move": {
+   "row": 1,
+   "frames": 6,
+   "fps": 10,
+   "loop": true
+  },
+  "attack": {
+   "row": 2,
+   "frames": 4,
+   "fps": 10,
+   "loop": false
+  },
+  "charge": {
+   "row": 3,
+   "frames": 3,
+   "fps": 10,
+   "loop": true
+  },
+  "hurt": {
+   "row": 4,
+   "frames": 4,
+   "fps": 12,
+   "loop": false
+  },
+  "die": {
+   "row": 5,
+   "frames": 4,
+   "fps": 8,
+   "loop": false
+  }
+ }
+}
