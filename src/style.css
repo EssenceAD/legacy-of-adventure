@@ -629,3 +629,10 @@ html[data-size="phone"] .bhud.top{width:56%}
 .sortb button.on{border-image-source:var(--ui-tab-on);color:var(--gold)}
 .glist button,.chemrow,.hcard,.regs button,.dexrw button{box-shadow:none;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none}
 .glist button:active{border-image-source:var(--ui-tile-pressed)}
+/* 5단계 0장: 잠긴 건설 = 회색 + 자물쇠 + 열리는 조건 · 목표 「가기」 */
+.cat button{position:relative;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;box-shadow:none}
+.cat button.locked{border-image-source:var(--ui-tile-locked)}
+.cat button.locked img{filter:grayscale(1);opacity:.4}.cat button.locked b{color:#8a8fa8}
+.cat small.lock{color:#e2aa4e}
+.cat .lk,.tile-lk{position:absolute;right:6px;top:6px;width:calc(8px * var(--k));height:calc(10px * var(--k));background:var(--ui-lock) 0 0 / 100% 100%}
+.goal button.go{border-image-source:var(--ui-btn)!important;color:var(--cream)!important;font-weight:400}

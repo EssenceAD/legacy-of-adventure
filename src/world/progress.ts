@@ -1,6 +1,6 @@
 // 성장 지표: 평판(★) · 도감(손님·아이템·케미·영웅) · 오늘의 목표 · 영웅 조건
 import { CONFIG } from '../data/config';
-import { GOAL_TEMPLATES, type GoalEvent } from '../data/goals';
+import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals';
 import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
 import { REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
@@ -96,14 +96,32 @@ export const today = () => {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 };
 
+/** 5단계: 지금 할 수 있는 목표인가 (그 건물을 지었나 · 단골이 2명 이상인가) */
+export function goalAvailable(t: GoalTemplate): boolean {
+  if (!t.needs) return true;
+  const home = world.home ?? world;
+  if (t.needs === 'regulars2') return home.actors.filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero')).length >= 2;
+  return home.objs.some((o) => o.kind === t.needs && o.build === undefined);
+}
+
 export function ensureGoals() {
-  if (P.goals.day === today()) return;
+  if (P.goals.day === today()) {
+    // 오늘 목록에 아직 못 하는 목표(손도 안 댄 것)가 있으면 할 수 있는 걸로 바꾼다 (예전 저장)
+    for (const g of P.goals.list) {
+      const t = GOAL_TEMPLATES.find((x) => x.id === g.id);
+      if (!t || goalAvailable(t) || g.progress > 0 || g.claimed) continue;
+      const alt = GOAL_TEMPLATES.find((x) => !x.first && goalAvailable(x) && !P.goals.list.some((y) => y.id === x.id));
+      if (alt) Object.assign(g, { id: alt.id, target: alt.min, progress: 0 });
+    }
+    return;
+  }
   // 새 게임 첫날: 첫 원정을 기다리는 동안 할 수 있는 셋 (모닥불 · 손님 말 걸기 · 지붕 색)
   if (!P.goals.day && P.counters.expeditions === 0) {
     P.goals = { day: today(), list: GOAL_TEMPLATES.filter((t) => t.first).map((t) => ({ id: t.id, target: t.min, progress: 0, claimed: false })) };
     return;
   }
-  const pool = GOAL_TEMPLATES.filter((t) => !t.first);
+  // 지금 할 수 있는 것만 후보로 (잠긴 건물·기능을 시키지 않는다)
+  const pool = GOAL_TEMPLATES.filter((t) => !t.first && goalAvailable(t));
   const list: typeof P.goals.list = [];
   for (let i = 0; i < CONFIG.goals.count && pool.length; i++) {
     const t = pool.splice((Math.random() * pool.length) | 0, 1)[0];

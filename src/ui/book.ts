@@ -14,6 +14,7 @@ import { LEGENDS } from '../data/legends';
 import { PORTRAITS } from '../engine/assets';
 import { $$, bindTabs, fmt, pct, tabs } from './common';
 import { openWin, toast } from './windows';
+import { openPlace, type Place } from './nav';
 
 let dTab = 0;
 
@@ -123,7 +124,7 @@ export function openGoals() {
     .map((g, i) => {
       const t = GOAL_TEMPLATES.find((x) => x.id === g.id)!;
       const done = g.progress >= g.target;
-      return `<div class="goal ${g.claimed ? 'got' : ''}"><span><b>${t.text(g.target)}</b><small>${g.progress}/${g.target} · 보상 ${fmt(t.reward.gold)}G${t.reward.dust ? ` + 잿빛 가루 ${t.reward.dust}` : ''} · 평판 +${CONFIG.reputation.goal}</small></span><button data-g="${i}" ${done && !g.claimed ? '' : 'disabled'}>${g.claimed ? '받음' : done ? '받기' : '진행 중'}</button></div>`;
+      return `<div class="goal ${g.claimed ? 'got' : ''}"><span><b>${t.text(g.target)}</b><small>${g.progress}/${g.target} · 보상 ${fmt(t.reward.gold)}G${t.reward.dust ? ` + 잿빛 가루 ${t.reward.dust}` : ''} · 평판 +${CONFIG.reputation.goal}</small></span>${done || g.claimed ? `<button data-g="${i}" ${g.claimed ? 'disabled' : ''}>${g.claimed ? '받음' : '받기'}</button>` : `<button class="go" data-go="${t.go}">가기 ›</button>`}</div>`;
     })
     .join('');
   const s = stars();
@@ -133,6 +134,7 @@ export function openGoals() {
     <p class="note">평판은 원정 성공·단골·도감 보상으로 올라요 · 땅 넓히기에 필요해요</p>
     <div class="goals">${rows}</div><p class="note">목표는 매일 새로 바뀌어요</p>`,
   );
+  $$('[data-go]').forEach((b) => (b.onclick = () => openPlace(b.dataset.go as Place)));
   $$('[data-g]').forEach(
     (b) =>
       (b.onclick = () => {
