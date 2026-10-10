@@ -6,14 +6,14 @@
   --f:"Galmuri11","Apple SD Gothic Neo",monospace;
   color-scheme:dark;
 }
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior:none}
 body{margin:0;background:#07091a;color:var(--cream);font-family:var(--f);display:flex;justify-content:center;overflow:hidden;-webkit-font-smoothing:none;font-smooth:never}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 button,input,select,textarea{font:inherit;color:inherit}
 #view{position:relative;width:100%;max-width:440px;height:100%;overflow:hidden;overflow:clip;background:#0d1435;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;image-rendering:pixelated}
 @media(min-width:520px){#view{max-width:600px;margin-block:12px;height:calc(100% - 24px);box-shadow:0 0 0 4px #000,0 0 0 8px #2a3366,0 0 0 10px #000}}
-#scene{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
+#scene{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
 #over{position:absolute;inset:0;pointer-events:none}
 
 /* pixel frame: square corners, double line, corner sparkles */

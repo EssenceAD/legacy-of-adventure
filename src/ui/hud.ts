@@ -148,6 +148,17 @@ function zoomLabel() {
   $('#bZoom').textContent = '×' + S.zoom;
 }
 
+/** 배율 바꾸기 (버튼·핀치 공용). 정수 배율만 */
+export function setZoom(z: number) {
+  const zs = CONFIG.view.zooms;
+  z = Math.max(zs[0], Math.min(zs[zs.length - 1], Math.round(z)));
+  if (z === S.zoom) return;
+  S.zoom = z;
+  setPref('zoom', z);
+  zoomLabel();
+  onZoom();
+}
+
 // ───────── 시작 ─────────
 
 export function initHud() {
@@ -174,10 +185,7 @@ export function initHud() {
   $('#bZoom').onclick = () => {
     // 1 → 2 → 3 → 1 …
     const zs = CONFIG.view.zooms;
-    S.zoom = zs[(zs.indexOf(S.zoom) + 1) % zs.length];
-    setPref('zoom', S.zoom);
-    zoomLabel();
-    onZoom();
+    setZoom(zs[(zs.indexOf(S.zoom) + 1) % zs.length]);
   };
   $('#placeNo').onclick = cancelPlace;
   $('#placeOk').onclick = () => {

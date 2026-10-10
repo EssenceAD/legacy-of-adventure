@@ -19,6 +19,8 @@ export const LIGHTS: Record<string, HTMLCanvasElement> = {};
 export const DOORS: Record<string, [number, number, number, number]> = {};
 /** 앞이 트인 입구(대장간·온천): 문을 "여는" 표시 없이 들어가는 모습만 가린다 */
 export const OPEN_FRONT = new Set<string>();
+/** 지붕 다각형 (그림 왼쪽 위 기준) — sprites/roofs.json. 지붕 색 바꾸기는 이 안에서만 */
+export const ROOF_POLYS: Record<string, [number, number][][]> = {};
 export const PORTRAITS: Record<string, string> = {};
 /** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
 const PORTRAIT_IMGS: HTMLImageElement[] = [];
@@ -33,11 +35,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export async function loadAssets(onProgress?: (p: number) => void) {
-  const [meta, windows, doors] = await Promise.all([
+  const [meta, windows, doors, roofs] = await Promise.all([
     fetch(BASE + 'sprites/meta.json').then((r) => r.json() as Promise<Record<string, SpriteMeta>>),
     fetch(BASE + 'sprites/windows.json').then((r) => r.json() as Promise<Record<string, [number, number][]>>),
     fetch(BASE + 'sprites/doors.json').then((r) => r.json() as Promise<Record<string, unknown>>),
+    fetch(BASE + 'sprites/roofs.json').then((r) => r.json() as Promise<Record<string, [number, number][][]>>),
   ]);
+  Object.assign(ROOF_POLYS, roofs);
   for (const [k, v] of Object.entries(doors)) {
     if (k === '_open') (v as string[]).forEach((x) => OPEN_FRONT.add(x));
     else DOORS[k] = v as [number, number, number, number];
@@ -90,7 +94,13 @@ function windowMask(im: HTMLImageElement, pts: [number, number][]): HTMLCanvasEl
   return L;
 }
 
-/** 지붕 색 바꾸기: 그림 위쪽(지붕) 대표 색상 띠의 hue만 돌린다 — 시안 recolored() 그대로 */
+/**
+ * 지붕 색 바꾸기: sprites/roofs.json 에 찍어 둔 "지붕 다각형" 안의 픽셀만 바꾼다
+ * (예전엔 그림 위쪽 전체에서 색상만 보고 바꿔서 주점 벽까지 번졌다).
+ *  · 채도 있는 지붕(대부분): 다각형 안 대표 색상 근처 픽셀의 hue만 돌린다 (빛 받는 면·그늘 면 모두 잡게 범위를 넉넉히)
+ *  · 채도 없는 지붕(대장간 슬레이트): 밝기는 그대로 두고 새 색을 입힌다
+ *  · 아주 밝은 픽셀(지붕창 벽·불 켜진 유리)은 건드리지 않는다
+ */
 const RECOL: Record<string, HTMLCanvasElement> = {};
 export function recolored(key: string, hue: number): HTMLCanvasElement {
   const k = key + '|' + hue;
@@ -99,35 +109,62 @@ export function recolored(key: string, hue: number): HTMLCanvasElement {
   const c = canvas(im.width, im.height);
   const x = c.getContext('2d')!;
   x.drawImage(im, 0, 0);
+  const polys = ROOF_POLYS[key];
+  if (!polys) return (RECOL[k] = c);
   const d = x.getImageData(0, 0, im.width, im.height);
   const D = d.data;
-  const top = Math.round(im.height * 0.55);
+  // 다각형 안 픽셀 목록
+  const inside: number[] = [];
+  for (let y = 0; y < im.height; y++)
+    for (let i = 0; i < im.width; i++) {
+      const j = (y * im.width + i) * 4;
+      if (D[j + 3] && polys.some((p) => inPoly(i + 0.5, y + 0.5, p))) inside.push(j);
+    }
   const hs: number[] = [];
-  for (let y = 0; y < top; y++)
-    for (let i = 0; i < im.width; i++) {
-      const j = (y * im.width + i) * 4;
-      if (!D[j + 3]) continue;
-      const [h, s, l] = hsl(D[j], D[j + 1], D[j + 2]);
-      if (s > 0.35 && l > 0.2 && l < 0.75) hs.push(h);
+  for (const j of inside) {
+    const [h, s, l] = hsl(D[j], D[j + 1], D[j + 2]);
+    if (s > 0.25 && l > 0.12 && l < 0.8) hs.push(h);
+  }
+  const R = CONFIG.roof;
+  const dark = hue === 265; // 밤하늘은 조금 어둡게
+  if (hs.length < inside.length * R.colorfulShare) {
+    // 채도 없는 지붕: 새 색 입히기
+    for (const j of inside) {
+      const [, , l] = hsl(D[j], D[j + 1], D[j + 2]);
+      if (l > R.skipLightness) continue;
+      const [r, g, b] = hslToRgb(hue, R.tintSaturation, dark ? l * 0.85 : Math.min(0.75, l * 1.1 + 0.04));
+      D[j] = r;
+      D[j + 1] = g;
+      D[j + 2] = b;
     }
-  hs.sort((a, b) => a - b);
-  const base = hs[hs.length >> 1] || 0;
-  for (let y = 0; y < Math.min(im.height, top + 8); y++)
-    for (let i = 0; i < im.width; i++) {
-      const j = (y * im.width + i) * 4;
-      if (!D[j + 3]) continue;
+  } else {
+    hs.sort((a, b) => a - b);
+    const base = hs[hs.length >> 1];
+    for (const j of inside) {
       const [h, s, l] = hsl(D[j], D[j + 1], D[j + 2]);
+      if (s < 0.15 || l > R.skipLightness) continue;
       const dh = Math.min(Math.abs(h - base), 360 - Math.abs(h - base));
-      if (dh < 28 && s > 0.2) {
-        const nh = (hue + (h - base) + 360) % 360;
-        const [r, g, b] = hslToRgb(nh, Math.min(1, s * 1.05), hue === 265 ? l * 0.8 : l);
-        D[j] = r;
-        D[j + 1] = g;
-        D[j + 2] = b;
-      }
+      if (dh > R.hueRange) continue;
+      const nh = (hue + (h - base) + 360) % 360;
+      const [r, g, b] = hslToRgb(nh, Math.min(1, s * 1.05), dark ? l * 0.8 : l);
+      D[j] = r;
+      D[j + 1] = g;
+      D[j + 2] = b;
     }
+  }
   x.putImageData(d, 0, 0);
   return (RECOL[k] = c);
+}
+
+/** 점이 다각형 안인가 (짝홀 규칙) */
+function inPoly(x: number, y: number, poly: [number, number][]) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
 }
 
 // ───────── 밤 색조: 그림을 밤 색으로 미리 물들여 단계별(0~10)로 캐시 ─────────

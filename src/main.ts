@@ -1,7 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
 import { CONFIG } from './data/config';
-import { alphaAt, IMG, loadAssets, pumpTintWarmup, queueTintWarmup } from './engine/assets';
+import { alphaAt, IMG, loadAssets, pumpTintWarmup, queueTintWarmup, recolored } from './engine/assets';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
@@ -15,7 +15,7 @@ import { runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
-import { initHud, movePlacement, setOnZoom, tickHud } from './ui/hud';
+import { initHud, movePlacement, setOnZoom, setZoom, tickHud } from './ui/hud';
 import { buildThumbs, initWindows, isWinOpen, openReport, showActor, showObj, toast, toastHtml } from './ui/windows';
 
 const host = document.getElementById('view')!;
@@ -132,14 +132,41 @@ function tick(dt: number) {
 
 let drag: { x: number; y: number; cx: number; cy: number } | null = null;
 let moved = false;
+/** 화면에 닿아 있는 손가락들 (핀치용) */
+const touches = new Map<number, { x: number; y: number }>();
+/** 핀치 기준 거리 — 이 비율을 넘을 때마다 배율을 한 단계 바꾼다 */
+let pinchBase = 0;
+
+function pinchDist() {
+  const [a, b] = [...touches.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 function bindInput() {
   cv.addEventListener('pointerdown', (e) => {
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      // 두 손가락: 드래그·탭 대신 핀치
+      pinchBase = pinchDist();
+      drag = null;
+      moved = true;
+      return;
+    }
     drag = { x: e.clientX, y: e.clientY, cx: view.cam.x, cy: view.cam.y };
     moved = false;
     cv.setPointerCapture?.(e.pointerId);
   });
   cv.addEventListener('pointermove', (e) => {
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2 && pinchBase > 0) {
+      const r = pinchDist() / pinchBase;
+      const P = CONFIG.view.pinchStep;
+      if (r > P || r < 1 / P) {
+        setZoom(S.zoom + (r > 1 ? 1 : -1));
+        pinchBase = pinchDist();
+      }
+      return;
+    }
     if (!drag) return;
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
@@ -151,6 +178,8 @@ function bindInput() {
     }
   });
   const end = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinchBase = 0;
     const was = drag;
     drag = null;
     if (moved || !was || e.type === 'pointercancel') return;
@@ -258,7 +287,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __S: S, __world: world, __game: game, __view: view, __stats: stats,
+  if (import.meta.env.DEV) Object.assign(window, { __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {
@@ -273,3 +302,8 @@ async function boot() {
 }
 
 boot();
+
+// 홈 화면에 추가(PWA): 배포본에서만 서비스워커를 쓴다 (개발 서버에선 캐시가 방해된다)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}

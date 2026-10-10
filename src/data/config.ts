@@ -13,6 +13,8 @@ export const CONFIG = {
     defaultZoom: 2,
     /** 이만큼(px) 움직이면 탭이 아니라 드래그 */
     dragThreshold: 6,
+    /** 핀치: 손가락 사이 거리가 이 배만큼 벌어지거나 좁혀질 때마다 배율 한 단계 */
+    pinchStep: 1.35,
   },
   loop: {
     /** 게임 규칙 갱신 주기 (초) — 화면은 rAF로 따로 그린다 */
@@ -111,6 +113,16 @@ export const CONFIG = {
     fire: ['불멍 최고…', '옛날 얘기 해줄까?'],
     party: ['던전 가자!'],
   } as Record<string, string[]>,
+  /** 지붕 색 바꾸기 (sprites/roofs.json 다각형 안에서만) */
+  roof: {
+    /** 대표 색상에서 이만큼(도) 안의 픽셀만 돌린다 — 빛 받는 면과 그늘 면을 함께 잡게 넉넉히 */
+    hueRange: 42,
+    /** 이보다 밝은 픽셀(지붕창 벽·불 켜진 유리)은 그대로 */
+    skipLightness: 0.8,
+    /** 다각형 안에서 채도 있는 픽셀이 이 비율보다 적으면 "채도 없는 지붕"으로 보고 색을 입힌다 */
+    colorfulShare: 0.3,
+    tintSaturation: 0.38,
+  },
   upgrade: {
     inn: 600,
     tavern: 500,
