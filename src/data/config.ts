@@ -133,10 +133,187 @@ export const CONFIG = {
     typeMs: 32,
     chatTickMs: 5500,
   },
+  // ═════════════ 2단계: 파밍 · 성장 · 케미 ═════════════
+
+  /** 게임 안 시간: 현실 1분 = 게임 1시간. 하루 24분(낮 16분 06–22시 / 밤 8분 22–06시) */
+  clock: {
+    realSecondsPerGameHour: 60,
+    dayStartHour: 6,
+    nightStartHour: 22,
+  },
+  /** 땅 넓히기에 필요한 평판 별 (단계 1~5) */
+  landStars: [0, 1, 2, 3, 4],
+  /** 꺼져 있던 동안 (방치) */
+  offline: {
+    /** 이만큼(현실 시간)까지만 쌓인다 */
+    maxRealHours: 8,
+    /** 게임 1시간마다 손님 1명이 버는 평균 금화 */
+    goldPerGuestPerGameHour: 15,
+    /** 방치 수입은 켜 있을 때의 이 비율 */
+    rate: 0.7,
+    /** 이보다 짧게 꺼져 있었으면 요약 창을 띄우지 않는다 (현실 초) */
+    minSecondsForSummary: 60,
+  },
+  guests: {
+    /** 새 손님이 오는지 살피는 간격(게임 시간)과 확률 */
+    arriveEveryGameHours: 2,
+    arriveChance: 0.6,
+    /** 방문 손님이 묵는 날 수 */
+    stayDaysMin: 1,
+    stayDaysMax: 3,
+    /** 기분 평균이 이 이상이면 단골 제안, 이 미만이면 일찍 떠남 */
+    regularMood: 70,
+    leaveMood: 35,
+    /** 새 게임 시작 때 노주인이 남겨 둔 단골 수 */
+    startRegulars: 2,
+    /** 희귀도 확률 (특별·전설) */
+    rareChance: 0.18,
+    legendChance: 0.03,
+    maxLevel: 50,
+  },
+  /** 욕구 (0~100). 게임 1시간당 변화와 채우는 양 */
+  needs: {
+    foodPerHour: -6,
+    moodLowNeedPerHour: -4,
+    moodCrowdedPerHour: -1,
+    /** 이 아래면 그 욕구를 채우러 간다 */
+    seekBelow: 60,
+    /** 이 아래면 "욕구가 낮다"(기분 감소) */
+    lowBelow: 30,
+    sleepHp: 35,
+    sleepNightHp: 70,
+    meal: 35,
+    mealWithProduce: 55,
+    mealProduceMood: 10,
+    bathHp: 20,
+    bathMood: 20,
+    decoMood: 12,
+    fireMood: 12,
+    chemMood: 8,
+    trainHp: -8,
+    trainXp: 25,
+    farmMood: 6,
+  },
+  /** 원정 */
+  expedition: {
+    /** 의뢰 걸리는 시간 (현실 분): 짧음·보통·김·아주 김 */
+    tierMinutes: [5, 30, 120, 480],
+    /** 걸리는 시간 단계마다 보상 배수 */
+    tierReward: [1, 3, 8, 20],
+    /** 첫 지역 첫 단계: 추천 전투력·금화·장비 확률 */
+    basePower: 100,
+    baseGold: [60, 120],
+    baseXp: 30,
+    baseDrop: { r: 0.2, e: 0.04, l: 0.005 },
+    /** 지역이 올라갈수록: 시간 ×2, 보상 ×2.5, 상위 등급 확률 ×1.5, 추천 전투력 ×2.2 */
+    regionTime: 2,
+    regionReward: 2.5,
+    regionDrop: 1.5,
+    regionPower: 2.2,
+    /** 걸리는 시간 단계마다 추천 전투력 배수 */
+    tierPower: [1, 1.4, 1.9, 2.6],
+    /** 성공률 = (파티 전투력 ÷ 추천) × 이 값, 최소·최대 */
+    successScale: 0.85,
+    successMin: 0.05,
+    successMax: 0.97,
+    /** 실패해도 받는 보상 비율, 깎이는 체력 */
+    failReward: 0.35,
+    failHp: 45,
+    winHp: 15,
+    partyMin: 2,
+    partyMax: 4,
+    /** 원정에 못 가는 체력 */
+    minHp: 30,
+    /** 하루 의뢰 개수, 무료 새로고침 */
+    questsMin: 3,
+    questsMax: 5,
+    freeRefreshPerDay: 1,
+    /** 동시에 보낼 수 있는 파티 = 1 + 게시판 레벨 (최대) */
+    maxParties: 4,
+    /** 천장: 같은 지역에서 전설이 이만큼 안 나오면 다음은 확정 (테스트할 땐 낮춘다) */
+    pity: 50,
+    /** 지역 재료 개수 */
+    mats: [2, 4],
+  },
+  items: {
+    /** 등급별 능력치 배수 · 랜덤 옵션 수 */
+    gradeMult: { n: 1, r: 1.4, e: 1.9, l: 2.6, a: 3.4 } as Record<string, number>,
+    gradeOpts: { n: 0, r: 1, e: 2, l: 3, a: 3 } as Record<string, number>,
+    /** 지역마다 능력치 배수 */
+    regionStat: 1.8,
+    /** 강화 1당 능력치 +% */
+    enhancePct: 0.06,
+    bagBase: 60,
+    bagPerSmithLevel: 20,
+  },
+  smith: {
+    /** 분해: 등급별 가루 */
+    salvage: { n: 10, r: 25, e: 60, l: 150, a: 300 } as Record<string, number>,
+    /** 강화 비용 = (현재 강화+1)² × 이 값 (그 장비 등급 가루) */
+    enhanceCost: 10,
+    maxEnhance: 10,
+    /** +6부터 성공 확률 (+6 … +10) */
+    enhanceRates: [0.7, 0.55, 0.4, 0.3, 0.2],
+    /** 제작: 지역 재료·일반 가루·금화 */
+    craftMats: 10,
+    craftDust: 30,
+    craftGold: 80,
+    /** 대장간 레벨이 오를 때마다 상위 등급 확률 배수 */
+    craftLevelBoost: 1.35,
+    levelCosts: [0, 500, 900, 1500, 2500],
+  },
+  garden: {
+    plots: 3,
+    /** 작물: 자라는 시간(현실 분)·씨앗 값·수확량 */
+    crops: {
+      carrot: { name: '당근', minutes: 10, seed: 10, yield: 3 },
+      pumpkin: { name: '호박', minutes: 30, seed: 25, yield: 6 },
+      cabbage: { name: '양배추', minutes: 60, seed: 40, yield: 10 },
+    } as Record<string, { name: string; minutes: number; seed: number; yield: number }>,
+  },
+  chem: {
+    /** 친밀도 단계(2~5)에 필요한 누적 경험치 */
+    levels: [0, 30, 80, 150, 250],
+    townXp: 10,
+    expeditionXp: 20,
+    /** 같은 파티 짝 하나당 친밀도 단계 × 이 값만큼 전투력·보상 배율 + */
+    partyBonusPerLevel: 0.03,
+  },
+  reputation: {
+    /** 별 1~5에 필요한 평판 점수 */
+    stars: [0, 40, 120, 300, 650],
+    expeditionWin: 3,
+    newRegular: 5,
+    happyLeave: 1,
+    angryLeave: -2,
+    /** 오늘의 목표 하나 달성 */
+    goal: 5,
+  },
+  /** 영웅 별 올리기 (★n → ★n+1): 가루 = 현재 별 × heroStarDust, 금화 = 현재 별 × heroStarGold */
+  heroes: {
+    maxStars: 5,
+    starDust: 150,
+    starGold: 500,
+  },
+  dex: {
+    /** 도감 칸 하나당 전투력 + (손님·아이템) */
+    guestCellPct: 0.002,
+    itemCellPct: 0.002,
+    /** 영웅 등록 보너스(1~3%)·★당 */
+    heroStarPct: 0.01,
+  },
+  goals: {
+    count: 3,
+  },
+  /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
+  test: {
+    pity: 3,
+    timeScale: 0.02,
+  },
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 1,
+    version: 2,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

@@ -1,4 +1,5 @@
 // 직업(색·얼굴·무기) — reference/core.js의 CLASSES 이식. 이름 목록과 케미 짝도 여기.
+import type { StatKey, WeaponKind } from './items';
 
 export interface Face {
   eyes?: 'dot' | 'calm' | 'squint' | 'sly' | 'happy' | 'round' | 'sparkle';
@@ -36,6 +37,8 @@ export interface ClassDef {
   stache?: string;
   bandana?: string;
   brow?: string;
+  /** 끼운 무기 등급 색 (날·머리 부분) */
+  weaponColor?: string;
 }
 
 export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'keeper' | 'post' | 'hero';
@@ -79,3 +82,58 @@ export function speakerName(who: string, innName: string): string {
   if (who === 'post') return '우체부 모모';
   return CLASSES[who as ClassKey]?.name ?? '';
 }
+
+// ═════════════ 2단계: 종족 · 희귀도 · 능력치 · 얼굴 ═════════════
+export type Race = 'human' | 'elf' | 'dwarf' | 'halfling';
+export const RACES: Race[] = ['human', 'elf', 'dwarf', 'halfling'];
+export const RACE_NAME: Record<Race, string> = { human: '인간', elf: '엘프', dwarf: '드워프', halfling: '하플링' };
+
+export type Rarity = 'common' | 'special' | 'legend';
+export const RARITIES: Rarity[] = ['common', 'special', 'legend'];
+export const RARITY_INFO: Record<Rarity, { name: string; color: string; mult: number }> = {
+  common: { name: '평범', color: '#cfd8ff', mult: 1 },
+  special: { name: '특별', color: '#6fb0ff', mult: 1.3 },
+  legend: { name: '전설', color: '#ffb04a', mult: 1.7 },
+};
+
+/** 직업별 1레벨 기본 능력치 (평범 기준) */
+export const CLASS_STATS: Record<GuestKind, Record<StatKey, number>> = {
+  knight: { atk: 8, def: 12, mag: 2, agi: 5, luk: 3 },
+  mage: { atk: 3, def: 4, mag: 13, agi: 5, luk: 5 },
+  dwarf: { atk: 12, def: 8, mag: 1, agi: 5, luk: 4 },
+  rogue: { atk: 7, def: 4, mag: 3, agi: 12, luk: 8 },
+  cleric: { atk: 3, def: 7, mag: 10, agi: 4, luk: 6 },
+};
+/** 직업별 기본 무기 (장비가 없을 때 그림) */
+export const CLASS_WEAPON: Record<GuestKind, WeaponKind> = { knight: 'sword', mage: 'staff', dwarf: 'axe', rogue: 'dagger', cleric: 'book' };
+
+/** 직업마다 어울리는 종족 (방문 손님 뽑을 때 가중치) */
+export const CLASS_RACES: Record<GuestKind, Race[]> = {
+  knight: ['human', 'human', 'dwarf', 'halfling'],
+  mage: ['elf', 'elf', 'human', 'halfling'],
+  dwarf: ['dwarf', 'dwarf', 'human'],
+  rogue: ['elf', 'halfling', 'human', 'halfling'],
+  cleric: ['human', 'halfling', 'elf'],
+};
+
+export const RACE_NAMES: Record<Race, string[]> = {
+  human: ['로이', '한스', '베른', '세레나', '마리엘', '루카', '에단', '클라라', '토비', '아델'],
+  elf: ['실바나', '엘린', '미르', '릭', '피핀', '아리엘', '탈리온', '세이라', '루엔', '피오라'],
+  dwarf: ['브롬', '두린', '토르', '감리', '보르', '힐다', '그림', '브루나', '오린', '팔린'],
+  halfling: ['네모', '루나', '포피', '빌보', '메리', '티미', '로지', '퍼디', '밀로', '체리'],
+};
+
+/** 얼굴 조합 (특별·전설은 무작위로 섞는다) */
+export const FACE_POOL = {
+  eyes: ['dot', 'calm', 'squint', 'sly', 'happy', 'round', 'sparkle'] as const,
+  mouth: ['flat', 'tiny', 'none', 'smirk', 'o', 'grin'] as const,
+  brow: [undefined, 'angry', 'bushy', 'up'] as const,
+};
+export const HAIR_COLORS = ['#7a4a2c', '#dfe3f2', '#e0702a', '#c98a4a', '#f3d36b', '#3a2a3a', '#b03a2a', '#5a7ac8', '#2f2a26', '#e8a0c8'];
+
+/** 희귀 손님 고유 대사 */
+export const RARE_LINES: Record<Rarity, string[]> = {
+  common: [],
+  special: ['이 여관, 소문대로네요', '오늘은 운이 좋은 날 같아', '내 검이 뭔가 느끼고 있어'],
+  legend: ['…전설은 조용히 쉬는 법이지', '이 마을에서 오래된 기운이 느껴져', '내 이름을 들어 봤나?'],
+};

@@ -1,12 +1,15 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
-import { CHEM, CLASSES, type ClassKey } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { IMG, PORTRAITS } from '../engine/assets';
 import { canvas, P } from '../engine/pixel';
-import { doingText } from '../world/actors';
-import { S, world, type Actor, type Building } from '../world/state';
-import { buildableKinds } from '../world/town';
+import { stars } from '../world/progress';
+import { markDirty, P as Prog, S, type Building } from '../world/state';
+import { buildableKinds, maxLevel, nextLevelCost } from '../world/town';
+import { openDex, openGoals, openLedger } from './book';
+import { openBoard } from './expedition';
+import { openBag } from './guests';
+import { openGarden, openSmith } from './smith';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -88,19 +91,25 @@ export function openBuild() {
   const items = buildableKinds()
     .map((k) => {
       const d = def(k);
-      const locked = d.unlock > S.land;
+      const noStar = (d.stars ?? 0) > stars();
+      const locked = d.unlock > S.land || noStar;
       const poor = S.gold < d.cost;
-      const sub = locked ? `<small class="lock">땅 ${d.unlock}단계</small>` : `<small>${fmt(d.cost)} G</small>`;
+      const sub = d.unlock > S.land ? `<small class="lock">땅 ${d.unlock}단계</small>` : noStar ? `<small class="lock">평판 ★${d.stars}</small>` : `<small>${fmt(d.cost)} G</small>`;
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}</button>`;
     })
     .join('');
-  openWin('건설', `<p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
+  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
+  $('#toLand').onclick = openLand;
   $$('.cat button').forEach(
     (b) =>
       (b.onclick = () => {
         const k = b.dataset.k as Kind;
         if (def(k).unlock > S.land) {
           toast(`땅을 ${def(k).unlock}단계까지 넓히면 지을 수 있어요`);
+          return;
+        }
+        if ((def(k).stars ?? 0) > stars()) {
+          toast(`평판 ★${def(k).stars}이 되면 지을 수 있어요`);
           return;
         }
         closeWin();
@@ -116,18 +125,25 @@ export function openLand() {
   const rows = CONFIG.land
     .map((L, i) => {
       const st = i + 1;
+      const need = CONFIG.landStars[i] ?? 0;
       const right = st === S.land ? '현재' : st < S.land ? '완료' : `${fmt(L.cost)}G`;
-      return `<button class="stp ${st === S.land ? 'cur' : ''}" data-l="${st}" ${st !== S.land + 1 ? 'disabled' : ''}><span style="grid-column:1/3"><b>${st}단계 · ${L.size}칸</b><small>${L.opens}</small></span><em>${right}</em></button>`;
+      const req = st > S.land && need ? ` · <span class="${stars() >= need ? 'good' : 'bad'}">평판 ★${need}</span>` : '';
+      return `<button class="stp ${st === S.land ? 'cur' : ''}" data-l="${st}" ${st !== S.land + 1 ? 'disabled' : ''}><span style="grid-column:1/3"><b>${st}단계 · ${L.size}칸</b><small>${L.opens}${req}</small></span><em>${right}</em></button>`;
     })
     .join('');
   const note = S.land >= CONFIG.land.length ? '최대 크기예요!' : '한 단계씩 넓힐 수 있어요';
-  openWin('땅 넓히기', `<p class="sub">울타리를 밀어서 마을 땅을 넓혀요 · 최대 ${CONFIG.land.length}단계</p><div class="steps">${rows}</div><p class="note">${note}</p>`);
+  openWin('땅 넓히기', `<div class="tabs"><button class="tab" id="toBuild">건물</button><button class="tab on">땅 넓히기</button></div><p class="sub">울타리를 밀어서 마을 땅을 넓혀요 · 최대 ${CONFIG.land.length}단계</p><div class="steps">${rows}</div><p class="note">${note}</p>`);
   $$('.stp').forEach(
     (b) =>
       (b.onclick = () => {
         const l = +b.dataset.l!;
         if (l !== S.land + 1) return;
         const cost = CONFIG.land[l - 1].cost;
+        const need = CONFIG.landStars[l - 1] ?? 0;
+        if (stars() < need) {
+          toast(`평판 ★${need}이 필요해요 · 오늘의 목표에서 평판을 확인해요`);
+          return;
+        }
         if (S.gold < cost) {
           toast(`금화가 모자라요 (${fmt(cost)}G 필요)`);
           return;
@@ -136,41 +152,22 @@ export function openLand() {
         game.expandLand(l);
       }),
   );
+  $('#toBuild').onclick = openBuild;
 }
 
-// ───────── 손님 ─────────
-
-function bar(label: string, v: number, color: string) {
-  return `<div class="bar"><span>${label}</span><i><b style="width:${v}%;background:${color}"></b></i><em>${v}</em></div>`;
-}
 const portrait = (k: string) => PORTRAITS[k] || '';
-
-export function openGuests() {
-  const guests = world.actors.filter((a) => !a.role);
-  if (!guests.length) return;
-  openWin(
-    `손님 ${guests.length}명`,
-    `<div class="glist">${guests
-      .map((a, i) => `<button data-i="${i}"><img src="${portrait(a.kind)}" alt=""><span>${esc(a.name)} · Lv.${a.lvl} ${CLASSES[a.kind].name}</span><em>${doingText(a)}</em></button>`)
-      .join('')}</div>`,
-  );
-  $$('.glist button').forEach((b) => (b.onclick = () => showActor(guests[+b.dataset.i!])));
-}
-
-export function showActor(a: Actor) {
-  const pals = CHEM.filter((x) => x[0] === a.kind || x[1] === a.kind).map((x) => (x[0] === a.kind ? x[1] : x[0]));
-  const chips = pals.map((p) => `<span class="chip"><img src="${portrait(p)}" alt="">${CLASSES[p as ClassKey].name}와 케미</span>`).join('');
-  openWin(
-    a.name,
-    `<div class="who"><img class="port" src="${portrait(a.kind)}" alt=""><div><p class="sub">Lv.${a.lvl} ${CLASSES[a.kind].name} · ${doingText(a)}</p>${bar('체력', a.hp, '#e0544a')}${bar('포만', a.food, '#e8a23a')}${bar('기분', a.mood, '#6fb04b')}</div></div><div class="chips">${chips}<span class="chip q">??? 미발견</span></div>`,
-  );
-}
 
 // ───────── 건물 안 엿보기 ─────────
 
 export function showObj(o: Building) {
   const d = def(o.kind);
-  const canUp = !!d.up && o.sprite !== d.up.sprite;
+  if (!S.visiting) {
+    if (o.kind === 'smith' && o.build === undefined) return openSmith(o);
+    if (o.kind === 'garden' && o.build === undefined) return openGarden(o);
+    if (o.kind === 'board' || o.kind === 'dungeon') return openBoard();
+  }
+  const cost = nextLevelCost(o);
+  const canUp = cost != null;
   const act = d.act;
   const doing = (act && INSIDE_TEXT[act]) || '머무는 중';
   const inside = o.inside.map((a) => `<div><img src="${portrait(a.kind)}" alt="">${esc(a.name)} · ${doing}</div>`).join('') || '<div>지금은 비어 있어요</div>';
@@ -181,7 +178,8 @@ export function showObj(o: Building) {
           ([n, h]) => `<button data-h="${h}" title="${n}" aria-label="${n}" class="${o.hue === h ? 'on' : ''}" style="background:${h == null ? '#8a8a96' : `hsl(${h} 55% 45%)`}"></button>`,
         ).join('')}</div>`
       : '';
-  const up = canUp && !S.visiting ? `<button class="bigbtn" id="upB">레벨업 · 더 큰 건물로 (${fmt(d.up!.cost)} G)</button>` : '';
+  const grows = d.up && o.sprite !== d.up.sprite ? '더 큰 건물로 · ' : '';
+  const up = canUp && !S.visiting ? `<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${grows}${d.levelText ?? ''} (${fmt(cost!)} G)</button>` : '';
   openWin(
     d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
     `<p class="sub">${d.desc}</p>${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
@@ -197,29 +195,23 @@ export function showObj(o: Building) {
   if (ub) ub.onclick = () => game.upgrade(o);
 }
 
-// ───────── 장부: 오늘의 수입 ─────────
-
-export function openLedger() {
-  const L = S.ledger;
-  const rows: [string, number, string][] = [
-    ['숙박', L.sleep, '#e8a23a'],
-    ['주점', L.drink, '#e8a23a'],
-    ['대장간', L.forge, '#e8a23a'],
-    ['온천', L.bath, '#e8a23a'],
-    ['던전', L.dungeon, '#9a7aff'],
-  ];
-  const max = Math.max(1, ...rows.map((r) => r[1]));
-  const total = rows.reduce((s, r) => s + r[1], 0);
-  const bars = rows
-    .map(([n, v, c]) => `<div class="bar"><span>${n}</span><i><b style="width:${Math.round((v / max) * 100)}%;background:${c}"></b></i><em>${fmt(v)}</em></div>`)
-    .join('');
-  openWin('장부', `<p class="sub">${S.day}일차 · 오늘의 수입</p>${bars}<p class="ledger-total">합계 ${fmt(total)} G</p><p class="note">날이 밝으면 새 장부가 시작돼요</p>`);
-}
-
 // ───────── 메뉴·계정 ─────────
 
 export function openMenu() {
-  openWin('메뉴', `<div class="menu"><button id="mIntro">오프닝 다시 보기</button><button id="mAcc">계정 · 클라우드 저장</button><button id="mTitle">타이틀로</button></div>`);
+  openWin(
+    '메뉴',
+    `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button></div>
+    <p class="sub" style="margin-top:10px">설정</p>
+    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><button id="mIntro">오프닝 다시 보기</button><button id="mAcc">계정 · 클라우드 저장</button><button id="mTitle">타이틀로</button></div>`,
+  );
+  $('#mGoal').onclick = () => openGoals();
+  $('#mBag').onclick = () => openBag();
+  $('#mDex').onclick = () => openDex();
+  $('#mBook').onclick = () => openLedger();
+  ($('#mAuto') as HTMLInputElement).onchange = (e) => {
+    Prog.autoSalvage = (e.target as HTMLInputElement).checked;
+    markDirty();
+  };
   $('#mIntro').onclick = () => {
     closeWin();
     game.replayOpening();

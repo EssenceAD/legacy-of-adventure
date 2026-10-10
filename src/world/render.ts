@@ -8,7 +8,8 @@ import { CONFIG } from '../data/config';
 import { IMG, META, recolored, tinted, tintColor } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
 import { P } from '../engine/pixel';
-import { charFrames } from '../engine/sprites';
+import { framesFor, type CharFrames } from '../engine/sprites';
+import { appearance } from './adventurers';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, type Wild } from './ground';
@@ -246,8 +247,19 @@ function drawGhostTiles(ctx: CanvasRenderingContext2D, pl: Placement) {
 }
 
 /** pose: 문 연출 중일 때 발 위치(월드 원점 기준)·뒷모습·방향 */
+/** 손님 겉모습 프레임 (끼운 무기가 바뀔 수 있으니 1초마다 다시 본다) */
+const LOOK = new WeakMap<Actor, { f: CharFrames; at: number }>();
+function looksOf(a: Actor): CharFrames {
+  const c = LOOK.get(a);
+  if (c && S.T - c.at < 1) return c.f;
+  const { key, def } = appearance(a);
+  const f = framesFor(key, def);
+  LOOK.set(a, { f, at: S.T });
+  return f;
+}
+
 function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
-  const s = charFrames(a.kind);
+  const s = looksOf(a);
   const T = S.T;
   let fr: HTMLCanvasElement;
   const dir = pose ? pose.dir : a.dir;
@@ -279,6 +291,14 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   // 수련: 흰 바람 / 밭일: 물방울
   if (a.st === 'atk' && Math.random() < 0.06) puff(X + a.dir * 12 - view.OX, Y - 16 - view.OY, '#ffffff', a.dir * 10, -4, 0.25, 1);
   if (a.st === 'pray' && Math.random() < 0.05) puff(X + a.dir * 8 - view.OX, Y - 12 - view.OY, '#8fd0ff', 0, 10, 0.5, 1);
+  // 영웅: 머리 위 금빛 별 / 전설 손님: 가끔 반짝
+  if (a.heroId && fade === 1) {
+    const p = P(ctx);
+    const b = Math.round(Math.sin(T * 3 + a.ph) * 1);
+    const c = a.status === 'hero' ? '#ffd36b' : '#cfd8ff';
+    p.rect(X - 1, Y - 37 + b, 3, 1, c);
+    p.rect(X, Y - 38 + b, 1, 3, c);
+  } else if (a.rarity === 'legend' && Math.random() < 0.03) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
   // 우체부 머리 위 !
   if (a.role === 'npc') {
     const b = Math.round(Math.sin(T * 5) * 1.5);

@@ -4,11 +4,17 @@ import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
 import { lookAt, N, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
-import { addPostman, fillGuests, leave, mkA, spawnActors } from './world/actors';
-import { resetDayNightClock, setNight } from './world/daynight';
+import { addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
+import { blankActor } from './world/adventurers';
+import { hourNow, settleNight } from './world/clock';
+import { clearEvents } from './world/events';
+import { ensureQuests } from './world/expeditions';
 import { clearBubbles, clearParts, floatW, puff, puffAt } from './world/fx';
-import { clearJobs, later, markDirty, S, world, type Building } from './world/state';
-import { addObj, astar, doorOf, findKind, landBounds, neighborTown, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
+import { itemById } from './world/items';
+import { computeOffline } from './world/offline';
+import { ensureGoals, stars } from './world/progress';
+import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
+import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { OPENING, talk } from './ui/dialogue';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
@@ -34,6 +40,7 @@ function hideTitle() {
 /** 화면 정리 (마을을 통째로 바꿀 때) */
 function resetScene() {
   clearJobs();
+  clearEvents();
   clearBubbles();
   clearParts();
   closeWin();
@@ -54,7 +61,7 @@ export function titleBackdrop() {
     S.land = 5;
     neighborTown(NEIGHBORS[1]);
     rebuildPaths();
-    spawnActors();
+    spawnExtras();
   }
   S.started = false;
   S.night = true;
@@ -72,14 +79,16 @@ export function newGame() {
   S.gold = CONFIG.economy.startGold;
   S.day = 1;
   S.innName = '';
+  S.clock = 0;
   for (const k of Object.keys(S.ledger) as (keyof typeof S.ledger)[]) S.ledger[k] = 0;
+  resetProgress();
   startTown();
   rebuildPaths();
-  spawnActors();
+  spawnStart();
   // 노주인 버나드가 여관 문 앞에 서 있다
   const inn = findKind('inn')!;
   const d = doorOf(inn);
-  const keeper = mkA('keeper', '버나드', d[0] - 0.6, d[1] + 0.4, 'keeper');
+  const keeper = blankActor('keeper', '버나드', d[0] - 0.6, d[1] + 0.4, 'keeper');
   world.actors.push(keeper);
   resetCamera();
   S.started = false;
@@ -89,9 +98,14 @@ export function newGame() {
   talk(OPENING, () => {
     S.started = true;
     showHud(true);
-    setNight(false);
+    // 1일차 06:00부터
     S.day = 1;
-    resetDayNightClock();
+    S.clock = 0;
+    settleNight();
+    S.nightT = 1;
+    P.lastSeen = Date.now();
+    ensureQuests();
+    ensureGoals();
     for (const a of world.actors) if (a.st === 'in') leave(a);
     keeperExit(keeper);
     syncHud();
@@ -122,11 +136,21 @@ export function continueGame() {
   applySave(save);
   S.started = true;
   S.nightT = S.night ? 1 : 0;
-  resetDayNightClock();
   resetCamera();
   showHud(true);
+  ensureQuests();
+  ensureGoals();
+  // 꺼져 있던 동안: 끝난 원정은 마을로 돌아와 있고, 요약 창을 띄운다
+  const off = computeOffline();
+  if (off) offlineHook(off);
   syncHud();
   refreshNoticeDot();
+}
+
+/** 방치 요약 창 (ui가 채운다) */
+let offlineHook: (s: NonNullable<ReturnType<typeof computeOffline>>) => void = () => {};
+export function setOfflineHook(fn: typeof offlineHook) {
+  offlineHook = fn;
 }
 
 /** 저장 → 마을 */
@@ -134,22 +158,30 @@ function applySave(d: SaveData) {
   S.land = d.land;
   S.gold = d.gold;
   S.day = d.day;
-  S.night = d.night;
+  S.clock = d.clock;
+  settleNight();
   S.innName = d.innName;
   Object.assign(S.ledger, d.ledger);
+  resetProgress(d.progress);
   world.objs = [];
   for (const b of d.buildings) {
-    const o = addObj(b.kind, b.tx, b.ty, { hue: b.hue });
+    const o = addObj(b.kind, b.tx, b.ty, { hue: b.hue, lvl: b.lvl, ...(b.plots ? { plots: b.plots } : {}) });
     const up = def(b.kind).up;
-    if (b.lvl > 1 && up) Object.assign(o, { fw: up.size[0], fh: up.size[1], sprite: up.sprite, lvl: b.lvl });
+    if (b.lvl > 1 && up) Object.assign(o, { fw: up.size[0], fh: up.size[1], sprite: up.sprite });
   }
   rebuildPaths();
-  world.actors = d.adventurers.map((a) => {
-    const x = mkA(a.kind as 'knight', a.name, a.x, a.y);
-    Object.assign(x, { lvl: a.lvl, hp: a.hp, food: a.food, mood: a.mood });
-    return x;
-  });
-  fillGuests();
+  world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
+  // 장비 주인 표시를 손님 쪽 기록에 맞춘다
+  for (const it of P.bag) it.owner = null;
+  for (const a of world.actors)
+    for (const s of ['weapon', 'armor', 'acc'] as const) {
+      const it = itemById(a.equip[s]);
+      if (it) it.owner = a.id;
+      else a.equip[s] = null;
+    }
+  // 원정 기록에 없는 runId는 지운다
+  for (const a of world.actors) if (a.runId != null && !P.runs.some((r) => r.id === a.runId && !r.result)) a.runId = null;
+  hideRunners();
   addPostman();
 }
 
@@ -183,6 +215,8 @@ export function replayOpening() {
 
 export function expandLand(l: number) {
   const cost = CONFIG.land[l - 1].cost;
+  const need = CONFIG.landStars[l - 1] ?? 0;
+  if (stars() < need) return toast(`평판 ★${need}이 필요해요`);
   if (S.gold < cost) return toast('금화가 모자라요');
   S.gold -= cost;
   S.land = l;
@@ -220,24 +254,22 @@ export function placeBuilding(pl: Placement): boolean {
     puffAt(o, '#fff3b0', 14);
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50, d.name + ' 완성!', 'big');
     rebuildPaths();
-    if (d.act === 'sleep') fillGuests();
     markDirty();
   });
   return true;
 }
 
 export function upgrade(o: Building) {
-  const up = def(o.kind).up;
-  if (!up) return;
-  if (S.gold < up.cost) return toast('금화가 모자라요');
+  const cost = nextLevelCost(o);
+  if (cost == null) return;
+  if (S.gold < cost) return toast('금화가 모자라요');
   if (!upgradeObj(o)) return toast('뒤쪽에 자리가 없어요 · 1칸 비워주세요');
-  S.gold -= up.cost;
+  S.gold -= cost;
   closeWin();
   rebuildPaths();
   o.pop = 1;
   puffAt(o, '#fff3b0', 20);
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 70, `${def(o.kind).name} Lv.${o.lvl}!`, 'big');
-  if (o.kind === 'inn') fillGuests();
   markDirty();
 }
 
@@ -271,7 +303,7 @@ export function visit(v: Neighbor) {
     S.visiting = v;
     neighborTown(v);
     rebuildPaths();
-    spawnActors();
+    spawnExtras();
     resetCamera();
     $('#visitbar').hidden = false;
     $('#vName').textContent = `${v.name} · ${v.owner}`;
@@ -318,7 +350,8 @@ export function goHome() {
 
 export function syncHud() {
   $('#innv').textContent = S.innName || '여관';
-  $('#dayv').textContent = `${S.day}일차 · ${S.night ? '밤' : '낮'}`;
+  $('#dayv').textContent = `${S.day}일차 · ${String(hourNow()).padStart(2, '0')}시`;
+  $('#starv').textContent = '★' + stars();
   $('#bDN').textContent = S.night ? '☀' : '☾';
 }
 

@@ -1,7 +1,8 @@
-// 낮밤: 45초마다 자동 전환, 1.1초에 걸쳐 부드럽게. 건물별 밤 색조와 창문 불빛.
+// 낮밤: 게임 시계(world/clock.ts)를 따라 22:00~06:00이 밤. 1.1초에 걸쳐 부드럽게. 건물별 밤 색조와 창문 불빛.
 import { CONFIG } from '../data/config';
 import { LIGHTS } from '../engine/assets';
 import { P } from '../engine/pixel';
+import { jumpTo, onNightFlip, tickClock } from './clock';
 import { S } from './state';
 
 const D = CONFIG.dayNight;
@@ -14,34 +15,14 @@ export function blendNight(dt: number) {
   NL = Math.round(S.nightT * D.tintSteps);
 }
 
-let onChange: ((night: boolean) => void) | null = null;
-export function onNightChange(fn: (night: boolean) => void) {
-  onChange = fn;
-}
+export const onNightChange = onNightFlip;
 
-/** 밤 ↔ 낮. 낮이 되면 날짜가 넘어간다 */
-export function setNight(v: boolean) {
-  if (S.night === v) return;
-  S.night = v;
-  if (!v) {
-    S.day++;
-    for (const k of Object.keys(S.ledger) as (keyof typeof S.ledger)[]) S.ledger[k] = 0;
-  }
-  onChange?.(v);
-}
+/** ☾/☀ 버튼·오프닝: 밤(22:00) 또는 다음 날 아침(06:00)으로 건너뛴다 */
+export const setNight = jumpTo;
 
-let clock = 0;
-/** 자동 전환 타이머 (paused = 창이 열렸거나 배치 중) */
-export function tickDayNight(dt: number, paused: boolean) {
-  if (!S.started || paused) return;
-  clock += dt;
-  if (clock >= D.cycleSeconds) {
-    clock = 0;
-    setNight(!S.night);
-  }
-}
-export function resetDayNightClock() {
-  clock = 0;
+/** 시계는 마을이 돌아가는 동안 늘 흐른다 (창이 열려 있어도) */
+export function tickDayNight(dt: number) {
+  if (S.started && !S.visiting) tickClock(dt);
 }
 
 /** 건물 하나를 그린 직후: 그 건물의 창문 불빛 (앞 건물이 나중에 그려지며 자연히 가린다) */

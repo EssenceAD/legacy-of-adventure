@@ -1,0 +1,140 @@
+// 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
+import {
+  CLASS_RACES, CLASS_STATS, CLASS_WEAPON, CLASSES, FACE_POOL, GUEST_KINDS, HAIR_COLORS, RACE_NAMES, RARITY_INFO,
+  type ClassDef, type ClassKey, type Face, type GuestKind, type Race, type Rarity,
+} from '../data/classes';
+import { CONFIG } from '../data/config';
+import { heroById } from '../data/heroes';
+import { GRADE_INFO, STATS, type StatKey } from '../data/items';
+import { P, pick, world, type Actor } from './state';
+import { equippedItems, itemStat, optSum } from './items';
+import { dexBonus, heroStarBonus } from './progress';
+
+const G = CONFIG.guests;
+
+/** npc(우체부·노주인)·이웃 마을 구경꾼처럼 저장하지 않는 캐릭터도 같은 모양으로 만든다 */
+export function blankActor(kind: ClassKey, name: string, x: number, y: number, role?: Actor['role']): Actor {
+  return {
+    kind, name, x, y, dir: 1, back: false, st: 'idle', t: Math.random() * 2, ph: Math.random() * 9, role, path: null,
+    lvl: 1, hp: 80, food: 80, mood: 80, hidden: false, at: null,
+    id: 0, race: 'human', rarity: 'common', xp: 0, status: 'visitor', leaveDay: 0, moodSum: 0, moodN: 0,
+    equip: { weapon: null, armor: null, acc: null }, runId: null,
+  };
+}
+
+const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
+
+/** 새 방문 손님 (또는 단골) */
+export function makeAdventurer(x: number, y: number, opt: { kind?: GuestKind; race?: Race; rarity?: Rarity; lvl?: number; status?: Actor['status']; day?: number } = {}): Actor {
+  const kind = opt.kind ?? pick(GUEST_KINDS);
+  const race = opt.race ?? pick(CLASS_RACES[kind]);
+  const roll = Math.random();
+  const rarity: Rarity = opt.rarity ?? (roll < G.legendChance ? 'legend' : roll < G.legendChance + G.rareChance ? 'special' : 'common');
+  const used = new Set(world.actors.map((a) => a.name));
+  const pool = RACE_NAMES[race].filter((n) => !used.has(n));
+  const a = blankActor(kind, pool.length ? pick(pool) : pick(RACE_NAMES[race]), x, y);
+  a.id = P.nextAdvId++;
+  a.race = race;
+  a.rarity = rarity;
+  a.status = opt.status ?? 'visitor';
+  a.lvl = opt.lvl ?? rnd(1, 4);
+  a.hp = rnd(60, 95);
+  a.food = rnd(50, 90);
+  a.mood = rnd(55, 85);
+  a.leaveDay = (opt.day ?? 1) + rnd(G.stayDaysMin, G.stayDaysMax);
+  if (rarity !== 'common') {
+    // 특별·전설은 얼굴·머리색이 무작위 조합
+    a.face = {
+      eyes: pick(FACE_POOL.eyes),
+      mouth: pick(FACE_POOL.mouth),
+      brow: pick(FACE_POOL.brow),
+      freckle: Math.random() < 0.3,
+      scar: Math.random() < 0.2,
+      glasses: Math.random() < 0.1,
+    };
+    a.hair = pick(HAIR_COLORS);
+  }
+  return a;
+}
+
+/** 영웅 손님 */
+export function makeHero(id: string, x: number, y: number): Actor {
+  const h = heroById(id)!;
+  const a = makeAdventurer(x, y, { kind: h.kind, race: h.race, rarity: 'legend', lvl: 10, status: 'visitor' });
+  a.name = h.name;
+  a.heroId = id;
+  a.hair = h.hair;
+  a.stars = 1;
+  a.leaveDay = 1e9;
+  return a;
+}
+
+// ───────── 능력치 · 경험치 ─────────
+
+const guestKind = (a: Actor): GuestKind => (GUEST_KINDS as readonly string[]).includes(a.kind) ? (a.kind as GuestKind) : 'knight';
+
+/** 레벨·희귀도로 정해지는 기본 능력치 */
+export function baseStats(a: Actor): Record<StatKey, number> {
+  const b = CLASS_STATS[guestKind(a)];
+  const mult = RARITY_INFO[a.rarity].mult * (a.heroId ? 1.25 : 1) * (1 + 0.12 * (a.lvl - 1));
+  const o = {} as Record<StatKey, number>;
+  for (const k of STATS) o[k] = Math.round(b[k] * mult);
+  return o;
+}
+
+/** 기본 + 장비 */
+export function totalStats(a: Actor): Record<StatKey, number> {
+  const o = baseStats(a);
+  for (const it of equippedItems(a)) for (const k of STATS) o[k] += itemStat(it, k);
+  return o;
+}
+
+export const xpToNext = (lvl: number) => 40 + lvl * 25;
+
+/** 경험치를 주고 레벨이 오르면 true */
+export function gainXp(a: Actor, n: number): boolean {
+  if (a.lvl >= G.maxLevel) return false;
+  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100));
+  let up = false;
+  while (a.lvl < G.maxLevel && a.xp >= xpToNext(a.lvl)) {
+    a.xp -= xpToNext(a.lvl);
+    a.lvl++;
+    up = true;
+  }
+  return up;
+}
+
+// ───────── 전투력 ─────────
+
+/**
+ * 전투력 = (레벨 기본치 + 장비 합) × (1 + 도감 보너스% + 영웅★ 보너스% + 장비 옵션 전투력%) × 케미 배율
+ * 성장 수단은 레벨·장비·도감·케미 넷뿐.
+ */
+export function powerOf(a: Actor, chemMult = 1): number {
+  const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
+  let gear = 0;
+  for (const it of equippedItems(a)) for (const k of STATS) gear += itemStat(it, k);
+  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100;
+  return Math.round((base + gear) * mult * chemMult);
+}
+
+// ───────── 겉모습 ─────────
+
+/** 그림에 쓸 직업 정의: 종족·얼굴·머리색·끼운 무기를 반영 */
+export function appearance(a: Actor): { key: string; def: ClassDef } {
+  const base = CLASSES[a.kind];
+  if (a.role || !(GUEST_KINDS as readonly string[]).includes(a.kind)) return { key: a.kind, def: base };
+  const def: ClassDef = { ...base, face: { ...base.face, ...(a.face as Face | undefined) } };
+  // 종족
+  def.elf = a.race === 'elf';
+  def.dwarf = a.race === 'dwarf' || a.race === 'halfling';
+  def.beard = a.race === 'dwarf' ? a.hair ?? base.beard ?? base.hair : undefined;
+  if (a.kind === 'dwarf' && a.race !== 'dwarf') def.helm = base.helm;
+  if (a.hair) def.hair = a.hair;
+  // 끼운 무기: 종류와 등급 색
+  const w = equippedItems(a).find((it) => it.slot === 'weapon');
+  def.weapon = w?.wkind ?? CLASS_WEAPON[guestKind(a)];
+  def.weaponColor = w && w.grade !== 'n' ? GRADE_INFO[w.grade].color : undefined;
+  const key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
+  return { key, def };
+}

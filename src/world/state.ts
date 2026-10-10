@@ -1,7 +1,8 @@
 // 게임 한 판의 공유 상태. 모든 world/ ui/ 모듈이 이 객체들을 함께 본다.
 import { CONFIG } from '../data/config';
 import type { Kind } from '../data/catalog';
-import type { ClassKey } from '../data/classes';
+import type { ClassKey, Race, Rarity, Face } from '../data/classes';
+import type { Grade, OptKey, RegionId, Slot, StatKey, WeaponKind } from '../data/items';
 import type { Neighbor } from '../data/neighbors';
 
 export interface Building {
@@ -21,6 +22,8 @@ export interface Building {
   build?: number;
   /** 완성·레벨업 때 살짝 튀는 연출 (1 → 0) */
   pop?: number;
+  /** 텃밭 칸 (작물, 심은 시각 ms) */
+  plots?: { crop: string | null; at: number }[];
 }
 
 export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';
@@ -72,6 +75,96 @@ export interface Actor {
   fading?: number;
   /** 문 열고 들어가기/나오기 중 */
   door?: DoorAnim | null;
+
+  // ── 2단계: 손님 = 수집 대상 ──
+  /** 저장용 번호 (npc는 0) */
+  id: number;
+  race: Race;
+  rarity: Rarity;
+  /** 특별·전설 손님의 고유 얼굴·머리색 */
+  face?: Face;
+  hair?: string;
+  xp: number;
+  /** 방문 손님 / 단골(내 모험가) / 영웅 */
+  status: 'visitor' | 'regular' | 'hero';
+  /** 방문 손님이 떠나는 날 */
+  leaveDay: number;
+  /** 머무는 동안 기분 평균 (단골 제안·일찍 떠나기 판단) */
+  moodSum: number;
+  moodN: number;
+  equip: Record<Slot, number | null>;
+  /** 원정 중이면 원정 번호 */
+  runId: number | null;
+  heroId?: string;
+  /** 영웅 별 (1~5) */
+  stars?: number;
+  /** 마을 밖으로 걸어 나가는 중 */
+  leaving?: boolean;
+  /** 지금 채우러 가는 욕구 (창에 표시) */
+  intent?: string;
+}
+
+// ═════════════ 2단계 저장 데이터 모양 ═════════════
+
+export interface ItemOpt {
+  k: OptKey;
+  v: number;
+  /** 지역 피해 옵션의 지역 */
+  region?: RegionId;
+}
+
+export interface Item {
+  id: number;
+  region: RegionId;
+  slot: Slot;
+  grade: Grade;
+  wkind?: WeaponKind;
+  name: string;
+  /** 기본 능력치 */
+  stats: Partial<Record<StatKey, number>>;
+  opts: ItemOpt[];
+  enh: number;
+  /** 세트 부위인가 (지역 세트) */
+  set: boolean;
+  /** 유물 고유 효과 */
+  uniq?: string;
+  /** 처음 얻은 칸이면 NEW! */
+  isNew?: boolean;
+  /** 끼고 있는 손님 id */
+  owner?: number | null;
+}
+
+export interface Quest {
+  id: number;
+  region: RegionId;
+  /** 걸리는 시간 단계 0~3 */
+  tier: number;
+  power: number;
+  minutes: number;
+  gold: [number, number];
+}
+
+export interface Run {
+  id: number;
+  quest: Quest;
+  members: number[];
+  start: number;
+  end: number;
+  /** 결과가 정해졌으면 */
+  result?: RunResult;
+  /** 마을로 돌아왔다(받기 끝) */
+  claimed?: boolean;
+}
+
+export interface RunResult {
+  win: boolean;
+  gold: number;
+  xp: number;
+  mats: number;
+  items: Item[];
+  report: [string, string][];
+  levelUps: string[];
+  newChem: string[];
 }
 
 export type IncomeKind = 'sleep' | 'drink' | 'forge' | 'bath' | 'dungeon';
@@ -94,7 +187,63 @@ export const S = {
   time: 0,
   /** 화면 애니메이션 시간 (초) */
   T: 0,
+  /** 오늘 06:00부터 흐른 게임 분 (현실 1분 = 게임 60분) */
+  clock: 0,
 };
+
+/** 2단계 진행 데이터 (전부 저장된다) */
+export function freshProgress() {
+  return {
+    nextAdvId: 1,
+    nextItemId: 1,
+    rep: 0,
+    bag: [] as Item[],
+    dust: { n: 0, r: 0, e: 0, l: 0, a: 0 } as Record<Grade, number>,
+    mats: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+    /** 텃밭 수확물 (주점 식사 품질) */
+    pantry: 0,
+    quests: { day: '', list: [] as Quest[], refreshUsed: 0, nextId: 1 },
+    runs: [] as Run[],
+    nextRunId: 1,
+    /** 지역별: 마지막 전설 이후 장비 수 (천장) */
+    pity: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+    dex: {
+      /** 종족|직업|희귀도 */
+      guests: [] as string[],
+      /** 지역|부위|등급 */
+      items: [] as string[],
+      /** 발견한 케미 짝 id */
+      chem: [] as string[],
+      heroes: {} as Record<string, { appeared: boolean; recruited: boolean; stars: number }>,
+      claimed: [] as string[],
+    },
+    /** 손님 둘 사이 친밀도 "id-id" → 짝 종류·경험치·단계 */
+    bonds: {} as Record<string, { pair: string; xp: number; lv: number }>,
+    counters: {
+      tavernMeals: 0,
+      campfireMax: 0,
+      enhanceMax: 0,
+      harvests: 0,
+      trains: 0,
+      crafted: {} as Record<string, number>,
+      regionWins: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+      expeditions: 0,
+    },
+    goals: { day: '', list: [] as { id: string; target: number; progress: number; claimed: boolean }[] },
+    /** 지난 7일(게임 날) 수입 */
+    week: [] as { day: number; gold: number }[],
+    autoSalvage: false,
+    /** 마지막으로 켜 있던 현실 시각 (방치 계산) */
+    lastSeen: Date.now(),
+    /** 게임 시간으로 마지막 손님 도착 판정 시각 (게임 시) */
+    lastArriveHour: 0,
+  };
+}
+export type Progress = ReturnType<typeof freshProgress>;
+export const P: Progress = freshProgress();
+export function resetProgress(p: Partial<Progress> = {}) {
+  Object.assign(P, freshProgress(), p);
+}
 
 export const world = {
   objs: [] as Building[],
@@ -129,10 +278,21 @@ export function clearJobs() {
 
 export const pick = <T>(a: readonly T[]): T => a[(Math.random() * a.length) | 0];
 
+/** 대화 한 줄: [누가(직업 키·narr·keeper…), 대사, 'name'이면 이름 짓기, 이름표 덮어쓰기] */
+export type TalkLine = [string, string, ('name' | undefined)?, string?];
+export interface TalkChoice {
+  label: string;
+  fn: () => void;
+}
+
 /** world → ui 알림 통로 (ui 모듈이 시작할 때 채운다. 서로 import가 꼬이지 않게) */
 export const uiHooks = {
   toast: (_text: string) => {},
   toastHtml: (_html: string) => {},
+  /** 대화창 (끝에 고르기 버튼을 달 수 있다) */
+  talk: (_lines: TalkLine[], _done?: () => void, _choices?: TalkChoice[]) => {},
+  /** 원정 결과 보고서 창 */
+  report: (_run: Run) => {},
 };
 
 /** 금화 벌기: 장부에 기록 (이웃 방문 중엔 안 번다) */

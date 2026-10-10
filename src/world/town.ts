@@ -161,7 +161,22 @@ export function rebuildPaths() {
   }
   const dg = findKind('dungeon');
   if (dg) lay(dg, true);
+  // 마을 입구 → 여관 문 (손님이 걸어 들어오는 길)
+  const [ex, ey] = entrance();
+  const pe = astar(ex, ey, hub[0], hub[1]);
+  if (pe) for (const [x, y] of pe) if (!grid[y][x]) pathT.add(y * N + x);
   pathT.add(hub[1] * N + hub[0]);
+}
+
+/** 마을 입구: 울타리 앞쪽(화면 아래) 가장자리에서 여관 문과 같은 줄의 빈 칸 */
+export function entrance(): [number, number] {
+  const [a, b] = landBounds();
+  const inn = findKind('inn');
+  const hx = inn ? doorOf(inn)[0] : Math.floor((a + b) / 2);
+  const y = b - 1;
+  for (let d = 0; d < b - a; d++)
+    for (const x of [hx - d, hx + d]) if (x >= a && x < b && !grid[y]?.[x]) return [x, y];
+  return [hx, y];
 }
 
 // ───────── 짓기 ─────────
@@ -226,10 +241,22 @@ export function suggestSpot(pl: Placement) {
   pl.tx = pl.ty = null;
 }
 
-/** 레벨업: 앞 꼭짓점은 그대로, 뒤로 커진다. 뒤가 막혔으면 false */
+/** 다음 레벨 비용 (최대 레벨이면 null) */
+export function nextLevelCost(o: Building): number | null {
+  const d = def(o.kind);
+  const lv = d.levels ?? (d.up ? [d.up.cost] : []);
+  return lv[o.lvl - 1] ?? null;
+}
+export const maxLevel = (k: Kind) => 1 + (def(k).levels?.length ?? (def(k).up ? 1 : 0));
+
+/** 레벨업. 그림이 커지는 레벨(첫 번째)은 앞 꼭짓점은 그대로, 뒤로 커진다. 뒤가 막혔으면 false */
 export function upgradeObj(o: Building, silent = false): boolean {
+  if (nextLevelCost(o) == null) return false;
   const up = def(o.kind).up;
-  if (!up || o.sprite === up.sprite) return false;
+  if (!up || o.sprite === up.sprite) {
+    o.lvl++;
+    return true;
+  }
   const nt = { kind: o.kind, tx: o.tx - (up.size[0] - o.fw), ty: o.ty - (up.size[1] - o.fh), fw: up.size[0], fh: up.size[1] };
   if (!silent && (!canPlace(nt, o) || blocksDoor(nt, o))) return false;
   Object.assign(o, { tx: nt.tx, ty: nt.ty, fw: nt.fw, fh: nt.fh, sprite: up.sprite, lvl: o.lvl + 1 });

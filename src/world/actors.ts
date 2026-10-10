@@ -1,62 +1,67 @@
-// 모험가 상태기계: 걷기 / 들어가기 / 수련 / 밭일 / 모닥불 / 잠 / 던전 파티 / 케미
-import { def, INSIDE_TEXT } from '../data/catalog';
-import { CHEM, GUEST_KINDS, NAMES, type GuestKind } from '../data/classes';
+// 손님 상태기계: 욕구(체력·배고픔·기분)를 채우러 다닌다 · 입구로 도착/떠남 · 단골 제안 · 영웅 · 케미 · 원정 파티 걷기
+import { def, INSIDE_TEXT, type Act } from '../data/catalog';
+import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
+import { josa } from '../data/josa';
+import { heroById } from '../data/heroes';
 import { sx } from '../engine/iso';
-import { canvas, dk, P } from '../engine/pixel';
+import { blankActor, gainXp, makeAdventurer, makeHero } from './adventurers';
+import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
+import { absHours, onNewDay } from './clock';
+import { queueEvent } from './events';
+import { dueRuns, resolveRun } from './expeditions';
 import { bldSay, floatW, puffAt, say } from './fx';
-import { earn, later, pick, S, uiHooks, world, type Actor, type ActorState, type Building } from './state';
+import { unequip } from './items';
+import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
+import { earn, later, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
-import { astar, capacity, doorOf, findKind, landBounds, walkable } from './town';
+import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
 
 const A = CONFIG.actors;
+const G = CONFIG.guests;
+const NE = CONFIG.needs;
 const LINES = CONFIG.lines;
+const clamp = (v: number) => Math.max(0, Math.min(100, v));
 
-export function mkA(kind: Actor['kind'], name: string, x: number, y: number, role?: Actor['role']): Actor {
-  return {
-    kind, name, x, y, dir: 1, back: false, st: 'idle', t: Math.random() * 2, ph: Math.random() * 9, role, path: null,
-    lvl: 3 + ((Math.random() * 12) | 0), hp: 60 + ((Math.random() * 40) | 0), food: 40 + ((Math.random() * 60) | 0),
-    mood: 50 + ((Math.random() * 50) | 0), hidden: false, at: null,
-  };
-}
+/** 손님(npc 제외) — 원정 나간 사람도 포함 */
+export const guestsOf = (list = world.actors) => list.filter((a) => !a.role && !a.leaving);
+const homeList = () => world.home?.actors ?? world.actors;
 
-/** 새 손님 한 명 (문 앞에서 나타남) */
-export function newGuest(x: number, y: number): Actor {
-  const used = new Set(world.actors.map((a) => a.name));
-  const k: GuestKind = pick(GUEST_KINDS);
-  const free = NAMES[k].filter((n) => !used.has(n));
-  const a = mkA(k, free.length ? pick(free) : pick(NAMES[k]), x, y);
-  a.pop = 0.4;
-  return a;
-}
+// ───────── 처음 배치 ─────────
 
-/** 손님 수를 정원에 맞춘다 (모자라면 여관 문 앞에서 나타남) */
-export function fillGuests() {
-  const inn = findKind('inn');
-  if (!inn) return;
-  const d = doorOf(inn);
-  const guests = world.actors.filter((a) => !a.role);
-  for (let i = guests.length; i < capacity(); i++) {
-    world.actors.push(newGuest(d[0] + (Math.random() * 2 - 1), d[1] + Math.random()));
-  }
-}
-
-/** 처음부터 손님을 채운다 + 우체부 모모 */
-export function spawnActors() {
+/** 새 게임: 노주인이 남겨 둔 단골 몇 명 + 우체부 */
+export function spawnStart() {
   world.actors = [];
   const inn = findKind('inn');
   if (!inn) return;
   const d = doorOf(inn);
-  for (let i = 0; i < capacity(); i++) {
-    const k = GUEST_KINDS[i % GUEST_KINDS.length];
-    world.actors.push(mkA(k, NAMES[k][Math.floor(i / GUEST_KINDS.length) % 3], d[0] + (Math.random() * 2 - 1), d[1] + Math.random()));
+  const kinds: GuestKind[] = ['knight', 'cleric', 'dwarf', 'rogue', 'mage'];
+  for (let i = 0; i < G.startRegulars; i++) {
+    const a = makeAdventurer(d[0] + (Math.random() * 2 - 1), d[1] + Math.random(), { kind: kinds[i], rarity: 'common', lvl: 3, status: 'regular' });
+    a.hp = a.food = a.mood = 80;
+    dexAddGuest(a);
+    world.actors.push(a);
   }
-  if (!S.visiting) addPostman();
+  addPostman();
+}
+
+/** 이웃 마을·타이틀 배경: 저장하지 않는 구경꾼들 */
+export function spawnExtras(n = capacity()) {
+  world.actors = [];
+  const inn = findKind('inn');
+  if (!inn) return;
+  const d = doorOf(inn);
+  for (let i = 0; i < n; i++) {
+    const k = GUEST_KINDS[i % GUEST_KINDS.length];
+    const a = blankActor(k, '손님', d[0] + (Math.random() * 2 - 1), d[1] + Math.random());
+    a.race = pick(['human', 'elf', 'dwarf', 'halfling'] as const);
+    world.actors.push(a);
+  }
 }
 
 export function addPostman() {
   const b = findKind('well') || findKind('inn')!;
-  world.actors.push(mkA('post', '모모', b.tx + 1.2, b.ty + 1.4, 'npc'));
+  world.actors.push(blankActor('post', '모모', b.tx + 1.2, b.ty + 1.4, 'npc'));
 }
 
 function goTo(a: Actor, tx: number, ty: number, then: () => void) {
@@ -73,45 +78,68 @@ function goTo(a: Actor, tx: number, ty: number, then: () => void) {
 
 const clampN = (v: number) => Math.max(0, Math.min(CONFIG.map.size - 1, v));
 
-/** 다음에 할 일 고르기 */
+// ───────── 다음에 할 일: 가장 낮은 욕구부터 ─────────
+
+const ready = () => world.objs.filter((o) => def(o.kind).act && o.kind !== 'dungeon' && o.build === undefined);
+const byAct = (acts: Act[]) => ready().filter((o) => acts.includes(def(o.kind).act!));
+
+/** 채울 욕구를 고른다 (seekBelow 아래 중 가장 낮은 것) */
+function needTarget(a: Actor): { b: Building; why: string } | null {
+  const needs: ['hp' | 'food' | 'mood', number][] = [['hp', a.hp], ['food', a.food], ['mood', a.mood]];
+  needs.sort((p, q) => p[1] - q[1]);
+  for (const [k, v] of needs) {
+    if (v >= NE.seekBelow) break;
+    let opts: Building[] = [];
+    if (k === 'hp') opts = S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
+    if (k === 'food') opts = byAct(['drink']).length ? byAct(['drink']) : byAct(['sleep']);
+    if (k === 'mood') opts = S.night ? byAct(['fire', 'bath', 'drink']) : byAct(['bath', 'drink', 'farm']);
+    if (opts.length) return { b: pick(opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
+  }
+  return null;
+}
+
 function choose(a: Actor) {
-  if (a.role) {
+  a.intent = undefined;
+  if (a.role || a.leaving) {
     a.st = 'idle';
     a.t = 3;
     return;
   }
-  const r = Math.random();
-  const blds = world.objs.filter((o) => def(o.kind).act && o.kind !== 'dungeon' && !o.build);
   let want: Building | null = null;
-  if (S.night) {
-    const fire = blds.find((o) => o.kind === 'fire');
-    const beds = blds.filter((o) => def(o.kind).act === 'sleep');
-    if (fire && r < A.nightFireChance) want = fire;
-    else if (beds.length) want = pick(beds);
-  } else if (r < A.dayBuildingChance) {
-    // 낮: 모닥불은 밤에만
-    const day = blds.filter((o) => def(o.kind).act !== 'fire');
-    const nb = day.filter((o) => def(o.kind).act !== 'sleep');
-    want = nb.length && Math.random() < A.nonSleepChance ? pick(nb) : day.length ? pick(day) : null;
+  const need = needTarget(a);
+  if (need) {
+    want = need.b;
+    a.intent = need.why;
+  } else {
+    const r = Math.random();
+    const blds = ready();
+    if (S.night) {
+      const fire = blds.find((o) => o.kind === 'fire');
+      const beds = blds.filter((o) => def(o.kind).act === 'sleep');
+      if (fire && r < A.nightFireChance) want = fire;
+      else if (beds.length) want = pick(beds);
+    } else if (r < A.dayBuildingChance) {
+      const day = blds.filter((o) => def(o.kind).act !== 'fire');
+      const nb = day.filter((o) => def(o.kind).act !== 'sleep');
+      want = nb.length && Math.random() < A.nonSleepChance ? pick(nb) : day.length ? pick(day) : null;
+    }
   }
   if (want) {
     const act = def(want.kind).act;
     let dx: number;
     let dy: number;
     if (want.kind === 'fire') {
-      // 모닥불 옆자리
       dx = want.tx + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.5 ? 1 : 0);
       dy = want.ty + 1;
     } else if (act === 'train' || act === 'farm') {
-      // 훈련장·텃밭은 안으로 걸어 들어간다
-      dx = want.tx + 1 + ((Math.random() * 2) | 0) - 1 + 1;
+      dx = want.tx + 1 + ((Math.random() * 2) | 0);
       dy = want.ty + 1 + ((Math.random() * 2) | 0);
     } else [dx, dy] = doorOf(want);
     const w = want;
     goTo(a, clampN(dx), clampN(dy), () => enter(a, w));
     return;
   }
-  // 산책
+  // 산책 (우물·나무 곁이면 기분 조금 +)
   const [lo, hi] = landBounds();
   let tx: number;
   let ty: number;
@@ -123,7 +151,9 @@ function choose(a: Actor) {
   goTo(a, tx, ty, () => {
     a.st = 'idle';
     a.t = 1 + Math.random() * 2;
-    if (Math.random() < A.idleTalkChance) say(a, pick(LINES.idle));
+    const deco = world.objs.some((o) => (o.kind === 'well' || o.kind === 'tree' || o.kind === 'pine') && Math.abs(o.tx - a.x) + Math.abs(o.ty - a.y) <= 2);
+    if (deco) a.mood = clamp(a.mood + NE.decoMood / 3);
+    if (Math.random() < A.idleTalkChance) say(a, pick(a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : LINES.idle));
     chem(a);
   });
 }
@@ -139,13 +169,18 @@ export function enter(a: Actor, o: Building) {
     a.t = A.trainMin + Math.random() * (A.trainMax - A.trainMin);
     say(a, pick(LINES.train), 0.5);
     later(2, () => {
-      if (!S.visiting && Math.random() < A.trainLevelUpChance) a.lvl += 1;
+      if (S.visiting || !a.id) return;
+      a.hp = clamp(a.hp + NE.trainHp);
+      P.counters.trains++;
+      track('train');
+      if (gainXp(a, NE.trainXp)) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
     });
     return;
   }
   if (act === 'farm') {
     a.st = 'pray';
     a.t = A.farmTime;
+    a.mood = clamp(a.mood + NE.farmMood);
     say(a, pick(LINES.farm), 0.5);
     return;
   }
@@ -153,11 +188,15 @@ export function enter(a: Actor, o: Building) {
     a.st = 'sit';
     a.dir = a.x < o.tx + 0.5 ? 1 : -1;
     a.t = A.fireMin + Math.random() * (A.fireMax - A.fireMin);
-    // 모닥불 가에 궁합 짝이 있으면 케미, 아니면 혼잣말
+    a.mood = clamp(a.mood + NE.fireMood);
+    // 모닥불에 둘러앉은 수 (영웅 조건)
+    if (!S.visiting) {
+      const n = world.actors.filter((b) => b.st === 'sit' && b.at === o).length;
+      P.counters.campfireMax = Math.max(P.counters.campfireMax, n);
+    }
     if (!chem(a)) say(a, pick(LINES.fire), 0.5);
     return;
   }
-  // 문이 있는 건물은 문을 열고 걸어 들어간다
   if (hasDoor(o)) {
     startDoor(a, o, 'in', () => goInside(a, o));
     return;
@@ -165,7 +204,29 @@ export function enter(a: Actor, o: Building) {
   goInside(a, o);
 }
 
-/** 안으로 들어간다 (사라지고 지붕 위 숫자가 오른다) */
+/** 건물 안에서 욕구가 채워진다 */
+function fillNeeds(a: Actor, act: Act | undefined) {
+  if (act === 'sleep') {
+    a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp));
+    // 주점이 없으면 여관에서 간단한 끼니가 나온다
+    if (!byAct(['drink']).length) a.food = clamp(a.food + NE.meal * 0.6);
+  } else if (act === 'drink') {
+    if (!S.visiting && a.id && P.pantry > 0) {
+      // 텃밭 채소가 있으면 더 든든한 식사
+      P.pantry--;
+      a.food = clamp(a.food + NE.mealWithProduce);
+      a.mood = clamp(a.mood + NE.mealProduceMood);
+    } else a.food = clamp(a.food + NE.meal);
+    if (!S.visiting && a.id) {
+      P.counters.tavernMeals++;
+      track('meal');
+    }
+  } else if (act === 'bath') {
+    a.hp = clamp(a.hp + NE.bathHp);
+    a.mood = clamp(a.mood + NE.bathMood);
+  } else if (act === 'forge') a.mood = clamp(a.mood + 4);
+}
+
 function goInside(a: Actor, o: Building) {
   if (!world.objs.includes(o)) return choose(a);
   const act = def(o.kind).act;
@@ -175,6 +236,7 @@ function goInside(a: Actor, o: Building) {
   a.t = act === 'sleep' ? (S.night ? A.stay.sleepNight : A.stay.sleepDay) : A.stay.otherMin + Math.random() * (A.stay.otherMax - A.stay.otherMin);
   puffAt(o, '#efe2c6', 3);
   if (act && act !== 'sleep' && LINES[act]) bldSay(o, pick(LINES[act]));
+  fillNeeds(a, act);
   const income = act ? CONFIG.economy.income[act] : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
@@ -182,11 +244,9 @@ function goInside(a: Actor, o: Building) {
   }
 }
 
-/** 건물에서 나온다: 문 앞에 다시 나타남 */
 export function leave(a: Actor) {
   const o = a.at;
   if (o && a.hidden && hasDoor(o) && world.objs.includes(o)) {
-    // 문을 열고 걸어 나온다
     o.inside = o.inside.filter((x) => x !== a);
     const d = doorOf(o);
     a.x = d[0];
@@ -210,7 +270,6 @@ export function leave(a: Actor) {
   choose(a);
 }
 
-/** 문 연출 시작 */
 function startDoor(a: Actor, o: Building, dir: 'in' | 'out', then: () => void) {
   a.st = 'door';
   a.path = null;
@@ -219,7 +278,6 @@ function startDoor(a: Actor, o: Building, dir: 'in' | 'out', then: () => void) {
     : { o, dir, phase: 'step', t: 0, dur: A.doorSeconds, then };
 }
 
-/** 문 연출 진행: 들어가기 walk→step→안으로, 나오기 step→walk→다음 할 일 */
 function stepDoor(a: Actor, dt: number) {
   const d = a.door!;
   d.t += dt;
@@ -236,50 +294,344 @@ function stepDoor(a: Actor, dt: number) {
   }
 }
 
-/** 케미: 궁합 쌍이 가까이서 쉬면(서 있거나 모닥불에 앉아 있거나) 마주 보고 대사 + ♥ */
+/** 건물 안·문 연출 중이면 꺼낸다 (원정 출발·떠나기 전에) */
+function pullOut(a: Actor) {
+  if (a.at) {
+    a.at.inside = a.at.inside.filter((x) => x !== a);
+    if (a.hidden) {
+      const d = doorOf(a.at);
+      a.x = d[0];
+      a.y = d[1];
+      a.pop = 0.4;
+    }
+    a.at = null;
+  }
+  a.door = null;
+  a.hidden = false;
+}
+
+// ───────── 케미 ─────────
+
+/** 짝 조합이 가까이서 쉬면 마주 보고 대사 + ♥. 처음 보는 짝이면 「새 케미 발견!」 */
 function chem(a: Actor): boolean {
   a.back = false;
   if (Math.random() > A.chemChance) return false;
-  const pairOf = (p: string, q: string) => CHEM.find((c) => (c[0] === p && c[1] === q) || (c[1] === p && c[0] === q));
   const resting = (b: Actor) => b.st === 'idle' || b.st === 'sit';
   const o = world.actors.find(
-    (b) => b !== a && !b.hidden && !b.party && resting(b) && !b.role && Math.hypot(b.x - a.x, b.y - a.y) < A.chemDistance && pairOf(a.kind, b.kind),
+    (b) => b !== a && !b.hidden && !b.party && !b.leaving && resting(b) && !b.role && Math.hypot(b.x - a.x, b.y - a.y) < A.chemDistance && pairOf(a, b),
   );
   if (!o) return false;
-  const c = pairOf(a.kind, o.kind)!;
-  const [f, s] = c[0] === a.kind ? [a, o] : [o, a];
+  const pair = pairOf(a, o)!;
+  const [f, s] = [a, o];
   f.dir = sx(s.x, s.y) > sx(f.x, f.y) ? 1 : -1;
   s.dir = f.dir === 1 ? -1 : 1;
   f.back = s.back = false;
-  // 앉아 있던 손님은 그대로 앉아서 이야기한다
   for (const b of [f, s]) {
     if (b.st !== 'sit') b.st = 'idle';
     b.t = Math.max(b.t, 3.6);
   }
-  say(f, c[2], 1, 'chem');
-  later(1.1, () => say(s, c[3], 1, 'chem'));
-  later(1.9, () => floatW((f.x + s.x) / 2, (f.y + s.y) / 2, 34, '♥ 케미 +1', 'heart'));
+  say(f, pair.meet[0], 1, 'chem');
+  later(1.1, () => say(s, pair.meet[1], 1, 'chem'));
   chemWait = A.chemCooldown;
+  if (S.visiting) {
+    later(1.9, () => floatW((f.x + s.x) / 2, (f.y + s.y) / 2, 34, '♥', 'heart'));
+    return true;
+  }
+  const g = addBond(f, s, CONFIG.chem.townXp);
+  f.mood = clamp(f.mood + NE.chemMood);
+  s.mood = clamp(s.mood + NE.chemMood);
+  track('chem');
+  markDirty();
+  later(1.9, () => floatW((f.x + s.x) / 2, (f.y + s.y) / 2, 34, g?.discovered ? '새 케미 발견!' : '♥ 케미 +1', g?.discovered ? 'heart big' : 'heart'));
+  if (g?.discovered) uiHooks.toast(`새 케미 발견! 「${pair.name}」 — ${f.name} & ${s.name}`);
+  if (g?.levelUp) queueChemTalk(f, s, g.levelUp);
   return true;
+}
+
+/** 친밀도 단계가 오르면 짧은 대화 이벤트 */
+export function queueChemTalk(f: Actor, s: Actor, lv: number) {
+  const pair = pairOf(f, s);
+  if (!pair) return;
+  const t = pair.talks[lv - 2];
+  if (!t) return;
+  queueEvent(() =>
+    uiHooks.talk([
+      ['narr', `「${pair.name}」 ${f.name} & ${s.name} — 친밀도 ${lv}단계!`],
+      [f.kind, t[0], undefined, f.name],
+      [s.kind, t[1], undefined, s.name],
+    ]),
+  );
 }
 
 let chemWait = 0;
 let chemScan = 0;
-/** 1초마다: 쉬고 있는 손님 중 궁합 짝이 가까이 있으면 케미 (뜬 뒤엔 잠시 쉼) */
 function scanChem(dt: number) {
   chemWait -= dt;
   chemScan -= dt;
   if (chemScan > 0 || chemWait > 0) return;
   chemScan = A.chemScanSeconds;
   for (const a of world.actors) {
-    if (a.role || a.hidden || a.party || a.bub || (a.st !== 'idle' && a.st !== 'sit')) continue;
+    if (a.role || a.hidden || a.party || a.leaving || a.bub || (a.st !== 'idle' && a.st !== 'sit')) continue;
     if (chem(a)) return;
   }
 }
 
-/** 30fps 규칙 갱신 */
+// ───────── 손님 오고 가기 ─────────
+
+/** 입구에서 새 손님이 걸어 들어온다 (자리가 없으면 안 온다) */
+export function arrive(a?: Actor): Actor | null {
+  const [ex, ey] = entrance();
+  if (!a) {
+    if (guestsOf().length >= capacity()) return null;
+    a = makeAdventurer(ex, ey, { day: S.day });
+  } else {
+    a.x = ex;
+    a.y = ey;
+  }
+  a.pop = 0.4;
+  world.actors.push(a);
+  const fresh = dexAddGuest(a);
+  track('guestArrive');
+  markDirty();
+  const tag = a.rarity !== 'common' ? `<b style="color:${RARITY_INFO[a.rarity].color}">${RARITY_INFO[a.rarity].name}</b> ` : '';
+  uiHooks.toastHtml(`<span>${tag}새 손님 ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
+  // 입구에서 여관 문까지 걸어 들어온다
+  const inn = findKind('inn');
+  const who = a;
+  if (inn) {
+    const d = doorOf(inn);
+    goTo(a, d[0], d[1], () => enter(who, inn));
+  }
+  return a;
+}
+
+/** 입구로 걸어 나가 사라진다 */
+export function sendAway(a: Actor, happy: boolean) {
+  pullOut(a);
+  a.leaving = true;
+  a.party = false;
+  for (const s of ['weapon', 'armor', 'acc'] as const) unequip(a, s);
+  addRep(happy ? CONFIG.reputation.happyLeave : CONFIG.reputation.angryLeave);
+  say(a, happy ? '잘 쉬다 가요!' : '다신 안 올래…', 1);
+  const [ex, ey] = entrance();
+  const vanish = () => {
+    a.fading = 0.6;
+  };
+  const p = astar(a.x, a.y, ex, ey);
+  if (!p) vanish();
+  else {
+    a.path = p;
+    a.st = 'walk';
+    a.then = vanish;
+  }
+  markDirty();
+}
+
+const regularsCount = () => guestsOf().filter((x) => x.status !== 'visitor').length;
+
+/** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 */
+function propose(a: Actor) {
+  queueEvent(() => {
+    if (!world.actors.includes(a) || a.leaving) return;
+    const regs = regularsCount();
+    uiHooks.talk(
+      [
+        [a.kind, `${S.innName || '여관'}… 정말 마음에 들어요. 여기 눌러앉아도 될까요?`, undefined, a.name],
+        ['narr', `단골이 되면 원정에 보낼 수 있어요. (단골 ${regs}/${capacity()})`],
+      ],
+      undefined,
+      [
+        {
+          label: '단골로 받기',
+          fn: () => {
+            if (regularsCount() >= capacity()) {
+              uiHooks.toast('단골 자리가 없어요 · 여관 레벨업이나 별채로 늘려요');
+              return sendAway(a, true);
+            }
+            a.status = 'regular';
+            addRep(CONFIG.reputation.newRegular);
+            floatW(a.x, a.y, 40, '단골 등록!', 'big');
+            markDirty();
+          },
+        },
+        { label: '보내 주기', fn: () => sendAway(a, true) },
+      ],
+    );
+  }, 'prop' + a.id);
+}
+
+/** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
+export function dailyGuests() {
+  if (S.visiting) return;
+  for (const a of guestsOf()) {
+    if (a.status !== 'visitor' || a.heroId || a.runId != null) continue;
+    const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
+    if (avg < G.leaveMood) sendAway(a, false);
+    else if (S.day >= a.leaveDay) {
+      if (avg >= G.regularMood && regularsCount() < capacity()) propose(a);
+      else sendAway(a, true);
+    }
+  }
+}
+onNewDay(dailyGuests);
+
+/** 영웅이 나타난다: 입구로 걸어 들어와 부탁을 남긴다 */
+function heroArrive(id: string) {
+  const h = heroById(id)!;
+  P.dex.heroes[id] = { appeared: true, recruited: false, stars: 1 };
+  const [ex, ey] = entrance();
+  arrive(makeHero(id, ex, ey));
+  queueEvent(() =>
+    uiHooks.talk([
+      ['narr', `방랑자의 서 — 「${h.title}」 ${h.name}${josa(h.name, "가")} 나타났다!`],
+      ...h.intro.map((t) => [h.kind, t, undefined, h.name] as [string, string, undefined, string]),
+      [h.kind, `부탁: ${h.request.text}`, undefined, h.name],
+    ]),
+  );
+}
+
+/** 부탁을 들어주면 동료가 된다 */
+function heroCheck() {
+  const c = heroCtx();
+  for (const a of guestsOf()) {
+    if (!a.heroId || a.status === 'hero') continue;
+    const h = heroById(a.heroId);
+    if (!h || !h.request.done(c)) continue;
+    a.status = 'hero';
+    P.dex.heroes[h.id] = { appeared: true, recruited: true, stars: P.dex.heroes[h.id]?.stars ?? 1 };
+    addRep(10);
+    markDirty();
+    queueEvent(() =>
+      uiHooks.talk([
+        [h.kind, '약속을 지켜 줬군. 이제부터 이 여관의 동료가 되겠다.', undefined, h.name],
+        ['narr', `${h.name} 영입! 고유 기술 「${h.skill.name}」 · 계정 전투력 +${Math.round(h.bonus * 100)}%`],
+      ]),
+    );
+  }
+}
+
+// ───────── 게임 시간 흐름: 욕구 · 도착 · 영웅 ─────────
+
+let hourAcc = 0;
+function tickGuests(dt: number) {
+  const gh = dt / CONFIG.clock.realSecondsPerGameHour;
+  const list = guestsOf();
+  const crowded = list.length > capacity();
+  for (const a of list) {
+    if (a.runId != null) continue;
+    a.food = clamp(a.food + NE.foodPerHour * gh);
+    const low = (a.hp < NE.lowBelow ? 1 : 0) + (a.food < NE.lowBelow ? 1 : 0);
+    a.mood = clamp(a.mood + (low * NE.moodLowNeedPerHour + (crowded ? NE.moodCrowdedPerHour : 0)) * gh);
+  }
+  hourAcc += gh;
+  if (hourAcc < 1) return;
+  hourAcc -= 1;
+  // 한 시간마다: 기분 기록 · 손님 도착 · 영웅
+  for (const a of list) {
+    if (a.status !== 'visitor') continue;
+    a.moodSum += a.mood;
+    a.moodN++;
+  }
+  const h = absHours();
+  if (h - P.lastArriveHour >= G.arriveEveryGameHours || h < P.lastArriveHour) {
+    P.lastArriveHour = h;
+    if (Math.random() < G.arriveChance) arrive();
+  }
+  const hero = heroReady();
+  if (hero) heroArrive(hero);
+  heroCheck();
+}
+
+// ───────── 원정 파티: 던전 입구까지 걸어가 사라지고, 끝나면 돌아온다 ─────────
+
+export function departParty(run: Run) {
+  const dg = (world.home?.objs ?? world.objs).find((o) => o.kind === 'dungeon');
+  const members = homeList().filter((a) => run.members.includes(a.id));
+  for (const a of members) {
+    pullOut(a);
+    a.party = true;
+    a.intent = undefined;
+    a.then = null;
+    if (!dg || S.visiting) {
+      a.hidden = true;
+      a.st = 'in';
+      continue;
+    }
+    const d = doorOf(dg);
+    const p = astar(a.x, a.y, d[0], d[1]);
+    const hide = () => {
+      a.hidden = true;
+      a.st = 'in';
+      puffAt(dg, '#b07aff', 6);
+    };
+    if (!p) hide();
+    else {
+      a.path = p;
+      a.st = 'walk';
+      a.then = hide;
+    }
+  }
+  if (members[0] && !S.visiting) say(members[0], pick(LINES.party), 1, 'chem');
+}
+
+/** 저장에서 불러올 때: 원정 중인 손님은 던전 안에 숨겨 둔다 */
+export function hideRunners() {
+  const dg = findKind('dungeon');
+  for (const a of world.actors) {
+    if (a.runId == null) continue;
+    a.party = true;
+    a.hidden = true;
+    a.st = 'in';
+    if (dg) [a.x, a.y] = doorOf(dg);
+  }
+}
+
+/** 원정이 끝난 파티를 마을로 (보고서는 이벤트 줄로) */
+export function returnParty(run: Run, report = true) {
+  const list = homeList();
+  const dg = (world.home?.objs ?? world.objs).find((o) => o.kind === 'dungeon');
+  for (const a of list) {
+    if (a.runId !== run.id) continue;
+    a.runId = null;
+    a.party = false;
+    a.hidden = false;
+    a.path = null;
+    a.then = null;
+    a.st = 'idle';
+    a.t = 0.5;
+    a.pop = 0.4;
+    if (dg) [a.x, a.y] = doorOf(dg);
+  }
+  if (dg && !S.visiting && run.result) {
+    puffAt(dg, '#ffd36b', 16);
+    floatW(dg.tx + 1, dg.ty + 3, 30, '+' + run.result.gold);
+  }
+  if (report) queueEvent(() => uiHooks.report(run), 'run' + run.id);
+}
+
+let runScan = 0;
+function updRuns(dt: number) {
+  runScan -= dt;
+  if (runScan > 0) return;
+  runScan = 0.5;
+  for (const r of dueRuns()) {
+    const bonds: BondGain[] = [];
+    resolveRun(r, bonds);
+    for (const g of bonds) if (g.levelUp) queueChemTalk(g.a, g.b, g.levelUp);
+    if (bonds.some((g) => g.discovered)) uiHooks.toast('원정에서 새 케미 발견!');
+    returnParty(r);
+    markDirty();
+  }
+}
+
+// ───────── 30fps 규칙 갱신 ─────────
+
 export function updActors(dt: number) {
-  if (S.started && !S.visiting) scanChem(dt);
+  if (S.started) updRuns(dt);
+  if (S.started && !S.visiting) {
+    scanChem(dt);
+    tickGuests(dt);
+  }
   for (const a of world.actors) {
     a.t -= dt;
     if (a.pop) a.pop = Math.max(0, a.pop - dt);
@@ -307,7 +659,6 @@ export function updActors(dt: number) {
       const d = Math.hypot(dx, dy);
       const ds = sx(dx, dy);
       if (Math.abs(ds) > 0.01) a.dir = ds > 0 ? 1 : -1;
-      // 화면 안쪽(위)으로 가면 뒷모습
       if (Math.abs(dx) + Math.abs(dy) > 0.01) a.back = dx + dy < 0;
       if (d <= sp) {
         a.x = nx[0];
@@ -317,8 +668,8 @@ export function updActors(dt: number) {
         a.x += (dx / d) * sp;
         a.y += (dy / d) * sp;
       }
-    } else if (a.party) {
-      // 던전 안
+    } else if (a.party || a.leaving) {
+      // 던전 안 / 떠나는 중
     } else if (a.st === 'in') {
       if (a.t <= 0) {
         if (S.night && a.at && def(a.at.kind).act === 'sleep' && Math.random() < A.nightStayMore) {
@@ -332,135 +683,22 @@ export function updActors(dt: number) {
       choose(a);
     }
   }
+  const before = world.actors.length;
   world.actors = world.actors.filter((a) => a.fading === undefined || a.fading > 0);
-}
-
-// ───────── 던전 파티: 파밍 루프 ─────────
-
-const LOOT: ['n' | 'r' | 'e' | 'l', string, string][] = [
-  ['r', '바람의 단검', 'sword'],
-  ['e', '심연의 반지', 'ring'],
-  ['r', '은빛 흉갑', 'armor'],
-  ['n', '낡은 지도 조각', 'map'],
-  ['l', '별조각 투구', 'helm'],
-];
-
-/** 아이템 아이콘 (한 번 그린 건 재사용 — PNG로 바꾸는 게 느리다) */
-const ICON_CACHE: Record<string, string> = {};
-function itemIcon(kind: string, rar: 'n' | 'r' | 'e' | 'l') {
-  return (ICON_CACHE[kind + rar] ??= drawItemIcon(kind, rar));
-}
-function drawItemIcon(kind: string, rar: 'n' | 'r' | 'e' | 'l') {
-  const c = canvas(16, 16);
-  const p = P(c.getContext('2d')!);
-  const col = { n: '#9a8a70', r: '#4f8fe0', e: '#a35bd6', l: '#f2a13a' }[rar];
-  p.rect(0, 0, 16, 16, '#1c1018');
-  p.rect(1, 1, 14, 14, dk(col, 0.45));
-  p.rect(1, 1, 14, 1, col);
-  p.rect(1, 14, 14, 1, col);
-  p.rect(1, 1, 1, 14, col);
-  p.rect(14, 1, 1, 14, col);
-  if (kind === 'sword') {
-    for (let i = 0; i < 7; i++) p.px(4 + i, 11 - i, '#e9eef7');
-    p.rect(3, 10, 3, 3, '#e8b94a');
-  }
-  if (kind === 'ring') {
-    p.ell(8, 9, 3.5, 3.5, '#e8b94a');
-    p.ell(8, 9, 2, 2, dk(col, 0.45));
-    p.rect(7, 3, 3, 3, '#c98ae0');
-  }
-  if (kind === 'armor') {
-    p.rect(4, 4, 8, 8, '#c9d1dc');
-    p.rect(6, 4, 4, 2, dk(col, 0.45));
-  }
-  if (kind === 'map') {
-    p.rect(3, 4, 10, 8, '#e9dcc0');
-    p.px(6, 7, '#b0412f');
-    p.px(9, 9, '#b0412f');
-  }
-  if (kind === 'helm') {
-    p.ell(8, 8, 4, 4, '#c9d1dc');
-    p.rect(4, 8, 8, 3, '#c9d1dc');
-    p.rect(6, 9, 4, 1, '#1c1018');
-    p.px(8, 3, '#6fd0ff');
-  }
-  return c.toDataURL();
-}
-
-/** 부팅 때 아이템 아이콘을 미리 그려 둔다 (던전 귀환 순간에 끊기지 않게) */
-export function warmItemIcons() {
-  for (const [rar, , kind] of LOOT) itemIcon(kind, rar);
-}
-
-/** 15초마다: 2~3명이 파티로 던전 문까지 걸어가 사라짐 → 6초 뒤 귀환 + 아이템 + 금화 */
-export function launchParty(blocked: boolean) {
-  if (S.visiting || !S.started || blocked) return;
-  const dg = findKind('dungeon');
-  if (!dg) return;
-  const D = CONFIG.dungeon;
-  const pool = world.actors.filter((a) => !a.role && !a.hidden && !a.party && a.st !== 'in' && a.st !== 'door');
-  if (pool.length < D.partyMin) return;
-  const size = Math.min(D.partyMin + ((Math.random() * (D.partyMax - D.partyMin + 1)) | 0), pool.length);
-  const team = pool.sort(() => Math.random() - 0.5).slice(0, size);
-  const d = doorOf(dg);
-  let arrived = 0;
-  const members: Actor[] = [];
-  for (const a of team) {
-    const p = astar(a.x, a.y, d[0], d[1]);
-    if (!p) continue;
-    if (a.at) {
-      a.at.inside = a.at.inside.filter((x) => x !== a);
-      a.at = null;
-    }
-    a.party = true;
-    a.path = p;
-    a.st = 'walk';
-    members.push(a);
-  }
-  if (members.length < D.partyMin) {
-    for (const a of members) {
-      a.party = false;
-      a.path = null;
-      a.st = 'idle';
-      a.t = 0.5;
-    }
-    return;
-  }
-  say(members[0], pick(LINES.party), 1, 'chem');
-  for (const a of members) {
-    a.then = () => {
-      a.hidden = true;
-      a.st = 'in' as ActorState;
-      puffAt(dg, '#b07aff', 6);
-      if (++arrived === members.length) later(D.insideSeconds, back);
-    };
-  }
-  function back() {
-    const l = pick(LOOT);
-    uiHooks.toastHtml(`<img src="${itemIcon(l[2], l[0])}" alt=""><span>던전 귀환 · <b class="r-${l[0]}">${l[1]}</b> 획득</span>`);
-    const g = D_GOLD();
-    floatW(d[0], d[1], 30, '+' + g);
-    earn(g, 'dungeon');
-    puffAt(dg!, '#ffd36b', 16);
-    for (const a of members) {
-      a.party = false;
-      a.hidden = false;
-      a.x = d[0];
-      a.y = d[1];
-      a.pop = 0.4;
-      a.st = 'idle';
-      a.t = 0.5;
-    }
+  if (world.actors.length !== before && !S.visiting) {
+    pruneBonds();
+    markDirty();
   }
 }
-const D_GOLD = () => CONFIG.economy.dungeonMin + ((Math.random() * (CONFIG.economy.dungeonMax - CONFIG.economy.dungeonMin + 1)) | 0);
 
 export const ACT_TEXT: Record<string, string> = { walk: '걷는 중', idle: '쉬는 중', atk: '수련 중', pray: '밭일 중', sit: '불멍 중', in: '건물 안' };
 
 /** 지금 하는 일 (창에 표시) */
 export function doingText(a: Actor): string {
-  if (a.party) return a.hidden ? '던전 원정 중' : '던전으로 가는 중';
+  if (a.runId != null) return a.hidden ? '원정 중' : '던전으로 가는 중';
+  if (a.leaving) return '떠나는 중';
   if (a.door) return a.door.dir === 'in' ? '들어가는 중' : '나오는 중';
   if (a.st === 'in' && a.at) return INSIDE_TEXT[def(a.at.kind).act!] ?? '머무는 중';
+  if (a.st === 'walk' && a.intent) return a.intent;
   return ACT_TEXT[a.st] ?? '';
 }

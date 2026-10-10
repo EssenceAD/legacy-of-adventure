@@ -3,20 +3,25 @@ import './style.css';
 import { CONFIG } from './data/config';
 import { alphaAt, IMG, loadAssets, pumpTintWarmup, queueTintWarmup, recolored } from './engine/assets';
 import { CLASSES, type ClassKey } from './data/classes';
-import { charFrames } from './engine/sprites';
+import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { getPref, writeSave } from './save/save';
-import { enter, launchParty, updActors, warmItemIcons } from './world/actors';
+import { enter, updActors } from './world/actors';
+import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
+import { pendingEvents, pumpEvents } from './world/events';
 import { posBubbles } from './world/fx';
 import { buildingAt, renderFrame } from './world/render';
-import { runJobs, S, takeDirty, uiHooks, world } from './world/state';
+import { P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, setZoom, tickHud } from './ui/hud';
-import { buildThumbs, initWindows, isWinOpen, openReport, showActor, showObj, toast, toastHtml } from './ui/windows';
+import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { showActor } from './ui/guests';
+import { showOffline, showReport } from './ui/expedition';
+import { talk } from './ui/dialogue';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -50,8 +55,8 @@ const STEP = CONFIG.loop.updateStep;
 let acc = 0;
 /** 지난 그리기 이후 흐른 시간 (창이 열리면 30fps로 묶어 그린다) */
 let drawAcc = 0;
-let partyClock = 0;
 let saveClock = 0;
+let shownHour = -1;
 let last = 0;
 
 function update(dt: number) {
@@ -62,15 +67,17 @@ function update(dt: number) {
   updActors(dt);
   t = mark('actors', t);
   const busy = isWinOpen() || !!placing.pl || isTalking();
-  tickDayNight(dt, busy);
+  tickDayNight(dt);
   t = mark('daynight', t);
-  if (S.started && !S.visiting) {
-    partyClock += dt;
-    if (partyClock >= CONFIG.dungeon.intervalSeconds) {
-      partyClock = 0;
-      launchParty(!!placing.pl);
+  if (S.started) {
+    // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
+    pumpEvents(busy);
+    if (hourNow() !== shownHour) {
+      shownHour = hourNow();
+      game.syncHud();
     }
-    t = mark('party', t);
+  }
+  if (S.started && !S.visiting) {
     saveClock += dt;
     if (saveClock >= CONFIG.save.autosaveSeconds || takeDirty()) {
       saveClock = 0;
@@ -239,7 +246,6 @@ async function boot() {
     return [...f.idle, ...f.walk, ...f.walkB, ...f.idleB, ...f.sit, ...f.atk, ...f.pray];
   });
   queueTintWarmup([...Object.values(IMG), ...frames]);
-  warmItemIcons();
   buildThumbs();
 
   // 배율은 기기마다 기억 (1·2·3 중 하나)
@@ -247,6 +253,13 @@ async function boot() {
   if (CONFIG.view.zooms.includes(z)) S.zoom = z;
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
+  uiHooks.talk = talk;
+  uiHooks.report = (run) => {
+    if (!run.claimed) showReport(run);
+  };
+  game.setOfflineHook(showOffline);
+  // 손님마다 새 겉모습이 생기면 밤 색조도 미리
+  onNewFrames((f) => queueTintWarmup([...f.idle, ...f.walk, ...f.walkB, ...f.idleB, ...f.sit, ...f.atk, ...f.pray]));
   initWindows();
   initDialogue();
   initHud();
@@ -287,7 +300,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored,
+  if (import.meta.env.DEV) Object.assign(window, { __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

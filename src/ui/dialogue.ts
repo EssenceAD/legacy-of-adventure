@@ -2,15 +2,17 @@
 import { speakerName } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { PORTRAITS } from '../engine/assets';
-import { S } from '../world/state';
+import { S, type TalkChoice, type TalkLine } from '../world/state';
 
-/** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기] — 누가: narr(해설)·hero·keeper·post·직업 */
-export type Line = [string, string, 'name'?];
+/** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기, 이름표] — 누가: narr(해설)·hero·keeper·post·직업 */
+export type Line = TalkLine;
 
 interface Talk {
   lines: Line[];
   i: number;
   done?: () => void;
+  /** 마지막 줄 뒤에 고르기 버튼 */
+  choices?: TalkChoice[];
   typing: boolean;
   wait: boolean;
   /** 이 대화에서 이름을 지었나 */
@@ -30,9 +32,10 @@ export function setOnNamed(fn: (name: string) => void) {
   onNamed = fn;
 }
 
-export function talk(lines: Line[], done?: () => void) {
+export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
   if (DQ) clearInterval(DQ.iv);
-  DQ = { lines, i: 0, done, typing: false, wait: false, named: false, full: '', iv: 0 };
+  DQ = { lines, i: 0, done, choices, typing: false, wait: false, named: false, full: '', iv: 0 };
+  $('#dChoice').hidden = true;
   $('#dlg').hidden = false;
   $('#view').classList.add('talking');
   showLine();
@@ -40,14 +43,14 @@ export function talk(lines: Line[], done?: () => void) {
 
 function showLine() {
   if (!DQ) return;
-  const [who, txt, opt] = DQ.lines[DQ.i];
+  const [who, txt, opt, nameTag] = DQ.lines[DQ.i];
   const d = $('#dlg');
   const narr = who === 'narr';
   d.classList.toggle('narr', narr);
   const port = $<HTMLImageElement>('#dPort');
   port.src = PORTRAITS[who] || '';
   port.hidden = narr;
-  $('#dName').textContent = speakerName(who, S.innName);
+  $('#dName').textContent = nameTag ?? speakerName(who, S.innName);
   $('#dName').hidden = narr;
   const t = txt.replace('{name}', S.innName);
   const el = $('#dText');
@@ -63,8 +66,31 @@ function showLine() {
       clearInterval(q.iv);
       q.typing = false;
       if (opt === 'name') askName();
+      else askChoice();
     }
   }, CONFIG.ui.typeMs);
+}
+
+/** 마지막 줄을 다 보여 줬으면 고르기 버튼 */
+function askChoice() {
+  if (!DQ || !DQ.choices?.length || DQ.i !== DQ.lines.length - 1) return;
+  DQ.wait = true;
+  const box = $('#dChoice');
+  box.innerHTML = '';
+  for (const c of DQ.choices) {
+    const b = document.createElement('button');
+    b.className = 'px';
+    b.textContent = c.label;
+    b.onclick = (e) => {
+      e.stopPropagation();
+      box.hidden = true;
+      if (DQ) DQ.wait = false;
+      endTalk();
+      c.fn();
+    };
+    box.appendChild(b);
+  }
+  box.hidden = false;
 }
 
 function endTalk() {
@@ -85,6 +111,7 @@ export function nextLine() {
     $('#dText').textContent = DQ.full;
     DQ.typing = false;
     if (DQ.lines[DQ.i][2] === 'name') askName();
+    else askChoice();
     return;
   }
   if (DQ.wait) return;
@@ -111,6 +138,12 @@ export function skipTalk() {
     $('#dText').textContent = DQ.full;
     DQ.typing = false;
     askName();
+    return;
+  }
+  // 고르기가 있는 대화는 마지막 줄로 건너뛴다 (고르지 않고 끝낼 수 없다)
+  if (DQ.choices?.length) {
+    DQ.i = DQ.lines.length - 1;
+    showLine();
     return;
   }
   endTalk();

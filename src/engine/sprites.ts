@@ -277,8 +277,9 @@ function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
 function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd') {
   const w = def.weapon;
   if (!w) return;
+  const wc = def.weaponColor;
   if (w === 'sword') {
-    const bl = '#e9eef7';
+    const bl = wc ?? '#e9eef7';
     const hd = def.accent;
     if (mode === 'rest') {
       G.rect(hx, hy + 1, 1, 5, bl);
@@ -296,7 +297,7 @@ function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 
   }
   if (w === 'axe') {
     const h = '#7a5030';
-    const b = '#c9d1dc';
+    const b = wc ?? '#c9d1dc';
     if (mode === 'rest') {
       G.rect(hx, hy - 2, 1, 7, h);
       G.rect(hx + 1, hy - 3, 2, 4, b);
@@ -312,7 +313,7 @@ function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 
   }
   if (w === 'staff') {
     const h = '#8a5a34';
-    const o = '#7fe6ff';
+    const o = wc ?? '#7fe6ff';
     if (mode === 'rest') {
       G.rect(hx, hy - 14, 1, 19, h);
       G.rect(hx - 1, hy - 16, 3, 3, o, 'flat');
@@ -327,16 +328,17 @@ function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 
     }
   }
   if (w === 'dagger') {
-    const bl = '#e9eef7';
+    const bl = wc ?? '#e9eef7';
     if (mode === 'rest') G.rect(hx, hy + 1, 1, 3, bl);
     if (mode === 'up') G.rect(hx - 1, hy - 3, 1, 3, bl);
     if (mode === 'fwd') G.rect(hx + 1, hy, 4, 1, bl);
   }
   if (w === 'book') {
+    const bc = wc ?? '#b0412f';
     if (mode === 'rest') {
-      G.rect(hx - 1, hy - 2, 3, 4, '#b0412f');
+      G.rect(hx - 1, hy - 2, 3, 4, bc);
       G.set(hx, hy - 1, '#f2c447', 'flat');
-    } else G.rect(hx - 1, hy - 3, 4, 4, '#b0412f');
+    } else G.rect(hx - 1, hy - 3, 4, 4, bc);
   }
 }
 
@@ -370,7 +372,11 @@ export interface CharFrames {
 
 /** 직업 하나의 모든 프레임: 앞 걷기4·뒤 걷기4·대기2·뒤 대기2·앉기2·공격2·기도/밭일2 */
 export function buildChar(key: ClassKey): CharFrames {
-  const d = CLASSES[key];
+  return buildFrom(CLASSES[key]);
+}
+
+/** 정의 하나로 모든 프레임 */
+export function buildFrom(d: ClassDef): CharFrames {
   const R = (g: GridT) => g.render();
   return {
     def: d,
@@ -395,7 +401,21 @@ export function buildChar(key: ClassKey): CharFrames {
   };
 }
 
-const CACHE: Partial<Record<ClassKey, CharFrames>> = {};
+const CACHE: Record<string, CharFrames> = {};
 export function charFrames(key: ClassKey): CharFrames {
   return (CACHE[key] ??= buildChar(key));
+}
+
+/** 손님마다 다른 겉모습(종족·얼굴·머리색·무기) — key가 같으면 다시 만들지 않는다 */
+let onNew: ((f: CharFrames) => void) | null = null;
+export function onNewFrames(fn: (f: CharFrames) => void) {
+  onNew = fn;
+}
+export function framesFor(key: string, def: ClassDef): CharFrames {
+  let f = CACHE[key];
+  if (!f) {
+    f = CACHE[key] = buildFrom(def);
+    onNew?.(f);
+  }
+  return f;
 }

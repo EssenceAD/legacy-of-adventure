@@ -6,10 +6,14 @@ import { P } from '../engine/pixel';
 import * as game from '../game';
 import { setPref } from '../save/save';
 import { setNight } from '../world/daynight';
+import { stars } from '../world/progress';
 import { S } from '../world/state';
 import { blocksDoor, canPlace, placing, suggestSpot, type Placement } from '../world/town';
 import { openNotices } from './notice';
-import { openBuild, openGuests, openLand, openLedger, openMenu, openWin, toast } from './windows';
+import { openBoard, runsWaiting } from './expedition';
+import { openGuests } from './guests';
+import { tickTimers } from './common';
+import { openBuild, openMenu, openWin, toast } from './windows';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -74,6 +78,17 @@ const ICONS: Record<string, Icon> = {
     p.rect(13, 4, 1, 6, '#a06a3c');
     p.rect(2, 5, 12, 1, '#c08050');
     p.rect(7, 1, 2, 4, '#f2c447');
+  },
+  sword: (p) => {
+    for (let i = 0; i < 8; i++) p.px(4 + i, 11 - i, '#e9eef7');
+    for (let i = 0; i < 7; i++) p.px(5 + i, 11 - i, '#9aa6c8');
+    p.rect(2, 10, 5, 2, '#e8b94a');
+    p.rect(3, 12, 2, 3, '#8a5a34');
+  },
+  menu: (p) => {
+    p.rect(3, 3, 10, 2, '#e9dcc0');
+    p.rect(3, 7, 10, 2, '#e9dcc0');
+    p.rect(3, 11, 10, 2, '#e9dcc0');
   },
   village: (p) => {
     p.vline(4, 2, 12, '#8a8a96');
@@ -169,13 +184,10 @@ export function initHud() {
     cancelPlace();
     openBuild();
   };
-  $('#bLand').onclick = () => {
-    if (S.visiting) return toast('이웃 마을에선 넓힐 수 없어요');
-    openLand();
-  };
-  $('#bGuest').onclick = openGuests;
+  $('#bExp').onclick = () => openBoard();
+  $('#bGuest').onclick = () => openGuests();
   $('#bVillage').onclick = openVillage;
-  $('#bBook').onclick = openLedger;
+  $('#bMenu2').onclick = openMenu;
   $('#bNotice').onclick = openNotices;
   $('#bMenu').onclick = openMenu;
   $('#bDN').onclick = () => {
@@ -199,7 +211,17 @@ export function initHud() {
 
 /** 매 프레임: 금화가 바뀌면 숫자 갱신 + 반짝 */
 let shownGold = -1;
+let timerAcc = 0;
 export function tickHud() {
+  const now = performance.now();
+  if (now - timerAcc > 500) {
+    timerAcc = now;
+    tickTimers();
+    // 원정 결과가 기다리면 원정 버튼이 반짝
+    $('#bExp').classList.toggle('ready', runsWaiting());
+    const st = '★' + stars();
+    if ($('#starv').textContent !== st) $('#starv').textContent = st;
+  }
   if (S.gold !== shownGold) {
     const up = S.gold > shownGold && shownGold >= 0;
     shownGold = S.gold;

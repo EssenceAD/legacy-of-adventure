@@ -20,8 +20,14 @@ export interface BuildingDef {
   fixed?: boolean;
   /** 이 땅 단계부터 지을 수 있다 */
   unlock: number;
+  /** 2단계: 평판 별이 이만큼 있어야 지을 수 있다 */
+  stars?: number;
   /** 레벨업: 더 큰 그림으로. 앞 꼭짓점은 그대로, 뒤로 커진다 */
   up?: { sprite: string; size: [number, number]; cost: number };
+  /** 2단계: 레벨 비용 (Lv.2, Lv.3 … 순서). 길이 + 1 = 최대 레벨 */
+  levels?: number[];
+  /** 레벨마다 무엇이 좋아지는지 */
+  levelText?: string;
   /** 지붕 색을 바꿀 수 있는지 */
   roofable?: boolean;
   desc: string;
@@ -31,20 +37,22 @@ export const CATALOG = {
   inn: {
     name: '여관 본관', sprite: 'inn', size: [3, 3], cost: 0, act: 'sleep', unique: true, unlock: 1, roofable: true,
     up: { sprite: 'inn3', size: [4, 4], cost: CONFIG.upgrade.inn },
+    levels: [CONFIG.upgrade.inn, 1500], levelText: '방 +2 (손님·단골 자리)',
     desc: '손님이 묵는 곳. 레벨이 오르면 방이 늘어요',
   },
   cottage: { name: '객실 별채', sprite: 'cottage', size: [2, 2], cost: 300, act: 'sleep', unlock: 4, roofable: true, desc: '방 2칸이 늘어나요' },
   tavern: {
     name: '주점', sprite: 'tavern', size: [3, 3], cost: 400, act: 'drink', unlock: 3, roofable: true,
     up: { sprite: 'tavern2', size: [4, 4], cost: CONFIG.upgrade.tavern },
+    levels: [CONFIG.upgrade.tavern], levelText: '더 넓은 주점',
     desc: '모험가들이 모여 떠들어요 · 케미 발생 ↑',
   },
-  smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 4, roofable: true, desc: '장비 강화 · 파밍한 재료로 제작' },
-  bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, desc: '피로 회복 · 기분 ↑' },
+  smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 4, stars: 2, roofable: true, levels: CONFIG.smith.levelCosts.slice(1), levelText: '가방 +20칸 · 제작 등급 ↑', desc: '장비 강화 · 파밍한 재료로 제작' },
+  bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, stars: 3, desc: '피로 회복 · 기분 ↑' },
   training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, desc: '모험가 레벨업 · 허수아비를 팹니다' },
   garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, desc: '식재료 수확 · 식사 품질 ↑' },
   well: { name: '우물', sprite: 'well', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '마을 장식 · 주변 기분 +' },
-  board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, desc: '의뢰를 받아 던전에 나가요' },
+  board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, levels: [300, 800, 1600], levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
   tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   pine: { name: '소나무', sprite: 'pine', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 2, desc: '밤이면 손님들이 둘러앉아요' },
