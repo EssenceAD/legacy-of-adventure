@@ -1,6 +1,7 @@
 // 장비: 만들기(등급·랜덤 옵션·세트) · 천장 · 가방 · 장착 · 옵션 합 · 아이콘
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
+import { legendByKey } from '../data/legends';
 import {
   GRADE_INFO, OPT_INFO, REGIONS, SLOT_STATS, SLOTS, WEAPON_KINDS, itemName, regionById,
   type Grade, type OptKey, type RegionId, type Slot, type StatKey,
@@ -140,6 +141,11 @@ export function optSum(a: Actor, k: OptKey, region?: RegionId): number {
   if (a.heroId) {
     const sk = heroById(a.heroId)?.skill;
     if (sk && sk.k === k) v += sk.v * (1 + 0.2 * ((a.stars ?? 1) - 1));
+  }
+  if (a.legendId) {
+    // 전설 고유 기술: ★3부터 강화(×1.5)
+    const sk = legendByKey(a.legendId)?.skill;
+    if (sk && sk.k === k && (k !== 'regionDmg' || sk.region === region)) v += sk.v * ((a.stars ?? 1) >= 3 ? 1.5 : 1);
   }
   return v;
 }

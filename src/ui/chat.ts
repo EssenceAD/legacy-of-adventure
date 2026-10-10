@@ -8,9 +8,12 @@ import { REGIONS } from '../data/items';
 import { NEIGHBORS } from '../data/neighbors';
 import POOL from '../data/chat_pool.json';
 import { P, S } from '../world/state';
+import { bossById } from '../data/bosses';
+import { LEGENDS } from '../data/legends';
+import { net } from '../net';
 import { openWin } from './windows';
 
-type Channel = '소문' | '세계';
+type Channel = '소문' | '세계' | '알림';
 interface Msg {
   ch: Channel;
   who: string;
@@ -18,8 +21,8 @@ interface Msg {
 }
 
 const pool = POOL as unknown as Record<string, unknown>;
-/** 아직 없는 기능(토벌·주간 보스·랭킹) 이야기는 3단계 전까지 뺀다 */
-const SOON = /토벌|보스|랭킹|주간/;
+/** 아직 없는 기능(랭킹 — 2차 서버) 이야기는 뺀다 */
+const SOON = /랭킹/;
 const ok = (s: string) => !SOON.test(s);
 const lines = (k: string) => ((pool[k] as string[] | undefined) ?? []).filter(ok);
 const GENERAL = [...lines('일상'), ...lines('파밍'), ...lines('영웅'), ...lines('거래·질문'), ...lines('드립')];
@@ -49,7 +52,8 @@ function fill(s: string): string {
     .replace(/\{지역\}/g, () => pick(REGIONS).name)
     .replace(/\{직업\}/g, () => CLASSES[pick([...GUEST_KINDS])].name)
     .replace(/\{아이템\}/g, () => item)
-    .replace(/\{숫자\}/g, () => String(2 + ((Math.random() * 40) | 0)));
+    .replace(/\{숫자\}/g, () => String(2 + ((Math.random() * 40) | 0)))
+    .replace(/\{보스\}/g, () => bossById(P.raid.bossId)?.name ?? '멧돼지 왕');
 }
 
 const log: Msg[] = [];
@@ -65,7 +69,9 @@ function fresh(list: string[]): string {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const line = (m: Msg) =>
-  m.ch === '소문'
+  m.ch === '알림'
+    ? `<span class="ch ch-notice">[알림]</span> <b class="notice">${esc(m.text)}</b>`
+    : m.ch === '소문'
     ? `<span class="ch ch-rumor">[소문]</span> <b class="rumor-who">${esc(m.who)}</b><small class="npc">마을 사람</small> <span class="rumor">${esc(m.text)}</span>`
     : `<span class="ch">[세계]</span> <b>${esc(m.who)}</b>: ${esc(m.text)}`;
 
@@ -97,13 +103,27 @@ function next() {
     setTimeout(next, t.length * C.threadGapMs + rnd());
     return;
   }
+  // 소문 열린 전설 영웅이 있으면 가끔 그 힌트
+  const heard = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
+  if (heard.length && Math.random() < 0.15) {
+    push({ ch: '소문', who: '소문 수집가', text: pick(heard).hint });
+    setTimeout(next, rnd());
+    return;
+  }
   const extra = timely();
   const src = extra.length && Math.random() < 0.3 ? extra : GENERAL;
   push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(src)) });
   setTimeout(next, rnd());
 }
 
+/** [소문] 한 줄 바로 (전설 소문이 처음 열릴 때) */
+export function rumorNow(text: string) {
+  push({ ch: '소문', who: '소문 수집가', text });
+}
+
 export function initChat() {
+  // [세계]·[알림]은 net.chat에서 온다 (2차: 서버 Realtime)
+  net.chat.subscribe((m) => push({ ch: m.ch, who: m.who, text: m.text }));
   push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(GENERAL)) });
   push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(GENERAL)) });
   setTimeout(next, rnd());
@@ -122,7 +142,7 @@ function openChat() {
     const inp = document.getElementById('chatv') as HTMLInputElement;
     const v = inp.value.trim();
     if (!v) return;
-    push({ ch: '세계', who: S.innName || '나', text: v });
+    push({ ch: '세계', who: S.innName || '나', text: v.slice(0, 100) });
     inp.value = '';
   };
 }

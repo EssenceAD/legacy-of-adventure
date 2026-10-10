@@ -18,7 +18,8 @@ export const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 const PICS: Record<string, string> = {};
 export function pic(a: Actor): string {
   if (a.role) return PORTRAITS[a.kind] || '';
-  // 영웅은 전용 초상화
+  // 영웅·전설은 전용 초상화
+  if (a.legendId && PORTRAITS['legend_' + a.legendId]) return PORTRAITS['legend_' + a.legendId];
   if (a.heroId && PORTRAITS['hero_' + a.heroId]) return PORTRAITS['hero_' + a.heroId];
   const { key, def } = appearance(a);
   if (PICS[key]) return PICS[key];
@@ -33,8 +34,8 @@ export function pic(a: Actor): string {
 /** 이름 + 희귀도 색 */
 export function nameTag(a: Actor) {
   const col = RARITY_INFO[a.rarity].color;
-  const star = a.heroId ? '<span class="g">★</span>' : '';
-  return `<b style="color:${a.rarity === 'common' ? 'var(--cream)' : col}">${star}${esc(a.name)}</b>`;
+  const star = a.legendId ? `<span class="legend-mark">✦${(a.stars ?? 1) >= 5 ? '✦' : ''}</span>` : a.heroId ? '<span class="g">★</span>' : '';
+  return `<b class="${a.legendId ? 'legend-name' : ''}" style="color:${a.rarity === 'common' ? 'var(--cream)' : col}">${star}${esc(a.name)}</b>`;
 }
 export const kindText = (a: Actor) => `${RACE_NAME[a.race]} ${CLASSES[a.kind].name}`;
 

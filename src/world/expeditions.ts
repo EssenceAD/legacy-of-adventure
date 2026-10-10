@@ -1,6 +1,8 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { CONFIG } from '../data/config';
 import { fillNames, josa } from '../data/josa';
+import { hourNow } from './clock';
+import { maybeWander } from './raid';
 import { pairById } from '../data/chem';
 import { REGIONS, GRADE_INFO, SLOT_NAME, regionById, type RegionId } from '../data/items';
 import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, WIN_LINES } from '../data/reports';
@@ -9,7 +11,7 @@ import { gainXp, powerOf, xpToNext } from './adventurers';
 import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
 import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
-import { P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
+import { gotGold, legendHooks, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -127,6 +129,14 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   for (const m of members) m.runId = run.id;
   P.counters.expeditions++;
   track('expeditionSent');
+  // 전설 인연 활동: 숲 원정 · 밤(20~04시) 출발 · 오스윈과 함께
+  if (q.region === 'forest') {
+    P.counters.forestSends++;
+    legendHooks.bond('forestRun');
+  }
+  const h = hourNow();
+  if (h >= 20 || h < 4) legendHooks.bond('nightRun');
+  if (members.some((m) => m.heroId === 'oswin')) legendHooks.bond('runWithOswin');
   return run;
 }
 
@@ -164,6 +174,29 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   S.gold += gold;
   S.ledger.dungeon += gold;
+  gotGold(gold);
+  // 3단계: 보물·유물 · 인연의 증표 · 은밀 · 루나의 보물 상자 · 8시간 원정 · 떠돌이 보스
+  const extra: [string, string, string?][] = [];
+  if (items.some((it) => 'ela'.includes(it.grade))) legendHooks.bond('treasure');
+  if (items.some((it) => it.grade === 'a')) P.counters.relicEver = 1;
+  if (Math.random() < CONFIG.legends.tokenRunChance) {
+    P.tokens++;
+    extra.push(['narr', '보물 더미 속에서 「인연의 증표」가 반짝였다!']);
+  }
+  const rogue = members.find((m) => m.kind === 'rogue');
+  if (rogue && Math.random() < 0.3) {
+    extra.push([rogue.kind, win ? `${rogue.name}${josa(rogue.name, '가')} 그림자처럼 숨어들어 경비를 따돌렸다! (은밀 성공)` : `${rogue.name}${josa(rogue.name, '가')} 몰래 지나가다 깡통을 찼다… (은밀 실패)`, rogue.name]);
+    if (win) legendHooks.req('stealthSuccess');
+  }
+  if (win && q.region === 'forest' && members.some((m) => m.legendId === 'luna') && Math.random() < 0.4) {
+    extra.push(['legend_luna', '킁킁! 여기다! 루나가 덤불 밑에서 보물 상자를 찾아냈다!', '루나']);
+    legendHooks.req('lunaTreasure');
+  }
+  if (win && q.tier >= 3) legendHooks.req('longRunWin');
+  if (win) {
+    const wb = maybeWander(q.region);
+    if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (24시간 동안 토벌 가능)`]);
+  }
   if (win) {
     P.counters.regionWins[q.region] = (P.counters.regionWins[q.region] ?? 0) + 1;
     addRep(CONFIG.reputation.expeditionWin);
@@ -178,7 +211,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
       bondGains.push(g);
       if (g.discovered) newChem.push(g.pair.name);
     }
-  const result: RunResult = { win, gold, xp, mats, items, report: buildReport(members, q.region, win, items), levelUps, newChem };
+  const result: RunResult = { win, gold, xp, mats, items, report: [...buildReport(members, q.region, win, items), ...extra], levelUps, newChem };
   run.result = result;
   return result;
 }

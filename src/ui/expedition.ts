@@ -3,6 +3,8 @@ import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { GRADE_INFO, GRADES, REGIONS, regionById, type Grade } from '../data/items';
 import { talk } from './dialogue';
+import { bossPic, openRaidPrep } from './raid';
+import { triesLeft, wanderTarget, weeklyTarget, type RaidTarget } from '../world/raid';
 import { powerOf } from '../world/adventurers';
 import { departParty, returnParty } from '../world/actors';
 import {
@@ -45,15 +47,25 @@ export function openBoard() {
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)
     .join(' · ');
   const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 3번 성공 또는 평판 ★${i + 1}</div>`)).join('');
+  const wk = weeklyTarget();
+  const wd = wanderTarget();
+  const raidCard = (t: RaidTarget, id: string) =>
+    `<button class="raidcard" id="${id}"><img src="${bossPic(t.boss)}" alt=""><span><b>${t.kind === 'weekly' ? '주간 보스' : '떠돌이 보스'} · ${t.boss.name}</b><small>권장 ${fmt(t.boss.power)} · ${t.hpLeft <= 0 ? '이번 주 처치 완료!' : `남은 체력 ${pct(t.hpLeft / t.max)}`}${t.kind === 'wander' ? ` · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음` : ''}</small><i class="bhp"><i style="width:${(t.hpLeft / t.max) * 100}%"></i></i></span><em>토벌 ›</em></button>`;
   openWin(
     '원정 · 의뢰 게시판',
-    `<p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>
+    `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${CONFIG.raid.triesPerDay} · 증표 ${P.tokens}</span></div>
+    <div class="raids">${wk.hpLeft > 0 || !P.raid.killed ? raidCard(wk, 'rWeek') : `<div class="raidcard done"><img src="${bossPic(wk.boss)}" alt=""><span><b>주간 보스 · ${wk.boss.name}</b><small>이번 주 처치 완료! 월요일에 새 보스가 와요</small></span></div>`}${wd ? raidCard(wd, 'rWander') : ''}</div>
+    <p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>
     ${runs.length ? `<div class="runs">${runs.map(runRow).join('')}</div>` : ''}
     <div class="qhd"><b class="g">오늘의 의뢰</b><button id="qRef" ${free > 0 ? '' : 'disabled'}>새로고침 ${free > 0 ? '(무료)' : '(내일)'}</button></div>
     <div class="quests">${P.quests.list.map(questRow).join('') || '<p class="note">오늘 의뢰를 다 받았어요 · 내일 아침 새로 붙어요</p>'}</div>
     ${locked}<p class="note pity">${pity}</p>`,
   );
   $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
+  const rw = document.getElementById('rWeek');
+  if (rw) rw.onclick = () => openRaidPrep(weeklyTarget());
+  const rd = document.getElementById('rWander');
+  if (rd) rd.onclick = () => wanderTarget() && openRaidPrep(wanderTarget()!);
   $$('.run.done').forEach(
     (b) =>
       (b.onclick = () => {

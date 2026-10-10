@@ -6,6 +6,9 @@ export interface Who {
   kind: GuestKind;
   race: Race;
   rarity: Rarity;
+  /** 영웅·전설은 이름으로 짝을 찾는다 */
+  heroId?: string;
+  legendId?: string;
 }
 
 export interface ChemPair {
@@ -25,7 +28,39 @@ export interface ChemPair {
 const cls = (x: GuestKind, y: GuestKind) => (a: Who, b: Who) => (a.kind === x && b.kind === y) || (a.kind === y && b.kind === x);
 const race = (x: Race, y: Race) => (a: Who, b: Who) => (a.race === x && b.race === y) || (a.race === y && b.race === x);
 
+/** 영웅·전설 이름으로 (heroId 또는 legendId) */
+const named = (x: string, y: string) => (a: Who, b: Who) => {
+  const ia = a.legendId ?? a.heroId;
+  const ib = b.legendId ?? b.heroId;
+  return (ia === x && ib === y) || (ia === y && ib === x);
+};
+
 export const CHEM_PAIRS: ChemPair[] = [
+  // ── 3단계: 전설 영웅 숨은 짝 6 (이름이 맞아야 해서 일반 조합보다 먼저 찾는다) ──
+  {
+    id: 'L-elysia-kael', name: '앙숙에서 라이벌로', open: false, match: named('elysia', 'kael'), meet: ['또 당신이군요, 단풍 검사.', '은빛 아가씨께서 여기까지?'], hint: '은빛 기사와 붉은 단풍의 검사',
+    talks: [['제 검이 더 빠릅니다.', '그럼 한판 붙어 볼까?'], ['…방금 그 찌르기, 나쁘지 않았어요.', '칭찬이야? 처음 듣는군.'], ['등을 맡길 수 있는 건 당신뿐이네요.', '라이벌이니까. 지지 마.'], ['다음 결투는… 저녁 먹고 해요.', '…그거 데이트 신청이야?']],
+  },
+  {
+    id: 'L-ceres-elysia', name: '소꿉친구', open: false, match: named('ceres', 'elysia'), meet: ['엘리 언니!', '세레스, 등 펴세요.'], hint: '왕실 기사와 은빛 기사',
+    talks: [['언니 머리 땋아 줄까요?', '…가끔은 괜찮겠네요.'], ['어릴 때 나무 검으로 맨날 졌잖아요.', '지금도 질 생각은 없어요.'], ['언니가 있어서 무섭지 않아요.', '제가 앞에 설게요. 늘 그랬듯이.'], ['우리 같이 성으로 돌아가요.', '그날까지, 함께예요.']],
+  },
+  {
+    id: 'L-scarlet-momo2', name: '사제지간', open: false, match: named('scarlet', 'momo2'), meet: ['스승님! 불꽃 마법 알려 줘요!', '모자부터 똑바로 써.'], hint: '홍염의 마녀와 꼬마 대마법사',
+    talks: [['스승님, 이번엔 안 터뜨렸어요!', '…연구실 문은 왜 그을렸지?'], ['스승님 불꽃은 왜 그렇게 예뻐요?', '사랑을 담으면 돼. 꼬마는 아직 일러.'], ['저 오늘 대마법 성공했어요!', '흥, 내 제자니까 당연하지.'], ['언젠가 스승님보다 큰 불꽃 낼 거예요!', '기대하지. 그날 술은 네가 사.']],
+  },
+  {
+    id: 'L-leon-grom', name: '옛 전우', open: false, match: named('leon', 'grom'), meet: ['그롬! 살아 있었나!', '하! 왕이 다 됐구먼!'], hint: '사자왕과 대전사',
+    talks: [['북쪽 전장 기억하나?', '네 갑옷이 그때도 번쩍였지.'], ['그때 나를 업고 달린 게 너였지.', '무거워서 죽는 줄 알았다!'], ['다시 한번 같은 전장에 서자.', '좋다! 맥주는 왕이 사라!'], ['내 왕국엔 네 자리가 늘 있다.', '왕국보다 이 여관이 낫다, 하하!']],
+  },
+  {
+    id: 'L-vivian-nyx', name: '빚 관계', open: false, match: named('vivian', 'nyx'), meet: ['어머, 내 돈 떼먹은 그림자 아냐?', '…갚을 거야. 언젠가.'], hint: '해적 선장과 그림자',
+    talks: [['이자만 해도 금화 천 냥이야.', '…원금부터 깎아.'], ['그때 너 아니었으면 내 배 가라앉았지.', '그러니까 빚은 없던 걸로.'], ['좋아, 이번 일 같이 하면 반 깎아 줄게.', '…거래.'], ['빚 다 갚으면 떠날 거야?', '…아니. 더 빌릴 거야.']],
+  },
+  {
+    id: 'L-vael-aria', name: '빛과 어둠', open: false, match: named('vael', 'aria'), meet: ['성녀가 왜 나를 보고 웃지?', '어둠 속에도 빛이 있으니까요.'], hint: '어둠의 검사와 성녀',
+    talks: [['내 손은 깨끗하지 않아.', '그래서 제가 손을 잡는 거예요.'], ['기도 따위로 심연은 안 닫혀.', '그래도 당신은 돌아왔잖아요.'], ['…네 빛이 눈부시군.', '당신 그림자가 저를 쉬게 해요.'], ['끝까지 곁에 있어 주겠나.', '빛과 어둠은 늘 함께예요.']],
+  },
   // ── 공개 5쌍 (1단계의 직업 짝) ──
   {
     id: 'dwarf-rogue', name: '술친구', open: true, match: cls('dwarf', 'rogue'), meet: ['또 너야?', '술 한잔 어때?'], hint: '전사와 도적',

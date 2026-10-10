@@ -1,0 +1,276 @@
+// 전설 영웅 14명 (3단계 8장): 소문 → 인연 게이지 → 밤 판정(실제 날짜 하루 1번) → 방문 → 부탁 → 영입 → 증표로 ★
+// 다른 모듈은 legendHooks.bond / legendHooks.req 로만 알린다 (import가 꼬이지 않게).
+import { CONFIG } from '../data/config';
+import { josa } from '../data/josa';
+import { LEGENDS, legendByKey, type BondEvent, type LegendCtx, type RequestEvent } from '../data/legends';
+import { REGIONS } from '../data/items';
+import { makeLegend } from './adventurers';
+import { arrive, sendAway } from './actors';
+import { onNightFlip } from './clock';
+import { queueEvent } from './events';
+import { dexBonus, heroCtx, stars, today } from './progress';
+import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
+import { entrance } from './town';
+
+const L = CONFIG.legends;
+const homeActors = () => world.home?.actors ?? world.actors;
+const homeObjs = () => world.home?.objs ?? world.objs;
+const rand = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
+
+export const legendOf = (key: string): LegendState | undefined => P.legends[key];
+
+// ───────── 소문 조건 ─────────
+
+const lvlOf = (kind: string) => homeObjs().find((o) => o.kind === kind && o.build === undefined)?.lvl ?? 0;
+
+export function legendCtx(): LegendCtx {
+  const h = heroCtx();
+  const knights = new Set(homeActors().filter((a) => a.kind === 'knight' && a.id).map((a) => a.id));
+  return {
+    stars: stars(),
+    land: world.home?.land ?? S.land,
+    trees: h.trees,
+    smithLvl: lvlOf('smith'),
+    trainingLvl: lvlOf('training'),
+    bathLvl: lvlOf('bath'),
+    gardenLvl: lvlOf('garden'),
+    enhanceMax: P.counters.enhanceMax,
+    forestSends: P.counters.forestSends,
+    moodTopDays: P.counters.moodTopDays,
+    goldTotal: P.counters.goldTotal,
+    itemDexRatio: P.dex.items.length / Math.max(1, REGIONS.length * 3 * 4 + 3),
+    relicEver: P.counters.relicEver > 0 || P.bag.some((it) => it.grade === 'a'),
+    bossKills: (id) => (id ? P.raid.kills[id] ?? 0 : Object.values(P.raid.kills).reduce((s, v) => s + v, 0)),
+    heroOwned: (id) => !!P.dex.heroes[id]?.recruited,
+    heroStars: (id) => (P.dex.heroes[id]?.recruited ? P.dex.heroes[id].stars : 0),
+    knightBondAtLeast: (lv) =>
+      Object.entries(P.bonds).some(([k, b]) => b.lv >= lv && k.split('-').some((id) => knights.has(+id))),
+    topRankWeeks: P.raid.weeksKilled,
+  };
+}
+
+/** 소문 조건을 처음 맞춘 영웅: 도감 실루엣 + 힌트, [소문] 채널, 대화창 */
+export function checkRumors() {
+  const c = legendCtx();
+  for (const d of LEGENDS) {
+    if (P.legends[d.key] || !d.rumorWhen(c)) continue;
+    P.legends[d.key] = { st: 'rumor', gauge: 0 };
+    markDirty();
+    uiHooks.rumor(d.rumor);
+    queueEvent(() =>
+      uiHooks.talk([
+        ['narr', '여관에 이상한 소문이 돌기 시작했다…'],
+        ['narr', d.rumor],
+        ['narr', `방랑자의 서에 새 실루엣이 떠올랐다 — ${d.title} ?`],
+      ]),
+    );
+  }
+}
+
+// ───────── 인연 게이지 ─────────
+
+/** 인연 활동: 그 활동을 좋아하는 (소문 열린) 영웅들의 게이지 +1~3% */
+export function bond(e: BondEvent, times = 1) {
+  if (S.visiting) return;
+  for (const d of LEGENDS) {
+    const st = P.legends[d.key];
+    if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
+    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + rand(L.gaugeMin, L.gaugeMax));
+    markDirty();
+  }
+}
+
+// ───────── 밤 판정 (실제 날짜 하루 1번) ─────────
+
+/** 그날 처음 맞는 게임 속 밤(22시)에: 게이지 100% = 확정, 아니면 게이지÷20 % 확률. 한 번에 한 명 */
+export function judgeNight() {
+  if (S.visiting || !S.started) return;
+  const day = today();
+  if (P.legendDay === day) return;
+  P.legendDay = day;
+  if (LEGENDS.some((d) => P.legends[d.key]?.st === 'visit')) return;
+  const cands = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
+  const sure = cands.find((d) => P.legends[d.key].gauge >= 100);
+  const pickd = sure ?? cands.find((d) => Math.random() * 100 < P.legends[d.key].gauge / L.judgeDiv);
+  if (pickd) visit(pickd.key);
+  markDirty();
+}
+onNightFlip((night) => night && judgeNight());
+
+// ───────── 운명의 별 ─────────
+
+/** 오늘 별을 아직 안 잡았고 소문 열린 영웅이 있으면, 밤하늘에 별똥별 */
+export const starAvailable = () => S.started && !S.visiting && S.night && P.starDay !== today() && LEGENDS.some((d) => P.legends[d.key]?.st === 'rumor');
+
+export function catchStar(): string | null {
+  if (!starAvailable()) return null;
+  P.starDay = today();
+  const cands = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
+  const d = cands[(Math.random() * cands.length) | 0];
+  const w = L.starWeights;
+  let r = Math.random() * w.reduce((s, v) => s + v, 0);
+  let add = 1;
+  for (let i = 0; i < w.length; i++) if ((r -= w[i]) < 0) {
+    add = i + 1;
+    break;
+  }
+  const st = P.legends[d.key];
+  st.gauge = Math.min(100, st.gauge + add);
+  markDirty();
+  return `운명의 별! 「${d.title} ?」의 인연 +${add}% (${st.gauge}%)`;
+}
+
+// ───────── 방문 · 부탁 ─────────
+
+export function visit(key: string) {
+  const d = legendByKey(key)!;
+  const st = P.legends[key];
+  st.st = 'visit';
+  st.until = Date.now() + L.visitDays * 864e5;
+  st.prog = 0;
+  st.seen = [];
+  st.best = 0;
+  const [ex, ey] = entrance();
+  arrive(makeLegend(key, ex, ey));
+  markDirty();
+  queueEvent(() =>
+    uiHooks.talk([
+      ['narr', `금빛 발자국이 마을 입구에 찍혔다… 전설 영웅 「${d.title} ${d.name}」!`],
+      ...d.intro.map((t) => ['legend_' + key, t, undefined, d.name] as [string, string, undefined, string]),
+      ['legend_' + key, `부탁: ${d.request.text}`, undefined, d.name],
+      ['narr', `${L.visitDays}일 안에 부탁을 들어주면 동료가 된다.`],
+    ]),
+  );
+}
+
+/** 부탁 진행 (방문 중인 영웅 중 그 일을 부탁한 영웅) */
+export function req(e: RequestEvent, n = 1, tag?: string) {
+  if (S.visiting) return;
+  for (const d of LEGENDS) {
+    const st = P.legends[d.key];
+    if (st?.st !== 'visit' || d.request.event !== e) continue;
+    if (tag) {
+      // 종류를 세는 부탁 (작물 3종): 처음 보는 것만
+      if (st.seen!.includes(tag)) continue;
+      st.seen!.push(tag);
+    }
+    st.prog = (st.prog ?? 0) + n;
+    markDirty();
+    if (st.prog >= d.request.need) recruit(d.key);
+  }
+}
+
+/** 'check' 부탁 (조건을 계속 살핀다) · 머무는 기간 끝 */
+export function tickLegends() {
+  if (S.visiting) return;
+  const now = Date.now();
+  for (const d of LEGENDS) {
+    const st = P.legends[d.key];
+    if (st?.st !== 'visit') continue;
+    if (d.request.event === 'check' && checkDone(d.key)) {
+      recruit(d.key);
+      continue;
+    }
+    if (now > (st.until ?? 0)) fail(d.key);
+  }
+  checkRumors();
+}
+
+function checkDone(key: string): boolean {
+  const g = homeActors().filter((a) => !a.role && !a.leaving);
+  if (key === 'ceres') return g.filter((a) => a.kind === 'knight' && a.mood >= 80 && !a.legendId).length >= 3;
+  if (key === 'leon') return decoScore() >= L.decoNeed;
+  return false;
+}
+
+/** 마을 장식 점수: 나무·소나무 1 · 우물 4 · 게시판 3 · 모닥불 4 · 트로피 8 · 지붕 색 바꾼 건물 2 */
+export function decoScore(): number {
+  let s = 0;
+  for (const o of homeObjs()) {
+    if (o.kind === 'tree' || o.kind === 'pine') s += 1;
+    else if (o.kind === 'well') s += 4;
+    else if (o.kind === 'board') s += 3;
+    else if (o.kind === 'fire') s += 4;
+    else if (o.kind.startsWith('trophy')) s += 8;
+    if (o.hue != null) s += 2;
+  }
+  return s;
+}
+
+const legendActor = (key: string) => homeActors().find((a) => a.legendId === key);
+
+function recruit(key: string) {
+  const d = legendByKey(key)!;
+  const st = P.legends[key];
+  st.st = 'joined';
+  const a = legendActor(key);
+  if (a) {
+    a.status = 'hero';
+    a.stars = 1;
+  }
+  markDirty();
+  uiHooks.announce(`★ ${S.innName || '여관'}에 전설 영웅 「${d.title} ${d.name}」${josa(d.name, '가')} 찾아왔습니다!`);
+  queueEvent(() =>
+    uiHooks.talk([
+      ['legend_' + key, d.recruit, undefined, d.name],
+      ['narr', `${d.title} ${d.name} 영입! 고유 기술 「${d.skill.name}」 · 계정 전투력 +${Math.round(L.dexBonus * 100)}% (지금 ${Math.round(dexBonus() * 100)}%)`],
+    ]),
+  );
+}
+
+function fail(key: string) {
+  const d = legendByKey(key)!;
+  const st = P.legends[key];
+  st.st = 'rumor';
+  st.gauge = L.failGauge;
+  const a = legendActor(key);
+  if (a) sendAway(a, true);
+  markDirty();
+  uiHooks.toast(`${d.name}${josa(d.name, '가')} 떠났어요… 인연 게이지 ${L.failGauge}% (다시 쌓으면 돼요)`);
+}
+
+// ───────── 영입 뒤 ★ (인연의 증표) ─────────
+
+export const tokenNeed = (stars: number) => (stars >= 5 ? null : L.tokenNeeds[stars - 1]);
+
+export function starUpLegend(a: Actor): string | null {
+  if (!a.legendId || a.status !== 'hero') return '영입한 전설만 별을 올릴 수 있어요';
+  const need = tokenNeed(a.stars ?? 1);
+  if (need == null) return '이미 ★5예요';
+  if (P.tokens < need) return `인연의 증표가 모자라요 (${P.tokens}/${need})`;
+  P.tokens -= need;
+  a.stars = (a.stars ?? 1) + 1;
+  markDirty();
+  if (a.stars === 5) uiHooks.announce(`★ ${a.name}의 유산 무기가 깨어났습니다!`);
+  return null;
+}
+
+/** 부탁 버튼: 스칼렛에게 바치기 (옵션 붙은 영웅 이상 장비, 소모) · 류카에게 유물 보여 주기 (소모 안 됨) */
+export function offerItem(itemId: number): string | null {
+  const i = P.bag.findIndex((x) => x.id === itemId);
+  const it = P.bag[i];
+  if (!it || it.owner != null) return '끼우지 않은 장비만 바칠 수 있어요';
+  if (!'ela'.includes(it.grade) || !it.opts.length) return '옵션 붙은 영웅 등급 이상이어야 해요';
+  P.bag.splice(i, 1);
+  req('offer');
+  return null;
+}
+export function showRelic(): string | null {
+  if (!P.bag.some((x) => x.grade === 'a')) return '유물 등급 장비가 없어요';
+  req('showRelic');
+  return null;
+}
+
+/** 새벽(0~5시, 실제 시각) 접속: 하루 한 번 */
+export function dawnCheck() {
+  const h = new Date().getHours();
+  if (h >= 5 || P.dawnDay === today()) return;
+  P.dawnDay = today();
+  bond('dawnLogin');
+}
+
+/** 전설 영입 수 · 증표 */
+export const legendsJoined = () => LEGENDS.filter((d) => P.legends[d.key]?.st === 'joined').length;
+
+legendHooks.bond = (e, n) => bond(e as BondEvent, n);
+legendHooks.req = (e, n, tag) => req(e as RequestEvent, n, tag);

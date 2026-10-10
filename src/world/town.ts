@@ -4,7 +4,7 @@ import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
 import { baseKey, FLIP, META } from '../engine/assets';
 import { N, sx, sy, TW } from '../engine/iso';
-import { S, world, type Building } from './state';
+import { P, S, world, type Building } from './state';
 
 // ───────── 땅 ─────────
 
@@ -362,6 +362,8 @@ export function upgradeObj(o: Building, silent = false): boolean {
 export function buildableKinds(): Kind[] {
   return (Object.keys(CATALOG) as Kind[]).filter((k) => {
     const d = def(k);
+    // 트로피는 그 보스를 처치했을 때만
+    if (k.startsWith('trophy_') && !P.trophies.includes(k.slice(7))) return false;
     return !d.fixed && !(d.unique && world.objs.some((o) => o.kind === k));
   });
 }

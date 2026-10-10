@@ -1,5 +1,7 @@
 // 건물 PNG 로드, 밤 창문 마스크(windows.json), 지붕 색 바꾸기, 밤 색조 캐시
 import { HEROES } from '../data/heroes';
+import { LEGENDS } from '../data/legends';
+import { BOSSES } from '../data/bosses';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
 import { canvas, hsl, hslToRgb } from './pixel';
@@ -51,7 +53,7 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   }
   Object.assign(META, meta);
   const keys = Object.keys(meta);
-  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id)];
+  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id), ...LEGENDS.map((l) => 'legend_' + l.key)];
   let done = 0;
   const total = keys.length + ports.length + 1;
   const tick = () => onProgress?.(++done / total);
@@ -62,6 +64,14 @@ export async function loadAssets(onProgress?: (p: number) => void) {
       if (LIT_SPRITES.includes(k)) LIGHTS[k] = windowMask(im, windows[k] || []);
       makeFlipped(k);
       tick();
+    }),
+    // 토벌전: 보스(지금은 멧돼지 왕 한 장 → 나머지는 색을 돌려 임시로) · 전투 배경 · 트로피
+    Promise.all([loadImage(`${BASE}sprites/boss_boar.png`), loadImage(`${BASE}sprites/raid_bg.png`)]).then(([boss, bg]) => {
+      RAID_BG.img = bg;
+      for (const b of BOSSES) {
+        BOSS_IMG[b.id] = b.hue ? hueRotated(boss, b.hue) : toCanvas(boss);
+        makeTrophy(b.id);
+      }
     }),
     loadImage(`${BASE}sprites/campfire.png`).then((im) => {
       for (let i = 0; i < im.width / FIRE_W; i++) {
@@ -110,6 +120,62 @@ function makeFlipped(k: string) {
   if (d) DOORS[f] = [w - 1 - d[2], d[1], w - 1 - d[0], d[3]];
   if (OPEN_FRONT.has(k)) OPEN_FRONT.add(f);
   if (ROOF_POLYS[k]) ROOF_POLYS[f] = ROOF_POLYS[k].map((p) => p.map(([x, y]) => [w - x, y] as [number, number]));
+}
+
+// ───────── 토벌전 그림 ─────────
+
+export const BOSS_IMG: Record<string, HTMLCanvasElement> = {};
+export const RAID_BG: { img: HTMLImageElement | null } = { img: null };
+
+function toCanvas(im: Drawable): HTMLCanvasElement {
+  const c = canvas(im.width, im.height);
+  c.getContext('2d')!.drawImage(im, 0, 0);
+  return c;
+}
+
+/** 색상(hue)만 돌린 사본 (임시 보스 그림) */
+function hueRotated(im: Drawable, deg: number): HTMLCanvasElement {
+  const c = toCanvas(im);
+  const x = c.getContext('2d')!;
+  const d = x.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < d.data.length; i += 4) {
+    if (!d.data[i + 3]) continue;
+    const [h, s, l] = hsl(d.data[i], d.data[i + 1], d.data[i + 2]);
+    if (s < 0.12) continue;
+    const [r, g, b] = hslToRgb((h + deg) % 360, s, l);
+    d.data[i] = r;
+    d.data[i + 1] = g;
+    d.data[i + 2] = b;
+  }
+  x.putImageData(d, 0, 0);
+  return c;
+}
+
+/** 첫 처치 트로피: 나무 받침대 위에 보스 그림을 작게 (1칸 장식, 반전 그림도) */
+function makeTrophy(id: string) {
+  const key = 'trophy_' + id;
+  const boss = BOSS_IMG[id];
+  const W = 34;
+  const H = 46;
+  const c = canvas(W, H);
+  const x = c.getContext('2d')!;
+  x.imageSmoothingEnabled = false;
+  // 받침대
+  x.fillStyle = '#5a3a24';
+  x.fillRect(7, H - 14, 20, 10);
+  x.fillStyle = '#7a4a2a';
+  x.fillRect(8, H - 13, 18, 3);
+  x.fillStyle = '#f2c447';
+  x.fillRect(14, H - 9, 6, 2);
+  x.fillStyle = '#1c1018';
+  x.fillRect(6, H - 4, 22, 1);
+  // 보스 (정수배로 줄여야 도트가 덜 뭉개진다 → 1/3)
+  const bw = Math.floor(boss.width / 3);
+  const bh = Math.floor(boss.height / 3);
+  x.drawImage(boss, Math.round((W - bw) / 2), H - 13 - bh, bw, bh);
+  IMG[key] = c;
+  META[key] = { w: W, h: H, fw: 1, fh: 1 };
+  makeFlipped(key);
 }
 
 // ───────── 모닥불: campfire.png (32×34 프레임 4장) ─────────

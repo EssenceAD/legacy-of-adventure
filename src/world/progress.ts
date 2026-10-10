@@ -5,7 +5,7 @@ import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
 import { REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS } from '../data/classes';
-import { P, S, world, type Actor, type Item } from './state';
+import { legendHooks, P, S, world, type Actor, type Item } from './state';
 
 // ───────── 평판 ★ ─────────
 
@@ -17,6 +17,7 @@ export function stars(): number {
 }
 export function addRep(n: number) {
   P.rep = Math.max(0, P.rep + n);
+  if (n > 0) legendHooks.bond('repGain');
 }
 /** 다음 별까지 남은 점수 (최대면 0) */
 export function repToNext(): number {
@@ -44,6 +45,8 @@ export function dexAddItem(it: Item): boolean {
   const k = `${it.region}|${it.slot}|${it.grade}`;
   if (P.dex.items.includes(k)) return false;
   P.dex.items.push(k);
+  legendHooks.bond('itemDexNew');
+  legendHooks.req('itemDexNew');
   return true;
 }
 
@@ -53,6 +56,8 @@ export function dexBonus(): number {
   let b = P.dex.guests.length * D.guestCellPct + P.dex.items.length * D.itemCellPct;
   for (const h of HEROES) if (P.dex.heroes[h.id]?.recruited) b += h.bonus;
   for (const s of HERO_SETS) if (s.members.every((m) => P.dex.heroes[m]?.recruited)) b += s.bonus;
+  // 전설 영웅 영입: 한 명마다 +3%
+  b += Object.values(P.legends).filter((l) => l.st === 'joined').length * CONFIG.legends.dexBonus;
   return b;
 }
 /** 영웅 ★ 합 × 1% */

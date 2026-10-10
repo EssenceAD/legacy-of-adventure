@@ -29,7 +29,7 @@ export const NEIGHBORS: Neighbor[] = [
     layout: [
       ['inn', 5, 3, 2, 265], ['dungeon', 10, 1], ['bath', 0, 0], ['tavern', 9, 6, 1, 100, true], ['garden', 1, 7],
       ['training', 5, 10], ['smith', 10, 10], ['cottage', 1, 4, 1, 265], ['cottage', 3, 11, 1, 265, true],
-      ['fire', 8, 9], ['fire', 4, 7], ['well', 9, 4], ['board', 8, 12],
+      ['fire', 8, 9], ['fire', 4, 7], ['well', 9, 4], ['board', 8, 12], ['trophy_boar', 12, 4],
       ['tree', 13, 5], ['tree', 4, 0], ['pine', 0, 12], ['tree', 13, 9], ['pine', 0, 10], ['tree', 6, 0], ['pine', 13, 13],
     ],
   },

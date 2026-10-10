@@ -3,7 +3,7 @@ import { CONFIG } from '../data/config';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
-import { markDirty, P, S, world, type Building, type Item } from './state';
+import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -52,6 +52,7 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'nosmith' {
   if (P.dust[it.grade] < cost) return 'poor';
   P.dust[it.grade] -= cost;
   track('enhance');
+  legendHooks.bond('enhanceTry');
   markDirty();
   // 실패해도 단계는 떨어지지 않는다 (가루만 든다)
   if (Math.random() >= enhanceRate(it)) return 'fail';
@@ -96,7 +97,10 @@ const GD = CONFIG.garden;
 const scale = () => (TEST ? CONFIG.test.timeScale : 1);
 
 export function plotsOf(o: Building) {
-  o.plots ??= Array.from({ length: GD.plots }, () => ({ crop: null as string | null, at: 0 }));
+  o.plots ??= [];
+  // 텃밭 2레벨마다 밭 +1칸
+  const n = GD.plots + Math.floor((o.lvl - 1) / 2);
+  while (o.plots.length < n) o.plots.push({ crop: null, at: 0 });
   return o.plots;
 }
 
@@ -126,6 +130,8 @@ export function harvest(o: Building, i: number): number {
   const n = GD.crops[p.crop!].yield;
   P.pantry += n;
   P.counters.harvests++;
+  legendHooks.bond('harvest');
+  legendHooks.req('newCrop', 1, p.crop!);
   p.crop = null;
   p.at = 0;
   track('harvest');

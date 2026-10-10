@@ -1,0 +1,721 @@
+// 토벌전 화면 (3단계 2~4장): 준비 창(파티·권장 전투력·경고) → 와이프 전환 → 옆에서 보는 도트 전투장 → 결과
+// 시안(raid_battle.html)의 전투를 옮겼다. 피해량은 「자동 기대 피해량」에 맞춰 보정한다:
+//  · 자동: 기대 피해량 ±10% (끝까지 버텼을 때)  · 직접: 자동의 90% ~ 130%
+import { CONFIG } from '../data/config';
+import type { BossDef } from '../data/bosses';
+import { CLASSES } from '../data/classes';
+import { heroById } from '../data/heroes';
+import { legendByKey } from '../data/legends';
+import { BOSS_IMG, RAID_BG } from '../engine/assets';
+import { canvas, P as Paint } from '../engine/pixel';
+import { framesFor, type CharFrames } from '../engine/sprites';
+import { appearance, powerOf } from '../world/adventurers';
+import { pairOf } from '../world/chem';
+import { powerTips } from '../world/expeditions';
+import {
+  canSweep, expectOf, raidCrew, rankOf, settle, submitRecord, triesLeft, wanderTarget, weeklyTarget, type RaidExpect, type RaidOutcome, type RaidTarget,
+} from '../world/raid';
+import { legendHooks, markDirty, P, type Actor } from '../world/state';
+import { $, $$, esc, fmt, nameTag, pct, pic } from './common';
+import { screen } from './screen';
+import { closeWin, openWin, toast } from './windows';
+
+const R = CONFIG.raid;
+const LW = 195;
+const LH = 200;
+const LANES = [170, 181, 192];
+
+// ───────── 준비 창 ─────────
+
+let picked: number[] = [];
+
+export function bossPic(b: BossDef): string {
+  const c = BOSS_IMG[b.id];
+  return c ? c.toDataURL() : '';
+}
+
+export function openRaidPrep(t: RaidTarget) {
+  const crew = raidCrew().sort((a, b) => powerOf(b) - powerOf(a));
+  picked = picked.filter((id) => crew.some((a) => a.id === id));
+  if (!picked.length) picked = crew.slice(0, R.partySize).map((a) => a.id);
+  const members = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
+  const b = t.boss;
+  const ex = expectOf(members, b);
+  const low = ex.power < b.power * R.warnRatio;
+  const tips = low ? powerTips(members) : [];
+  const left = triesLeft();
+  const hpPct = t.hpLeft / t.max;
+  const rows = crew
+    .map((a) => {
+      const on = picked.includes(a.id);
+      const lead = picked[0] === a.id;
+      const aff = b.weak.includes(a.kind as never) ? '<b class="good">상성 ↑</b>' : b.resist.includes(a.kind as never) ? '<b class="bad">상성 ↓</b>' : '';
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+    })
+    .join('');
+  openWin(
+    `토벌 · ${b.name}`,
+    `<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
+      <p class="sub">${t.kind === 'weekly' ? '이번 주 보스' : `떠돌이 보스 · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음`}</p>
+      <div class="bhp"><i style="width:${hpPct * 100}%"></i></div>
+      <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
+      <p class="note">패턴: ${b.patterns.join(' · ')}<br>상성 ↑ ${b.weak.map((k) => CLASSES[k].name).join('·')} / ↓ ${b.resist.map((k) => CLASSES[k].name).join('·')}</p>
+    </div></div>
+    <div class="pw"><span>권장 전투력</span><em>${fmt(b.power)}</em><span>우리 파티 (케미 ×${ex.chem.toFixed(2)})</span><em class="${low ? 'bad' : ex.power >= b.power ? 'good' : ''}">${fmt(ex.power)}</em><span>예상 피해량</span><em>${fmt(ex.target)}</em></div>
+    ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
+    <p class="sub">파티 ${members.length}/${R.partySize} · 첫 번째가 대장(직접 조작)</p>
+    <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
+    <div class="btnrow raidgo">
+      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 전투</button>
+      <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 싸우기</button>
+      ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
+    </div>
+    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 직접 싸우면 피해량 최대 +${Math.round((R.manualMax - 1) * 100)}% · 실패해도 깎은 만큼 보상</p>`,
+  );
+  $$('.pm').forEach(
+    (el) =>
+      (el.onclick = () => {
+        const id = +el.dataset.id!;
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < R.partySize ? [...picked, id] : picked;
+        openRaidPrep(t);
+      }),
+  );
+  const go = (manual: boolean) => {
+    closeWin();
+    startBattle(t, members, manual, ex);
+  };
+  $('#rgAuto').onclick = () => go(false);
+  $('#rgMan').onclick = () => go(true);
+  const sw = document.getElementById('rgSweep');
+  if (sw)
+    sw.onclick = () => {
+      const out = settle(t, members, ex.target, 'sweep', ex);
+      showResult(t, out, ex, 'sweep', members, false);
+    };
+}
+
+// ───────── 전투 ─────────
+
+interface Part {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  l: number;
+  c: string;
+}
+
+interface Sim {
+  on: boolean;
+  auto: boolean;
+  t: number;
+  /** 단위 피해 합 (화면 숫자 = 단위 × scale) */
+  units: number;
+  php: number;
+  chem: number;
+  lane: number;
+  combo: number;
+  lastHit: number;
+  cd1: number;
+  cd2: number;
+  shield: number;
+  stun: number;
+  bx: number;
+  bstate: 'idle' | 'warn' | 'charge' | 'back' | 'windup' | 'stun';
+  bt: number;
+  pattern: number;
+  warnLane: number;
+  charge: number;
+  hit: number;
+  heroAtk: number;
+  ally: number;
+  heal: number;
+  shake: number;
+  /** 막기: 눌렀나, 누르기 시작한 시각(패턴 남은 시간) */
+  holding: boolean;
+  pressAt: number;
+  perfect: number;
+  streak: number;
+  bestStreak: number;
+  parts: Part[];
+  dodge: boolean;
+  blk: boolean;
+  aiT: number;
+  died: boolean;
+}
+
+function newSim(): Sim {
+  return {
+    on: false, auto: false, t: R.seconds, units: 0, php: 1000, chem: 0, lane: 1, combo: 0, lastHit: 0, cd1: 0, cd2: 0, shield: 0, stun: 0,
+    bx: 108, bstate: 'idle', bt: 2.2, pattern: 0, warnLane: -1, charge: 0, hit: 0, heroAtk: 0, ally: 0, heal: 0, shake: 0,
+    holding: false, pressAt: -9, perfect: 0, streak: 0, bestStreak: 0, parts: [], dodge: false, blk: false, aiT: 0, died: false,
+  };
+}
+
+/** 화면과 상관없는 규칙 한 걸음 (자동 기대치 계산에도 쓴다). hooks는 화면 효과 */
+interface Hooks {
+  num: (x: number, y: number, units: number, cls: string, text?: string) => void;
+  warnBlock: (on: boolean) => void;
+  chemReady: () => void;
+  joint: () => void;
+  perfectBlock: () => void;
+}
+const noHooks: Hooks = { num: () => {}, warnBlock: () => {}, chemReady: () => {}, joint: () => {}, perfectBlock: () => {} };
+
+function hurtBoss(S: Sim, v: number, cls: string, h: Hooks) {
+  const u = v * (S.stun > 0 ? 2 : 1);
+  S.units += u;
+  S.hit = 0.12;
+  h.num(S.bx + Math.random() * 30 - 10, 110 + Math.random() * 20, u, cls);
+  for (let i = 0; i < 5; i++) S.parts.push({ x: S.bx + 5 + Math.random() * 20, y: 140 + Math.random() * 20, vx: (Math.random() - 0.3) * 60, vy: -Math.random() * 60, l: 0.4, c: '#fff3b0' });
+}
+function hurtParty(S: Sim, v: number, danger: number, h: Hooks) {
+  let d = v * danger;
+  if (S.shield > 0) d *= 0.4;
+  S.php = Math.max(0, S.php - Math.round(d));
+  h.num(45, 140, -Math.round(d), 'hurt', '-' + Math.round(d));
+  S.shake = 0.25;
+  if (S.php <= 0) {
+    S.died = true;
+    S.on = false;
+  }
+}
+function attack(S: Sim, h: Hooks, now: number) {
+  if (!S.on || S.heroAtk > 0) return;
+  S.heroAtk = 0.22;
+  S.combo = now - S.lastHit < 0.7 ? Math.min(S.combo + 1, 10) : 0;
+  S.lastHit = now;
+  const crit = Math.random() < 0.15;
+  hurtBoss(S, 55 * (1 + S.combo * 0.05) * (crit ? 2 : 1), crit ? 'crit' : '', h);
+  S.chem = Math.min(100, S.chem + 3);
+}
+function skill1(S: Sim, h: Hooks) {
+  if (!S.on || S.cd1 > 0) return;
+  S.cd1 = 8;
+  S.heroAtk = 0.35;
+  for (let i = 0; i < 3; i++) hurtBoss(S, 170, 'crit', h);
+  for (let k = 0; k < 12; k++) S.parts.push({ x: S.bx + 10, y: 150, vx: (Math.random() - 0.5) * 90, vy: -Math.random() * 90, l: 0.6, c: ['#ff9a3c', '#ffd36b', '#e0482e'][k % 3] });
+  S.chem = Math.min(100, S.chem + 12);
+}
+function skill2(S: Sim, h: Hooks) {
+  if (!S.on || S.cd2 > 0) return;
+  S.cd2 = 12;
+  S.shield = 4;
+  S.php = Math.min(1000, S.php + 180);
+  h.num(30, 130, 0, 'heal', '+180');
+}
+function joint(S: Sim, h: Hooks) {
+  if (!S.on || S.chem < 100) return;
+  S.chem = 0;
+  h.joint();
+  S.shake = 0.5;
+  hurtBoss(S, 1400, 'big', h);
+  for (let k = 0; k < 30; k++) S.parts.push({ x: S.bx + 10, y: 140, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 120, l: 0.9, c: ['#ff7aa8', '#ffd36b', '#ffffff'][k % 3] });
+}
+
+function bossAI(S: Sim, dt: number, danger: number, h: Hooks) {
+  if (S.stun > 0) {
+    S.stun -= dt;
+    S.bstate = 'stun';
+    if (S.stun <= 0) {
+      S.bstate = 'idle';
+      S.bt = 1.5;
+    }
+    return;
+  }
+  S.bt -= dt;
+  if (S.bstate === 'idle' && S.bt <= 0) {
+    S.pattern++;
+    if (S.pattern % 3 === 0) {
+      S.bstate = 'windup';
+      S.bt = 1.0;
+      S.perfect = 0;
+      S.pressAt = -9;
+      h.warnBlock(true);
+      h.num(S.bx + 20, 95, 0, 'msg', '!');
+    } else {
+      S.bstate = 'warn';
+      S.warnLane = (Math.random() * 3) | 0;
+      S.bt = 1.3;
+    }
+  } else if (S.bstate === 'warn' && S.bt <= 0) {
+    S.bstate = 'charge';
+    S.bt = 0.6;
+    S.charge = 0;
+  } else if (S.bstate === 'charge') {
+    S.charge = 1 - S.bt / 0.6;
+    if (S.bt <= 0) {
+      if (S.lane === S.warnLane) hurtParty(S, 220, danger, h);
+      else h.num(45, 150, 0, 'msg', '회피!');
+      S.bstate = 'back';
+      S.bt = 0.5;
+      S.warnLane = -1;
+    }
+  } else if (S.bstate === 'back' && S.bt <= 0) {
+    S.bstate = 'idle';
+    S.bt = 1.6 + Math.random() * 1.4;
+    S.charge = 0;
+  } else if (S.bstate === 'windup' && S.bt <= 0) {
+    h.warnBlock(false);
+    // 꾹 누르기: 번쩍임 동안 눌러서 맞는 순간까지 누르고 있으면 완벽한 막기
+    // 번쩍이는 동안 눌러서 맞는 순간까지 누르고 있었다 (번쩍이기 전부터 누르고 있던 건 안 됨)
+    const held = S.holding && S.pressAt > -9;
+    S.perfect = held ? 1 : S.pressAt > -9 ? 0.5 : S.perfect;
+    if (S.perfect === 1) {
+      h.num(70, 120, 0, 'msg', '완벽하게 막았다!');
+      S.stun = 3;
+      S.bstate = 'stun';
+      S.chem = Math.min(100, S.chem + 25);
+      S.shake = 0.2;
+      S.streak++;
+      S.bestStreak = Math.max(S.bestStreak, S.streak);
+      h.perfectBlock();
+      return;
+    }
+    S.streak = 0;
+    hurtParty(S, S.perfect ? 130 : 260, danger, h);
+    S.bstate = 'idle';
+    S.bt = 2;
+  }
+}
+
+function autoAI(S: Sim, dt: number, now: number, hasChem: boolean, h: Hooks) {
+  S.aiT -= dt;
+  if (S.aiT <= 0) {
+    S.aiT = 0.26;
+    attack(S, h, now);
+  }
+  if (S.bstate === 'warn' && S.lane === S.warnLane && S.bt < 0.8 && !S.dodge) {
+    S.dodge = true;
+    if (Math.random() < 0.75) S.lane = (S.warnLane + 1 + ((Math.random() * 2) | 0)) % 3;
+  }
+  if (S.bstate !== 'warn') S.dodge = false;
+  if (S.bstate === 'windup' && S.bt < 0.4 && !S.blk) {
+    S.blk = true;
+    const r = Math.random();
+    if (r < 0.4) {
+      S.holding = true;
+      S.pressAt = S.bt;
+    } else if (r < 0.8) S.pressAt = 1;
+  }
+  if (S.bstate !== 'windup') {
+    S.blk = false;
+    if (S.auto) S.holding = false;
+  }
+  if (S.cd1 <= 0) skill1(S, h);
+  if (S.cd2 <= 0 && S.php < 700) skill2(S, h);
+  if (hasChem && S.chem >= 100) joint(S, h);
+}
+
+/** 한 걸음: 시간·동료 공격·회복·보스·자동 */
+function step(S: Sim, dt: number, now: number, danger: number, hasChem: boolean, h: Hooks) {
+  S.heroAtk = Math.max(0, S.heroAtk - dt);
+  S.hit = Math.max(0, S.hit - dt);
+  S.shake = Math.max(0, S.shake - dt);
+  if (!S.on) return;
+  S.t -= dt;
+  if (S.t <= 0) {
+    S.t = 0;
+    S.on = false;
+    return;
+  }
+  S.cd1 = Math.max(0, S.cd1 - dt);
+  S.cd2 = Math.max(0, S.cd2 - dt);
+  S.shield = Math.max(0, S.shield - dt);
+  bossAI(S, dt, danger, h);
+  if (S.auto) autoAI(S, dt, now, hasChem, h);
+  S.ally -= dt;
+  if (S.ally <= 0) {
+    S.ally = 1.1;
+    hurtBoss(S, 36 + Math.random() * 16, '', h);
+    S.chem = Math.min(100, S.chem + 2);
+  }
+  S.heal -= dt;
+  if (S.heal <= 0) {
+    S.heal = 6;
+    if (S.php < 1000) S.php = Math.min(1000, S.php + 60);
+  }
+  if (!hasChem) S.chem = 0;
+}
+
+/** 자동 전투 한 판이 평균 몇 단위를 내는지 (보정 기준). 처음 한 번 몇 판 돌려 본다 */
+let AUTO_UNITS = 0;
+function autoUnits(hasChem: boolean): number {
+  if (AUTO_UNITS && hasChem) return AUTO_UNITS;
+  let sum = 0;
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    const S = newSim();
+    S.on = true;
+    S.auto = true;
+    let tt = 0;
+    while (S.on) {
+      tt += 1 / 30;
+      step(S, 1 / 30, tt, 1, hasChem, noHooks);
+    }
+    sum += S.units;
+  }
+  const u = sum / n;
+  if (hasChem) AUTO_UNITS = u;
+  return u;
+}
+let AUTO_UNITS_NOCHEM = 0;
+
+// ───────── 전투 화면 ─────────
+
+const SKILL1: Record<string, [string, string]> = {
+  knight: ['✦', '방패 돌격'], mage: ['✦', '화염구'], dwarf: ['✦', '대지 가르기'], rogue: ['✦', '급소 찌르기'], cleric: ['✦', '성스러운 빛'],
+};
+const SKILL2: Record<string, [string, string]> = {
+  knight: ['✚', '버티기'], dwarf: ['✚', '버티기'], mage: ['✚', '수호 기도'], cleric: ['✚', '수호 기도'], rogue: ['✚', '연막'],
+};
+
+let active: { stop: () => void; advance: (sec: number) => void } | null = null;
+/** 개발용: 화면이 숨어 rAF가 멈췄을 때 전투를 sec초 진행 */
+export const _raidAdvance = (sec: number) => active?.advance(sec);
+
+function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
+  active?.stop();
+  const b = t.boss;
+  const leader = members[0];
+  const pair = (() => {
+    for (const x of members) for (const y of members) if (x !== y && pairOf(x, y)) return [x, y] as [Actor, Actor];
+    return null;
+  })();
+  const hasChem = !!pair;
+  const units = hasChem ? autoUnits(true) : (AUTO_UNITS_NOCHEM ||= autoUnits(false));
+  const scale = ex.target / Math.max(1, units);
+  const s1 = leader.legendId ? legendByKey(leader.legendId)!.skill.name : leader.heroId ? heroById(leader.heroId)!.skill.name : SKILL1[leader.kind]?.[1] ?? '필살기';
+  const s2 = SKILL2[leader.kind]?.[1] ?? '버티기';
+
+  const root = document.createElement('div');
+  root.id = 'raid';
+  root.innerHTML = `
+    <div class="rwipe"></div>
+    <div id="rStageWrap"><canvas id="rStage"></canvas><div id="rFx"></div></div>
+    <div class="rtop px">
+      <div class="row"><b>${t.kind === 'weekly' ? '주간 보스' : '떠돌이 보스'} · ${esc(b.name)}</b><span id="rTimer">${R.seconds}</span></div>
+      <div class="rhp"><u id="rHpLag"></u><i id="rHpBar"></i></div>
+      <div class="week"><span id="rHpTxt"></span><span>누적 <b id="rWeekPct"></b> 처치</span></div>
+    </div>
+    <div class="rpanel px">
+      <div class="party">${members.map((m) => `<img src="${pic(m)}" alt="${esc(m.name)}" title="${esc(m.name)}">`).join('')}
+        <div class="bars">파티 체력 <span id="rPhpTxt">1000</span><div class="php"><i id="rPhpBar" style="width:100%"></i></div>
+        <div class="chem" title="${hasChem ? '케미 게이지' : '케미 짝이 없어요'}"><i id="rChemBar" style="width:0%"></i></div></div></div>
+      <div class="rbtns">
+        <button id="rBlock"><b>◆</b>막기</button>
+        <button id="rS1"><b>✦</b>${esc(s1)}<span class="cd" id="rCd1"></span></button>
+        <button id="rS2"><b>✚</b>${esc(s2)}<span class="cd" id="rCd2"></span></button>
+        <button id="rChem" disabled><b>♥</b>${hasChem ? '합동기' : '짝 없음'}</button>
+      </div>
+      <div class="sub"><span class="hint">${manual ? '화면 탭: 공격 · 위아래 밀기: 줄 이동 · 번쩍이면 막기 꾹' : '자동 전투 중 · AUTO를 끄면 직접 조작'}</span><button id="rAuto" aria-pressed="${!manual}">AUTO</button></div>
+    </div>
+    <div id="rFlash"></div><div id="rCutin" hidden></div>
+    <div class="rov" id="rResult" hidden><div class="card px res" id="rResBody"></div></div>`;
+  $('#view').appendChild(root);
+  const cv = root.querySelector('#rStage') as HTMLCanvasElement;
+  const ctx = cv.getContext('2d')!;
+  const fx = root.querySelector('#rFx') as HTMLElement;
+  const q = <T extends HTMLElement = HTMLElement>(s: string) => root.querySelector(s) as T;
+
+  // 정수 배율 (태블릿·넓은 화면은 기기 픽셀 기준 — 핫픽스 3 규칙)
+  let SC = 2;
+  const fit = () => {
+    const r = root.getBoundingClientRect();
+    const panelH = (q('.rpanel').offsetHeight || 150) + 24;
+    const topH = (q('.rtop').offsetHeight || 60) + 16;
+    const dpr = screen.devicePx ? devicePixelRatio : 1;
+    const z = Math.max(1, Math.floor(Math.min((r.width * dpr) / LW, ((r.height - panelH - topH) * dpr) / LH)));
+    SC = z / dpr;
+    cv.width = LW;
+    cv.height = LH;
+    cv.style.width = LW * SC + 'px';
+    cv.style.height = LH * SC + 'px';
+    ctx.imageSmoothingEnabled = false;
+    q('#rStageWrap').style.top = Math.max(topH, (r.height - panelH - LH * SC) / 2 + topH / 2) + 'px';
+  };
+  const onResize = () => fit();
+  addEventListener('resize', onResize);
+
+  const frames = new Map<Actor, CharFrames>();
+  for (const m of members) {
+    const { key, def } = appearance(m);
+    frames.set(m, framesFor(key, def));
+  }
+  const boss = BOSS_IMG[b.id];
+  const white = (() => {
+    if (!boss) return null;
+    const c = canvas(boss.width, boss.height);
+    const x = c.getContext('2d')!;
+    x.drawImage(boss, 0, 0);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = '#fff';
+    x.fillRect(0, 0, c.width, c.height);
+    return c;
+  })();
+
+  const S = newSim();
+  S.auto = !manual;
+  let T = 0;
+  const hpNow = () => Math.max(0, t.hpLeft - S.units * scale);
+  const hooks: Hooks = {
+    num(x, y, u, cls, text) {
+      const e = document.createElement('div');
+      e.className = 'dmg ' + cls;
+      e.textContent = text ?? fmt(u * scale);
+      e.style.left = x * SC + cv.offsetLeft + 'px';
+      e.style.top = y * SC + 'px';
+      fx.appendChild(e);
+      setTimeout(() => e.remove(), 900);
+    },
+    warnBlock: (on) => q('#rBlock').classList.toggle('warn', on),
+    chemReady: () => {},
+    joint: () => cutin(pair ? [pic(pair[0]), pic(pair[1])] : [pic(leader)], '합동기 · 마음을 하나로!'),
+    perfectBlock: () => {
+      legendHooks.bond('blockSuccess');
+      if (S.streak >= 5) legendHooks.req('blockStreak5');
+    },
+  };
+  const cutin = (imgs: string[], text: string) => {
+    const c = q('#rCutin');
+    c.innerHTML = `<div class="band"></div>${imgs[0] ? `<img class="l" src="${imgs[0]}" alt="">` : ''}${imgs[1] ? `<img class="r" src="${imgs[1]}" alt="">` : ''}<div class="t">${esc(text)}</div>`;
+    c.hidden = false;
+    const f = q('#rFlash');
+    f.classList.remove('go');
+    void f.offsetWidth;
+    f.classList.add('go');
+    setTimeout(() => (c.hidden = true), 1400);
+  };
+
+  const ui = () => {
+    const p = hpNow() / t.max;
+    q('#rHpBar').style.width = p * 100 + '%';
+    q('#rHpLag').style.width = p * 100 + '%';
+    q('#rHpTxt').textContent = `${fmt(hpNow())} / ${fmt(t.max)}`;
+    q('#rWeekPct').textContent = pct(1 - p);
+    q('#rPhpBar').style.width = S.php / 10 + '%';
+    q('#rPhpTxt').textContent = String(Math.round(S.php));
+    q('#rChemBar').style.width = S.chem + '%';
+    const cb = q<HTMLButtonElement>('#rChem');
+    cb.disabled = !hasChem || S.chem < 100;
+    cb.classList.toggle('ready', hasChem && S.chem >= 100);
+    q('#rCd1').style.height = (S.cd1 / 8) * 100 + '%';
+    q('#rCd2').style.height = (S.cd2 / 12) * 100 + '%';
+    q('#rTimer').textContent = String(Math.ceil(S.t));
+  };
+
+  // 입력: 탭 = 공격, 위아래 밀기 = 줄 이동
+  let pd: { x: number; y: number } | null = null;
+  cv.addEventListener('pointerdown', (e) => (pd = { x: e.clientX, y: e.clientY }));
+  cv.addEventListener('pointerup', (e) => {
+    if (!pd) return;
+    const dy = e.clientY - pd.y;
+    const dx = e.clientX - pd.x;
+    pd = null;
+    if (S.auto) return;
+    if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)) S.lane = Math.max(0, Math.min(2, S.lane + (dy > 0 ? 1 : -1)));
+    else attack(S, hooks, T);
+  });
+  const blockDown = (e?: Event) => {
+    e?.preventDefault();
+    if (!S.on || S.auto) return;
+    S.holding = true;
+    if (S.bstate === 'windup') S.pressAt = S.bt;
+  };
+  const blockUp = () => (S.holding = false);
+  q('#rBlock').addEventListener('pointerdown', blockDown);
+  q('#rBlock').addEventListener('pointerup', blockUp);
+  q('#rBlock').addEventListener('pointerleave', blockUp);
+  q('#rS1').onclick = () => !S.auto && skill1(S, hooks);
+  q('#rS2').onclick = () => !S.auto && skill2(S, hooks);
+  q('#rChem').onclick = () => !S.auto && hasChem && joint(S, hooks);
+  q('#rAuto').onclick = () => {
+    S.auto = !S.auto;
+    if (!S.auto) S.holding = false;
+    q('#rAuto').setAttribute('aria-pressed', String(S.auto));
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (!S.on || S.auto) return;
+    if (e.key === 'ArrowUp') S.lane = Math.max(0, S.lane - 1);
+    if (e.key === 'ArrowDown') S.lane = Math.min(2, S.lane + 1);
+    if (e.key === ' ' || e.key === 'z') attack(S, hooks, T);
+    if (e.key === 'x' && !e.repeat) blockDown();
+    if (e.key === '1') skill1(S, hooks);
+    if (e.key === '2') skill2(S, hooks);
+    if (e.key === '3' && hasChem) joint(S, hooks);
+  };
+  const onKeyUp = (e: KeyboardEvent) => e.key === 'x' && blockUp();
+  addEventListener('keydown', onKey);
+  addEventListener('keyup', onKeyUp);
+
+  const draw = (dt: number) => {
+    const sh = S.shake > 0 ? ((T * 60) | 0) % 2 ? 2 : -2 : 0;
+    ctx.save();
+    ctx.translate(sh, 0);
+    const bg = RAID_BG.img;
+    if (bg) ctx.drawImage(bg, -((bg.width - LW) / 2) | 0, 0);
+    if (b.bgTint) {
+      ctx.fillStyle = b.bgTint;
+      ctx.fillRect(0, 0, LW, LH);
+    }
+    const p = Paint(ctx);
+    if (S.bstate === 'warn' && S.warnLane >= 0 && ((T * 8) | 0) % 2) {
+      ctx.globalAlpha = 0.45;
+      p.rect(0, LANES[S.warnLane] - 4, LW, 8, '#ff3a3a');
+      ctx.globalAlpha = 1;
+    }
+    // 보스
+    let bx = S.bx;
+    if (S.bstate === 'charge') bx = S.bx - S.charge * 70;
+    if (S.bstate === 'back') bx = S.bx - (S.bt / 0.5) * 70;
+    const bob = Math.round(Math.sin(T * 3) * 1.5);
+    if (boss) {
+      const img = (S.bstate === 'windup' && ((T * 10) | 0) % 2) || S.hit > 0.06 ? white ?? boss : boss;
+      const yy = (S.bstate === 'charge' ? LANES[2] + 6 : LANES[1] + 8) - boss.height + bob;
+      ctx.drawImage(img, Math.round(bx - 10 + (S.hit > 0 ? 2 : 0)), Math.round(yy));
+      if (S.bstate === 'stun')
+        for (let i = 0; i < 3; i++) {
+          const a = T * 4 + i * 2.1;
+          p.rect(Math.round(bx + 30 + Math.cos(a) * 14), Math.round(yy + 8 + Math.sin(a) * 4), 2, 2, '#ffd36b');
+        }
+    }
+    // 파티: 동료 둘 + 대장
+    const pos: [Actor, number, number][] = [];
+    if (members[1]) pos.push([members[1], 14, LANES[0]]);
+    if (members[2]) pos.push([members[2], 8, LANES[2]]);
+    pos.push([leader, 44, LANES[S.lane]]);
+    pos.sort((x, y) => x[2] - y[2]);
+    for (const [m, x, y] of pos) {
+      const s = frames.get(m)!;
+      let fr: HTMLCanvasElement;
+      if (m === leader) fr = S.heroAtk > 0 ? s.atk[S.heroAtk > 0.11 ? 0 : 1] : s.idle[((T * 2) | 0) % 2];
+      else if (m === members[1]) fr = S.ally > 0.9 ? s.atk[1] : s.idle[((T * 2 + 1) | 0) % 2];
+      else fr = S.heal > 5.4 ? s.pray[0] : s.idle[((T * 2) | 0) % 2];
+      ctx.globalAlpha = 0.3;
+      p.rect(x + 5, y, 14, 2, '#000');
+      ctx.globalAlpha = 1;
+      ctx.drawImage(fr, x, y - 31);
+      if (m === leader && S.shield > 0 && ((T * 6) | 0) % 2) {
+        ctx.globalAlpha = 0.5;
+        p.ell(x + 12, y - 14, 13, 17, '#9fd0ff');
+        ctx.globalAlpha = 1;
+      }
+    }
+    if (S.heroAtk > 0.1) {
+      const x = 60;
+      const y = LANES[S.lane] - 20;
+      for (let i = 0; i < 10; i++) p.px(x + i * 2, y - Math.round(Math.sin((i / 10) * Math.PI) * 8), '#ffffff');
+    }
+    S.parts = S.parts.filter((pp) => {
+      pp.l -= dt;
+      pp.x += pp.vx * dt;
+      pp.y += pp.vy * dt;
+      pp.vy += 200 * dt;
+      if (pp.l <= 0) return false;
+      p.rect(pp.x | 0, pp.y | 0, 2, 2, pp.c);
+      return true;
+    });
+    ctx.restore();
+  };
+
+  let raf = 0;
+  let last = 0;
+  let ended = false;
+  /** 컷인이 끝나면 전투 시작 (전투 시간 기준) */
+  let startAt = -1;
+  const tickBattle = (dt: number) => {
+    T += dt;
+    if (startAt > 0 && T >= startAt) {
+      startAt = -1;
+      S.on = true;
+      hooks.num(70, 90, 0, 'msg', manual ? '전투 시작!' : '자동 전투 시작!');
+    }
+    const wasOn = S.on;
+    step(S, dt, T, ex.danger, hasChem, hooks);
+    if (hpNow() <= 0) S.on = false;
+    if (wasOn || !ended) ui();
+    draw(dt);
+    if (wasOn && !S.on && !ended) finish();
+  };
+  const frame = (now: number) => {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0);
+    last = now;
+    tickBattle(dt);
+    raf = requestAnimationFrame(frame);
+  };
+  const stop = () => {
+    cancelAnimationFrame(raf);
+    removeEventListener('resize', onResize);
+    removeEventListener('keydown', onKey);
+    removeEventListener('keyup', onKeyUp);
+    root.remove();
+    active = null;
+  };
+  active = { stop, advance: (sec: number) => { for (let i = 0; i < sec * 60; i++) tickBattle(1 / 60); } };
+
+  // 시작: 와이프 → 보스 등장 컷인 → 전투
+  fit();
+  ui();
+  cutin([bossPic(b), pic(leader)], `${b.name} 등장!`);
+  startAt = 1.3;
+  raf = requestAnimationFrame((t0) => {
+    last = t0;
+    fit();
+    raf = requestAnimationFrame(frame);
+  });
+
+  function finish() {
+    ended = true;
+    q('#rBlock').classList.remove('warn');
+    const live = S.units * scale;
+    const survived = !S.died;
+    const killedNow = hpNow() <= 0;
+    let damage: number;
+    if (!manual) damage = survived ? Math.max(ex.target * (1 - R.autoSpread), Math.min(ex.target * (1 + R.autoSpread), live)) : live;
+    else damage = survived ? Math.max(ex.target * R.manualMin, Math.min(ex.target * R.manualMax, live)) : Math.max(live, ex.target * R.manualMin * (1 - S.t / R.seconds));
+    if (killedNow) damage = Math.max(damage, t.hpLeft);
+    damage = Math.round(damage);
+    if (killedNow) cutin([pic(leader), bossPic(b)], `${b.name} 처치!`);
+    const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex);
+    setTimeout(() => showResult(t, out, ex, manual ? 'manual' : 'auto', members, true, S.died, S.bestStreak), killedNow ? 1400 : 500);
+  }
+}
+
+// ───────── 결과 ─────────
+
+async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode: 'auto' | 'manual' | 'sweep', members: Actor[], inBattle: boolean, died = false, streak = 0) {
+  const b = t.boss;
+  const rec = mode === 'sweep' ? null : await submitRecord(t, out.damage, mode, ex);
+  const title = out.killed ? `${b.name} 처치!` : mode === 'sweep' ? '소탕 완료' : died ? '파티가 쓰러졌다…' : '시간 종료';
+  const left = triesLeft();
+  const html = `<h2>${esc(title)}</h2><div class="big">${fmt(out.damage)}</div>
+    <div class="stars">${mode === 'sweep' ? '소탕' : `등급 ${out.rank}`}</div>
+    <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
+    <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
+    ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
+    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(순위는 2차 서버 연결 뒤 열려요)</small>` : `<b class="bad">기록 거부: ${esc(rec.reason ?? '')}</b>`) : '소탕은 랭킹에 안 들어가요')}</div>
+    <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${R.triesPerDay})</button><button class="b" id="rHome">마을로</button></div>`;
+  markDirty();
+  if (inBattle) {
+    const box = document.getElementById('rResBody')!;
+    box.innerHTML = html;
+    document.getElementById('rResult')!.hidden = false;
+  } else openWin('토벌 결과', `<div class="res">${html}</div>`);
+  if (out.firstKill) toast(`트로피 「${b.trophy}」 획득! 건설 목록에서 무료로 놓을 수 있어요`);
+  document.getElementById('rHome')!.onclick = () => {
+    active?.stop();
+    closeWin();
+  };
+  document.getElementById('rAgain')!.onclick = () => {
+    active?.stop();
+    const alive = members.filter((m) => m.hp >= CONFIG.expedition.minHp);
+    if (!alive.length) return toast('파티가 너무 지쳤어요 · 쉬고 와요');
+    const next = t.kind === 'weekly' ? weeklyTarget() : wanderTarget();
+    if (!next) return toast('떠돌이 보스가 떠났어요');
+    openRaidPrep(next);
+  };
+}
+
+/** 시험·개발용: 자동 기대 단위 */
+export const _autoUnits = () => autoUnits(true);
+export { rankOf };

@@ -321,3 +321,83 @@ html[data-size="wide"] #view:has(#win.on) .dk{left:calc((100% - min(460px,55%) -
 .ch-rumor{color:#b8a8d8}.rumor-who{color:#d8cfe8;font-weight:400}.rumor{color:#c8c0d8}
 small.npc{margin-left:4px;padding:0 3px;background:#3a3458;color:#b8a8d8;font-size:var(--f-tiny)}
 html:not([data-size="phone"]) #placebar{bottom:calc(env(safe-area-inset-bottom,0px) + 128px)}
+
+/* ── 3단계: 토벌전 화면 (시안 raid_battle.html) · 전설 영웅 · [알림] ── */
+@keyframes shakeV{0%,100%{transform:none}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(3px,1px)}}
+#view.shake{animation:shakeV .5s ease 2}
+.ch-notice{color:#ffd36b}.notice{color:#ffe7a8;font-weight:700}
+.legend-mark{color:#ffd36b;text-shadow:0 0 4px #ffb04a;margin-right:2px}
+.legend-box{margin-top:8px;padding:8px;background:#2a2410;box-shadow:inset 0 0 0 2px #c9a04a}.legend-box p{margin:4px 0}
+.lcards{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lcard{padding:6px;background:#0e1430;color:#6a74a8;display:grid;grid-template-columns:48px 1fr;column-gap:6px;align-items:start}
+.lcard>*:not(img){grid-column:2}.lcard small{display:block;color:#8a96c8}
+.lcard img{grid-row:1/5;width:48px;height:48px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink)}
+.lcard.on{color:var(--cream);box-shadow:inset 0 0 0 2px #f2c447,0 0 8px rgba(255,200,80,.35)}
+.lcard.rumor{color:#e8dcc0}
+.lgp.sil{filter:grayscale(1) brightness(.3) contrast(1.6) blur(1px)}.lgp.unk{filter:brightness(0);opacity:.35}
+.gauge{position:relative;height:12px;background:#0b0f26;box-shadow:0 0 0 2px var(--ink);margin-top:4px}.gauge i{display:block;height:100%;background:linear-gradient(90deg,#ff7aa8,#ffd36b)}
+.gauge em{position:absolute;left:4px;top:-1px;font-style:normal;font-size:var(--f-tiny);color:#fff;text-shadow:1px 1px 0 #000;white-space:nowrap}
+.raids{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.raidcard{display:grid;grid-template-columns:52px 1fr auto;gap:8px;align-items:center;border:0;padding:6px;background:#2a1a24;box-shadow:0 0 0 2px var(--ink),inset 3px 0 0 #e0544a;cursor:pointer;text-align:left}
+.raidcard.done{cursor:default;opacity:.75;box-shadow:0 0 0 2px var(--ink),inset 3px 0 0 #8fe08f}
+.raidcard img{width:52px;height:47px;object-fit:contain;image-rendering:pixelated}
+.raidcard small{display:block;color:#cfb8c8}.raidcard em{font-style:normal;color:var(--gold)}
+.bhp{display:block;height:6px;background:#2a0f18;box-shadow:0 0 0 2px var(--ink);margin-top:4px}.bhp i{display:block;height:100%;background:linear-gradient(#ff6a5a,#c8323a)}
+.boss-head{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start}
+.boss-head .bossimg{width:110px;image-rendering:pixelated}
+.pw{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px;background:#0e1430;margin:8px 0}.pw em{font-style:normal;text-align:right;font-weight:700}
+.raidgo .bigbtn{flex:1}
+.res .big{font-size:calc(var(--f-big) * 1.3);font-weight:700;color:var(--gold);text-align:center;margin:6px 0}
+.res .stars{text-align:center;font-size:var(--f-big);color:var(--gold);letter-spacing:4px}
+.res .cen{text-align:center;margin:4px 0}
+.res .loot{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.res .loot span{padding:3px 6px;background:#0e1430;box-shadow:0 0 0 2px var(--ink)}
+.res .rank{padding:8px;background:#0e1430;margin:6px 0}
+.res .go,#raid .go{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.res .go button{border:0;padding:10px;cursor:pointer;box-shadow:0 0 0 2px var(--ink);font-weight:700;min-height:44px}.res .go .a{background:#3f5fc8}.res .go .b{background:#8a3a2a}.res .go button[disabled]{opacity:.5}
+
+#raid{position:absolute;inset:0;z-index:30;background:#0d1435;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
+#raid .rwipe{position:absolute;inset:0;z-index:40;background:#05061a;pointer-events:none;animation:rwipe .7s cubic-bezier(.6,0,.3,1) forwards}
+@keyframes rwipe{0%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 0 0 100%)}}
+#rStageWrap{position:absolute;left:0;right:0;top:70px;overflow:hidden}
+#rStage{display:block;image-rendering:pixelated;margin:0 auto}
+#rFx{position:absolute;inset:0;pointer-events:none}
+#raid .dmg{position:absolute;font-weight:700;font-size:calc(var(--f-ui) * 1.4);color:#fff;text-shadow:2px 0 var(--ink),-2px 0 var(--ink),0 2px var(--ink),0 -2px var(--ink);transform:translate(-50%,0);animation:rdmg .9s ease-out forwards;white-space:nowrap}
+#raid .dmg.crit{font-size:calc(var(--f-ui) * 2);color:var(--gold)}#raid .dmg.big{font-size:calc(var(--f-ui) * 2.5);color:#ff9a3c}#raid .dmg.hurt{color:#ff7a7a}#raid .dmg.heal{color:#8fe08f}#raid .dmg.msg{color:#bfe4ff}
+@keyframes rdmg{0%{opacity:0;margin-top:6px}15%{opacity:1;margin-top:-6px}100%{opacity:0;margin-top:-34px}}
+#raid .rtop{position:absolute;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);padding:6px 8px;max-width:760px;margin:0 auto}
+#raid .rtop .row{display:flex;justify-content:space-between;align-items:center;gap:8px}#raid .rtop b{color:var(--gold)}
+#rTimer{font-weight:700;font-size:calc(var(--f-ui) * 1.4);color:#fff}
+.rhp{height:10px;margin-top:5px;background:#2a0f18;box-shadow:0 0 0 2px var(--ink);position:relative;overflow:hidden}
+.rhp i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#ff6a5a,#c8323a);transition:width .25s}
+.rhp u{position:absolute;inset:0 auto 0 0;background:#ffd36b;opacity:.6;transition:width .9s .3s;text-decoration:none}
+#raid .week{margin-top:4px;color:#9aa6d8;display:flex;justify-content:space-between}
+#raid .rpanel{position:absolute;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);padding:8px;max-width:760px;margin:0 auto}
+#raid .party{display:flex;gap:8px;align-items:center}
+#raid .party img{width:40px;height:40px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--line)}
+#raid .party .bars{flex:1}
+#raid .php{height:8px;background:#0b0f26;box-shadow:0 0 0 2px var(--ink);margin-top:3px}#raid .php i{display:block;height:100%;background:#6fb04b;transition:width .25s}
+#raid .chem{height:6px;background:#0b0f26;box-shadow:0 0 0 2px var(--ink);margin-top:5px}#raid .chem i{display:block;height:100%;background:linear-gradient(90deg,#ff7aa8,#ffd36b);transition:width .2s}
+.rbtns{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.2fr;gap:8px;margin-top:10px}
+.rbtns button{border:0;padding:8px 2px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);cursor:pointer;position:relative;overflow:hidden;min-height:56px;font-size:var(--f-small)}
+.rbtns button b{display:block;font-size:calc(var(--f-ui) * 1.4)}
+.rbtns button .cd{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6)}
+.rbtns button:active{transform:translateY(2px)}
+#rBlock{background:#2f4f9a;touch-action:none}#rBlock.warn{animation:rwarn .25s steps(2) infinite;background:#4f7fe0}
+@keyframes rwarn{50%{background:#ffd36b;color:#1c1018}}
+#rChem[disabled]{opacity:.45}#rChem.ready{background:#b2475f;animation:rglow 1s infinite}
+@keyframes rglow{50%{box-shadow:0 0 0 2px var(--ink),0 0 12px 3px #ff9fbf}}
+#raid .sub{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:#9aa6d8}
+#rAuto{border:0;padding:4px 10px;background:#3a3f6a;box-shadow:0 0 0 2px var(--ink);cursor:pointer;min-height:36px}
+#rAuto[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
+#rCutin{position:absolute;inset:0;z-index:35;pointer-events:none;overflow:hidden}
+#rCutin .band{position:absolute;left:0;right:0;top:30%;height:120px;background:linear-gradient(90deg,#b2475f,#f2c447);box-shadow:0 0 0 3px var(--ink);transform:scaleY(0);animation:rband 1.4s ease forwards}
+#rCutin img{position:absolute;top:calc(30% + 10px);width:100px;height:100px;object-fit:contain;image-rendering:pixelated;box-shadow:0 0 0 3px var(--ink);background:#141a3a}
+#rCutin .l{left:-120px;animation:rinL 1.4s ease forwards}#rCutin .r{right:-120px;animation:rinR 1.4s ease forwards}
+#rCutin .t{position:absolute;left:0;right:0;top:calc(30% + 124px);text-align:center;font-size:var(--f-big);font-weight:700;color:#fff;text-shadow:2px 2px 0 var(--ink);opacity:0;animation:rtt 1.4s ease forwards}
+@keyframes rband{10%{transform:scaleY(1)}85%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes rinL{15%{left:30px}80%{left:46px}100%{left:-120px}}@keyframes rinR{15%{right:30px}80%{right:46px}100%{right:-120px}}
+@keyframes rtt{20%{opacity:1}80%{opacity:1}100%{opacity:0}}
+#rFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:34}#rFlash.go{animation:rfl .35s ease-out}@keyframes rfl{0%{opacity:.85}100%{opacity:0}}
+.rov{position:absolute;inset:0;background:rgba(5,6,20,.72);display:flex;align-items:center;justify-content:center;padding:20px;z-index:36}
+.rov .card{width:100%;max-width:420px;padding:14px;line-height:1.5}
+.rov .card h2{margin:0 0 6px;font-size:var(--f-big);color:var(--gold)}

@@ -10,6 +10,7 @@ import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engin
 import { P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
+import { starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, type Wild } from './ground';
@@ -133,10 +134,40 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalAlpha = 1;
   }
   drawAmbient(ctx, T, LW, LH);
+  drawStar(ctx, T);
   drawNamePlate(ctx, nt);
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
 }
+
+// ───────── 운명의 별: 오늘 아직 안 잡았으면 게임 속 밤하늘에 별똥별이 지나간다 (탭하면 인연 +1~10%) ─────────
+
+const STAR = { on: false, x: 0, y: 0 };
+/** 14초마다 4초 동안 화면 위쪽을 가로지른다 */
+function drawStar(ctx: CanvasRenderingContext2D, T: number) {
+  STAR.on = false;
+  if (!starAvailable()) return;
+  const k = (T % 14) / 4;
+  if (k > 1) return;
+  STAR.on = true;
+  STAR.x = Math.round(view.LW + 20 - k * (view.LW + 40));
+  STAR.y = Math.round(24 + k * 50);
+  const p = P(ctx);
+  for (let i = 0; i < 16; i++) {
+    ctx.globalAlpha = 1 - i / 16;
+    p.px(STAR.x + i * 2, STAR.y - i, i < 3 ? '#ffffff' : '#ffe08a');
+  }
+  ctx.globalAlpha = 1;
+  p.rect(STAR.x - 1, STAR.y - 1, 3, 3, '#fff8d0');
+  if (Math.sin(T * 20) > 0) {
+    p.px(STAR.x - 3, STAR.y, '#ffffff');
+    p.px(STAR.x + 3, STAR.y, '#ffffff');
+    p.px(STAR.x, STAR.y - 3, '#ffffff');
+    p.px(STAR.x, STAR.y + 3, '#ffffff');
+  }
+}
+/** 탭한 곳이 별똥별 근처인가 (넉넉히) */
+export const starHit = (mx: number, my: number) => STAR.on && Math.hypot(mx - STAR.x, my - STAR.y) < 22;
 
 /** 모닥불 불꽃 높이 (칸 중심에서 위로 px) — 불티·빛의 중심 */
 const FIRE_FLAME_Y = 12;
@@ -378,8 +409,19 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   // 수련: 흰 바람 / 밭일: 물방울
   if (a.st === 'atk' && Math.random() < 0.06) puff(X + a.dir * 12 - view.OX, Y - 16 - view.OY, '#ffffff', a.dir * 10, -4, 0.25, 1);
   if (a.st === 'pray' && Math.random() < 0.05) puff(X + a.dir * 8 - view.OX, Y - 12 - view.OY, '#8fd0ff', 0, 10, 0.5, 1);
-  // 영웅: 머리 위 금빛 별 / 전설 손님: 가끔 반짝
-  if (a.heroId && fade === 1) {
+  // 전설 영웅: 머리 위 금빛 마름모 + 반짝 · 방문 때 금빛 발자국
+  if (a.legendId && fade === 1) {
+    const p = P(ctx);
+    const b = Math.round(Math.sin(T * 3 + a.ph) * 1);
+    const c = a.status === 'hero' ? '#ffd36b' : '#fff3b0';
+    p.rect(X - 1, Y - 38 + b, 3, 3, c);
+    p.px(X, Y - 40 + b, c);
+    p.px(X, Y - 34 + b, c);
+    p.px(X - 2, Y - 37 + b, c);
+    p.px(X + 2, Y - 37 + b, c);
+    if (Math.random() < 0.04) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
+    if (a.goldSteps && a.st === 'walk' && Math.random() < 0.35) puff(X - view.OX + (Math.random() * 6 - 3), Y - view.OY - 1, '#ffd36b', 0, 0, 1.6, 2);
+  } else if (a.heroId && fade === 1) {
     const p = P(ctx);
     const b = Math.round(Math.sin(T * 3 + a.ph) * 1);
     const c = a.status === 'hero' ? '#ffd36b' : '#cfd8ff';

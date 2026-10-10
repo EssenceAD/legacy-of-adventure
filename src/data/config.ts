@@ -302,7 +302,7 @@ export const CONFIG = {
     craftGold: 80,
     /** 대장간 레벨이 오를 때마다 상위 등급 확률 배수 */
     craftLevelBoost: 1.35,
-    levelCosts: [0, 500, 900, 1500, 2500],
+    levelCosts: [0, 500, 900, 1500, 2500, 4000, 6000],
   },
   garden: {
     plots: 3,
@@ -350,6 +350,65 @@ export const CONFIG = {
   goals: {
     count: 3,
   },
+  // ═════════════ 3단계: 토벌전 · 전설 영웅 ═════════════
+
+  raid: {
+    /** 한 판 시간(초), 파티 인원 (영웅 1 + 동료 2) */
+    seconds: 60,
+    partySize: 3,
+    /** 하루 도전 (실제 날짜) */
+    triesPerDay: 3,
+    /** 권장의 이 비율 미만이면 시작 전 경고 */
+    warnRatio: 0.6,
+    /** 피해량 = 전투력 × 초 × dmgPerPowerSec × 상성 × 케미 (자동은 ±autoSpread 흔들림) */
+    dmgPerPowerSec: 1,
+    autoSpread: 0.1,
+    /** 직접 조작: 자동 대비 최소·최대 */
+    manualMin: 0.9,
+    manualMax: 1.3,
+    /** 상성 */
+    weakMult: 1.2,
+    resistMult: 0.85,
+    /** 등급: 기대 피해 대비 */
+    rankS: 1.15,
+    rankA: 1.03,
+    rankB: 0.95,
+    /** 랭킹 기록 상한 = 이론치 × 이 값 (넘으면 거부 — 2차에서 서버가 같은 검사) */
+    recordCap: 1.5,
+    /** 한 판 뒤 파티 체력 감소 */
+    hpCost: 20,
+    /** 원정 승리 때 떠돌이 보스와 마주칠 확률 · 도전 가능 시간 · 체력 비율 */
+    wanderChance: 0.08,
+    wanderHours: 24,
+    wanderHpShare: 0.4,
+    /** 처치 보너스: 금화 = 보스 기준 금화 × 이 값, 전용 재료 */
+    killGoldMult: 3,
+    killMats: 5,
+  },
+  legends: {
+    /** 인연 활동 한 번에 게이지 +min~max% */
+    gaugeMin: 1,
+    gaugeMax: 3,
+    /** 밤 판정 확률(%) = 게이지 ÷ 이 값 */
+    judgeDiv: 20,
+    /** 머무는 기간(실제 일), 실패하면 게이지 */
+    visitDays: 3,
+    failGauge: 50,
+    /** 운명의 별: +1~10% (흔한 값일수록 무겁게) */
+    starWeights: [30, 20, 14, 10, 8, 6, 4, 3, 3, 2],
+    /** ★1→2, 2→3, 3→4, 4→5 에 필요한 인연의 증표 */
+    tokenNeeds: [1, 2, 3, 4],
+    /** ★ 하나당 전투력 + */
+    starPowerPct: 0.08,
+    /** 원정에서 증표가 나올 확률 */
+    tokenRunChance: 0.003,
+    /** 영입 보상: 계정 전체 전투력 + */
+    dexBonus: 0.03,
+    /** 레온 부탁: 마을 장식 점수 */
+    decoNeed: 40,
+    /** 금빛 발자국이 남는 시간(초) */
+    goldStepsSeconds: 12,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,
@@ -358,7 +417,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 2,
+    version: 3,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

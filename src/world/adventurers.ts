@@ -9,6 +9,8 @@ import { GRADE_INFO, STATS, type StatKey } from '../data/items';
 import { P, pick, world, type Actor } from './state';
 import { equippedItems, itemStat, optSum } from './items';
 import { dexBonus, heroStarBonus } from './progress';
+import { bondTierBonus, ownerBonus } from './owner';
+import { legendByKey } from '../data/legends';
 
 const G = CONFIG.guests;
 
@@ -69,6 +71,20 @@ export function makeHero(id: string, x: number, y: number): Actor {
   return a;
 }
 
+/** 전설 영웅 손님 (방문 → 부탁 완수 시 영입) */
+export function makeLegend(key: string, x: number, y: number): Actor {
+  const L = legendByKey(key)!;
+  const a = makeAdventurer(x, y, { kind: L.kind, race: L.race, rarity: 'legend', lvl: 15, status: 'visitor' });
+  a.name = L.name;
+  a.legendId = key;
+  a.hair = L.hair;
+  a.stars = 1;
+  a.leaveDay = 1e9;
+  a.hp = a.food = a.mood = 95;
+  a.goldSteps = CONFIG.legends.goldStepsSeconds;
+  return a;
+}
+
 // ───────── 능력치 · 경험치 ─────────
 
 const guestKind = (a: Actor): GuestKind => (GUEST_KINDS as readonly string[]).includes(a.kind) ? (a.kind as GuestKind) : 'knight';
@@ -76,7 +92,7 @@ const guestKind = (a: Actor): GuestKind => (GUEST_KINDS as readonly string[]).in
 /** 레벨·희귀도로 정해지는 기본 능력치 */
 export function baseStats(a: Actor): Record<StatKey, number> {
   const b = CLASS_STATS[guestKind(a)];
-  const mult = RARITY_INFO[a.rarity].mult * (a.heroId ? 1.25 : 1) * (1 + 0.12 * (a.lvl - 1));
+  const mult = RARITY_INFO[a.rarity].mult * (a.legendId ? 1.4 : a.heroId ? 1.25 : 1) * (1 + 0.12 * (a.lvl - 1));
   const o = {} as Record<StatKey, number>;
   for (const k of STATS) o[k] = Math.round(b[k] * mult);
   return o;
@@ -107,15 +123,17 @@ export function gainXp(a: Actor, n: number): boolean {
 // ───────── 전투력 ─────────
 
 /**
- * 전투력 = (레벨 기본치 + 장비 합) × (1 + 도감 보너스% + 영웅★ 보너스% + 장비 옵션 전투력%) × 케미 배율
- * 성장 수단은 레벨·장비·도감·케미 넷뿐.
+ * 전투력 = (레벨 기본치 + 장비 합) × (1 + 도감 보너스% + 영웅★ 보너스% + 장비 옵션 전투력% + 주인 보너스%) × 전설★ × 인연 단계 × 케미 배율
+ * 성장 수단은 레벨·장비·도감·케미 넷뿐. (주인 보너스·인연 단계는 4단계 자리 — 지금은 0)
  */
 export function powerOf(a: Actor, chemMult = 1): number {
   const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
   let gear = 0;
   for (const it of equippedItems(a)) for (const k of STATS) gear += itemStat(it, k);
-  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100;
-  return Math.round((base + gear) * mult * chemMult);
+  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100 + ownerBonus();
+  // 전설 영웅: ★ 하나 오를 때마다 +8%
+  const legend = a.legendId ? 1 + CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
+  return Math.round((base + gear) * mult * legend * (1 + bondTierBonus(a)) * chemMult);
 }
 
 // ───────── 겉모습 ─────────
@@ -135,6 +153,8 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
   const w = equippedItems(a).find((it) => it.slot === 'weapon');
   def.weapon = w?.wkind ?? CLASS_WEAPON[guestKind(a)];
   def.weaponColor = w && w.grade !== 'n' ? GRADE_INFO[w.grade].color : undefined;
+  // 전설 ★5: 전용 「유산 무기」 (금빛)
+  if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
   const key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
   return { key, def };
 }

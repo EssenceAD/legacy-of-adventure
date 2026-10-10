@@ -48,14 +48,20 @@ export const CATALOG = {
     desc: '모험가들이 모여 떠들어요 · 케미 발생 ↑',
   },
   smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 4, stars: 2, roofable: true, levels: CONFIG.smith.levelCosts.slice(1), levelText: '가방 +20칸 · 제작 등급 ↑', desc: '장비 강화 · 파밍한 재료로 제작' },
-  bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, stars: 3, desc: '피로 회복 · 기분 ↑' },
-  training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, desc: '모험가 레벨업 · 허수아비를 팹니다' },
-  garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, desc: '식재료 수확 · 식사 품질 ↑' },
+  bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, stars: 3, levels: [1200, 2000, 3200, 5000], levelText: '회복·기분 +15%', desc: '피로 회복 · 기분 ↑' },
+  training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, levels: [400, 700, 1100, 1600, 2200, 3000, 4000], levelText: '수련 경험치 +20%', desc: '모험가 레벨업 · 허수아비를 팹니다' },
+  garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, levels: [300, 600, 1000, 1600, 2400], levelText: '2레벨마다 밭 +1칸', desc: '식재료 수확 · 식사 품질 ↑' },
   well: { name: '우물', sprite: 'well', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '마을 장식 · 주변 기분 +' },
   board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, levels: [300, 800, 1600], levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
   tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   pine: { name: '소나무', sprite: 'pine', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 2, desc: '밤이면 손님들이 둘러앉아요' },
+  // 3단계: 보스 첫 처치 트로피 (장식, 무료, 처치한 보스만). 그림은 보스 그림으로 코드에서 만든다
+  trophy_boar: { name: '멧돼지 왕 머리', sprite: 'trophy_boar', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_mushroom: { name: '버섯 거인 갓', sprite: 'trophy_mushroom', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_golem: { name: '골렘 주먹', sprite: 'trophy_golem', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_wyvern: { name: '얼음 와이번 뿔', sprite: 'trophy_wyvern', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_eye: { name: '심연의 눈 조각', sprite: 'trophy_eye', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
 } satisfies Record<string, BuildingDef>;
 

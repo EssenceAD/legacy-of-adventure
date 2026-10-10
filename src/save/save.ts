@@ -20,7 +20,7 @@ export interface SavedBuilding {
 /** 저장되는 손님 필드 (그림·이동 상태는 빼고) */
 export type SavedAdventurer = Pick<
   Actor,
-  'id' | 'kind' | 'name' | 'x' | 'y' | 'lvl' | 'xp' | 'hp' | 'food' | 'mood' | 'race' | 'rarity' | 'face' | 'hair' | 'status' | 'leaveDay' | 'moodSum' | 'moodN' | 'equip' | 'runId' | 'heroId' | 'stars'
+  'id' | 'kind' | 'name' | 'x' | 'y' | 'lvl' | 'xp' | 'hp' | 'food' | 'mood' | 'race' | 'rarity' | 'face' | 'hair' | 'status' | 'leaveDay' | 'moodSum' | 'moodN' | 'equip' | 'runId' | 'heroId' | 'legendId' | 'stars'
 >;
 
 export interface SaveData {
@@ -39,7 +39,7 @@ export interface SaveData {
   progress: Progress;
 }
 
-const KEEP: (keyof SavedAdventurer)[] = ['id', 'kind', 'name', 'lvl', 'xp', 'race', 'rarity', 'face', 'hair', 'status', 'leaveDay', 'moodSum', 'moodN', 'equip', 'runId', 'heroId', 'stars'];
+const KEEP: (keyof SavedAdventurer)[] = ['id', 'kind', 'name', 'lvl', 'xp', 'race', 'rarity', 'face', 'hair', 'status', 'leaveDay', 'moodSum', 'moodN', 'equip', 'runId', 'heroId', 'legendId', 'stars'];
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /** 지금 상태 → 저장 모양 (이웃 방문 중이면 보관해 둔 내 마을로) */
@@ -128,6 +128,8 @@ export function migrate(d: any): any {
     p.lastSeen = num(d.savedAt, Date.now());
     d = { ...d, version: 2, clock: d.night ? (CONFIG.clock.nightStartHour - CONFIG.clock.dayStartHour) * 60 : 0, adventurers: advs, progress: p };
   }
+  // v2 → v3 (3단계): 진행 데이터에 토벌·전설 칸이 늘었을 뿐 — 빠진 칸은 mergeProgress가 기본값으로 채운다
+  if (d.version === 2) d = { ...d, version: 3 };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }
@@ -177,6 +179,7 @@ function validate(d: any): SaveData | null {
         equip: { weapon: eq.weapon ?? null, armor: eq.armor ?? null, acc: eq.acc ?? null },
         runId: typeof a.runId === 'number' ? a.runId : null,
         heroId: typeof a.heroId === 'string' ? a.heroId : undefined,
+        legendId: typeof a.legendId === 'string' ? a.legendId : undefined,
         stars: typeof a.stars === 'number' ? a.stars : undefined,
       } as SavedAdventurer;
     });

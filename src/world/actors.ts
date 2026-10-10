@@ -13,7 +13,7 @@ import { dueRuns, resolveRun } from './expeditions';
 import { bldSay, floatW, puffAt, say } from './fx';
 import { unequip } from './items';
 import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
-import { earn, later, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
+import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
 
@@ -177,8 +177,10 @@ export function enter(a: Actor, o: Building) {
       if (S.visiting || !a.id) return;
       a.hp = clamp(a.hp + NE.trainHp);
       P.counters.trains++;
+      legendHooks.bond('train');
       track('train');
-      if (gainXp(a, NE.trainXp)) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
+      // 훈련장 레벨마다 수련 경험치 +20%
+      if (gainXp(a, NE.trainXp * (1 + 0.2 * (o.lvl - 1)))) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
     });
     return;
   }
@@ -211,6 +213,8 @@ export function enter(a: Actor, o: Building) {
 
 /** 건물 안에서 욕구가 채워진다 */
 function fillNeeds(a: Actor, act: Act | undefined) {
+  const tired = a.hp < 30;
+  const bathLv = world.objs.find((o) => o.kind === 'bath')?.lvl ?? 1;
   if (act === 'sleep') {
     a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp));
     // 주점이 없으면 여관에서 간단한 끼니가 나온다
@@ -227,9 +231,14 @@ function fillNeeds(a: Actor, act: Act | undefined) {
       track('meal');
     }
   } else if (act === 'bath') {
-    a.hp = clamp(a.hp + NE.bathHp);
-    a.mood = clamp(a.mood + NE.bathMood);
+    // 온천 레벨마다 회복·기분 +15%
+    const k = 1 + 0.15 * (bathLv - 1);
+    a.hp = clamp(a.hp + NE.bathHp * k);
+    a.mood = clamp(a.mood + NE.bathMood * k);
+    if (!S.visiting && a.id) legendHooks.bond('bathUse');
   } else if (act === 'forge') a.mood = clamp(a.mood + 4);
+  // 지친 손님이 쉬고 일어났다 (성녀 아리아의 부탁)
+  if (!S.visiting && tired && a.hp >= 30 && (act === 'sleep' || act === 'bath')) legendHooks.req('tiredRecovered');
 }
 
 function goInside(a: Actor, o: Building) {
@@ -242,6 +251,11 @@ function goInside(a: Actor, o: Building) {
   puffAt(o, '#efe2c6', 3);
   if (act && act !== 'sleep' && LINES[act]) bldSay(o, pick(LINES[act]));
   fillNeeds(a, act);
+  // 손님 접대 (전설 인연 활동): 기사·도적 손님이 건물을 쓸 때
+  if (!S.visiting && a.id && act) {
+    if (a.kind === 'knight') legendHooks.bond('serveKnight');
+    if (a.kind === 'rogue') legendHooks.bond('serveRogue');
+  }
   const income = act ? CONFIG.economy.income[act] : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
@@ -509,9 +523,11 @@ export function dailyGuests() {
     const R = CONFIG.reputation;
     if (avg >= R.dailyMoodHigh) addRep(R.dailyMoodGain);
     else if (avg < R.dailyMoodLow) addRep(R.dailyMoodLoss);
+    // 손님 기분 '최고' 날 (전설 아리아의 소문 조건)
+    if (avg >= 90) P.counters.moodTopDays++;
   }
   for (const a of guestsOf()) {
-    if (a.status !== 'visitor' || a.heroId || a.runId != null) continue;
+    if (a.status !== 'visitor' || a.heroId || a.legendId || a.runId != null) continue;
     const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
     if (avg < G.leaveMood) sendAway(a, false);
     else if (S.day >= a.leaveDay) {
@@ -698,6 +714,7 @@ export function updActors(dt: number) {
   for (const a of world.actors) {
     a.t -= dt;
     if (a.pop) a.pop = Math.max(0, a.pop - dt);
+    if (a.goldSteps) a.goldSteps = Math.max(0, a.goldSteps - dt);
     if (a.fading !== undefined) {
       a.fading -= dt;
       continue;

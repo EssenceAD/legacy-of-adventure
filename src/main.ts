@@ -22,6 +22,13 @@ import { initScreen, screen, setOnScreenChange } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
+import { _raidAdvance } from './ui/raid';
+import { rumorNow } from './ui/chat';
+import { net } from './net';
+import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
+import { maybeAlarm } from './world/raid';
+import { starHit } from './world/render';
+import { floatW } from './world/fx';
 import { talk } from './ui/dialogue';
 
 const host = document.getElementById('view')!;
@@ -58,6 +65,7 @@ let acc = 0;
 let drawAcc = 0;
 let saveClock = 0;
 let shownHour = -1;
+let wasStarted = false;
 let last = 0;
 
 function update(dt: number) {
@@ -67,14 +75,27 @@ function update(dt: number) {
   t = mark('jobs', t);
   updActors(dt);
   t = mark('actors', t);
-  const busy = isWinOpen() || !!placing.pl || isTalking();
+  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid');
   tickDayNight(dt);
   t = mark('daynight', t);
+  if (!S.started) wasStarted = false;
   if (S.started) {
+    // 마을이 처음 돌아가기 시작할 때 (새 게임·이어하기): 새벽 접속 · 이번 주 보스 경보 · 전설 소문 · 밤이면 방문 판정
+    if (!wasStarted) {
+      wasStarted = true;
+      dawnCheck();
+      maybeAlarm();
+      checkRumors();
+      if (S.night) judgeNight();
+    }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
     if (hourNow() !== shownHour) {
       shownHour = hourNow();
+      if (!S.visiting) {
+        tickLegends();
+        maybeAlarm();
+      }
       game.syncHud();
     }
   }
@@ -225,6 +246,15 @@ function tap(e: PointerEvent) {
     return;
   }
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
+  // 운명의 별 (밤하늘 별똥별)
+  if (starHit(mx, my)) {
+    const msg = catchStar();
+    if (msg) {
+      toast(msg);
+      floatW(7, 5, 60, '★ 운명의 별!', 'big');
+    }
+    return;
+  }
   // 캐릭터 먼저 (화면 거리)
   let best: (typeof world.actors)[number] | null = null;
   let bd = 1e9;
@@ -279,6 +309,13 @@ async function boot() {
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
   uiHooks.talk = talk;
+  uiHooks.rumor = rumorNow;
+  uiHooks.announce = (t) => net.chat.announce(t);
+  uiHooks.shake = () => {
+    host.classList.remove('shake');
+    void host.offsetWidth;
+    host.classList.add('shake');
+  };
   uiHooks.report = (run) => {
     if (!run.claimed) showReport(run);
   };
@@ -329,6 +366,7 @@ async function boot() {
         Object.assign(a, { x: dx, y: dy, hidden: false, path: null, door: null, party: false });
         enter(a, o);
       },
+      __raid: _raidAdvance,
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);
       },

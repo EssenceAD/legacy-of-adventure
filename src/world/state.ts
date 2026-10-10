@@ -98,12 +98,39 @@ export interface Actor {
   /** 원정 중이면 원정 번호 */
   runId: number | null;
   heroId?: string;
-  /** 영웅 별 (1~5) */
+  /** 전설 영웅 (3단계) */
+  legendId?: string;
+  /** 영웅·전설 별 (1~5) */
   stars?: number;
+  /** 금빛 발자국이 남는 남은 시간 (전설 방문) */
+  goldSteps?: number;
   /** 마을 밖으로 걸어 나가는 중 */
   leaving?: boolean;
   /** 지금 채우러 가는 욕구 (창에 표시) */
   intent?: string;
+}
+
+export interface LegendState {
+  st: 'rumor' | 'visit' | 'joined';
+  gauge: number;
+  /** 방문 중: 떠나는 시각(ms) · 부탁 진행 · 이미 센 것(작물 종류 등) */
+  until?: number;
+  prog?: number;
+  seen?: string[];
+  /** 연속 막기 같은 한 판 기록 */
+  best?: number;
+}
+
+/** 토벌 한 판 기록 (2차에서 서버 랭킹으로 올린다) */
+export interface RaidRecord {
+  week: string;
+  bossId: string;
+  damage: number;
+  power: number;
+  /** 전투력 기반 이론치 (서버 검증: damage ≤ theory × recordCap) */
+  theory: number;
+  mode: 'auto' | 'manual';
+  at: number;
 }
 
 /** 단골 대기 목록에 보관하는 손님 (다시 찾아올 때 이 모습 그대로) */
@@ -234,7 +261,46 @@ export function freshProgress() {
       crafted: {} as Record<string, number>,
       regionWins: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
       expeditions: 0,
+      // 3단계: 전설 영웅 소문 조건용
+      forestSends: 0,
+      goldTotal: 0,
+      moodTopDays: 0,
+      relicEver: 0,
     },
+    /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
+    raid: {
+      week: '',
+      bossId: '',
+      hpLeft: 0,
+      killed: false,
+      /** 이번 주 한 판 최고 피해량 (주간 토벌 랭킹 기준) */
+      best: 0,
+      day: '',
+      tries: 0,
+      /** 이번 주 참여 보상(인연의 증표)을 받았나 */
+      joined: false,
+      alarmed: false,
+      wander: null as null | { bossId: string; until: number; hpLeft: number; max: number },
+      firstKills: [] as string[],
+      kills: {} as Record<string, number>,
+      personalBest: 0,
+      /** 주간 보스를 처치한 주 수 (2차 전까지 「상위 30%」 대신) */
+      weeksKilled: 0,
+      /** 서버로 올릴 기록 (2차: 로그인 뒤 한꺼번에 올리고 비운다) */
+      outbox: [] as RaidRecord[],
+    },
+    /** 보스 전용 재료 */
+    bossMats: {} as Record<string, number>,
+    trophies: [] as string[],
+    titles: [] as string[],
+    /** 전설 영웅: 소문 → 인연 게이지 → 방문 → 영입 */
+    legends: {} as Record<string, LegendState>,
+    /** 마지막으로 밤 방문 판정을 한 실제 날짜, 운명의 별을 잡은 실제 날짜, 새벽 접속을 센 날짜 */
+    legendDay: '',
+    starDay: '',
+    dawnDay: '',
+    /** 인연의 증표 */
+    tokens: 0,
     goals: { day: '', list: [] as { id: string; target: number; progress: number; claimed: boolean }[] },
     /** 지난 7일(게임 날) 수입 */
     week: [] as { day: number; gold: number }[],
@@ -301,6 +367,18 @@ export const uiHooks = {
   talk: (_lines: TalkLine[], _done?: () => void, _choices?: TalkChoice[]) => {},
   /** 원정 결과 보고서 창 */
   report: (_run: Run) => {},
+  /** [소문] 채널에 한 줄 (전설 소문) */
+  rumor: (_text: string) => {},
+  /** [알림] 채널 방송 (전설 영입·보스 처치) */
+  announce: (_text: string) => {},
+  /** 화면 흔들림 (보스 경보) */
+  shake: () => {},
+};
+
+/** 전설 영웅 인연 활동·부탁 진행 알림 통로 (world/legends.ts가 채운다) */
+export const legendHooks = {
+  bond: (_e: string, _n?: number) => {},
+  req: (_e: string, _n?: number, _tag?: string) => {},
 };
 
 /** 금화 벌기: 장부에 기록 (이웃 방문 중엔 안 번다) */
@@ -308,6 +386,20 @@ export function earn(v: number, kind: IncomeKind) {
   if (S.visiting) return;
   S.gold += v;
   S.ledger[kind] += v;
+  gotGold(v);
+}
+
+/** 금화를 벌 때마다: 누적 금화(전설 소문 조건) · 500G마다 인연 활동 · 부탁 진행 */
+let goldAcc = 0;
+export function gotGold(v: number) {
+  if (v <= 0) return;
+  P.counters.goldTotal += v;
+  goldAcc += v;
+  while (goldAcc >= 500) {
+    goldAcc -= 500;
+    legendHooks.bond('goldEarn');
+  }
+  legendHooks.req('goldEarned', v);
 }
 
 // 저장해야 할 일이 생기면 표시 → main 루프가 곧 저장한다

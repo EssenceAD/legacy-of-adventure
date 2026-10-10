@@ -9,7 +9,9 @@ import { itemIcon } from '../world/items';
 import {
   claimGoal, DEX_REWARDS, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
 } from '../world/progress';
-import { markDirty, P, S } from '../world/state';
+import { markDirty, P, S, world } from '../world/state';
+import { LEGENDS } from '../data/legends';
+import { PORTRAITS } from '../engine/assets';
 import { $$, bindTabs, fmt, pct, tabs } from './common';
 import { openWin, toast } from './windows';
 
@@ -65,6 +67,20 @@ export function openDex(tab = dTab) {
       return `<div class="chemrow ${found ? 'on' : ''}"><b>${name}</b><small>${found ? `${p.hint} · 최고 ${'♥'.repeat(best)}` : p.open ? p.hint : '마을이나 원정에서 우연히 발견돼요'}</small></div>`;
     }).join('');
     body = `<p class="sub">케미 ${P.dex.chem.length}/${CHEM_PAIRS.length} 발견 · 같이 원정 가면 친밀도 단계 × ${pct(CONFIG.chem.partyBonusPerLevel)}</p><div class="chems">${rows}</div>`;
+  } else if (tab === 4) {
+    // 전설 14: ??? → 소문(실루엣·힌트·게이지) → 방문 → 동료
+    const cards = LEGENDS.map((d) => {
+      const st = P.legends[d.key];
+      const img = `<img class="lgp ${st ? (st.st === 'joined' ? '' : 'sil') : 'unk'}" src="${PORTRAITS['legend_' + d.key] ?? ''}" alt="">`;
+      if (!st) return `<div class="lcard">${img}<b>???</b><small>소문 조건: ${d.rumorText}</small></div>`;
+      if (st.st === 'joined') {
+        const a = (world.home?.actors ?? world.actors).find((x) => x.legendId === d.key);
+        return `<div class="lcard on">${img}<b>${d.title} ${d.name} <span class="g">${'★'.repeat(a?.stars ?? 1)}</span></b><small>${d.charm}</small><small>기술 ${d.skill.name} · 등록 +${Math.round(CONFIG.legends.dexBonus * 100)}%</small></div>`;
+      }
+      const g = st.gauge;
+      return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · 오늘 밤 방문 ${g >= 100 ? '확정' : `${(g / CONFIG.legends.judgeDiv).toFixed(1)}%`}</em></div></div>`;
+    }).join('');
+    body = `<p class="sub">전설 ${Object.values(P.legends).filter((l) => l.st === 'joined').length}/${LEGENDS.length} · 인연의 증표 ${P.tokens}개</p><p class="note">소문이 열리면 인연 활동으로 게이지가 차요. 실제 날짜로 하루 한 번, 게임 속 밤 10시에 방문 판정(게이지÷${CONFIG.legends.judgeDiv}%) · 100%면 확정. 밤하늘의 별똥별을 누르면 +1~10%</p><div class="lcards">${cards}</div>`;
   } else {
     const cards = HEROES.map((h) => {
       const st = P.dex.heroes[h.id];
@@ -80,7 +96,7 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(['손님', '아이템', '케미', '영웅', '전설'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
   $$('[data-rw]').forEach(

@@ -2,6 +2,8 @@
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
+import { legendByKey } from '../data/legends';
+import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
 import { CLASSES, RACE_NAME, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
@@ -67,7 +69,7 @@ export function showActor(a: Actor) {
   }
   const st = totalStats(a);
   const status =
-    a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
+    a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
   const slots = SLOTS.map((s) => {
     const it = P.bag.find((x) => x.id === a.equip[s]);
     return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small></button>`;
@@ -86,17 +88,73 @@ export function showActor(a: Actor) {
     <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b></span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
     ${a.status === 'regular' || a.status === 'hero' ? `<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}` : ''}</p>` : ''}
+    ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
     ${a.status === 'regular' && a.runId == null ? '<button class="bigbtn sm" id="aBye">단골 보내 주기</button>' : ''}`,
   );
   $$('.slot').forEach((b) => (b.onclick = () => pickGear(a, b.dataset.s as Slot)));
+  bindLegend(a);
   const bye = document.getElementById('aBye');
   if (bye)
     bye.onclick = () => {
       if (!confirm(`${a.name}${josa(a.name, "를")} 보내 줄까요? 끼고 있던 장비는 가방으로 돌아와요.`)) return;
       sendAway(a, true);
       openGuests();
+    };
+}
+
+// ───────── 전설 영웅: 부탁 진행 · 바치기/보여 주기 · 인연의 증표로 ★ ─────────
+
+function legendPanel(a: Actor): string {
+  const d = legendByKey(a.legendId!)!;
+  const st = P.legends[d.key];
+  const sk = `기술 「${d.skill.name}」 ${OPT_INFO[d.skill.k].label(d.skill.v * ((a.stars ?? 1) >= 3 ? 1.5 : 1), d.skill.region ? regionById(d.skill.region).name : undefined)}`;
+  if (st?.st === 'visit') {
+    const left = Math.max(0, (st.until ?? 0) - Date.now());
+    const prog = d.request.event === 'check' ? '' : ` (${Math.min(st.prog ?? 0, d.request.need).toLocaleString('ko-KR')}/${d.request.need.toLocaleString('ko-KR')})`;
+    const btn = d.key === 'scarlet' ? '<button class="bigbtn sm" id="lgOffer">장비 바치기</button>' : d.key === 'ryuka' ? '<button class="bigbtn sm" id="lgShow">유물 보여 주기</button>' : '';
+    return `<div class="legend-box"><b class="g">전설 「${d.title}」 · ${d.charm}</b><p>부탁: ${esc(d.request.text)}${prog}</p><p class="note">남은 시간 ${Math.floor(left / 864e5)}일 ${Math.floor((left % 864e5) / 36e5)}시간 · 못 들어주면 떠나고 인연 게이지 ${CONFIG.legends.failGauge}%</p>${btn}</div>`;
+  }
+  const need = tokenNeed(a.stars ?? 1);
+  return `<div class="legend-box"><b class="g">전설 「${d.title}」 ${'★'.repeat(a.stars ?? 1)}${'☆'.repeat(5 - (a.stars ?? 1))}</b><p>${sk} · ★마다 전투력 +${Math.round(CONFIG.legends.starPowerPct * 100)}%${(a.stars ?? 1) >= 5 ? ' · 유산 무기' : ''}</p>${need != null ? `<button class="bigbtn sm" id="lgStar" ${P.tokens >= need ? '' : 'disabled'}>★${(a.stars ?? 1) + 1} 올리기 (인연의 증표 ${P.tokens}/${need})</button>` : '<p class="note">★5 — 유산 무기가 깨어났어요</p>'}<p class="note">증표: 주간 토벌 참여(주 1개) · 원정에서 아주 드물게 · 랭킹 상위 10%(2차)</p></div>`;
+}
+
+function bindLegend(a: Actor) {
+  const st = document.getElementById('lgStar');
+  if (st)
+    st.onclick = () => {
+      const err = starUpLegend(a);
+      if (err) return toast(err);
+      toast(`${a.name} ★${a.stars}!`);
+      showActor(a);
+    };
+  const sh = document.getElementById('lgShow');
+  if (sh)
+    sh.onclick = () => {
+      const err = showRelic();
+      if (err) return toast(err);
+      showActor(a);
+    };
+  const of = document.getElementById('lgOffer');
+  if (of)
+    of.onclick = () => {
+      const list = P.bag.filter((it) => it.owner == null && 'ela'.includes(it.grade) && it.opts.length);
+      openWin(
+        '스칼렛에게 바치기',
+        `<p class="sub">옵션 붙은 영웅 등급 이상 장비 (사라져요)</p><div class="ilist">${
+          list.map((it) => `<button class="irow" data-id="${it.id}">${itemCell(it)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}</b><small>${it.opts.map((o) => OPT_INFO[o.k].label(o.v)).join(' · ')}</small></span></button>`).join('') || '<p class="note">바칠 장비가 없어요</p>'
+        }</div>`,
+      );
+      $$('.ilist .irow').forEach(
+        (b) =>
+          (b.onclick = () => {
+            if (!confirm('정말 바칠까요? 장비가 사라져요')) return;
+            const err = offerItem(+b.dataset.id!);
+            if (err) return toast(err);
+            showActor(a);
+          }),
+      );
     };
 }
 
