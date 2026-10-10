@@ -4,7 +4,7 @@ import { CONFIG } from '../data/config';
 import { def } from '../data/catalog';
 import { HARMONIES } from '../data/harmony';
 import { bumpHint, harmonySets } from './harmony';
-import { chaptersDone, townGrade } from './guide';
+import { chaptersDone, setEvalScoreHook, townGrade } from './guide';
 import { hourNow } from './clock';
 import { mondayKey } from './raid';
 import { markDirty, P, S, world } from './state';
@@ -207,6 +207,8 @@ export function judge(): EvalResult {
   markDirty();
   return { season: ev.season, theme: ev.theme, score, tier, parts, miss, reward, plaques, title };
 }
+
+setEvalScoreHook(() => (evalOpen() && P.evaluation.season ? evalScore() : 0));
 
 /** 평가 칭호 (골드 이상 받은 테마) */
 export const evalTitles = () => [...new Set(P.evaluation.history.filter((h) => h.tier >= 3).map((h) => `${themeName(h.theme)} 명소`))];

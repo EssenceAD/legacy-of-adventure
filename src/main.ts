@@ -25,6 +25,7 @@ import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
 import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
 import { showSettlement, tickSettle } from './ui/daily';
+import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
@@ -119,7 +120,9 @@ function update(dt: number) {
       // 4단계: 매일 첫 접속 능력치 · 계절 · 놓친 인연 이벤트 · 밤이면 불씨 독백/선택
       dailyOwner();
       if (S.night) nightOwner(true);
-      // 5단계: 장부 — 이미 해 둔 일은 바로 완료
+      // 베타: v6 마이그레이션 (어울림 발견 보상 우편 · 장부 번호) → 장부 — 이미 해 둔 일은 바로 완료
+      betaMigrate();
+      syncGuideIdx();
       skipDone();
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
@@ -383,7 +386,7 @@ async function boot() {
   initOwnerUi();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
-  Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu() });
+  Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu(), eval: () => openEval() });
   initMenu();
   initHarmonyUI();
   initEvalUI();
@@ -397,6 +400,7 @@ async function boot() {
   setOnNamed(() => game.syncHud());
   onNightChange(() => game.syncHud());
 
+  document.getElementById('tLetter')!.onclick = () => openReport();
   document.getElementById('tStart')!.onclick = () => {
     if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?')) return;
     game.newGame();

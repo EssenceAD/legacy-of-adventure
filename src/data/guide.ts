@@ -29,6 +29,10 @@ export interface GuideCtx {
   harvests: number;
   regularLv: (lv: number) => number;
   itemDex: number;
+  /** 베타: 어울림 발견 수 · 숨은 어울림 발견 수 · 이번 시즌 평가 점수(최고 등급 포함) */
+  harmonies: number;
+  hiddenHarmonies: number;
+  evalScore: number;
 }
 
 export interface Mission {
@@ -39,6 +43,8 @@ export interface Mission {
   reward: { gold?: number; dust?: number; tokens?: number };
   /** 다 하고 받을 때 버나드 한마디 */
   line: string;
+  /** 베타에 끼워 넣은 임무 (v5 저장: 이미 끝낸 장이면 받은 걸로) */
+  beta?: boolean;
 }
 
 export interface Chapter {
@@ -74,6 +80,7 @@ export const CHAPTERS: Chapter[] = [
     cut: ['숲 입구에 사냥터가 열렸네. 단골들을 데려가 몸을 풀게 하게.', '손님이 늘면 마을도 넓혀야지. 장부 둘째 장일세.'],
     missions: [
       { id: 'c2_well', title: '우물 짓기', check: (c) => b(c.has('well')), place: 'well', reward: { gold: 100 }, line: '물이 있어야 사람이 모이지. 우물은 마을의 심장이야.' },
+      { id: 'c2_harm', title: '첫 어울림 발견하기', check: (c) => n(c.harmonies, 1), place: 'build', reward: { gold: 150 }, line: '우물가에 벤치 하나 놓았을 뿐인데 손님들이 수다를 떠는군. 그게 어울림일세.', beta: true },
       { id: 'c2_hunt1', title: '사냥 1-1 돌파', check: (c) => n(c.huntBest('forest'), 1), place: 'hunt', reward: { gold: 120 }, line: '슬라임 정도야 식은 죽 먹기지. 허허.' },
       { id: 'c2_auto', title: '자동 사냥 켜 보기', check: (c) => b(c.huntAutoUsed), place: 'hunt', reward: { gold: 80 }, line: '자네가 장부를 볼 동안에도 단골들은 사냥을 하지. 좋은 머리야.' },
       { id: 'c2_hunt5', title: '사냥 1-5 돌파', check: (c) => n(c.huntBest('forest'), 5), place: 'hunt', reward: { gold: 200, dust: 30 }, line: '숲 입구 절반을 정리했군. 마을 사람들이 고마워할 걸세.' },
@@ -90,6 +97,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c3_board', title: '의뢰 게시판 짓기', check: (c) => b(c.has('board')), place: 'boardObj', reward: { gold: 150 }, line: '게시판이 있으면 파티를 하나 더 보낼 수 있지.' },
       { id: 'c3_tavern', title: '주점 짓기', check: (c) => b(c.has('tavern')), place: 'build', reward: { gold: 200 }, line: '스튜 냄새가 나야 여관이지. 허허, 배고프군.' },
       { id: 'c3_training', title: '훈련장 짓기', check: (c) => b(c.has('training')), place: 'build', reward: { gold: 200 }, line: '허수아비를 패는 소리가 듣기 좋구먼.' },
+      { id: 'c3_hidden', title: '숨은 어울림 1개 발견하기', check: (c) => n(c.hiddenHarmonies, 1), place: 'dex', reward: { gold: 250, dust: 30 }, line: '도감에 없던 조합을 찾았군! 힌트는 하루마다 또렷해지니 잘 보게.', beta: true },
       { id: 'c3_boss', title: '사냥 1-10 (숲의 보스) 돌파', check: (c) => n(c.huntBest('forest'), 10), place: 'hunt', reward: { gold: 400, dust: 60, tokens: 1 }, line: '숲 입구의 주인을 쓰러뜨렸군! 대장장이들이 소문을 듣고 오겠어.' },
     ],
   },
@@ -103,6 +111,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c4_craft', title: '세트 장비 1부위 제작하기', check: (c) => n(c.crafted, 1), place: 'smith', reward: { gold: 300 }, line: '재료를 모아 직접 만든 장비는 각별하지.' },
       { id: 'c4_wins', title: '원정 10번 성공하기', check: (c) => n(c.regionWins('all'), 10), place: 'board', reward: { gold: 300 }, line: '열 번이라! 이제 단골들 이름이 숲 너머까지 알려졌겠군.' },
       { id: 'c4_hunt2', title: '사냥 2-1 (버섯 늪) 돌파', check: (c) => n(c.huntBest('swamp'), 1), place: 'hunt', reward: { gold: 300 }, line: '늪은 질척하지만 보물도 많지. 장화를 단단히 신기게.' },
+      { id: 'c4_eval', title: '평가단 점수 브론즈(300) 넘기기', check: (c) => n(c.evalScore, 300), place: 'eval', reward: { gold: 400 }, line: '『여행자 안내서』에 이름이 실리겠군! 일요일 저녁엔 마을을 깨끗이 해 두게.', beta: true },
     ],
   },
   {
@@ -126,6 +135,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c6_harvest', title: '텃밭에서 3번 수확하기', check: (c) => n(c.harvests, 3), place: 'garden', reward: { gold: 300 }, line: '갓 딴 채소로 끓인 스튜. 손님들이 줄을 서겠군.' },
       { id: 'c6_rumor', title: '전설 영웅 소문 1개 듣기', check: (c) => n(c.rumors, 1), place: 'dex', reward: { gold: 500, tokens: 1 }, line: '전설의 소문이 이 여관에서 돈다니… 허허, 오래 살고 볼 일이야.' },
       { id: 'c6_dex', title: '아이템 도감 20칸 채우기', check: (c) => n(c.itemDex, 20), place: 'dex', reward: { gold: 400, dust: 80 }, line: '도감을 채우면 단골들도 더 강해지지. 기록은 힘이야.' },
+      { id: 'c6_eval', title: '평가단 점수 골드(800) 넘기기', check: (c) => n(c.evalScore, 800), place: 'eval', reward: { gold: 1000, dust: 120 }, line: '골드라니! 왕도의 여관들도 이 마을 이름을 외우겠군.', beta: true },
     ],
   },
   {

@@ -5,6 +5,11 @@ import { HEROES } from '../data/heroes';
 import { LEGENDS } from '../data/legends';
 import { stars } from './progress';
 import { CONFIG } from '../data/config';
+import { HARMONIES } from '../data/harmony';
+
+/** 평가 점수 (world/evaluation이 채운다 — import가 꼬이지 않게) */
+export let evalScoreHook = () => 0;
+export const setEvalScoreHook = (f: () => number) => (evalScoreHook = f);
 import { markDirty, P, S, uiHooks, world, type TalkLine } from './state';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -39,6 +44,9 @@ export function guideCtx(): GuideCtx {
     harvests: C.harvests,
     regularLv: (lv) => regs.filter((a) => a.lvl >= lv).length,
     itemDex: P.dex.items.length,
+    harmonies: P.harmony.found.length,
+    hiddenHarmonies: P.harmony.found.filter((id) => !HARMONIES.find((h) => h.id === id)?.open).length,
+    evalScore: Math.max(evalScoreHook(), P.evaluation.best >= 3 ? 800 : P.evaluation.best >= 1 ? 300 : 0),
   };
 }
 

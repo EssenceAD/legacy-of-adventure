@@ -270,7 +270,7 @@ export function openSettings() {
     '설정',
     `<div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label>
-    <button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mTitle">타이틀로</button></div>
+    <button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
   $$('[data-fs]').forEach(
@@ -285,6 +285,7 @@ export function openSettings() {
     markDirty();
   };
   ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
+  $('#mLetter').onclick = () => openReport();
   ($('#mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
   $('#mHints').onclick = () => {
     resetBattleHints();

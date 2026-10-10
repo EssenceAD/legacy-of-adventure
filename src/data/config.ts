@@ -672,7 +672,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 5,
+    version: 6,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

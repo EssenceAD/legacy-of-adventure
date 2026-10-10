@@ -9,7 +9,7 @@ import { closeWin, openBuild, openLand, showObj, toast } from './windows';
 
 export type Place =
   | 'board' | 'build' | 'land' | 'guests' | 'village' | 'owner' | 'goals' | 'hunt' | 'raid' | 'bag' | 'dex' | 'menu'
-  | 'inn' | 'tavern' | 'smith' | 'garden' | 'training' | 'well' | 'fire' | 'boardObj';
+  | 'inn' | 'tavern' | 'smith' | 'garden' | 'training' | 'well' | 'fire' | 'boardObj' | 'eval';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
 const obj = (k: Kind): Building | undefined => homeObjs().find((o) => o.kind === k && o.build === undefined);
@@ -17,7 +17,7 @@ const obj = (k: Kind): Building | undefined => homeObjs().find((o) => o.kind ===
 /** 이 장소의 아래 메뉴 버튼 (손가락이 가리킬 곳) */
 export const PLACE_BTN: Partial<Record<Place, string>> = {
   board: '#bExp', hunt: '#bExp', raid: '#bExp', build: '#bBuild', land: '#bBuild', guests: '#bGuest', village: '#bVillage', owner: '#bOwner',
-  goals: '#bMenu2', menu: '#bMenu2', bag: '#bGuest', dex: '#bMenu2', well: '#bBuild', fire: '#bBuild', boardObj: '#bBuild',
+  goals: '#bMenu2', menu: '#bMenu2', bag: '#bGuest', dex: '#bMenu2', well: '#bBuild', fire: '#bBuild', boardObj: '#bBuild', eval: '#evalbar',
 };
 
 /** 이동 함수는 순환 import를 피해 나중에 채운다 (hunt·goals·owner 창) */
@@ -27,6 +27,7 @@ export const navHooks = {
   owner: () => {},
   menu: () => {},
   dex: () => {},
+  eval: () => {},
 };
 
 export function openPlace(p: Place) {
@@ -67,6 +68,8 @@ export function openPlace(p: Place) {
       return navHooks.menu();
     case 'dex':
       return navHooks.dex();
+    case 'eval':
+      return navHooks.eval();
     case 'inn':
       return building('inn', showObj);
     case 'tavern':

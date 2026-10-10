@@ -134,6 +134,8 @@ export function migrate(d: any): any {
   if (d.version === 3) d = { ...d, version: 4 };
   // v4 → v5 (5단계): 임무·사냥 칸이 늘었다. 예전 저장은 기능을 잠그지 않는다(legacy) — 임무는 이미 한 일부터 바로 완료
   if (d.version === 4) d = { ...d, version: 5, progress: { ...(d.progress ?? {}), guide: { ...(d.progress?.guide ?? {}), legacy: true } } };
+  // 베타(v6): 어울림·평가단·정산·사건 — 이미 성립한 어울림은 처음 돌아갈 때 우편 보상으로 (world/beta.ts)
+  if (d.version === 5) d = { ...d, version: 6, progress: { ...(d.progress ?? {}), harmony: { ...(d.progress?.harmony ?? {}), migrate: true } } };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }
