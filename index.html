@@ -7,6 +7,7 @@
     <title>모험의 유산</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -88,10 +89,19 @@
         <div class="tbtns">
           <button class="px" id="tStart">새 여관 열기<small>오프닝부터</small></button>
           <button class="px" id="tCont">이어하기<small id="tContSub">저장된 마을이 없어요</small></button>
+          <button class="px sm" id="tTeaser">미리보기<small>이런 게임이에요 (40초)</small></button>
           <button class="px sm" id="tLetter">모모에게 편지<small>버그 · 의견 보내기</small></button>
         </div>
-        <div class="ver">v0.7.1-beta</div>
+        <div class="ver">v0.7.2-beta</div>
         <button class="spk ibtn px" id="tSpk" aria-label="소리 끄기"><img alt="" /></button>
+      </div>
+      <div id="teaser" hidden>
+        <div class="tstage" id="tStage"></div>
+        <i class="tbar top"></i><i class="tbar bot"></i>
+        <div id="tCap"></div>
+        <i id="tWipe"></i><i id="tFlash"></i>
+        <button id="tSkip" hidden>건너뛰기 ▶▶</button>
+        <div class="tgate">터치해서 시작</div>
       </div>
       <div id="loading">불러오는 중…</div>
       <div id="fade"></div>

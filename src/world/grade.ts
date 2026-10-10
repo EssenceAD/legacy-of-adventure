@@ -9,8 +9,11 @@ export { GRADE_NAMES };
 
 /** 개발용: 등급 보기 강제 (-1 = 끔) */
 export const gradeDev = { g: -1 };
+/** 티저: 연출용 등급 (-1 = 끔 · 배포본에서도 쓴다) */
+export const teaserView = { g: -1 };
 /** 지금 보이는 마을의 등급 (이웃 방문 중이면 그 마을 등급) */
 export function gradeNow(): number {
+  if (teaserView.g >= 0 && !anim.on) return teaserView.g;
   if (import.meta.env.DEV && gradeDev.g >= 0 && !anim.on) return gradeDev.g;
   if (S.visiting) return Math.max(0, Math.min(4, S.visiting.grade ?? Math.max(0, S.visiting.land - 1)));
   return anim.on ? anim.from : townGrade();

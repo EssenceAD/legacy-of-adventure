@@ -6,7 +6,7 @@ import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
-import { writeSave } from './save/save';
+import { getPref, readSave, setPref, writeSave } from './save/save';
 import { enter, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
@@ -27,6 +27,7 @@ import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
 import { showSettlement, tickSettle } from './ui/daily';
 import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
+import { playTeaser, teaserCut, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
@@ -429,6 +430,12 @@ async function boot() {
   resize();
   game.refreshTitle();
   game.titleBackdrop();
+  // 티저: 처음 실행(저장 없음)이면 한 번 자동 · 타이틀 「미리보기」로 언제든
+  document.getElementById('tTeaser')!.onclick = () => playTeaser(false, () => game.titleBackdrop());
+  if (!readSave() && !getPref('teaserSeen', false)) {
+    setPref('teaserSeen', true);
+    teaserTouchGate(() => game.newGame());
+  }
   requestAnimationFrame((t) => {
     last = t;
     requestAnimationFrame(frame);
@@ -452,6 +459,7 @@ async function boot() {
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
       __settle: showSettlement,
+      __teaserCut: teaserCut,
       __audio: { engine: audioEngine, music: audioMusic, sfx: audioSfx, battle: battleMusic },
       __event: forceSpectacle,
       __events: spectacles,

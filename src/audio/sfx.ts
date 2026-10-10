@@ -179,3 +179,21 @@ function synth(n: SfxName) {
       return seq([72, 76, 79, 84], 0.09, 0.5);
   }
 }
+
+/** 팡파르 앞부분만 (dur초 뒤 0.3초에 걸쳐 줄인다) — 티저 현판 「쾅」 */
+export function sfxClip(file: string, dur: number, vol = 1) {
+  if (!ctx || ctx.state !== 'running') return;
+  void load("jingle/" + file + ".mp3").then((b) => {
+    if (!b || !ctx) return;
+    const s = ctx.createBufferSource();
+    s.buffer = b;
+    const g = ctx.createGain();
+    const t = ctx.currentTime + 0.02;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(vol, t + dur);
+    g.gain.linearRampToValueAtTime(0, t + dur + 0.3);
+    s.connect(g).connect(sfxBus);
+    s.start(t);
+    s.stop(t + dur + 0.35);
+  });
+}

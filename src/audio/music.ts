@@ -133,6 +133,7 @@ function ambFade(to: number, sec: number) {
 // ───────── 상황 바꾸기 ─────────
 
 export function setScene(next: Scene) {
+  if (teaserMode) return;
   if (next === scene || !unlocked) {
     if (!unlocked) scene = next;
     return;
@@ -214,3 +215,25 @@ export const devSeekEnd = (sec = 1) => {
   const d = decks[cur];
   if (d && Number.isFinite(d.el.duration)) d.el.currentTime = Math.max(0, d.el.duration - sec);
 };
+
+// ───────── 티저: 01의 처음 40초 (박자 맞추기용 시각 · 끝 페이드) ─────────
+
+let teaserMode = false;
+export function teaserStart() {
+  teaserMode = true;
+  if (!unlocked) return;
+  clearTimeout(restT);
+  clearTimeout(switchT);
+  play('01', 0.3, 0, false);
+}
+/** 티저 곡의 지금 위치 (초) — 재생 중이 아니면 null */
+export function teaserTime(): number | null {
+  const d = decks[cur];
+  return teaserMode && d && d.track === '01' && !d.el.paused && d.el.currentTime > 0 ? d.el.currentTime : null;
+}
+export const teaserFade = (sec: number) => decks[cur] && ramp(decks[cur], 0, sec);
+export function teaserEnd() {
+  teaserMode = false;
+  // 디렉터가 다시 지금 상황 곡을 고르게
+  scene = 'none';
+}
