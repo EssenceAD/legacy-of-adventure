@@ -120,8 +120,10 @@ export function openBuild() {
       const noStar = (d.stars ?? 0) > stars();
       const locked = d.unlock > S.land || noStar;
       const poor = S.gold < d.cost;
-      const sub = d.unlock > S.land ? `<small class="lock">땅 ${d.unlock}단계</small>` : noStar ? `<small class="lock">평판 ★${d.stars}</small>` : `<small>${fmt(d.cost)} G</small>`;
-      return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}</button>`;
+      // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
+      const why = d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
+      const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(d.cost)} G</small>`;
+      return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     })
     .join('');
   openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
