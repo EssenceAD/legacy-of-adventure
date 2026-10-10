@@ -21,9 +21,10 @@ import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
+import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from './spectacle';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
-type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] });
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc });
 
 /**
  * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
@@ -97,7 +98,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   for (const pr of propsNow()) things.push({ d: depthBuilding(pr.x, pr.y, pr.fw, pr.fh), tx: pr.x, ty: pr.y, fw: pr.fw, fh: pr.fh, pr });
   for (const fk of folkNow()) things.push({ d: depthActor(fk.x, fk.y), tx: Math.floor(fk.x), ty: Math.floor(fk.y), fw: 1, fh: 1, fk });
   // 베타: 평가단 순회
-  if (!S.visiting) things.push(...tourThings());
+  if (!S.visiting) things.push(...tourThings(), ...spectacleThings());
   things.sort((p, q) => p.d - q.d);
   /** slots[k] = things[k] 앞에 그릴 캐릭터들 (마지막 칸은 맨 끝) */
   const slots: Actor[][] = Array.from({ length: things.length + 1 }, () => []);
@@ -127,6 +128,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     } else if ('pr' in it) drawProp(ctx, it.pr);
     else if ('fk' in it) drawFolk(ctx, it.fk);
     else if ('iv' in it) drawInspector(ctx, it.iv);
+    else if ('sn' in it) drawSpecNpc(ctx, it.sn);
     else drawWild(ctx, it.w);
   }
 
@@ -164,7 +166,10 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   drawNamePlate(ctx, nt);
   // 베타: 어울림 점선 (보기 토글 · 발견 연출)
   drawHarmonyLines(ctx);
-  if (!S.visiting) drawTourEmotes(ctx);
+  if (!S.visiting) {
+    drawTourEmotes(ctx);
+    drawSpectacleEmotes(ctx);
+  }
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
 }

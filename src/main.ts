@@ -25,6 +25,7 @@ import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
 import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
 import { showSettlement, tickSettle } from './ui/daily';
+import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
@@ -168,6 +169,7 @@ function tick(dt: number) {
   tickHarmony(dt);
   tickEval(dt);
   tickSettle(dt);
+  tickSpectacles(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -298,6 +300,8 @@ function tap(e: PointerEvent) {
     }
     return;
   }
+  // 베타: 구경거리 사건 (이모트 · 사건 사람)
+  if (!S.visiting && tapSpectacle(mx, my)) return;
   // 캐릭터 먼저 (화면 거리)
   let best: (typeof world.actors)[number] | null = null;
   let bd = 1e9;
@@ -435,6 +439,9 @@ async function boot() {
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
       __settle: showSettlement,
+      __event: forceSpectacle,
+      __events: spectacles,
+      __resolve: resolveSpectacle,
       __harm: { sets: harmonySets, computeSets, checkDiscover, props: propsNow, openPropInfo },
       /** 개발용: 그 칸에 짓기 미리보기 (확정은 #placeOk) */
       __place: (k: Kind, x: number, y: number) => {

@@ -649,6 +649,21 @@ export const CONFIG = {
       { gold: 5000, dust: 400, shards: 10 },
     ],
   },
+  /** 베타 4장: 구경거리 사건 — 게임 하루 0~2번(게임 1시간마다 확률), 1시간 뒤 사라짐 · 떠돌이 상인은 3시간 */
+  spectacle: {
+    perDay: 2,
+    chancePerHour: 0.07,
+    hours: 1,
+    merchantHours: 3,
+    /** 술통 창고 어울림이 있으면 곯아떨어진 드워프 가중치 × (1 + 이 값) */
+    drunkBoost: 2,
+    weight: { quarrel: 10, thief: 8, confess: 7, merchant: 8, bard: 8, lost: 7, sleepy: 7, sparkle: 10, group: 6, secret: 6 } as Record<string, number>,
+    thiefGold: 60,
+    bardTip: 30,
+    bardMood: 15,
+    calmMood: 15,
+    sparkle: { mats: [2, 5], dust: [10, 30] },
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,
