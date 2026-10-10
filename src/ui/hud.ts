@@ -1,6 +1,5 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { def, type Kind } from '../data/catalog';
-import { NEIGHBORS } from '../data/neighbors';
 import { P } from '../engine/pixel';
 import * as game from '../game';
 
@@ -13,9 +12,10 @@ import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, runsWaiting } from './expedition';
 import { openGuests } from './guests';
+import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { openBuild, openMenu, openWin, toast } from './windows';
+import { openBuild, openMenu, toast } from './windows';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -192,21 +192,6 @@ function drawIcons() {
 
 // ───────── 이웃 마을 목록 ─────────
 
-function openVillage() {
-  if (S.visiting) {
-    game.goHome();
-    return;
-  }
-  const liked = game.likedSet();
-  openWin(
-    '마을 · 이웃 여관',
-    `<p class="sub">다른 여관주인의 마을을 구경하고 좋아요를 남겨요</p><div class="steps">${NEIGHBORS.map(
-      (v, i) =>
-        `<button class="stp" data-v="${i}"><span style="grid-column:1/3"><b>${v.name}</b><small>주인 ${v.owner} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like + (liked.has(v.id) ? 1 : 0))}</em></button>`,
-    ).join('')}</div>`,
-  );
-  document.querySelectorAll<HTMLElement>('.stp').forEach((b) => (b.onclick = () => game.visit(NEIGHBORS[+b.dataset.v!])));
-}
 
 // ───────── 배율 ─────────
 
@@ -242,7 +227,7 @@ export function initHud() {
   };
   $('#bExp').onclick = () => openBoard();
   $('#bGuest').onclick = () => openGuests();
-  $('#bVillage').onclick = openVillage;
+  $('#bVillage').onclick = () => void openVillage();
   $('#bMenu2').onclick = openMenu;
   $('#bNotice').onclick = openNotices;
   $('#bMenu').onclick = openMenu;

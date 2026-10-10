@@ -45,7 +45,7 @@ export function legendCtx(): LegendCtx {
     heroStars: (id) => (P.dex.heroes[id]?.recruited ? P.dex.heroes[id].stars : 0),
     knightBondAtLeast: (lv) =>
       Object.entries(P.bonds).some(([k, b]) => b.lv >= lv && k.split('-').some((id) => knights.has(+id))),
-    topRankWeeks: P.raid.weeksKilled,
+    topRankWeeks: P.raid.topWeeks,
   };
 }
 
@@ -210,7 +210,7 @@ function recruit(key: string) {
     a.stars = 1;
   }
   markDirty();
-  uiHooks.announce(`★ ${S.innName || '여관'}에 전설 영웅 「${d.title} ${d.name}」${josa(d.name, '가')} 찾아왔습니다!`);
+  uiHooks.announce(`★ ${S.innName || '여관'}에 전설 영웅 「${d.title} ${d.name}」${josa(d.name, '가')} 찾아왔습니다!`, 'legend', `${d.title} ${d.name}`);
   queueEvent(() =>
     uiHooks.talk([
       ['legend_' + key, d.recruit, undefined, d.name],

@@ -23,8 +23,13 @@ import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastH
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
 import { _raidAdvance } from './ui/raid';
-import { rumorNow } from './ui/chat';
-import { net } from './net';
+import { announce, rumorNow } from './ui/chat';
+import { initAuth, online } from './net/server';
+import * as SRV from './net/server';
+import * as SYNC from './net/sync';
+import { checkLastWeek, dailyStats, startCloud } from './net/sync';
+import { afterLogin } from './ui/account';
+import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
 import { maybeAlarm } from './world/raid';
 import { starHit } from './world/render';
@@ -95,6 +100,8 @@ function update(dt: number) {
       if (!S.visiting) {
         tickLegends();
         maybeAlarm();
+        void dailyStats();
+        void checkLastWeek();
       }
       game.syncHud();
     }
@@ -310,7 +317,7 @@ async function boot() {
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
   uiHooks.talk = talk;
   uiHooks.rumor = rumorNow;
-  uiHooks.announce = (t) => net.chat.announce(t);
+  uiHooks.announce = announce;
   uiHooks.shake = () => {
     host.classList.remove('shake');
     void host.offsetWidth;
@@ -325,7 +332,11 @@ async function boot() {
   initWindows();
   initDialogue();
   initHud();
-  initChat();
+  void initChat();
+  // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
+  void initAuth().then(() => (online() ? afterLogin() : undefined));
+  startCloud();
+  void loadServerNotices();
   setOnZoom(resize);
   setOnNamed(() => game.syncHud());
   onNightChange(() => game.syncHud());
@@ -367,6 +378,8 @@ async function boot() {
         enter(a, o);
       },
       __raid: _raidAdvance,
+      __srv: SRV,
+      __sync: SYNC,
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);
       },

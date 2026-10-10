@@ -3,7 +3,7 @@ import { BOSSES, bossById, type BossDef } from '../data/bosses';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { REGIONS, type RegionId } from '../data/items';
-import { net } from '../net';
+import { submitRecord as submitOnline } from '../net/sync';
 import { gainXp, powerOf } from './adventurers';
 import { partyChemMult } from './chem';
 import { queueEvent } from './events';
@@ -39,6 +39,7 @@ export function ensureWeek(): boolean {
   const wk = mondayKey();
   if (P.raid.week === wk && bossById(P.raid.bossId)) return false;
   const b = pickWeekly();
+  if (P.raid.week && P.raid.week !== wk) P.raid.prevWeek = P.raid.week;
   Object.assign(P.raid, { week: wk, bossId: b.id, hpLeft: b.hp, killed: false, best: 0, joined: false, alarmed: false });
   markDirty();
   return true;
@@ -227,7 +228,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   legendHooks.req('goldEarned', gold);
   if (killed) {
     addRep(10);
-    uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 「${b.name}」${josa(b.name, '를')} 쓰러뜨렸습니다!`);
+    // 서버 [알림]은 첫 처치만 (그 뒤는 내 화면에만)
+    uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 「${b.name}」${josa(b.name, '를')} 쓰러뜨렸습니다!`, firstKill ? 'boss_kill' : undefined, b.name);
   }
   track('expeditionWin');
   markDirty();
@@ -235,10 +237,10 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
 }
 
 /** 랭킹용 기록 (주간 보스, 직접·자동 한 판만). 2차에서 서버로 */
-export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect) {
-  if (t.kind !== 'weekly') return { ok: true };
+export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect): Promise<{ ok: boolean; reason?: string; online: boolean }> {
+  if (t.kind !== 'weekly') return { ok: true, online: false };
   const rec: RaidRecord = { week: P.raid.week, bossId: t.boss.id, damage, power: ex.power, theory: ex.theory, mode, at: Date.now() };
-  return net.ranking.submit(rec);
+  return submitOnline(rec);
 }
 
 /** 소탕: 한 번 처치한 보스는 결과만 바로 받기 (자동 기대 피해량 그대로) */

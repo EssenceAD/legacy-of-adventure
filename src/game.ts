@@ -16,6 +16,7 @@ import { ensureGoals, stars } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
 import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { OPENING, talk } from './ui/dialogue';
+import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
 
@@ -333,13 +334,19 @@ export function visit(v: Neighbor) {
 export function updateLike() {
   const v = S.visiting;
   if (!v) return;
-  const liked = likedSet().has(v.id);
+  const liked = !v.uid && likedSet().has(v.id);
   $('#vLike').textContent = `♥ ${fmt(v.like + (liked ? 1 : 0))}`;
 }
 
-export function likeNeighbor() {
+export async function likeNeighbor() {
   const v = S.visiting;
   if (!v) return;
+  // 실제 유저 마을: 서버 (마을당 하루 한 번)
+  if (v.uid) {
+    if (await likeReal(v)) floatW(N / 2, N / 2 - 1, 60, '♥ 좋아요!', 'heart');
+    updateLike();
+    return;
+  }
   const set = likedSet();
   if (set.has(v.id)) return toast('이미 좋아요를 남겼어요');
   set.add(v.id);

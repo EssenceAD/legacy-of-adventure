@@ -5,6 +5,10 @@ import type { Kind } from './catalog';
 
 export interface Neighbor {
   id: string;
+  /** 실제 유저 마을이면 그 사람 id (3단계 2차) */
+  uid?: string;
+  /** 대표 영웅 초상화 키 */
+  repHero?: string | null;
   name: string;
   owner: string;
   land: number;

@@ -17,6 +17,7 @@ import {
 } from '../world/raid';
 import { legendHooks, markDirty, P, type Actor } from '../world/state';
 import { $, $$, esc, fmt, nameTag, pct, pic } from './common';
+import { mine } from '../net/server';
 import { screen } from './screen';
 import { closeWin, openWin, toast } from './windows';
 
@@ -698,7 +699,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
     <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
-    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(순위는 2차 서버 연결 뒤 열려요)</small>` : `<b class="bad">기록 거부: ${esc(rec.reason ?? '')}</b>`) : '소탕은 랭킹에 안 들어가요')}</div>
+    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<b class="bad">기록 거부: ${esc(rec.reason ?? '')}</b>`) : '소탕은 랭킹에 안 들어가요')}</div>
     <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${R.triesPerDay})</button><button class="b" id="rHome">마을로</button></div>`;
   markDirty();
   if (inBattle) {
@@ -707,6 +708,11 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     document.getElementById('rResult')!.hidden = false;
   } else openWin('토벌 결과', `<div class="res">${html}</div>`);
   if (out.firstKill) toast(`트로피 「${b.trophy}」 획득! 건설 목록에서 무료로 놓을 수 있어요`);
+  if (rec?.online && rec.ok)
+    void mine('raidWeek', P.raid.week).then(({ row, total }) => {
+      const el = document.getElementById('rMyRank');
+      if (el) el.textContent = row ? `${row.rank}위 / ${total}명` : '순위 없음';
+    });
   document.getElementById('rHome')!.onclick = () => {
     active?.stop();
     closeWin();

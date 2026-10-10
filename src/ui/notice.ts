@@ -1,7 +1,8 @@
 // 공지 창(!): 탭(전체/공지/업데이트/이벤트/제보) + 목록 + 본문. 새 공지가 있으면 빨간 점.
-// 지금은 가짜 데이터 — 나중에 서버(공지 관리)에서 받아온다.
+// 기본 공지 + 서버 공지(notices).
 import { getPref, setPref } from '../save/save';
 import { openWin } from './windows';
+import { listNotices } from '../net/server';
 
 interface Notice {
   id: number;
@@ -18,7 +19,25 @@ const NOTICES: Notice[] = [
   { id: 1, tag: '제보', t: '버그 · 건의는 우체부 모모에게', d: '상시', b: '마을의 모모(머리 위 !)를 누르면 편지를 쓸 수 있어요.' },
 ];
 const TABS = ['전체', '공지', '업데이트', '이벤트', '제보'];
-const latest = Math.max(...NOTICES.map((n) => n.id));
+let latest = Math.max(...NOTICES.map((n) => n.id));
+
+/** 서버 공지(notices, 운영자가 대시보드에서 씀)를 맨 위에 더한다 */
+export async function loadServerNotices() {
+  try {
+    const rows = await listNotices();
+    for (const r of rows) {
+      const id = 1000 + r.id;
+      if (NOTICES.some((n) => n.id === id)) continue;
+      NOTICES.push({ id, tag: '공지', t: esc(r.title), d: new Date(r.created_at).toLocaleDateString('ko-KR'), b: esc(r.body) });
+    }
+    NOTICES.sort((a, b) => b.id - a.id);
+    latest = Math.max(...NOTICES.map((n) => n.id));
+    refreshNoticeDot();
+  } catch {
+    /* 서버가 안 되면 기본 공지만 */
+  }
+}
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 const dot = () => document.querySelector<HTMLElement>('#bNotice .dot')!;
 

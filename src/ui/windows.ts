@@ -10,6 +10,10 @@ import { openDex, openGoals, openLedger } from './book';
 import { openBoard } from './expedition';
 import { openBag } from './guests';
 import { openGarden, openSmith } from './smith';
+import { openAccount } from './account';
+import { openRank } from './rank';
+import { rumorEnabled, setRumor } from './chat';
+import { me, online, sendLetter } from '../net/server';
 import { screen, setFontStep } from './screen';
 import * as game from '../game';
 import { addReport } from '../save/save';
@@ -27,9 +31,13 @@ export function openWin(title: string, html: string, cls = '') {
   $('#win').className = 'win px on ' + cls;
   $('#scrim').classList.add('on');
 }
+const closeHooks: (() => void)[] = [];
+/** 창이 닫힌 뒤 (다음 창이 바로 열리면 그 뒤) 부를 것 — 놓치면 안 되는 창(저장 고르기)을 다시 띄울 때 */
+export const onWinClose = (f: () => void) => closeHooks.push(f);
 export function closeWin() {
   $('#win').classList.remove('on');
   $('#scrim').classList.remove('on');
+  setTimeout(() => closeHooks.forEach((f) => f()), 0);
 }
 export const isWinOpen = () => $('#win').classList.contains('on');
 
@@ -213,10 +221,10 @@ export function showObj(o: Building) {
 export function openMenu() {
   openWin(
     '메뉴',
-    `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button></div>
+    `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button><button id="mRank">랭킹</button><button id="mAcc">${online() ? `계정 · ${esc(me.profile!.nickname)}` : '로그인 · 가입'}</button></div>
     <p class="sub" style="margin-top:10px">설정</p>
     <div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><button id="mIntro">오프닝 다시 보기</button><button id="mAcc">계정 · 클라우드 저장</button><button id="mTitle">타이틀로</button></div>`,
+    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><button id="mIntro">오프닝 다시 보기</button><button id="mTitle">타이틀로</button></div>`,
   );
   $$('[data-fs]').forEach(
     (b) =>
@@ -241,11 +249,9 @@ export function openMenu() {
     closeWin();
     game.toTitle();
   };
-  $('#mAcc').onclick = () =>
-    openWin(
-      '계정 · 클라우드',
-      `<p class="sub">아이디로 로그인하면 폰·PC 어디서든 이어서 해요. 마을은 1분마다, 그리고 앱을 닫을 때 자동으로 클라우드에 저장돼요.</p><div class="acc"><div>아이디<b>(준비 중)</b></div><div>마지막 저장<b>이 기기 · 자동 저장</b></div><div>연결 기기<b>이 기기</b></div></div><p class="note">로그인·클라우드 저장은 다음 단계에서 열려요. 지금은 이 기기에만 저장돼요.</p>`,
-    );
+  $('#mAcc').onclick = () => openAccount();
+  $('#mRank').onclick = () => void openRank();
+  ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
 }
 
 // ───────── 우체부 모모: 제보 편지 ─────────
@@ -268,7 +274,10 @@ export function openReport() {
           toast('내용을 적어 주세요');
           return;
         }
-        addReport({ kind: ($('#rk') as HTMLSelectElement).value, text, at: Date.now() });
+        const kind = ($('#rk') as HTMLSelectElement).value;
+        addReport({ kind, text, at: Date.now() });
+        // 로그인했으면 서버(bug_letters)로도
+        if (online()) void sendLetter(`[${kind}] ${text}`, document.querySelector('.ver')?.textContent ?? '');
         closeWin();
         talk([['post', '편지 잘 받았어요! 답장은 공지에서 확인해 주세요~']]);
       };

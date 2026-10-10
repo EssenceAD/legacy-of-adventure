@@ -413,6 +413,15 @@ export const CONFIG = {
     /** 금빛 발자국이 남는 시간(초) */
     goldStepsSeconds: 12,
   },
+  /** 3단계 2차: 서버 */
+  cloud: {
+    /** 클라우드 저장 간격 (초) */
+    pushSeconds: 60,
+    /** 진의 소문 조건: 주간 순위 ÷ 전체 ≤ 이 값 */
+    topRankShare: 0.3,
+    /** [세계]가 이만큼(ms) 조용할 때만 [소문]이 흐른다 */
+    rumorQuietMs: 120000,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

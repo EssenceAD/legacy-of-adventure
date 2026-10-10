@@ -286,8 +286,13 @@ export function freshProgress() {
       personalBest: 0,
       /** 주간 보스를 처치한 주 수 (2차 전까지 「상위 30%」 대신) */
       weeksKilled: 0,
-      /** 서버로 올릴 기록 (2차: 로그인 뒤 한꺼번에 올리고 비운다) */
+      /** 서버로 올릴 기록 (로그인 안 했을 때 쌓아 두고 로그인 뒤 한꺼번에 올린다) */
       outbox: [] as RaidRecord[],
+      /** 주간 토벌 상위 30% 든 주 수 (진의 소문 조건) · 지난주 · 판정한 주 · 1위 알림 낸 주 */
+      topWeeks: 0,
+      prevWeek: '',
+      rankChecked: '',
+      rank1Week: '',
     },
     /** 보스 전용 재료 */
     bossMats: {} as Record<string, number>,
@@ -301,6 +306,8 @@ export function freshProgress() {
     dawnDay: '',
     /** 인연의 증표 */
     tokens: 0,
+    /** 서버에 평판·도감 통계를 올린 실제 날짜 */
+    statsDay: '',
     goals: { day: '', list: [] as { id: string; target: number; progress: number; claimed: boolean }[] },
     /** 지난 7일(게임 날) 수입 */
     week: [] as { day: number; gold: number }[],
@@ -369,8 +376,8 @@ export const uiHooks = {
   report: (_run: Run) => {},
   /** [소문] 채널에 한 줄 (전설 소문) */
   rumor: (_text: string) => {},
-  /** [알림] 채널 방송 (전설 영입·보스 처치) */
-  announce: (_text: string) => {},
+  /** [알림] 채널 방송 (전설 영입·보스 처치·주간 1위). kind가 있으면 로그인했을 때 서버가 모두에게 */
+  announce: (_text: string, _kind?: 'legend' | 'boss_kill' | 'rank1', _arg?: string) => {},
   /** 화면 흔들림 (보스 경보) */
   shake: () => {},
 };

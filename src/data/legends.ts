@@ -24,7 +24,7 @@ export interface LegendCtx {
   heroStars: (id: string) => number;
   /** 기사 손님이 낀 친밀도 lv 이상 짝이 있나 */
   knightBondAtLeast: (lv: number) => boolean;
-  /** 주간 토벌 상위 30%에 든 주 수 (2차에서 서버 랭킹으로 바꾼다 — 지금은 그 주 보스를 처치한 주 수) */
+  /** 주간 토벌 랭킹 상위 30%에 든 주 수 (주가 끝날 때 내 순위 ÷ 전체 수로 판정, 로그인 필요) */
   topRankWeeks: number;
 }
 
@@ -195,7 +195,7 @@ export const LEGENDS: LegendDef[] = [
   {
     key: 'jin', name: '진', title: '떠돌이 검객', charm: '흑발 상투 동양 검객 미남', kind: 'knight', race: 'human', hair: '#1c1c24',
     hint: '보스 앞에서 물러서지 않는 여관을 찾는 검객이 있대', rumor: '보스를 세 번 쓰러뜨린 여관에 떠돌이 검객이 들른다는데…',
-    rumorWhen: (c) => c.topRankWeeks >= 3, rumorText: '주간 토벌 상위 30% 3회 (2차 전까지는 주간 보스 처치 3주)',
+    rumorWhen: (c) => c.topRankWeeks >= 3, rumorText: '주간 토벌 랭킹 상위 30% 3회 (로그인 필요)',
     bond: ['blockSuccess'], bondText: '직접 조작 막기 성공',
     request: { text: '토벌 직접 조작에서 막기 5번 연속 성공', event: 'blockStreak5', need: 1 },
     intro: ['…검이 부딪히는 소리를 따라왔소.', '막는 법을 아는지 보여 주시오. 다섯 번, 연달아.'],
