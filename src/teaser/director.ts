@@ -14,7 +14,19 @@ import { anim, startGradeAnim, teaserView } from '../world/grade';
 import { startTour, tour } from '../world/evalTour';
 import { S, world } from '../world/state';
 import { findKind } from '../world/town';
-import { ATTIC_H, ATTIC_W, drawAttic, drawBoss, drawHunt, sceneCanvas, village } from './scenes';
+import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
+import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
+
+/** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
+function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
+  const { cv, sc } = sceneCanvas(host, TF_W, TF_H, 0.6);
+  const k = Math.max(1, Math.round(sc * window.devicePixelRatio));
+  cv.width = TF_W * k;
+  cv.height = TF_H * k;
+  const ctx = cv.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  return { ctx, k };
+}
 
 const BEAT = 60 / 88;
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -37,16 +49,6 @@ const el = (html: string) => {
   stage.appendChild(d.firstElementChild!);
   return stage.lastElementChild as HTMLElement;
 };
-/** 데미지 숫자 (장면 캔버스 위 · 정수 위치) */
-function num(host: HTMLElement, x: number, y: number, text: string, cls = '') {
-  const n = document.createElement('div');
-  n.className = 'tdmg ' + cls;
-  n.textContent = text;
-  n.style.left = Math.round(x) + 'px';
-  n.style.top = Math.round(y) + 'px';
-  host.appendChild(n);
-  setTimeout(() => n.remove(), 900);
-}
 
 // ───────── 컷 11개 ─────────
 
@@ -146,14 +148,12 @@ const CUTS: Cut[] = [
     cap: '숲으로, 늪으로, 심연으로.',
     trans: 'flash',
     enter: () => {
+      // 전투 2차로 다시 찍음: 새 쿼터뷰 필드 · 닌자 몬스터 무리 · KILLS · 장비 이름표 드랍
       stage.classList.add('dark');
       const host = el('<div class="tscene"></div>');
-      const { ctx, sc } = sceneCanvas(host);
-      draw = (t) => drawHunt(ctx, t);
-      const hits: [number, number, number, string, string][] = [
-        [0.5, 150, 120, '184', ''], [0.8, 176, 132, '207', ''], [1.15, 160, 110, '921', 'crit'], [1.5, 196, 140, '176', ''], [1.85, 172, 118, '1,384', 'crit'], [2.2, 210, 128, '199', ''],
-      ];
-      for (const [at, x, y, txt, cls] of hits) setTimeout(() => host.isConnected && num(host, x * sc, y * sc, txt, cls), at * 1000);
+      const { ctx, k } = fieldCanvas(host);
+      const kills = el('<div class="tkills"><b>15</b> KILLS</div>');
+      draw = huntCut(ctx, k, (n) => ((kills.querySelector('b') as HTMLElement).textContent = String(n)));
     },
     update: (t) => draw?.(t),
   },
@@ -161,17 +161,17 @@ const CUTS: Cut[] = [
     beats: 4,
     cap: '매주 찾아오는 거대한 적.',
     enter: () => {
+      // 전투 2차로 다시 찍음: 이번 주 보스(붉은 무사) · 내려찍기 예고 → 굴러 피하기 → 큰 한 방
       stage.classList.add('dark');
       const host = el('<div class="tscene"></div>');
-      const { ctx, sc } = sceneCanvas(host);
-      draw = (t) => drawBoss(ctx, t);
-      setTimeout(() => {
-        if (!host.isConnected) return;
-        host.classList.add('flash');
-        num(host, 178 * sc, 70 * sc, 'PERFECT!', 'perfect');
-        sfx('perfect');
-      }, 1200);
-      setTimeout(() => host.isConnected && num(host, 230 * sc, 96 * sc, '12,480', 'crit big'), 1700);
+      const { ctx, k } = fieldCanvas(host);
+      const bar = el('<div class="tbossbar"><span>붉은 무사</span><i><u></u></i></div>');
+      const bd = bossCut(ctx, k);
+      draw = (t) => {
+        bd(t);
+        (bar.querySelector('u') as HTMLElement).style.width = t > 1.7 ? '62%' : '100%';
+        if (t > 1.2) once('slam', () => sfx('crit'));
+      };
     },
     update: (t) => draw?.(t),
   },
@@ -317,6 +317,7 @@ export function playTeaser(isAuto: boolean, done: () => void) {
   onDone = done;
   saved = { land: S.land, night: S.night, nightT: S.nightT, innName: S.innName, cam: [view.cam.x, view.cam.y], zoom: S.zoom };
   S.innName = '솔바람 여관';
+  void preloadTeaserField();
   $('#title').hidden = true;
   const root = $('#teaser');
   root.hidden = false;

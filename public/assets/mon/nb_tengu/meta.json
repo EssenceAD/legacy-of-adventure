@@ -1,9 +1,9 @@
 {
  "frameW": 82,
- "frameH": 82,
+ "frameH": 84,
  "anchor": [
   41,
-  57
+  82
  ],
  "boss": true,
  "source": "Ninja Adventure (CC0) TenguRed",

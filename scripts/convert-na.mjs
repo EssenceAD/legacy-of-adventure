@@ -37,21 +37,28 @@ for (const [id, dir, rows] of BOSSES) {
     const im = read(path.join(RAW, 'Boss', dir, file + '.png'));
     return { anim, im, fw, fh: im.height, n: Math.floor(im.width / fw), fps, loop: !!loop };
   });
+  // 줄마다 그림의 가장 아래 칠해진 줄(발) → 모든 줄의 발을 같은 높이에 (공격 그림이 큰 칸 가운데에 있어도 뜨지 않게)
+  for (const s of strips) {
+    s.bottom = 0;
+    for (let y = 0; y < s.fh; y++) for (let x = 0; x < s.im.width; x++) if (s.im.data[(y * s.im.width + x) * 4 + 3]) s.bottom = y;
+  }
   const W = Math.max(...strips.map((s) => s.fw));
-  const H = Math.max(...strips.map((s) => s.fh));
+  const H = Math.max(...strips.map((s) => s.fh)) + 2;
+  const footY = H - 2;
   const cols = Math.max(...strips.map((s) => s.n));
   const out = new PNG({ width: W * cols, height: H * strips.length });
   const anims = {};
   strips.forEach((s, row) => {
     // 바닥 가운데 맞춤 (프레임 크기가 줄마다 달라도 발이 같은 자리에)
     const ox = Math.floor((W - s.fw) / 2);
-    const oy = H - s.fh;
+    const oy = footY - s.bottom;
     for (let f = 0; f < s.n; f++)
       for (let y = 0; y < s.fh; y++)
         for (let x = 0; x < s.fw; x++) {
           const si = (y * s.im.width + f * s.fw + x) * 4;
           const a = s.im.data[si + 3];
           if (!a) continue;
+          if (oy + y < 0 || oy + y >= H) continue;
           const di = ((row * H + oy + y) * out.width + f * W + ox + x) * 4;
           out.data[di] = s.im.data[si];
           out.data[di + 1] = s.im.data[si + 1];
