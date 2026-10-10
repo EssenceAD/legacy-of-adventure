@@ -668,3 +668,8 @@ html:not([data-size="phone"]) #mission{top:calc(env(safe-area-inset-top,0px) + 8
 :is(.res,.rov) .go button.a:not([disabled]){border-image-source:var(--ui-btn-primary);color:var(--ink);font-weight:700}
 :is(.res,.rov) .go button[disabled]{border-image-source:var(--ui-btn-disabled);color:#8a8fa8}
 :is(.res,.rov) .go button:active{border-image-source:var(--ui-btn-pressed);transform:translateY(1px)}
+
+/* ── 5단계 3장: 마을 등급이 오를 때 띠 ── */
+.gradeban{position:absolute;left:50%;top:32%;transform:translateX(-50%);z-index:45;padding:12px 22px;display:flex;flex-direction:column;align-items:center;gap:4px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k)) / 0 stretch;pointer-events:none;animation:gban 2.6s ease forwards;white-space:nowrap}
+.gradeban small{color:#e2aa4e;font-size:var(--f-small)}.gradeban b{font-size:var(--f-big);color:var(--cream);text-shadow:2px 2px 0 var(--ink)}
+@keyframes gban{0%{opacity:0;margin-top:10px}12%{opacity:1;margin-top:0}85%{opacity:1}100%{opacity:0}}

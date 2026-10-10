@@ -6,6 +6,9 @@ import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, r
 import { P, S, uiHooks, type TalkLine } from '../world/state';
 import { huntCrew } from '../world/hunt';
 import { josa } from '../data/josa';
+import { startGradeAnim } from '../world/grade';
+import { tempZoom } from './hud';
+import { sfx } from './battle';
 import { $, esc } from './common';
 import { isTalking, talk } from './dialogue';
 import { iconSrc, px, uiSrc } from './kit';
@@ -21,6 +24,7 @@ export function initGuide() {
     uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 장부 ${no}장 「${c.name}」${josa(c.name, '을')} 마쳤습니다!`);
     queueChapter(no);
   };
+  guideHooks.gradeUp = (g) => (pendingGrade = g);
   $('#mission').onclick = onCard;
   // 손가락: 0.4초마다 두 그림을 바꿔 톡톡
   let f = 0;
@@ -36,8 +40,36 @@ let chapterQueue: number[] = [];
 function queueChapter(no: number) {
   chapterQueue.push(no);
 }
+/** 마을 등급이 오를 때: 줌아웃 → 새 모습이 위에서 아래로 덮어쓰기(1.5초) → 종소리 자리 → 「○○ 여관이 '마을'이 되었습니다」 + [알림] */
+let pendingGrade = -1;
+export function playGradeUp(to: number, then: () => void) {
+  if (S.visiting) return then();
+  const from = Math.max(0, to - 1);
+  const z0 = S.zoom;
+  tempZoom(1);
+  startGradeAnim(from, to);
+  sfx('win');
+  setTimeout(() => {
+    const name = `${S.innName || '여관'}`;
+    const b = document.createElement('div');
+    b.className = 'gradeban';
+    b.innerHTML = `<small>마을 등급</small><b>${esc(name)}${josa(name, '이')} 「${GRADE_NAMES[to]}」${josa(GRADE_NAMES[to], '가')} 되었습니다</b>`;
+    document.getElementById('view')!.appendChild(b);
+    uiHooks.announce(`★ ${name}${josa(name, '이')} 「${GRADE_NAMES[to]}」${josa(GRADE_NAMES[to], '가')} 되었습니다!`);
+    setTimeout(() => b.remove(), 2600);
+  }, 1500);
+  setTimeout(() => {
+    tempZoom(z0);
+    then();
+  }, 3200);
+}
+
 function playChapterEnd(no: number, then: () => void) {
   const c = chapterOf(no);
+  if (c.grade != null && pendingGrade === c.grade) {
+    pendingGrade = -1;
+    return playGradeUp(c.grade, () => playChapterEnd(no, then));
+  }
   const lines: TalkLine[] = [['narr', `장부 ${no}장 「${c.name}」 완료!`], ['narr', `장 보상 — ${c.rewardText}`]];
   if (c.grade != null) lines.push(['narr', `마을 등급이 「${GRADE_NAMES[c.grade]}」${josa(GRADE_NAMES[c.grade], '가')} 되었다!`]);
   talk(lines, then);

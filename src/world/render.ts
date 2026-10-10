@@ -13,13 +13,15 @@ import { appearance } from './adventurers';
 import { starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
-import { ground, ensureGround, type Wild } from './ground';
+import { ground, ensureGround, groundFor, groundKey, type Wild } from './ground';
+import { anim, animF, type Prop } from './grade';
+import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
-type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild });
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] });
 
 /**
  * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
@@ -62,6 +64,19 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   ctx.fillStyle = '#3e6a34';
   ctx.fillRect(0, 0, LW, LH);
   ctx.drawImage(ground.c!, OX - ground.ox, OY - ground.oy);
+  // 5단계: 마을 등급이 오르는 중 — 새 바닥이 위에서 아래로 덮어쓴다
+  if (anim.on) {
+    const ng = groundFor(groundKey(S.visiting ? S.visiting.id : '', anim.to), anim.to);
+    const cut = Math.round(animF() * LH);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, LW, cut);
+    ctx.clip();
+    ctx.drawImage(ng.c!, OX - ng.ox, OY - ng.oy);
+    ctx.restore();
+    ctx.fillStyle = '#fff3b0';
+    ctx.fillRect(0, cut - 1, LW, 2);
+  }
   if (NL) {
     ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle = tintColor(NL / CONFIG.dayNight.tintSteps);
@@ -76,6 +91,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   // 옮기는 중인 건물은 제자리에 그리지 않는다 (유령으로만)
   for (const o of world.objs) if (o !== pl?.move) things.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
   for (const w of ground.wild) things.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
+  // 마을 등급 장식 · NPC (울타리 밖 개간지·입구 길)
+  for (const pr of propsNow()) things.push({ d: depthBuilding(pr.x, pr.y, pr.fw, pr.fh), tx: pr.x, ty: pr.y, fw: pr.fw, fh: pr.fh, pr });
+  for (const fk of folkNow()) things.push({ d: depthActor(fk.x, fk.y), tx: Math.floor(fk.x), ty: Math.floor(fk.y), fw: 1, fh: 1, fk });
   things.sort((p, q) => p.d - q.d);
   /** slots[k] = things[k] 앞에 그릴 캐릭터들 (마지막 칸은 맨 끝) */
   const slots: Actor[][] = Array.from({ length: things.length + 1 }, () => []);
@@ -102,7 +120,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
       const ds = atDoor.get(it.o);
       if (ds) drawDoorActors(ctx, it.o, ds);
       if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
-    } else drawWild(ctx, it.w);
+    } else if ('pr' in it) drawProp(ctx, it.pr);
+    else if ('fk' in it) drawFolk(ctx, it.fk);
+    else drawWild(ctx, it.w);
   }
 
   // 연기·불티
@@ -130,6 +150,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
         const Y = OY + sy(o.tx + 0.5, o.ty + 0.5);
         glow(ctx, X, Y - FIRE_FLAME_Y, 34, nt * (0.45 + Math.sin(T * 9) * 0.05));
       }
+    drawGradeLights(ctx, nt);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }

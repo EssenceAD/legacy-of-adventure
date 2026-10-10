@@ -11,7 +11,7 @@ import { openWin, toast } from './windows';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
 export function toNeighbor(r: VillageRow): Neighbor | null {
-  const s = r.snapshot as { land?: number; innName?: string; owner?: string; layout?: unknown[]; repHero?: string | null };
+  const s = r.snapshot as { land?: number; innName?: string; owner?: string; layout?: unknown[]; repHero?: string | null; grade?: number };
   if (!s || !Array.isArray(s.layout)) return null;
   const layout = s.layout
     .filter((e): e is unknown[] => Array.isArray(e) && typeof e[0] === 'string' && (e[0] as string) in CATALOG)
@@ -25,6 +25,7 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     land: Math.max(1, Math.min(5, Math.floor(Number(s.land) || 1))),
     like: r.likes ?? 0,
     repHero: s.repHero ?? null,
+    grade: Math.max(0, Math.min(4, Math.floor(Number(s.grade) || 0))),
     layout,
   };
 }

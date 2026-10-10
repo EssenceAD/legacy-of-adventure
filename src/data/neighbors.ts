@@ -9,6 +9,8 @@ export interface Neighbor {
   uid?: string;
   /** 대표 영웅 초상화 키 */
   repHero?: string | null;
+  /** 5단계 마을 등급 (0 오두막 ~ 4 도시) */
+  grade?: number;
   name: string;
   owner: string;
   land: number;
@@ -20,7 +22,7 @@ export interface Neighbor {
 export const NEIGHBORS: Neighbor[] = [
   {
     // 땅 3단계 (2~11): 아담한 시골 여관
-    id: 'bear', name: '곰발바닥 여관', owner: '피핀아빠', land: 3, like: 128,
+    id: 'bear', name: '곰발바닥 여관', owner: '피핀아빠', land: 3, like: 128, grade: 2,
     layout: [
       ['inn', 4, 4, 1, 8], ['dungeon', 10, 1], ['tavern', 8, 6, 1, 8], ['garden', 2, 8],
       ['well', 6, 9], ['fire', 7, 11], ['board', 10, 10],
@@ -29,7 +31,7 @@ export const NEIGHBORS: Neighbor[] = [
   },
   {
     // 땅 5단계 (0~13): 보라 지붕의 큰 쉼터
-    id: 'moon', name: '달빛 쉼터', owner: '엘린느', land: 5, like: 902,
+    id: 'moon', name: '달빛 쉼터', owner: '엘린느', land: 5, like: 902, grade: 4,
     layout: [
       ['inn', 5, 3, 2, 265], ['dungeon', 10, 1], ['bath', 0, 0], ['tavern', 9, 6, 1, 100, true], ['garden', 1, 7],
       ['training', 5, 10], ['smith', 10, 10], ['cottage', 1, 4, 1, 265], ['cottage', 3, 11, 1, 265, true],
@@ -39,7 +41,7 @@ export const NEIGHBORS: Neighbor[] = [
   },
   {
     // 땅 4단계 (1~12): 드워프 장인 마을 — 대장간은 하나만
-    id: 'hammer', name: '망치와 맥주', owner: '두린7', land: 4, like: 341,
+    id: 'hammer', name: '망치와 맥주', owner: '두린7', land: 4, like: 341, grade: 3,
     layout: [
       ['inn', 6, 4, 1, null], ['dungeon', 10, 1], ['smith', 2, 4, 1, 8], ['tavern', 9, 8, 2, 8], ['training', 2, 9],
       ['fire', 6, 9], ['fire', 1, 8], ['board', 5, 11], ['well', 5, 8],

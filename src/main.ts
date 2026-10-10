@@ -35,6 +35,7 @@ import { powerOf } from './world/adventurers';
 import { initOwnerUi, openOwner } from './ui/owner';
 import { initKit } from './ui/kit';
 import { initGuide } from './ui/guide';
+import { gradeDev, startGradeAnim, stepGradeAnim } from './world/grade';
 import { navHooks } from './ui/nav';
 import { _huntAdvance, openHunt } from './ui/hunt';
 import { openDex, openGoals } from './ui/book';
@@ -149,6 +150,7 @@ function frame(now: number) {
 }
 
 function tick(dt: number) {
+  stepGradeAnim(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -405,6 +407,9 @@ async function boot() {
       __sync: SYNC,
       __own: OWN,
       __hunt: _huntAdvance,
+      __grade: (g: number) => (gradeDev.g = g),
+      __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
+      __step: (sec: number) => { for (let i = 0; i < sec * 60; i++) stepGradeAnim(1 / 60); },
       // 방치 시험: sec초 꺼져 있었던 것처럼 정산
       __offline: (sec: number) => {
         P.lastSeen = Date.now() - sec * 1000;

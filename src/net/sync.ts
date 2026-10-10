@@ -7,6 +7,7 @@ import { powerOf } from '../world/adventurers';
 import { P, S, world, type RaidRecord } from '../world/state';
 import { getPref, readSave, setPref, snapshot } from '../save/save';
 import { validRecord } from './local';
+import { townGrade } from '../world/guide';
 import { me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
@@ -27,6 +28,8 @@ export function villageSnapshot() {
     innName: S.innName,
     owner: me.profile?.nickname ?? '',
     repHero: repHero(),
+    // 5단계: 마을 등급 (이웃이 보러 오면 비교하는 맛)
+    grade: townGrade(),
     trophies: [...P.trophies],
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.tx, o.ty, o.lvl, o.hue, !!o.flip]),
   };

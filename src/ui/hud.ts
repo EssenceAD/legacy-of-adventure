@@ -222,6 +222,16 @@ export function setZoom(z: number) {
   onZoom();
 }
 
+/** 잠깐만 배율 바꾸기 (마을 등급 연출의 줌아웃 — 저장하지 않는다) */
+export function tempZoom(z: number) {
+  const zs = zoomsNow();
+  z = Math.max(zs[0], Math.min(zs[zs.length - 1], Math.round(z)));
+  if (z === S.zoom) return;
+  S.zoom = z;
+  zoomLabel();
+  onZoom();
+}
+
 // ───────── 시작 ─────────
 
 export function initHud() {

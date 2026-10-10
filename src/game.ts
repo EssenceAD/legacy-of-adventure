@@ -18,6 +18,7 @@ import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCos
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
 import { sanitizeAlbum, sanitizeOwner } from './world/owner';
+import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
@@ -351,7 +352,7 @@ export function visit(v: Neighbor) {
     spawnExtras();
     resetCamera();
     $('#visitbar').hidden = false;
-    $('#vName').textContent = `${v.name} · ${v.owner}`;
+    $('#vName').textContent = `${v.name} · ${v.owner} · 「${gradeName(v.grade ?? Math.max(0, v.land - 1))}」`;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
   });
