@@ -9,8 +9,9 @@ import { GRADE_INFO, STATS, type StatKey } from '../data/items';
 import { P, pick, world, type Actor } from './state';
 import { equippedItems, itemStat, optSum } from './items';
 import { dexBonus, heroStarBonus } from './progress';
-import { bondTierBonus, ownerBonus } from './owner';
+import { bondTierBonus, legacyPower, ownerBonus, xpMult } from './owner';
 import { legendByKey } from '../data/legends';
+import { ownerLook } from '../data/origins';
 
 const G = CONFIG.guests;
 
@@ -110,7 +111,7 @@ export const xpToNext = (lvl: number) => 40 + lvl * 25;
 /** 경험치를 주고 레벨이 오르면 true */
 export function gainXp(a: Actor, n: number): boolean {
   if (a.lvl >= G.maxLevel) return false;
-  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100));
+  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100) * xpMult());
   let up = false;
   while (a.lvl < G.maxLevel && a.xp >= xpToNext(a.lvl)) {
     a.xp -= xpToNext(a.lvl);
@@ -124,13 +125,13 @@ export function gainXp(a: Actor, n: number): boolean {
 
 /**
  * 전투력 = (레벨 기본치 + 장비 합) × (1 + 도감 보너스% + 영웅★ 보너스% + 장비 옵션 전투력% + 주인 보너스%) × 전설★ × 인연 단계 × 케미 배율
- * 성장 수단은 레벨·장비·도감·케미 넷뿐. (주인 보너스·인연 단계는 4단계 자리 — 지금은 0)
+ * 성장 수단은 레벨·장비·도감·케미 넷뿐. 4단계: 주인 보너스(최대 +15%) · 인연 단계(+2%/단계) · 유산 보너스(본 엔딩)
  */
 export function powerOf(a: Actor, chemMult = 1): number {
   const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
   let gear = 0;
   for (const it of equippedItems(a)) for (const k of STATS) gear += itemStat(it, k);
-  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100 + ownerBonus();
+  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100 + ownerBonus() + legacyPower(a);
   // 전설 영웅: ★ 하나 오를 때마다 +8%
   const legend = a.legendId ? 1 + CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
   return Math.round((base + gear) * mult * legend * (1 + bondTierBonus(a)) * chemMult);
@@ -141,6 +142,8 @@ export function powerOf(a: Actor, chemMult = 1): number {
 /** 그림에 쓸 직업 정의: 종족·얼굴·머리색·끼운 무기를 반영 */
 export function appearance(a: Actor): { key: string; def: ClassDef } {
   const base = CLASSES[a.kind];
+  // 여관 주인(나): 직업별 옷 + 초상화에 맞춘 머리색
+  if (a.role === 'owner' && P.owner) return { key: `owner|${P.owner.job}|${P.owner.gender}`, def: ownerLook(P.owner.job, P.owner.gender) };
   if (a.role || !(GUEST_KINDS as readonly string[]).includes(a.kind)) return { key: a.kind, def: base };
   const def: ClassDef = { ...base, face: { ...base.face, ...(a.face as Face | undefined) } };
   // 종족

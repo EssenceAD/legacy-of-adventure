@@ -4,7 +4,7 @@ import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
 import { lookAt, N, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
-import { addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
+import { addOwner, addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
 import { hourNow, settleNight } from './world/clock';
 import { clearEvents } from './world/events';
@@ -15,7 +15,9 @@ import { computeOffline } from './world/offline';
 import { ensureGoals, stars } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
 import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
-import { OPENING, talk } from './ui/dialogue';
+import { talk } from './ui/dialogue';
+import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
+import { sanitizeOwner } from './world/owner';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
@@ -96,7 +98,8 @@ export function newGame() {
   S.night = true;
   S.nightT = 1;
   showHud(false);
-  talk(OPENING, () => {
+  // 4단계: 「당신은 누구였나요?」 → 출신 컷 → 오프닝(버나드가 출신을 알아본다) → 여관 이름
+  openCreate('new', () => talk(openingFor(), () => {
     S.started = true;
     showHud(true);
     // 1일차 06:00부터
@@ -109,10 +112,12 @@ export function newGame() {
     ensureGoals();
     for (const a of world.actors) if (a.st === 'in') leave(a);
     keeperExit(keeper);
+    addOwner();
+    syncOwnerButton();
     syncHud();
     writeSave();
     setTimeout(refreshNoticeDot, 1500);
-  });
+  }));
 }
 
 /** 노주인 퇴장: 마을 앞쪽 끝까지 걸어가 사라진다 */
@@ -143,9 +148,15 @@ export function continueGame() {
   ensureGoals();
   // 꺼져 있던 동안: 끝난 원정은 마을로 돌아와 있고, 요약 창을 띄운다
   const off = computeOffline();
-  if (off) offlineHook(off);
-  syncHud();
-  refreshNoticeDot();
+  const after = () => {
+    if (off) offlineHook(off);
+    syncOwnerButton();
+    syncHud();
+    refreshNoticeDot();
+  };
+  // 4단계 전 저장: 한 번만 「당신은 누구였나요?」 (마을·진행은 그대로)
+  if (!P.owner) openCreate('existing', after);
+  else after();
 }
 
 /** 방치 요약 창 (ui가 채운다) */
@@ -164,6 +175,7 @@ function applySave(d: SaveData) {
   S.innName = d.innName;
   Object.assign(S.ledger, d.ledger);
   resetProgress(d.progress);
+  sanitizeOwner();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
     d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: b.plots ? { plots: b.plots } : {} })),
@@ -184,6 +196,7 @@ function applySave(d: SaveData) {
   for (const a of world.actors) if (a.runId != null && !P.runs.some((r) => r.id === a.runId && !r.result)) a.runId = null;
   hideRunners();
   addPostman();
+  addOwner();
 }
 
 export function toTitle() {
@@ -206,7 +219,7 @@ export function refreshTitle() {
 
 /** 메뉴의 "오프닝 다시 보기": 마을은 그대로, 대사만 다시 (이름은 바꿀 수 있다) */
 export function replayOpening() {
-  talk(OPENING, () => {
+  talk(openingFor(), () => {
     syncHud();
     markDirty();
   });

@@ -6,6 +6,7 @@ import { talk } from './dialogue';
 import { bossPic, openRaidPrep } from './raid';
 import { triesLeft, wanderTarget, weeklyTarget, type RaidTarget } from '../world/raid';
 import { powerOf } from '../world/adventurers';
+import { addEmber } from '../world/owner';
 import { departParty, returnParty } from '../world/actors';
 import {
   activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, powerTips, refreshQuests, regionUnlocked, sendParty,
@@ -133,6 +134,8 @@ function openParty(q: Quest, picked: number[] = []) {
 export function showReport(run: Run) {
   const res = run.result;
   if (!res) return;
+  // 4단계: 원정 보고서를 읽으면 모험 냄새 — 방랑의 불씨 +
+  addEmber(CONFIG.ember.report);
   const reg = regionById(run.quest.region);
   const lines: TalkLine[] = [
     ['narr', `${reg.name} 원정 — ${res.win ? '성공!' : '실패…'}`],

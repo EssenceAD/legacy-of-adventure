@@ -6,6 +6,7 @@ import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
+import { enhanceBonus, ownerGain, stat } from './owner';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -45,7 +46,7 @@ export function salvageAllCommon(): { count: number; dust: number } {
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
 /** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
-export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : SM.enhanceRates[it.enh - 5] ?? 0);
+export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus()));
 
 export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
@@ -58,6 +59,7 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'no
   if (bc) P.bossMats[bc.boss.id] -= bc.n;
   track('enhance');
   legendHooks.bond('enhanceTry');
+  ownerGain('enhance');
   markDirty();
   // 실패해도 단계는 떨어지지 않는다 (가루만 든다)
   if (Math.random() >= enhanceRate(it)) return 'fail';
@@ -97,11 +99,13 @@ export function craft(r: RegionId, slot: Slot): Item | string {
   P.dust.n -= c.dust;
   S.gold -= c.gold;
   P.bossMats[c.boss.id] -= c.bossMats;
-  const g = rollGrade(r, 1, Math.pow(SM.craftLevelBoost, smithLvl() - 1));
+  // 주인 손재주 100 = 상위 등급 확률 ×1.5
+  const g = rollGrade(r, 1, Math.pow(SM.craftLevelBoost, smithLvl() - 1) * (1 + stat('craft') / 200));
   const it = makeItem(r, g, slot, true);
   addToBag(it);
   P.counters.crafted[r] = (P.counters.crafted[r] ?? 0) + 1;
   track('craft');
+  ownerGain('craft');
   markDirty();
   return it;
 }
@@ -150,6 +154,7 @@ export function harvest(o: Building, i: number): number {
   P.pantry += n;
   P.counters.harvests++;
   legendHooks.bond('harvest');
+  ownerGain('harvest');
   legendHooks.req('newCrop', 1, p.crop!);
   p.crop = null;
   p.at = 0;

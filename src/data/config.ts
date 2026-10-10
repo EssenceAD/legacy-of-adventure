@@ -422,6 +422,83 @@ export const CONFIG = {
     /** [세계]가 이만큼(ms) 조용할 때만 [소문]이 흐른다 */
     rumorQuietMs: 120000,
   },
+  /** 4단계: 주인공 · 인연 · 방랑의 불씨 · 엔딩 */
+  owner: {
+    nameMin: 2,
+    nameMax: 8,
+    /** 매일 첫 접속(실제 날짜) 능력치 전체 + */
+    dailyAll: 0.2,
+    /** 행동으로 오르는 능력치: 한 능력치당 하루 최대 */
+    actionCapPerDay: 0.6,
+    /** 행동별 상승량 */
+    gain: {
+      expedition: { hp: 0.1 }, dangerRun: { nerve: 0.15 }, meal: { cook: 0.02 }, harvest: { cook: 0.1 },
+      talk: { talk: 0.15, heart: 0.1 }, regular: { talk: 0.2 }, craft: { craft: 0.15 }, enhance: { craft: 0.1 },
+      raid: { nerve: 0.2 }, raidManual: { nerve: 0.1 }, gift: { heart: 0.15 }, tired: { heart: 0.05 },
+    } as Record<string, Partial<Record<'hp' | 'cook' | 'talk' | 'craft' | 'nerve' | 'heart', number>>>,
+    /** 전투력 주인 보너스 최대 · 담력/체력/마음 비중 */
+    bonusMax: 0.15,
+    bonusWeights: { nerve: 0.4, hp: 0.3, heart: 0.3 },
+    /** 요리 100 = 주점 수입 +30% · 말솜씨 100 = 의뢰 금화 +10%, 단골 기준 -5 · 손재주 100 = 강화 +3%p */
+    cookIncome: 0.3,
+    talkGold: 0.1,
+    talkRegular: 5,
+    craftEnhance: 0.03,
+    /** 하루 행동력 = 기본 + 체력 ÷ 20 (말 걸기·선물 각 1) */
+    energyBase: 4,
+    energyPerHp: 20,
+    /** 출신 보너스 */
+    perk: { train: 0.1, raid: 0.05, trade: 0.05, enhance: 0.02, mood: 0.1, expTime: 0.05 },
+    /** 달력: 1계절 = 실제 7일 */
+    seasonDays: 7,
+    /** 계절 행사: 봄 손님 기분 · 여름 온천 · 가을 주점 · 겨울 숙박 수입 + */
+    seasonBonus: 0.1,
+    /** 계절 추천 지붕 색 (hue) */
+    seasonHue: [330, 200, 25, 210],
+  },
+  ties: {
+    /** 단계마다 20 */
+    perStage: 20,
+    talkGood: 3,
+    talkMeh: 1,
+    giftLike: 8,
+    giftNormal: 3,
+    giftHate: -3,
+    /** 마음 100 = 인연 오르는 속도 +50% · 선물 효과 +100% */
+    heartSpeed: 0.5,
+    heartGift: 1,
+    linkedMult: 1.3,
+    runTogether: 1,
+    raidTogether: 1,
+    requestDone: 5,
+    /** 인연 이벤트 선택지 (앞 = +2, 뒤 = +1) */
+    choiceGood: 2,
+    choiceMeh: 1,
+    /** 인연 단계 하나당 그 영웅 전투력 + (낯섦 = 0) */
+    stagePower: 0.02,
+  },
+  ember: {
+    daily: 0.6,
+    report: 0.5,
+    legend: 3,
+    raidManual: 0.5,
+    linkedEvent: 3,
+    /** 행동으로 오르는 하루 최대 */
+    actionCapPerDay: 3,
+    marks: [30, 60, 90],
+    /** 2년 차(실제 56일) 이후 + 불씨 100 → 선택 */
+    decideDays: 56,
+    /** 「아직은 아니야」 → 불씨 · 다시 묻기까지 (일) */
+    notYet: 70,
+    askAgainDays: 14,
+    /** 후계자: 버나드 인연 이 단계 이상 또는 이 레벨 이상 단골 */
+    heirBernard: 3,
+    heirLevel: 15,
+    /** 홀로 떠나기 담력 */
+    soloNerve: 90,
+    /** 앞 주인 편지 확률 (하루) */
+    letterChance: 0.15,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,
@@ -430,7 +507,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 3,
+    version: 4,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

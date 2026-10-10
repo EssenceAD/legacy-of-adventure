@@ -59,8 +59,8 @@ export interface Actor {
   t: number;
   /** 애니메이션 위상 (모두 같은 박자로 움직이지 않게) */
   ph: number;
-  /** npc = 우체부 모모, keeper = 오프닝의 노주인 */
-  role?: 'npc' | 'keeper';
+  /** npc = 우체부 모모, keeper = 오프닝의 노주인, owner = 여관 주인(나) */
+  role?: 'npc' | 'keeper' | 'owner';
   path: [number, number][] | null;
   then?: (() => void) | null;
   lvl: number;
@@ -318,7 +318,74 @@ export function freshProgress() {
     lastSeen: Date.now(),
     /** 게임 시간으로 마지막 손님 도착 판정 시각 (게임 시) */
     lastArriveHour: 0,
+    // ── 4단계: 주인공 · 인연 · 엔딩 (전부 progress 안이라 클라우드 저장에도 같이 올라간다) ──
+    /** 여관 주인 = 나. null이면 다음 접속 때 「당신은 누구였나요?」 */
+    owner: null as OwnerState | null,
+    /** 인연(호감도) 27명: id → 수치·본 단계·오늘 말 걸기/선물·알아낸 취향·관계 */
+    ties: {} as Record<string, TieState>,
+    /** 선물 가방 */
+    gifts: {} as Record<string, number>,
+    /** 유산: 세대 · 본 엔딩(앨범) · 앞 주인 */
+    legacy: { gen: 1, seen: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
   };
+}
+
+export interface OwnerState {
+  name: string;
+  gender: 'm' | 'f';
+  job: 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';
+  /** 출신 키 (ORIGINS 6개 또는 disciple · child) */
+  origin: string;
+  stats: Record<'hp' | 'cook' | 'talk' | 'craft' | 'nerve' | 'heart', number>;
+  /** 연결된 영웅 (전설 키) */
+  linked: string[];
+  /** 주인이 된 실제 시각 (달력 기준) */
+  born: number;
+  /** 능력치 매일 상승을 받은 날 · 오늘 행동으로 오른 양 */
+  statDay: string;
+  todayGain: Record<string, number>;
+  /** 오늘 행동력 */
+  energyDay: string;
+  energyUsed: number;
+  /** 방랑의 불씨 (숨은 게이지) · 오늘 행동으로 오른 양 · 본 독백 · 다음 선택 시각 */
+  ember: number;
+  emberDay: string;
+  emberToday: number;
+  emberMarks: number[];
+  askAt: number;
+  /** 본 계절 번호 · 재회 대사를 본 연결 영웅 */
+  season: number;
+  met: string[];
+  /** 엔딩을 봤다 (계속 운영 중) */
+  ended: string | null;
+}
+export interface TieState {
+  pts: number;
+  /** 본 단계 (1 = 낯섦). 수치가 다음 단계에 닿으면 이벤트를 보고 오른다 */
+  stage: number;
+  talkDay: string;
+  giftDay: string;
+  /** 알아낸 취향 */
+  knowLike: boolean;
+  knowHate: boolean;
+  rel?: 'lover' | 'comrade';
+}
+export interface EndingCard {
+  at: number;
+  gen: number;
+  owner: string;
+  job: OwnerState['job'];
+  gender: OwnerState['gender'];
+  partner?: string;
+  rel?: 'lover' | 'comrade';
+}
+export interface PrevOwner {
+  name: string;
+  job: OwnerState['job'];
+  gender: OwnerState['gender'];
+  origin: string;
+  ending: string;
+  linked: string[];
 }
 export type Progress = ReturnType<typeof freshProgress>;
 export const P: Progress = freshProgress();

@@ -12,6 +12,7 @@ import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
 import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
 import { gotGold, legendHooks, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
+import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -103,7 +104,8 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   let power = 0;
   for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
   power = Math.round(power * chem);
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100);
+  // 4단계: 사냥꾼 출신 원정 시간 -5%
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut());
   return {
     power,
     chem,
@@ -129,6 +131,8 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   for (const m of members) m.runId = run.id;
   P.counters.expeditions++;
   track('expeditionSent');
+  ownerGain('expedition');
+  if (q.region === 'ice' || q.region === 'abyss') ownerGain('dangerRun');
   // 전설 인연 활동: 숲 원정 · 밤(20~04시) 출발 · 오스윈과 함께
   if (q.region === 'forest') {
     P.counters.forestSends++;
@@ -154,7 +158,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const tierR = E.tierReward[q.tier];
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem);
+  // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult());
+  tieRun(members);
   const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
   const levelUps: string[] = [];
   for (const m of members) {

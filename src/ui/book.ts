@@ -72,7 +72,7 @@ export function openDex(tab = dTab) {
     const cards = LEGENDS.map((d) => {
       const st = P.legends[d.key];
       const img = `<img class="lgp ${st ? (st.st === 'joined' ? '' : 'sil') : 'unk'}" src="${PORTRAITS['legend_' + d.key] ?? ''}" alt="">`;
-      if (!st) return `<div class="lcard">${img}<b>???</b><small>소문 조건: ${d.rumorText}</small></div>`;
+      if (!st) return `<div class="lcard">${img}<b>???</b><small>소문 조건: ${d.rumorText}${P.owner?.linked.includes(d.key) ? " <b class=\"g\">(옛 인연: 70%)</b>" : ""}</small></div>`;
       if (st.st === 'joined') {
         const a = (world.home?.actors ?? world.actors).find((x) => x.legendId === d.key);
         return `<div class="lcard on">${img}<b>${d.title} ${d.name} <span class="g">${'★'.repeat(a?.stars ?? 1)}</span></b><small>${d.charm}</small><small>기술 ${d.skill.name} · 등록 +${Math.round(CONFIG.legends.dexBonus * 100)}%</small></div>`;

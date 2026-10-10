@@ -10,6 +10,7 @@ import { queueEvent } from './events';
 import { regionUnlocked } from './expeditions';
 import { addRep, today, track } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type RaidRecord } from './state';
+import { addEmber, ownerGain, raidDmgMult, tieRaid } from './owner';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -130,7 +131,8 @@ export function expectOf(members: Actor[], b: BossDef): RaidExpect {
   const power = pw.reduce((s, v) => s + v, 0);
   const chem = partyChemMult(members);
   const affinity = power ? members.reduce((s, m, i) => s + pw[i] * affinityOf(m, b), 0) / power : 1;
-  const base = power * R.seconds * R.dmgPerPowerSec * chem;
+  // 4단계: 전사 출신 토벌 피해 +5%
+  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult();
   return {
     power: Math.round(power * chem),
     chem,
@@ -226,6 +228,15 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   legendHooks.bond('raidTry');
   legendHooks.req('goldEarned', gold);
+  // 4단계: 함께 싸운 영웅·전설 인연 + · 주인 담력 · 직접 조작은 불씨 +
+  if (mode !== 'sweep') {
+    tieRaid(members);
+    ownerGain('raid');
+    if (mode === 'manual') {
+      ownerGain('raidManual');
+      addEmber(CONFIG.ember.raidManual);
+    }
+  }
   if (killed) {
     addRep(10);
     // 서버 [알림]은 첫 처치만 (그 뒤는 내 화면에만)

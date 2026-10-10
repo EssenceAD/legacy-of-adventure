@@ -11,6 +11,7 @@ import { queueEvent } from './events';
 import { dexBonus, heroCtx, stars, today } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
 import { entrance } from './town';
+import { addEmber, linkedGauge, linkedScale, meetLinked, tieRequestDone } from './owner';
 
 const L = CONFIG.legends;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -23,7 +24,7 @@ export const legendOf = (key: string): LegendState | undefined => P.legends[key]
 
 const lvlOf = (kind: string) => homeObjs().find((o) => o.kind === kind && o.build === undefined)?.lvl ?? 0;
 
-export function legendCtx(): LegendCtx {
+export function legendCtx(scale = 1): LegendCtx {
   const h = heroCtx();
   const knights = new Set(homeActors().filter((a) => a.kind === 'knight' && a.id).map((a) => a.id));
   return {
@@ -46,14 +47,19 @@ export function legendCtx(): LegendCtx {
     knightBondAtLeast: (lv) =>
       Object.entries(P.bonds).some(([k, b]) => b.lv >= lv && k.split('-').some((id) => knights.has(+id))),
     topRankWeeks: P.raid.topWeeks,
+    scale,
+    need: (n) => Math.ceil(n * scale),
   };
 }
 
 /** 소문 조건을 처음 맞춘 영웅: 도감 실루엣 + 힌트, [소문] 채널, 대화창 */
 export function checkRumors() {
-  const c = legendCtx();
+  const base = legendCtx();
   for (const d of LEGENDS) {
-    if (P.legends[d.key] || !d.rumorWhen(c)) continue;
+    if (P.legends[d.key]) continue;
+    // 주인 출신의 연결 영웅: 필요 수치 70%
+    const sc = linkedScale(d.key);
+    if (!d.rumorWhen(sc === 1 ? base : legendCtx(sc))) continue;
     P.legends[d.key] = { st: 'rumor', gauge: 0 };
     markDirty();
     uiHooks.rumor(d.rumor);
@@ -75,7 +81,7 @@ export function bond(e: BondEvent, times = 1) {
   for (const d of LEGENDS) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
-    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + rand(L.gaugeMin, L.gaugeMax));
+    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key)));
     markDirty();
   }
 }
@@ -141,6 +147,7 @@ export function visit(key: string) {
       ['narr', `${L.visitDays}일 안에 부탁을 들어주면 동료가 된다.`],
     ]),
   );
+  meetLinked(key);
 }
 
 /** 부탁 진행 (방문 중인 영웅 중 그 일을 부탁한 영웅) */
@@ -210,6 +217,8 @@ function recruit(key: string) {
     a.stars = 1;
   }
   markDirty();
+  tieRequestDone(key);
+  addEmber(CONFIG.ember.legend);
   uiHooks.announce(`★ ${S.innName || '여관'}에 전설 영웅 「${d.title} ${d.name}」${josa(d.name, '가')} 찾아왔습니다!`, 'legend', `${d.title} ${d.name}`);
   queueEvent(() =>
     uiHooks.talk([

@@ -15,6 +15,7 @@ import { unequip } from './items';
 import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
 import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
+import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
 import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
 
 const A = CONFIG.actors;
@@ -64,6 +65,83 @@ export function addPostman() {
   world.actors.push(blankActor('post', '모모', b.tx + 1.2, b.ty + 1.4, 'npc'));
 }
 
+// ───────── 여관 주인 = 나 (4단계): 낮엔 손님 응대, 저녁엔 모닥불, 밤엔 다락에서 옛 장비를 바라본다 ─────────
+
+const OWNER_DAY = ['어서 오세요!', '오늘도 잘 부탁해요.', '스튜 끓여 둘게요.', '방은 넉넉해요!', '좋은 아침이에요!', '불편한 건 없어요?'];
+const OWNER_NIGHT = ['오늘도 수고했어.', '불 좀 쬐다 갈까.', '…별이 많네.', '내일은 뭘 끓이지.'];
+
+/** 마을에 주인을 세운다 (한 명만) */
+export function addOwner() {
+  if (!P.owner || S.visiting || world.actors.some((a) => a.role === 'owner')) return;
+  const inn = findKind('inn');
+  if (!inn) return;
+  const d = doorOf(inn);
+  world.actors.push(blankActor('hero', P.owner.name, d[0] + 0.5, d[1] + 0.3, 'owner'));
+}
+/** 주인이 바뀌었을 때 (유산을 이음) */
+export function refreshOwner() {
+  world.actors = world.actors.filter((a) => a.role !== 'owner');
+  addOwner();
+}
+
+function ownerChoose(a: Actor) {
+  const inn = findKind('inn');
+  const fire = ready().find((o) => o.kind === 'fire');
+  const r = Math.random();
+  if (S.night) {
+    if (fire && r < 0.45) {
+      const side = r < 0.22 ? -1 : 1;
+      return goTo(a, clampN(fire.tx + side), clampN(fire.ty + 1), () => {
+        a.st = 'sit';
+        a.dir = a.x < fire.tx + 0.5 ? 1 : -1;
+        a.t = 8 + Math.random() * 6;
+        if (Math.random() < 0.4) say(a, pick(OWNER_NIGHT), 0.5);
+      });
+    }
+    if (inn) {
+      const [dx, dy] = doorOf(inn);
+      return goTo(a, dx, dy, () => {
+        // 다락: 건물 안에 숨지만 손님 칸은 차지하지 않는다
+        a.at = inn;
+        a.st = 'in';
+        a.hidden = true;
+        a.t = 10 + Math.random() * 10;
+        if ((P.owner?.ember ?? 0) >= 30 && Math.random() < 0.5) bldSay(inn, '…(다락에서 옛 장비를 바라본다)');
+      });
+    }
+  } else {
+    const gs = guestsOf().filter((g) => !g.hidden && g.runId == null && g.st !== 'door');
+    if (gs.length && r < 0.5) {
+      const g = pick(gs);
+      return goTo(a, clampN(Math.round(g.x) + 1), clampN(Math.round(g.y)), () => {
+        a.st = 'idle';
+        a.t = 2 + Math.random() * 2;
+        a.dir = g.x < a.x ? -1 : 1;
+        if (Math.random() < 0.6) say(a, pick(OWNER_DAY), 0.5);
+      });
+    }
+    if (inn && r < 0.8) {
+      const [dx, dy] = doorOf(inn);
+      return goTo(a, dx, dy, () => {
+        a.st = 'idle';
+        a.t = 3 + Math.random() * 3;
+      });
+    }
+  }
+  const [lo, hi] = landBounds();
+  let tx = 0;
+  let ty = 0;
+  let k = 0;
+  do {
+    tx = lo + ((Math.random() * (hi - lo)) | 0);
+    ty = lo + ((Math.random() * (hi - lo)) | 0);
+  } while (!walkable(tx, ty) && k++ < 20);
+  goTo(a, tx, ty, () => {
+    a.st = 'idle';
+    a.t = 2 + Math.random() * 2;
+  });
+}
+
 function goTo(a: Actor, tx: number, ty: number, then: () => void) {
   const p = astar(a.x, a.y, tx, ty);
   if (!p) {
@@ -101,6 +179,7 @@ function needTarget(a: Actor): { b: Building; why: string } | null {
 
 function choose(a: Actor) {
   a.intent = undefined;
+  if (a.role === 'owner') return ownerChoose(a);
   if (a.role || a.leaving) {
     a.st = 'idle';
     a.t = 3;
@@ -180,14 +259,14 @@ export function enter(a: Actor, o: Building) {
       legendHooks.bond('train');
       track('train');
       // 훈련장 레벨마다 수련 경험치 +20%
-      if (gainXp(a, NE.trainXp * (1 + 0.2 * (o.lvl - 1)))) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
+      if (gainXp(a, NE.trainXp * (1 + 0.2 * (o.lvl - 1)) * trainMult())) floatW(a.x, a.y, 34, `Lv.${a.lvl}!`, 'big');
     });
     return;
   }
   if (act === 'farm') {
     a.st = 'pray';
     a.t = A.farmTime;
-    a.mood = clamp(a.mood + NE.farmMood);
+    a.mood = clamp(a.mood + NE.farmMood * moodMult());
     say(a, pick(LINES.farm), 0.5);
     return;
   }
@@ -195,7 +274,7 @@ export function enter(a: Actor, o: Building) {
     a.st = 'sit';
     a.dir = a.x < o.tx + 0.5 ? 1 : -1;
     a.t = A.fireMin + Math.random() * (A.fireMax - A.fireMin);
-    a.mood = clamp(a.mood + NE.fireMood);
+    a.mood = clamp(a.mood + NE.fireMood * moodMult());
     // 모닥불에 둘러앉은 수 (영웅 조건)
     if (!S.visiting) {
       const n = world.actors.filter((b) => b.st === 'sit' && b.at === o).length;
@@ -224,21 +303,25 @@ function fillNeeds(a: Actor, act: Act | undefined) {
       // 텃밭 채소가 있으면 더 든든한 식사
       P.pantry--;
       a.food = clamp(a.food + NE.mealWithProduce);
-      a.mood = clamp(a.mood + NE.mealProduceMood);
+      a.mood = clamp(a.mood + NE.mealProduceMood * moodMult());
     } else a.food = clamp(a.food + NE.meal);
     if (!S.visiting && a.id) {
       P.counters.tavernMeals++;
       track('meal');
+      ownerGain('meal');
     }
   } else if (act === 'bath') {
     // 온천 레벨마다 회복·기분 +15%
     const k = 1 + 0.15 * (bathLv - 1);
     a.hp = clamp(a.hp + NE.bathHp * k);
-    a.mood = clamp(a.mood + NE.bathMood * k);
+    a.mood = clamp(a.mood + NE.bathMood * k * moodMult());
     if (!S.visiting && a.id) legendHooks.bond('bathUse');
   } else if (act === 'forge') a.mood = clamp(a.mood + 4);
   // 지친 손님이 쉬고 일어났다 (성녀 아리아의 부탁)
-  if (!S.visiting && tired && a.hp >= 30 && (act === 'sleep' || act === 'bath')) legendHooks.req('tiredRecovered');
+  if (!S.visiting && tired && a.hp >= 30 && (act === 'sleep' || act === 'bath')) {
+    legendHooks.req('tiredRecovered');
+    ownerGain('tired');
+  }
 }
 
 function goInside(a: Actor, o: Building) {
@@ -256,7 +339,8 @@ function goInside(a: Actor, o: Building) {
     if (a.kind === 'knight') legendHooks.bond('serveKnight');
     if (a.kind === 'rogue') legendHooks.bond('serveRogue');
   }
-  const income = act ? CONFIG.economy.income[act] : 0;
+  // 4단계: 요리(주점) · 계절 행사 · 유산 보너스
+  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * incomeMult(act)) : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '+' + income);
@@ -503,6 +587,7 @@ function propose(a: Actor) {
             }
             a.status = 'regular';
             addRep(CONFIG.reputation.newRegular);
+            ownerGain('regular');
             floatW(a.x, a.y, 40, '단골 등록!', 'big');
             markDirty();
           },
@@ -512,6 +597,9 @@ function propose(a: Actor) {
     );
   }, 'prop' + a.id);
 }
+
+/** 단골이 되고 싶어 하는 기분 기준 (주인 말솜씨가 높을수록 낮다) */
+const regularNeed = () => G.regularMood - regularCut();
 
 /** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
 export function dailyGuests() {
@@ -531,7 +619,7 @@ export function dailyGuests() {
     const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
     if (avg < G.leaveMood) sendAway(a, false);
     else if (S.day >= a.leaveDay) {
-      if (avg < G.regularMood) sendAway(a, true);
+      if (avg < regularNeed()) sendAway(a, true);
       else if (regularsCount() < capacity()) propose(a);
       else toWaitlist(a);
     }
@@ -545,8 +633,8 @@ function passersLeave() {
     if (a.status !== 'passer') continue;
     const avg = a.moodN ? (a.moodSum + a.mood) / (a.moodN + 1) : a.mood;
     // 단골 자리가 있으면 그 자리에서 제안, 없으면 대기 목록
-    if (avg >= G.regularMood && regularsCount() < capacity()) propose(a);
-    else if (avg >= G.regularMood && P.waitlist.length < G.waitlistMax) toWaitlist(a);
+    if (avg >= regularNeed() && regularsCount() < capacity()) propose(a);
+    else if (avg >= regularNeed() && P.waitlist.length < G.waitlistMax) toWaitlist(a);
     else sendAway(a, avg >= G.leaveMood);
   }
 }
@@ -578,6 +666,7 @@ function heroCheck() {
     P.dex.heroes[h.id] = { appeared: true, recruited: true, stars: P.dex.heroes[h.id]?.stars ?? 1 };
     addRep(10);
     markDirty();
+    tieRequestDone(h.id);
     queueEvent(() =>
       uiHooks.talk([
         ['hero_' + h.id, '약속을 지켜 줬군. 이제부터 이 여관의 동료가 되겠다.', undefined, h.name],

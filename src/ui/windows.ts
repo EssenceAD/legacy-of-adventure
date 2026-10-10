@@ -51,9 +51,17 @@ export function toastHtml(html: string, ms: number = CONFIG.ui.toastMs) {
 }
 export const toast = (text: string) => toastHtml(`<span>${esc(text)}</span>`);
 
+/** 꼭 골라야 하는 창(주인 만들기·엔딩 뒤 선택): ✕·바깥 눌러 닫기를 막는다 */
+let winLocked = false;
+export function setWinLock(v: boolean) {
+  winLocked = v;
+  $('#winX').hidden = v;
+}
+const userClose = () => !winLocked && closeWin();
+
 export function initWindows() {
-  $('#scrim').onclick = closeWin;
-  $('#winX').onclick = closeWin;
+  $('#scrim').onclick = userClose;
+  $('#winX').onclick = userClose;
 }
 
 // ───────── 건설 ─────────

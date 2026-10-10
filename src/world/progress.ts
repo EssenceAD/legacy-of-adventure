@@ -15,8 +15,10 @@ export function stars(): number {
   for (let i = 0; i < t.length; i++) if (P.rep >= t[i]) s = i + 1;
   return s;
 }
+/** 4단계 유산 보너스(평판 +%) — owner.ts가 채운다 (import가 꼬이지 않게) */
+export const repHook = { mult: () => 1 };
 export function addRep(n: number) {
-  P.rep = Math.max(0, P.rep + n);
+  P.rep = Math.max(0, P.rep + (n > 0 ? n * repHook.mult() : n));
   if (n > 0) legendHooks.bond('repGain');
 }
 /** 다음 별까지 남은 점수 (최대면 0) */

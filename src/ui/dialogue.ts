@@ -2,7 +2,8 @@
 import { speakerName } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { PORTRAITS } from '../engine/assets';
-import { S, type TalkChoice, type TalkLine } from '../world/state';
+import { mcPortrait } from '../data/origins';
+import { P, S, type TalkChoice, type TalkLine } from '../world/state';
 
 /** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기, 이름표] — 누가: narr(해설)·hero·keeper·post·직업 */
 export type Line = TalkLine;
@@ -19,7 +20,13 @@ interface Talk {
   named: boolean;
   full: string;
   iv: number;
+  /** 인연 이벤트: 오른쪽에 설 사람 초상화 키 (왼쪽은 나) */
+  duo?: string;
 }
+
+/** 나(주인)의 초상화 · 이름. 'me'는 늘 나, 오프닝의 'hero'도 주인이 있으면 나 */
+const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender)] : PORTRAITS.hero) || '';
+const isMe = (who: string) => who === 'me' || (who === 'hero' && !!P.owner);
 
 let DQ: Talk | null = null;
 export const isTalking = () => DQ !== null;
@@ -41,6 +48,15 @@ export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
   showLine();
 }
 
+/** 인연 이벤트: 나(왼쪽)와 그 사람(오른쪽) 초상화가 마주본다 */
+export function talkDuo(lines: Line[], right: string, done?: () => void, choices?: TalkChoice[]) {
+  talk(lines, done, choices);
+  if (DQ) {
+    DQ.duo = right;
+    showLine();
+  }
+}
+
 function showLine() {
   if (!DQ) return;
   const [who, txt, opt, nameTag] = DQ.lines[DQ.i];
@@ -48,9 +64,22 @@ function showLine() {
   const narr = who === 'narr';
   d.classList.toggle('narr', narr);
   const port = $<HTMLImageElement>('#dPort');
-  port.src = PORTRAITS[who] || '';
+  const me = isMe(who);
+  port.src = me ? myPort() : PORTRAITS[who] || '';
   port.hidden = narr;
-  $('#dName').textContent = nameTag ?? speakerName(who, S.innName);
+  $('#dName').textContent = me && P.owner ? P.owner.name : nameTag ?? speakerName(who, S.innName);
+  // 마주보기: 말하는 쪽만 밝게
+  const duo = $('#dDuo');
+  d.classList.toggle('duo', !!DQ.duo);
+  duo.hidden = !DQ.duo;
+  if (DQ.duo) {
+    const L = $<HTMLImageElement>('#dDuoL');
+    const R = $<HTMLImageElement>('#dDuoR');
+    L.src = myPort();
+    R.src = PORTRAITS[DQ.duo] || '';
+    L.classList.toggle('dim', !narr && !me);
+    R.classList.toggle('dim', !narr && me);
+  }
   $('#dName').hidden = narr;
   const t = txt.replace('{name}', S.innName);
   const el = $('#dText');
@@ -99,6 +128,8 @@ function endTalk() {
   clearInterval(DQ.iv);
   DQ = null;
   $('#dlg').hidden = true;
+  $('#dDuo').hidden = true;
+  $('#dlg').classList.remove('duo');
   $('#view').classList.remove('talking');
   d?.();
 }
@@ -197,19 +228,3 @@ export function initDialogue() {
     if (e.key === 'x' || e.key === 'X') skipTalk();
   });
 }
-
-/** 오프닝 (시안 대사 그대로) */
-export const OPENING: Line[] = [
-  ['narr', '골드는 늘 모자랐다.'],
-  ['narr', '목숨 걸고 던전에서 번 돈은, 여관 숙박비로 고스란히 사라지곤 했다.'],
-  ['keeper', '자네, 셈이 꽤 빠르더군. 내 장부 정리를 그렇게 빨리 하는 사람은 처음 봤네.'],
-  ['hero', '하하, 맨날 돈이 모자라서 계산만 늘었죠.'],
-  ['keeper', '나도 이제 허리가 예전 같지 않아. 이 여관… 자네가 맡아 주지 않겠나?'],
-  ['hero', '제가요? 칼밖에 쥐어 본 적이 없는데요?'],
-  ['keeper', '칼 쥐는 손이나 장부 쥐는 손이나 매한가지일세. 손님 마음을 읽는 눈이 더 중요하지.'],
-  ['keeper', '자, 간판부터 새로 달아야겠지. 여관 이름을 지어 주게.', 'name'],
-  ['keeper', '{name}이라… 좋은 이름이군. 손님들이 몰려올 걸세.'],
-  ['keeper', '지금은 여관 하나뿐이지만, 울타리를 밀고 땅을 넓혀 가게. 주점도, 온천도, 대장간도 자네 마음대로 지으면 되네.'],
-  ['keeper', '모르는 게 있으면 마을로 찾아오게. 난 이제 낚시나 하러 가겠네. 허허!'],
-  ['narr', '그렇게, 전직 모험가의 여관 마을이 시작되었다.'],
-];

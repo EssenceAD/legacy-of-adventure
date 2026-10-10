@@ -130,6 +130,8 @@ export function migrate(d: any): any {
   }
   // v2 → v3 (3단계): 진행 데이터에 토벌·전설 칸이 늘었을 뿐 — 빠진 칸은 mergeProgress가 기본값으로 채운다
   if (d.version === 2) d = { ...d, version: 3 };
+  // v3 → v4 (4단계): 주인·인연·유산 칸이 늘었다. 주인이 없으면(null) 다음 접속 때 「당신은 누구였나요?」 창으로 만든다
+  if (d.version === 3) d = { ...d, version: 4 };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }

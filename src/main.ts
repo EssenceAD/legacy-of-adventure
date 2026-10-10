@@ -28,6 +28,10 @@ import { initAuth, online } from './net/server';
 import * as SRV from './net/server';
 import * as SYNC from './net/sync';
 import { checkLastWeek, dailyStats, startCloud } from './net/sync';
+import { dailyOwner, nightOwner } from './world/owner';
+import * as OWN from './world/owner';
+import { powerOf } from './world/adventurers';
+import { initOwnerUi, openOwner } from './ui/owner';
 import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
@@ -92,6 +96,9 @@ function update(dt: number) {
       maybeAlarm();
       checkRumors();
       if (S.night) judgeNight();
+      // 4단계: 매일 첫 접속 능력치 · 계절 · 놓친 인연 이벤트 · 밤이면 불씨 독백/선택
+      dailyOwner();
+      if (S.night) nightOwner(true);
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
@@ -100,6 +107,7 @@ function update(dt: number) {
       if (!S.visiting) {
         tickLegends();
         maybeAlarm();
+        dailyOwner();
         void dailyStats();
         void checkLastWeek();
       }
@@ -278,7 +286,8 @@ function tap(e: PointerEvent) {
     if (best.role === 'npc') {
       if (S.visiting) return;
       openReport();
-    } else showActor(best);
+    } else if (best.role === 'owner') openOwner();
+    else showActor(best);
     return;
   }
   const o = buildingAt(mx, my, alphaAt);
@@ -332,6 +341,7 @@ async function boot() {
   initWindows();
   initDialogue();
   initHud();
+  initOwnerUi();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));
@@ -380,6 +390,8 @@ async function boot() {
       __raid: _raidAdvance,
       __srv: SRV,
       __sync: SYNC,
+      __own: OWN,
+      __power: powerOf,
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);
       },
