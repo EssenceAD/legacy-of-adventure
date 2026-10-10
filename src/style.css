@@ -971,3 +971,12 @@ body.winopen :is(#mission,#evalbar,#runbar,#chatlog,#bHarm,#hSpk,#pcard,#hBanner
 .menu .mgroup{display:contents}
 .mgroup{padding:8px;margin:0 0 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
 .ibtn.hb{flex:none;min-width:44px}
+/* ── 핫픽스 7: 직업별 스킬 버튼 테두리 색 · 조종 바꿀 때 0.3초 반짝 · 스킬 이름 ── */
+.cbpad{--jc:#6a7098}
+.cbb.s1,.cbb.s2,.cbb.ult{box-shadow:0 0 0 2px #140c18,0 0 0 4px var(--jc);transition:box-shadow .3s steps(3)}
+.cbpad.swap :is(.cbb.s1,.cbb.s2,.cbb.ult){animation:jswap .3s steps(3)}
+@keyframes jswap{0%{transform:scale(.7);box-shadow:0 0 0 2px #140c18,0 0 0 8px #fff}66%{transform:scale(1.12)}100%{transform:scale(1)}}
+.cbnames{position:absolute;right:0;bottom:162px;display:flex;gap:6px;justify-content:flex-end;pointer-events:none;z-index:5}
+.cbnames span{font-size:13px;font-weight:700;color:#fff;background:rgba(10,8,20,.82);padding:3px 7px;box-shadow:0 0 0 2px var(--jc);white-space:nowrap}
+.cbcast{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 214px);transform:translateX(-50%);font-size:17px;font-weight:700;color:#fff;text-shadow:2px 2px 0 #140c18,-1px -1px 0 #140c18;background:rgba(10,8,20,.6);padding:4px 12px;pointer-events:none;z-index:5;white-space:nowrap}
+html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}

@@ -21,6 +21,21 @@ const hash = (x: number, y: number) => {
   h = (h ^ (h >> 13)) * 1274126177;
   return ((h ^ (h >> 16)) >>> 0) / 4294967296;
 };
+/** 부드러운 값 노이즈 (0~1): 바닥 얼룩용 — 칸 경계와 상관없이 번진다 */
+function vnoise(x: number, y: number) {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const s = (t: number) => t * t * (3 - 2 * t);
+  const a = hash(ix, iy);
+  const b = hash(ix + 1, iy);
+  const c = hash(ix, iy + 1);
+  const d = hash(ix + 1, iy + 1);
+  return a + (b - a) * s(fx) + (c - a) * s(fy) + (a - b - c + d) * s(fx) * s(fy);
+}
+const fbm = (x: number, y: number) => vnoise(x, y) * 0.65 + vnoise(x * 2.3 + 17, y * 2.3 + 5) * 0.35;
+
 function tile(ctx: CanvasRenderingContext2D, X: number, Y: number, fill: (px: number, py: number) => string) {
   for (let k = 0; k < TH; k++) {
     const hw = (k < TH / 2 ? k + 1 : TH - k) * 2;
@@ -49,14 +64,28 @@ function buildGround(region: string): HTMLCanvasElement {
       const inside = tx >= 0 && ty >= 0 && tx < N && ty < N;
       const X = ox + sx(tx, ty);
       const Y = oy + sy(tx, ty) + pad * TH;
-      // 흙: 굽은 오솔길 한 줄 + 드문드문 맨땅 (바둑판처럼 보이지 않게)
-      const path = Math.abs(ty - (N / 2 + Math.sin(tx * 0.7) * 1.6)) < 0.7;
-      const dirt = inside && (path || hash(tx, ty) < 0.06);
+      // 핫픽스 7: 칸마다 색을 정하지 않고 도트마다 월드 좌표의 노이즈로 → 경계가 섞이고 얼룩이 불규칙 (바둑판 없음)
+      void inside;
       tile(x, X, Y, (px, py) => {
+        const rx = (px - ox) / (TW / 2);
+        const ry = (py - oy - pad * TH) / (TH / 2);
+        const wx = (rx + ry) / 2;
+        const wy = (ry - rx) / 2;
         const h = hash(px, py);
-        if (!inside) return h < 0.5 ? P.edge : P.void;
-        if (dirt) return h < 0.12 ? P.dirtD : h < 0.25 ? P.c : P.dirt;
-        return h < 0.1 ? P.c : h < 0.22 ? P.b : P.a;
+        const n = fbm(wx * 0.55, wy * 0.55);
+        // 가장자리: 노이즈로 들쭉날쭉하게 풀숲 → 어둠
+        const edge = Math.min(wx, wy, N - wx, N - wy) + (n - 0.5) * 1.2;
+        if (edge < -0.6) return h < 0.35 ? P.edge : P.void;
+        if (edge < 0) return h < 0.7 ? P.edge : P.c;
+        // 흙: 굽은 오솔길(가장자리가 흔들림) + 노이즈 맨땅 얼룩
+        const pathD = Math.abs(wy - (N / 2 + Math.sin(wx * 0.7) * 1.6)) + (fbm(wx * 1.3 + 40, wy * 1.3) - 0.5) * 0.9;
+        const dirt = pathD < 0.6 || n > 0.74;
+        if (dirt) return h < 0.12 ? P.dirtD : (pathD > 0.45 && pathD < 0.6) || h < 0.2 ? P.c : P.dirt;
+        // 풀: 큰 얼룩(밝은/어두운) + 잔점
+        const g = fbm(wx * 0.9 + 9, wy * 0.9 + 3);
+        if (g < 0.36) return h < 0.3 ? P.a : P.c;
+        if (g > 0.62) return h < 0.25 ? P.a : P.b;
+        return h < 0.08 ? P.c : h < 0.16 ? P.b : P.a;
       });
     }
   return c;
@@ -68,7 +97,7 @@ const GLYPH: Record<string, string> = {
   '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001',
   '5': '111100111001111', '6': '111100111101111', '7': '111001010010010', '8': '111101111101111', '9': '111101111001111', '+': '000010111010000',
 };
-function digits(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, col: string, k: number) {
+export function digits(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, col: string, k: number) {
   const w = text.length * 4 * k - k;
   let cx = Math.round(x - w / 2);
   const cy = Math.round(y);
@@ -82,8 +111,9 @@ function digits(ctx: CanvasRenderingContext2D, text: string, x: number, y: numbe
         const px = ox + (i % 3) * k;
         const py = cy + Math.floor(i / 3) * k;
         if (pass === 0) {
+          const o = Math.max(1, Math.round(k / 3));
           ctx.fillStyle = '#140c18';
-          ctx.fillRect(px - 1, py - 1, k + 2, k + 2);
+          ctx.fillRect(px - o, py - o, k + o * 2, k + o * 2);
         } else {
           ctx.fillStyle = col;
           ctx.fillRect(px, py, k, k);
@@ -163,7 +193,8 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
   }
   // 필드 가장자리 숲 (뒤쪽)
   for (let i = -1; i <= N; i += 2) {
-    for (const [px, py] of [[i, -1.2], [-1.2, i]] as [number, number][])
+    // 핫픽스 7: 한 칸 더 바깥 (위쪽 나무가 반쯤 화면 밖으로)
+    for (const [px, py] of [[i, -2.5], [-2.5, i]] as [number, number][])
       things.push({
         d: px + py - 5,
         draw: () => {
@@ -207,14 +238,17 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     ctx.fillRect(X - (pj.kind === 'fire' ? 2 : 1), Y - 13, pj.kind === 'fire' ? 4 : 2, pj.kind === 'fire' ? 4 : 2);
   }
 
-  // 피해 숫자: 위로 튀어 오르며 0.6초 (치명타는 노랗게 크게)
+  // 피해 숫자: 위로 튀어 오르며 0.6초 — 핫픽스 7: 큰 화면(기기 픽셀)에 절반 크기로 그린다 (ui.ts)
+  numsOut.length = 0;
   for (const n of f.nums) {
     const [X, Y] = W(n.x, n.y);
     const p = n.t / 0.6;
-    const rise = Math.round(14 * (1 - Math.pow(1 - Math.min(1, p * 1.6), 2)));
-    digits(ctx, n.text, X + n.dx, Y - 36 - rise, n.heal ? '#8fe08f' : n.crit ? '#ffd33a' : '#ffffff', n.crit ? 2 : 1);
+    const rise = Math.round(10 * (1 - Math.pow(1 - Math.min(1, p * 1.6), 2)));
+    numsOut.push({ x: X + n.dx * 0.6, y: Y - 30 - rise, text: n.text, col: n.heal ? '#8fe08f' : n.crit ? '#ffd33a' : '#ffffff', crit: n.crit });
   }
 }
+/** 이번 장의 피해 숫자 (논리 좌표) */
+export const numsOut: { x: number; y: number; text: string; col: string; crit: boolean }[] = [];
 
 function drawAlly(ctx: CanvasRenderingContext2D, f: Field, u: Unit, W: (x: number, y: number) => [number, number]) {
   const cb = u.frames!.cb();
@@ -229,7 +263,7 @@ function drawAlly(ctx: CanvasRenderingContext2D, f: Field, u: Unit, W: (x: numbe
   else if ((u.dodge ?? 0) > 0) img = cb.roll[Math.min(3, Math.floor((1 - (u.dodge ?? 0) / C.dodge.dur) * 4))];
   else if ((u.hurtT ?? 0) > 0) img = cb.hurt[0];
   else if ((u.castAnim ?? 0) > 0) img = cb.cast[Math.min(2, Math.floor((1 - (u.castAnim ?? 0) / 0.3) * 3))];
-  else if ((u.swing ?? 0) > 0) img = cb.atk[Math.min(3, Math.floor((1 - (u.swing ?? 0) / C.combo.swing) * 4))];
+  else if ((u.swing ?? 0) > 0) img = cb.atk[Math.min(3, Math.floor((1 - (u.swing ?? 0) / (u.swingMax ?? C.combo.swing)) * 4))];
   else if (u.moving) img = (up ? cb.walkB : cb.walk)[Math.floor(u.t * 12) % 6];
   else img = (up ? cb.idleB : cb.idle)[Math.floor(u.t * 3) % 3];
   const left = screenDx(u.ax, u.ay) < 0;

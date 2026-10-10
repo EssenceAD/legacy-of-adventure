@@ -8,7 +8,8 @@ import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
 import type { Actor } from '../world/state';
 import { attack, dodge, grade, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type Unit } from './field';
-import { draw, sheets } from './draw';
+import { digits, draw, numsOut, sheets } from './draw';
+import { JOB_COLOR, skillIcon } from './icons';
 import { loadMon } from './mon';
 
 const C = CONFIG.combat;
@@ -36,14 +37,6 @@ export const devAdvance = (sec: number) => {
 };
 export const devField = () => F;
 
-const SKILL_ICON: Record<string, [string, string]> = {
-  knight: ['skill_block', 'skill_pray'],
-  warrior: ['skill_fireslash', 'skill_attack'],
-  rogue: ['skill_attack', 'skill_fireslash'],
-  mage: ['skill_fireslash', 'skill_auto'],
-  priest: ['skill_pray', 'skill_attack'],
-  hunter: ['skill_attack', 'skill_block'],
-};
 
 export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void) {
   await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
@@ -60,12 +53,14 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbchain" id="cbChain"></div>
     <div class="cbstick" id="cbStick" hidden><i></i></div>
     <div class="cbpad">
-      <button class="cbb ult" id="cbUlt"><img src="${iconSrc('skill_combo')}" alt=""><i class="ring"></i></button>
+      <div class="cbnames" id="cbNames" hidden><span id="cbN1"></span><span id="cbN2"></span></div>
+      <button class="cbb ult" id="cbUlt"><img alt=""><i class="ring"></i></button>
       <button class="cbb s2" id="cbS2"><img alt=""><i class="cd"></i><em></em></button>
       <button class="cbb s1" id="cbS1"><img alt=""><i class="cd"></i><em></em></button>
       <button class="cbb dodge" id="cbDodge"><b>⤼</b><i class="cd"></i></button>
       <button class="cbb atk" id="cbAtk"><img src="${iconSrc('skill_attack')}" alt=""></button>
     </div>
+    <div class="cbcast" id="cbCast" hidden></div>
     <div class="cbcut" id="cbCut" hidden></div>
     <div class="cbres" id="cbRes" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
@@ -73,7 +68,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   addEventListener('resize', fit);
   bindInput();
   buildParty();
-  syncSkillButtons();
+  syncSkillButtons(false);
   last = performance.now();
   raf = requestAnimationFrame(frame);
 }
@@ -85,12 +80,48 @@ let lctx: CanvasRenderingContext2D;
 let LW = 130;
 let LH = 280;
 let K = 3;
+// ───────── 전투 줌 (핫픽스 7): 지금 배율의 약 50 · 75 · 100%를 정수로 · 기본은 한 단계 멀리 · 기기마다 기억 ─────────
+const ZKEY = 'legacy-of-adventure-combatZoom';
+function zoomSteps(): number[] {
+  const k0 = Math.max(1, Math.round(C.scale * dpr()));
+  const s = [...new Set(C.zoomSteps.map((m) => Math.max(1, Math.round(k0 * m))))].sort((a, b) => a - b);
+  return s;
+}
+let zIdx = -1;
+function zoomIndex(): number {
+  const s = zoomSteps();
+  if (zIdx < 0) {
+    let v = NaN;
+    try {
+      v = Number(localStorage.getItem(ZKEY));
+    } catch {
+      /* 저장소 없음 */
+    }
+    // 저장값은 단계 번호 (0=가장 멀리). 없으면 기본: 가장 가까운 것보다 한 단계 멀리
+    zIdx = Number.isInteger(v) && localStorage.getItem(ZKEY) !== null ? v : Math.max(0, s.length - 1 - C.zoomDefault);
+  }
+  return Math.max(0, Math.min(s.length - 1, zIdx));
+}
+/** dir +1 가까이 · -1 멀리 */
+export function zoomStep(dir: number) {
+  const s = zoomSteps();
+  const n = Math.max(0, Math.min(s.length - 1, zoomIndex() + dir));
+  if (n === zoomIndex()) return;
+  zIdx = n;
+  try {
+    localStorage.setItem(ZKEY, String(n));
+  } catch {
+    /* 무시 */
+  }
+  fit();
+}
+export const zoomInfo = () => ({ steps: zoomSteps(), idx: zoomIndex(), K });
 function fit() {
   if (!root) return;
   const cv = $<HTMLCanvasElement>('#cbCv');
   const r = root.getBoundingClientRect();
-  // 기기 픽셀 정수배: 도트 1개 = K×K 기기 픽셀 (폰 기본 3 CSS px)
-  K = Math.max(1, Math.round(C.scale * dpr()));
+  // 기기 픽셀 정수배: 도트 1개 = K×K 기기 픽셀 (줌 단계 중 하나 · 정수라 번지지 않는다)
+  K = zoomSteps()[zoomIndex()];
   const dw = Math.round(r.width * dpr());
   const dh = Math.round(r.height * dpr());
   LW = Math.ceil(dw / K);
@@ -139,6 +170,10 @@ function render() {
   const x = cv.getContext('2d')!;
   x.imageSmoothingEnabled = false;
   x.drawImage(lcv, 0, 0, LW * K, LH * K);
+  // 피해 숫자: 기기 픽셀로 (도트 크기의 절반 · 치명타는 조금 크게)
+  const pn = Math.max(2, Math.round(K / 2));
+  const pc = Math.max(3, Math.round(K * 0.75));
+  for (const n of numsOut) digits(x, n.text, n.x * K, n.y * K, n.col, n.crit ? pc : pn);
   hud();
 }
 
@@ -169,6 +204,12 @@ function hud() {
   cdBtn('#cbDodge', me.dodgeCd ?? 0, C.dodge.cd);
   ($('#cbUlt').querySelector('.ring') as HTMLElement).style.background = `conic-gradient(#ff7aa8 ${f.chem * 3.6}deg, rgba(255,255,255,.12) 0)`;
   $('#cbUlt').classList.toggle('ready', f.chem >= 100);
+  // 스킬 이름 (아래 가운데 0.6초)
+  const cs = $('#cbCast');
+  if (f.castT > 0) {
+    if (cs.textContent !== f.castTxt) cs.textContent = f.castTxt;
+    cs.hidden = false;
+  } else if (!cs.hidden) cs.hidden = true;
   // 필살기 컷인 띠 (0.5초)
   const cut = $('#cbCut');
   if (f.ult > 0 && cut.hidden) {
@@ -188,22 +229,41 @@ function buildParty() {
       (b.onpointerdown = (e) => {
         e.stopPropagation();
         const u = f.allies[+b.dataset.ally!];
-        if (!u.dead) {
+        if (!u.dead && u !== f.me) {
           f.me = u;
-          syncSkillButtons();
+          syncSkillButtons(true);
         }
       }),
   );
   void PORTRAITS;
 }
-function syncSkillButtons() {
+let namesT = 0;
+/** 조종 캐릭터의 직업 아이콘·테두리 색 · 바꿀 때 0.3초 효과 + 스킬 이름 1초 */
+function syncSkillButtons(swap: boolean) {
   const me = F!.me;
-  const [i1, i2] = SKILL_ICON[me.job!] ?? SKILL_ICON.warrior;
-  ($('#cbS1 img') as HTMLImageElement).src = iconSrc(i1 as never);
-  ($('#cbS2 img') as HTMLImageElement).src = iconSrc(i2 as never);
-  const [n1, n2] = SKILL_NAMES[me.job!];
+  const job = me.job ?? 'warrior';
+  ($('#cbS1 img') as HTMLImageElement).src = skillIcon(job, 0);
+  ($('#cbS2 img') as HTMLImageElement).src = skillIcon(job, 1);
+  ($('#cbUlt img') as HTMLImageElement).src = skillIcon(job, 'ult');
+  const [n1, n2] = SKILL_NAMES[job];
   $('#cbS1').setAttribute('aria-label', n1);
   $('#cbS2').setAttribute('aria-label', n2);
+  const pad = root!.querySelector<HTMLElement>('.cbpad')!;
+  pad.style.setProperty('--jc', JOB_COLOR[job]);
+  pad.dataset.job = job;
+  if (!swap) return;
+  pad.classList.remove('swap');
+  void pad.offsetWidth;
+  pad.classList.add('swap');
+  $('#cbN1').textContent = n1;
+  $('#cbN2').textContent = n2;
+  const nm = $('#cbNames');
+  nm.hidden = false;
+  clearTimeout(namesT);
+  namesT = window.setTimeout(() => {
+    nm.hidden = true;
+    pad.classList.remove('swap');
+  }, 1000);
 }
 
 // ───────── 조작 ─────────
@@ -216,9 +276,62 @@ function bindInput() {
   const r = root!;
   const st = $('#cbStick');
   const R = 46;
+  // 핀치 줌: 버튼이 아닌 곳에 손가락 두 개일 때만 (조이스틱은 취소)
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch0 = 0;
+  const pinchDist = () => {
+    const [a, b] = [...touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  r.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      pinch0 = pinchDist();
+      if (stickOn) {
+        stickOn = false;
+        stickId = -1;
+        st.hidden = true;
+        if (F) F.stick.x = F.stick.y = 0;
+      }
+    }
+  });
+  r.addEventListener('pointermove', (e) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size !== 2 || pinch0 <= 0) return;
+    const d = pinchDist();
+    // 정수 단계라 손가락을 1.3배 벌리거나 오므릴 때마다 한 단계
+    if (d > pinch0 * 1.3) {
+      zoomStep(1);
+      pinch0 = d;
+    } else if (d < pinch0 / 1.3) {
+      zoomStep(-1);
+      pinch0 = d;
+    }
+  });
+  const lift = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch0 = 0;
+  };
+  r.addEventListener('pointerup', lift);
+  r.addEventListener('pointercancel', lift);
+  // PC: 마우스 휠 한 칸 = 한 단계
+  let wheelT = 0;
+  r.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      const now = performance.now();
+      if (now - wheelT < 180 || Math.abs(e.deltaY) < 2) return;
+      wheelT = now;
+      zoomStep(e.deltaY < 0 ? 1 : -1);
+    },
+    { passive: false },
+  );
   r.addEventListener('pointerdown', (e) => {
     const t = e.target as HTMLElement;
-    if (t.closest('button') || !F || F.done) return;
+    if (t.closest('button') || !F || F.done || touches.size > 1) return;
     // 왼쪽 절반 아무 데나: 그 자리에 조이스틱
     if (e.clientX < r.clientWidth / 2 && !stickOn) {
       stickOn = true;

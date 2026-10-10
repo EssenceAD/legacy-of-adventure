@@ -29,7 +29,7 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
-import { devAdvance as combatAdvance, devField as combatField } from './combat/ui';
+import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
 import * as audioSfx from './audio/sfx';
@@ -460,7 +460,7 @@ async function boot() {
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
       __settle: showSettlement,
-      __combat: { advance: combatAdvance, field: combatField },
+      __combat: { advance: combatAdvance, field: combatField, zoom: combatZoom },
       __teaserCut: teaserCut,
       __audio: { engine: audioEngine, music: audioMusic, sfx: audioSfx, battle: battleMusic },
       __event: forceSpectacle,

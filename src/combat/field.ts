@@ -57,6 +57,10 @@ export interface Unit {
   combo?: number;
   comboT?: number;
   swing?: number;
+  /** 이번 휘두르기 길이 (직업마다 빠르기가 다르다 · 공격 프레임용) */
+  swingMax?: number;
+  /** 따라다닐 때 내 주변 자리 (각도) */
+  slot?: number;
   dodge?: number;
   dodgeCd?: number;
   inv?: number;
@@ -160,6 +164,9 @@ export interface Field {
   props: { x: number; y: number; r: number; kind: 'tree' | 'pine' | 'rock' }[];
   /** 확인용: AI가 예고 범위 안에 있던 횟수 · 그중 구른 횟수 */
   stats: { teleIn: number; dodged: number };
+  /** 내가 쓴 스킬 이름 (아래 가운데 0.6초) */
+  castTxt: string;
+  castT: number;
 }
 
 // ───────── 좌표 ─────────
@@ -180,6 +187,8 @@ const pxToTile = (px: number) => px / 14;
 
 // ───────── 만들기 ─────────
 
+/** 동료 자리: 나를 기준으로 서로 다른 방향 (왼쪽 뒤 · 오른쪽 뒤) */
+const SLOTS = [0, Math.PI * 0.75, -Math.PI * 0.25 + Math.PI * 1.5];
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean): Field {
   const N = C.field;
   const mk = (a: Actor, i: number): Unit => {
@@ -187,7 +196,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
     const { key, def } = appearance(a);
     const max = Math.round(C.hpBase + a.lvl * C.hpPerLv);
     return {
-      id: i + 1, team: 'ally', x: N / 2 - 0.6 + i * 0.6, y: N / 2 + 0.8 - i * 0.3, vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
+      id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
       actor: a, job, power: powerOf(a), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
     };
@@ -200,7 +209,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   const f: Field = {
     region, stage, rec: recPower(region, stage), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
     wave: 0, waveLeft: 0, time: C.timeLimit, stop: 0, shake: 0, shakeAmp: 0, chem: 0, ult: 0, ultName: '', hitsTaken: 0, autoUsed: auto, auto, kills: 0, chain: 0, chainT: 0,
-    done: '', doneT: 0, stick: { x: 0, y: 0 }, holdAtk: 0, nextId: 100, stats: { teleIn: 0, dodged: 0 }, props: props.filter((p) => Math.hypot(p.x - N / 2, p.y - N / 2) > 2.2),
+    done: '', doneT: 0, stick: { x: 0, y: 0 }, holdAtk: 0, nextId: 100, stats: { teleIn: 0, dodged: 0 }, castTxt: '', castT: 0, props: props.filter((p) => Math.hypot(p.x - N / 2, p.y - N / 2) > 2.2),
   };
   spawnWave(f);
   return f;
@@ -349,21 +358,23 @@ export function attack(f: Field, u: Unit) {
   const t = aimTarget(f, u, RANGED.has(u.job!) ? 5 : 2.6, stickDir);
   if (t) faceTo(u, t);
   else if (stickDir) [u.ax, u.ay] = stickDir;
+  // 직업별 기본 공격 (핫픽스 7): 빠르기·힘·사거리·부채꼴 폭이 다르다
+  const J = C.jobAtk[u.job!] ?? C.jobAtk.knight;
   u.combo = (u.comboT ?? 0) > 0 ? ((u.combo ?? 0) % 3) + 1 : 1;
-  u.comboT = C.combo.window;
-  u.swing = C.combo.swing;
-  u.atkAnim = 0.2;
+  u.comboT = Math.max(C.combo.window, J.swing + 0.3);
+  u.swing = u.swingMax = J.swing;
+  u.atkAnim = Math.min(0.2, J.swing);
   const third = u.combo === 3;
-  const mult = C.combo.mult[u.combo - 1];
+  const mult = C.combo.mult[u.combo - 1] * J.dmg;
   if (RANGED.has(u.job!)) {
-    const sp = 7;
+    const sp = J.speed ?? 7;
     const kind = u.job === 'mage' ? 'bolt' : 'arrow';
-    f.proj.push({ x: u.x, y: u.y, vx: u.ax * sp, vy: u.ay * sp, life: 0.8, dmg: mult, owner: u, kind, hit: new Set() });
+    f.proj.push({ x: u.x, y: u.y, vx: u.ax * sp, vy: u.ay * sp, life: 5.6 / sp, dmg: mult, owner: u, kind, hit: new Set() });
     return;
   }
   // 근접: 앞쪽 부채꼴
-  const range = C.combo.range + (third ? 0.35 : 0);
-  const arc = third ? 2.2 : C.combo.arc;
+  const range = J.range + (third ? 0.35 : 0);
+  const arc = third ? Math.max(2.2, J.arc) : J.arc;
   f.fx.push({ kind: 'slash', x: u.x + u.ax * 0.35, y: u.y + u.ay * 0.35, ax: u.ax, ay: u.ay, t: 0, dur: 0.15, big: third, owner: u });
   for (const m of mobsAlive(f)) {
     const d = dist(u, m);
@@ -399,6 +410,10 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
   if (t) faceTo(u, t);
   u.cd![i] = C.skillCd[i];
   u.castAnim = 0.3;
+  if (u === f.me) {
+    f.castTxt = SKILL_NAMES[u.job!][i];
+    f.castT = 0.6;
+  }
   sfx('skill', { vol: u === f.me ? 1 : C.allyVol });
   const P = (mult: number) => powerHit(f, u, mult);
   const near = (r: number, cx = u.x, cy = u.y) => mobsAlive(f).filter((m) => Math.hypot(m.x - cx, m.y - cy) <= r + m.r);
@@ -512,6 +527,16 @@ function ultHit(f: Field) {
 // ───────── AI (동료 · AUTO) ─────────
 
 function aiAlly(f: Field, u: Unit, dt: number) {
+  // 동료끼리 너무 붙지 않게 살짝 밀어낸다 (한 덩어리로 겹치지 않게)
+  for (const o of f.allies) {
+    if (o === u || o.dead) continue;
+    const d = dist(u, o);
+    if (d < C.allyGap * 0.7 && d > 0.001) {
+      const [nx, ny] = norm(u.x - o.x, u.y - o.y);
+      u.x += nx * (C.allyGap * 0.7 - d) * Math.min(1, dt * 10);
+      u.y += ny * (C.allyGap * 0.7 - d) * Math.min(1, dt * 10);
+    }
+  }
   // 예고 범위 안이면 절반쯤 구른다 (예고마다 한 번 정한다)
   for (const m of mobsAlive(f)) {
     if (m.st !== 'tele' || !m.tele) continue;
@@ -530,8 +555,13 @@ function aiAlly(f: Field, u: Unit, dt: number) {
   if (u.role === 'heal' && u.cd![0] <= 0 && f.allies.some((a) => !a.dead && a.hp < a.max * 0.5 && dist(a, u) < 3.5)) return skill(f, u, 0);
   const t = aimTarget(f, u, 9);
   if (!t) {
-    // 적이 없으면 조종 캐릭터 곁으로
-    if (u !== f.me && dist(u, f.me) > 1.4) moveToward(f, u, f.me.x, f.me.y, dt);
+    // 적이 없으면 조종 캐릭터 곁의 내 자리로 (약 1.5칸, 동료마다 다른 방향)
+    if (u !== f.me) {
+      const a = u.slot ?? 2;
+      const gx = f.me.x + Math.cos(a) * C.allyGap;
+      const gy = f.me.y + Math.sin(a) * C.allyGap;
+      if (Math.hypot(u.x - gx, u.y - gy) > 0.45) moveToward(f, u, gx, gy, dt);
+    }
     return;
   }
   const ranged = RANGED.has(u.job!) || u.role === 'heal';
@@ -642,6 +672,7 @@ function aiMob(f: Field, m: Unit, dt: number) {
 export function step(f: Field, dt: number) {
   // 화면 흔들림 · 숫자 · 연기는 히트스톱 중에도 흐른다
   f.shake = Math.max(0, f.shake - dt);
+  f.castT = Math.max(0, f.castT - dt);
   for (const n of f.nums) n.t += dt;
   f.nums = f.nums.filter((n) => n.t < 0.6);
   if (f.ult > 0) {

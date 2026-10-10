@@ -681,6 +681,21 @@ export const CONFIG = {
     move: 3.2,
     dodge: { inv: 0.35, cd: 1.5, dist: 1.9, dur: 0.3 },
     combo: { window: 0.55, swing: 0.24, range: 1.05, arc: 1.25, mult: [1, 1.1, 1.6] },
+    /** 직업별 기본 공격 (핫픽스 7): swing=한 번 휘두르는 초 · dmg=힘 배율 · 근접은 range·arc(부채꼴), 원거리는 speed(탄 속도)
+     *  초당 힘(dmg/swing)은 비슷하게 맞추고 손맛만 다르게: 마법사 느리고 셈 · 도적 빠르고 약함 */
+    jobAtk: {
+      knight: { swing: 0.26, dmg: 1.0, range: 1.05, arc: 1.25 },
+      warrior: { swing: 0.36, dmg: 1.45, range: 1.2, arc: 1.8 },
+      rogue: { swing: 0.14, dmg: 0.55, range: 0.9, arc: 0.95 },
+      priest: { swing: 0.3, dmg: 1.05, range: 1.0, arc: 1.4 },
+      mage: { swing: 0.6, dmg: 2.2, range: 0, arc: 0, speed: 5 },
+      hunter: { swing: 0.18, dmg: 0.7, range: 0, arc: 0, speed: 10 },
+    } as Record<string, { swing: number; dmg: number; range: number; arc: number; speed?: number }>,
+    /** 동료가 내 곁에 서는 거리 (타일) */
+    allyGap: 1.5,
+    /** 전투 줌 단계 (지금 배율에 곱함, 정수로 반올림) · 기본은 한 단계 멀리 */
+    zoomSteps: [0.5, 0.75, 1],
+    zoomDefault: 1,
     hold: 0.25,
     hitstop: { hit: 0.05, crit: 0.09, kill: 0.12 },
     knock: { hit: 6, crit: 12, kill: 20 },
