@@ -5,6 +5,7 @@ import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
 import { closeCombat, showCombatResult, startCombat } from '../combat/ui';
 import { gradeBonus } from '../combat/field';
+import { REGION_BOSS, stageMons } from '../combat/mons';
 import { track as trackEv } from '../net/telemetry';
 import { hfx } from '../world/harmony';
 import { REGIONS, type RegionId } from '../data/items';
@@ -93,7 +94,9 @@ function openHuntPrep(r: RegionId, s: number) {
   const low = pw < rec;
   const tips = low && ms.length ? powerTips(ms) : [];
   const cleared = s <= best(r);
-  const mobs = isBoss(s) ? [regionBossOf(r).name, ...MOBS[r].map((k) => MOB_NAME[k])] : MOBS[r].map((k) => MOB_NAME[k]);
+  // 전투 2차: 이 스테이지에 나오는 닌자 몬스터 · 처치 목표 → 정예(x-10은 지역 보스)
+  const mobs = stageMons(r, s).map((m) => m.name);
+  const goal = isBoss(s) ? `${CONFIG.combat.bossKillGoal}마리 → 보스 ${REGION_BOSS[r].name}` : `${Math.round(CONFIG.combat.killGoal[0] + ((CONFIG.combat.killGoal[1] - CONFIG.combat.killGoal[0]) * (s - 1)) / 8)}마리 → 정예`;
   const rows = crew
     .map((a) => {
       const on = picked.includes(a.id);
@@ -102,7 +105,7 @@ function openHuntPrep(r: RegionId, s: number) {
     .join('');
   openWin(
     `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
-    `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 3웨이브 · ${esc(mobs.join(' · '))}</p>
+    `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
     <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티 ${prepLine('hunt', pw)}</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>

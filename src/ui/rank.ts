@@ -6,7 +6,7 @@ import { P } from '../world/state';
 import { mondayKey } from '../world/raid';
 import { themeName, themeOf } from '../world/evaluation';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
-import { openWin, toast } from './windows';
+import { isWinOpen, openWin, toast } from './windows';
 import { visitUser } from './neighbors';
 
 let cur = 0;
@@ -28,7 +28,8 @@ export async function openRank(i = cur) {
   bindTabs('rkT', (k) => void openRank(k));
   const week = mondayKey();
   const [list, my] = await Promise.all([top(board, 100, week), mine(board, week)]);
-  if (cur !== i) return;
+  // 불러오는 동안 창을 닫았거나 다른 창으로 갔으면 다시 열지 않는다
+  if (cur !== i || !isWinOpen() || document.getElementById('winT')?.textContent !== '랭킹') return;
   const myLine = online()
     ? my.row
       ? `<p class="sub">내 순위</p>${row(my.row, f, true)}<p class="note">전체 ${fmt(my.total)}명 중 상위 ${Math.max(1, Math.round((my.row.rank / Math.max(1, my.total)) * 100))}%</p>`
