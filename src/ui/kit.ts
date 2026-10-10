@@ -1,6 +1,6 @@
 // 5단계 UI 키트: 창·버튼·탭·바·칸 그림(assets/ui) · 금테 아이콘(assets/icons)
 // 「깨지지 않게」: 그림은 늘 정수 배율(×1·×2)로만 키우고 pixelated, 9-slice는 border-image(그림 픽셀 × --k)로 늘린다.
-// CSS의 url()은 빌드 경로(base './')에서 깨지므로, 그림 주소는 여기서 CSS 변수(--ui-*)로 넣는다 (문서 기준 상대 경로).
+// CSS의 url()은 빌드 경로(base './')에서 깨지므로, 그림 주소는 여기서 CSS 변수(--ui-*)로 넣는다 (문서 기준 절대 주소).
 
 const UI = [
   'panel', 'titlebar', 'btn', 'btn_pressed', 'btn_disabled', 'btn_primary',
@@ -9,7 +9,12 @@ const UI = [
   'dialog', 'nameplate', 'lock', 'dot_new', 'close', 'arrow_r', 'star', 'star_empty', 'coin', 'heart', 'hand_0', 'hand_1',
 ] as const;
 
-export const uiSrc = (k: (typeof UI)[number]) => `assets/ui/${k}.png`;
+/**
+ * 절대 주소로 (핫픽스 7): CSS 변수 url()은 빌드된 CSS 파일(/assets/index-*.css) 기준으로 풀려서
+ * 상대 경로면 /assets/assets/ui/…로 가 404가 났다 (개발 서버는 CSS가 문서 안이라 멀쩡했다)
+ */
+export const abs = (path: string) => new URL(path, document.baseURI).href;
+export const uiSrc = (k: (typeof UI)[number]) => abs(`assets/ui/${k}.png`);
 /** 금테 도트 아이콘 (24px, 작은 건 _16) */
 export type IconKey =
   | 'm_account' | 'm_achieve' | 'm_album' | 'm_attendance' | 'm_bag' | 'm_bond' | 'm_chat' | 'm_dex' | 'm_expedition' | 'm_garden'

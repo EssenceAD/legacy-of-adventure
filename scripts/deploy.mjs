@@ -10,6 +10,8 @@ const remote = out('git remote get-url origin');
 const rev = out('git rev-parse --short HEAD');
 
 run('npm run build');
+// 핫픽스 7: 빌드 결과물에서 그림·소리 요청 실패가 하나라도 있으면 배포하지 않는다
+run('npm run check');
 writeFileSync('dist/.nojekyll', ''); // 밑줄로 시작하는 파일도 그대로 내보내게
 run('git init -q -b gh-pages', 'dist');
 run('git add -A', 'dist');

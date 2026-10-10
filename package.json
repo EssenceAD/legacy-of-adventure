@@ -7,9 +7,11 @@
     "dev": "vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview --host",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "check": "node scripts/check-assets.mjs"
   },
   "devDependencies": {
+    "playwright-core": "^1.47.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   },
