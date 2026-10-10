@@ -477,3 +477,155 @@ html:not([data-size="phone"]) #runbar{right:auto;width:min(480px,calc(100% - 16p
 @keyframes newl{from{background:#3a3010}to{background:transparent}}
 .run.go{border:0;width:100%;text-align:left;cursor:pointer}
 .quest.tut{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold);animation:rdy 1.2s steps(2) infinite}
+
+/* ═════════ 5단계: UI 키트 리스킨 + 「깨지지 않게」 공통 규칙 ═════════
+   1) 도트 그림은 정수 배율(×1·×2)로만 — --k = 그림 1픽셀당 CSS 픽셀. 9-slice는 border-image(slice × --k)
+   2) 모든 그림·캔버스는 pixelated (흐림 금지)
+   3) 글자는 칸을 넘지 않는다: 줄바꿈은 단어 단위(keep-all) + 넘치면 어디서든 꺾기, 한 줄 이름표는 말줄임
+   4) 창 안에서 가로 스크롤 금지, flex/grid 자식은 min-width:0
+   5) 누르는 곳은 최소 36px(폰)·44px(태블릿·넓은 화면) */
+:root{--k:2}
+html{image-rendering:pixelated}
+img,canvas{image-rendering:pixelated}
+#winB{overflow-x:hidden;word-break:keep-all;overflow-wrap:anywhere}
+#winB *{min-width:0}
+#dText,.bub,#toast,.note,.sub{word-break:keep-all;overflow-wrap:anywhere}
+#toast{white-space:normal;max-width:calc(100% - 24px);text-align:center}
+.kic{display:inline-block;vertical-align:middle;image-rendering:pixelated;flex:none}
+
+/* 판(창·카드·HUD 판) = panel 9-slice */
+.px{background:none;box-shadow:none;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k)) / 0 stretch}
+.px::before,.px::after{display:none}
+.win.px{padding:calc(3px * var(--k))}
+.win .hd{margin:calc(2px * var(--k)) calc(2px * var(--k)) 0;padding:6px 10px;border:0 solid transparent;border-image:var(--ui-titlebar) 6 fill / calc(6px * var(--k)) / 0 stretch}
+.win .hd b{color:var(--gold);text-shadow:1px 1px 0 var(--ink)}
+.win .hd button,#winX{background:var(--ui-close) center / calc(9px * var(--k)) calc(9px * var(--k)) no-repeat;box-shadow:none;font-size:0;color:transparent;width:36px;height:36px}
+.win .hd button:active{transform:translateY(1px)}
+#winB{padding:10px 10px 12px}
+
+/* 버튼 = btn 9-slice (누름 · 잠김 · 주요 행동) */
+:is(.bigbtn,.menu button,.chatin button,.report button,#nameOk,.goal button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,.tbtns button,#dChoice button,.fsrow .tab,#rlBack){
+  border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--cream);padding:6px 14px;min-height:36px;text-shadow:1px 1px 0 var(--ink)}
+:is(.bigbtn,.menu button,.chatin button,.report button,#nameOk,.goal button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,.tbtns button,#dChoice button,#rlBack):active:not([disabled]){border-image-source:var(--ui-btn-pressed);transform:translateY(1px)}
+:is(.bigbtn,.menu button,.chatin button,.report button,#nameOk,.goal button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,.tbtns button,#dChoice button)[disabled]{border-image-source:var(--ui-btn-disabled);color:#8a8fa8;opacity:1;text-shadow:none}
+/* 주요 행동(확정·받기·출발): 호박색 판 + 진한 글자 */
+:is(.bigbtn:not(.ghost):not(.red):not(.sm),#placeOk,.goal button,#nameOk,.seg button.on,#dChoice button:first-child):not([disabled]){border-image-source:var(--ui-btn-primary);color:var(--ink);text-shadow:none;font-weight:700}
+.bigbtn.red{color:#ffb0a8}
+.bigbtn.sm{padding:4px 10px;min-height:32px}
+
+/* 탭 */
+.tab{border:0 solid transparent;border-image:var(--ui-tab-off) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;padding:6px 12px;color:#9aa6d8;min-height:32px}
+.tab.on{border-image-source:var(--ui-tab-on);color:var(--gold)}
+
+/* 바 = bar_frame (안쪽 높이 6px × --k) */
+:is(.bar i,.pbar i,#runbar i,.bhp,.php,.chem){border:0 solid transparent;border-image:var(--ui-bar-frame) 3 fill / calc(3px * var(--k)) / 0 stretch;background:none;box-shadow:none;padding:calc(1px * var(--k));height:calc(8px * var(--k))}
+.bar i b,.pbar i b,#runbar u{height:100%}
+
+/* 아이템 칸 = tile_grade_* (×1, 테두리 4px) — 안의 아이콘은 16px 그림 ×2 */
+.ic{width:calc(20px * var(--k));height:calc(20px * var(--k));box-shadow:none;background:none;border:0 solid transparent;border-image:var(--ui-tile-grade-n) 4 fill / calc(4px * var(--k1)) / 0 stretch}
+.ic img{width:calc(16px * var(--k));height:calc(16px * var(--k));margin:calc(2px * var(--k))}
+.ic.g-r{border-image-source:var(--ui-tile-grade-r)}.ic.g-e{border-image-source:var(--ui-tile-grade-e)}.ic.g-l{border-image-source:var(--ui-tile-grade-l)}.ic.g-a{border-image-source:var(--ui-tile-grade-a)}
+.ic.empty{border-image-source:var(--ui-tile);box-shadow:none;background:none}
+html:not([data-size="phone"]) .ic{width:calc(20px * var(--k));height:calc(20px * var(--k))}html:not([data-size="phone"]) .ic img{width:calc(16px * var(--k));height:calc(16px * var(--k))}
+
+/* 작은 그림들: 금화 · 별 · 하트 · 새 소식 점 */
+.coin{width:calc(8px * var(--k));height:calc(8px * var(--k));background:var(--ui-coin) 0 0 / 100% 100%;box-shadow:none;vertical-align:-3px}
+.ibtn .dot{width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%;box-shadow:none;right:-2px;top:-2px}
+.ibtn{border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none;box-shadow:none;width:40px;height:40px}
+.ibtn:active{border-image-source:var(--ui-btn-pressed)}
+
+/* 대화창 = dialog 9-slice · 이름표 = nameplate */
+#dlg .box{border:0 solid transparent;border-image:var(--ui-dialog) 8 fill / calc(8px * var(--k)) / 0 stretch;background:none;box-shadow:none}
+#dlg .box::before,#dlg .box::after{display:none}
+#dlg.narr .box{border-image:none;background:rgba(5,6,20,.82)}
+#dName{border:0 solid transparent;border-image:var(--ui-nameplate) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none;box-shadow:none;color:var(--ink);padding:4px 12px;text-shadow:none}
+#dPort{box-shadow:none;border:0 solid transparent;border-image:var(--ui-tile-selected) 4 fill / calc(4px * var(--k1)) / 0 stretch;padding:calc(4px * var(--k1));background:none;box-sizing:content-box}
+
+/* 아래 메뉴: 금테 아이콘 24px 그림 — 폰 ×1(k1) · 태블릿·넓은 화면 ×2(k) */
+.dk{gap:4px;padding:8px 8px 6px}
+.dk .kic{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+html:not([data-size="phone"]) .dk .kic{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+.dk button{min-width:0;overflow:hidden;white-space:nowrap}
+#bOwnerImg{width:calc(24px * var(--k1));height:calc(24px * var(--k1));box-shadow:0 0 0 1px var(--ink),0 0 0 2px var(--gold)}
+html:not([data-size="phone"]) #bOwnerImg{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+
+/* 칸 버튼 (메뉴·도감·인연·앨범) = tile */
+.tie,.acell,.jobc{border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k)) / 0 stretch;background:none;box-shadow:none}
+.jobc.on,.tie:active,.acell.seen:active{border-image-source:var(--ui-tile-selected)}
+.tie.lock,.acell:not(.seen){border-image-source:var(--ui-tile-locked)}
+.stp,.quest,.pm,.run,.irow,.raidcard,.lcard,.goal{box-shadow:none;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k)) / 0 stretch;background:none}
+.stp.cur,.pm.on,.quest.tut{border-image-source:var(--ui-tile-selected)}
+
+/* ── 핫픽스 5: 전투 HUD (토벌·사냥 공용 .battle) — 장면은 가로형 고정, HUD는 장면 위에 ── */
+.battle{position:absolute;inset:0;z-index:30;background:#07091a;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
+.battle .rwipe{position:absolute;inset:0;z-index:40;background:#05061a;pointer-events:none;animation:rwipe .7s cubic-bezier(.6,0,.3,1) forwards}
+.battle .stage{position:absolute;overflow:visible}
+.battle .stage canvas{display:block;image-rendering:pixelated}
+.battle .fx{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.battle .dmg{position:absolute;font-weight:700;font-size:calc(var(--f-ui) * 1.6);color:#fff;text-shadow:2px 0 var(--ink),-2px 0 var(--ink),0 2px var(--ink),0 -2px var(--ink);transform:translate(-50%,0);animation:rdmg .9s ease-out forwards;white-space:nowrap}
+.battle .dmg.crit{font-size:calc(var(--f-ui) * 3.2);color:#ffd33a}.battle .dmg.big{font-size:calc(var(--f-ui) * 3.6);color:#ff9a3c}
+.battle .dmg.hurt{color:#ff7a7a}.battle .dmg.heal{color:#8fe08f}.battle .dmg.msg{color:#bfe4ff}
+.battle .dmg.perfect{font-size:calc(var(--f-ui) * 3);color:#ffd36b;letter-spacing:2px;text-shadow:2px 2px 0 #7a4a10,-2px 0 var(--ink),0 -2px var(--ink)}
+/* 위 가운데: 이름표 + 굵은 체력바(25% 눈금) */
+.bhud.top{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:62%;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
+.bname{padding:2px 12px;border:0 solid transparent;border-image:var(--ui-nameplate) 6 fill / calc(6px * var(--k1)) / 0 stretch;color:var(--ink);font-size:var(--f-small);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.battle .bhp{position:relative;width:100%;height:calc(8px * var(--k1));border:0 solid transparent;border-image:var(--ui-bar-frame) 3 fill / calc(3px * var(--k1)) / 0 stretch;padding:calc(1px * var(--k1));background:none;box-shadow:none}
+.battle .bhp i,.battle .bhp u{position:absolute;left:calc(1px * var(--k1));top:calc(1px * var(--k1));bottom:calc(1px * var(--k1));display:block;max-width:calc(100% - 2px * var(--k1))}
+.battle .bhp u{background:#9a2a2a;transition:width .6s ease}.battle .bhp u.white{background:#fff;transition:none}
+.battle .bhp i{background:var(--ui-bar-fill-hp) 0 0 / 100% 100%;transition:width .1s}
+.battle .bhp s{position:absolute;top:0;bottom:0;width:calc(1px * var(--k1));background:#161420}
+.battle .bhp s:nth-of-type(1){left:25%}.battle .bhp s:nth-of-type(2){left:50%}.battle .bhp s:nth-of-type(3){left:75%}
+.bhud small{color:#cfd8ff;font-size:var(--f-tiny);text-shadow:1px 1px 0 var(--ink);white-space:nowrap}
+/* 위 오른쪽: 원형 타이머 */
+.btimer{position:absolute;right:6px;top:4px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#1e2132;box-shadow:0 0 0 2px #161420,0 0 0 4px #e2aa4e;font-size:var(--f-big);font-weight:700;color:var(--cream);pointer-events:none}
+.btimer.low{color:#ff5a4a;animation:blink .5s steps(1) infinite}
+/* 왼쪽 아래: 파티 초상화 3 + 체력바 */
+.bparty{position:absolute;left:6px;bottom:6px;display:flex;gap:6px;pointer-events:none}
+.bparty .pp{display:flex;flex-direction:column;align-items:center;gap:2px}
+.bparty img{width:calc(24px * var(--k1));height:calc(24px * var(--k1));border-radius:50%;background:#1e2132;box-shadow:0 0 0 2px #161420,0 0 0 3px #8a8fa8}
+.bparty .lead img{box-shadow:0 0 0 2px #161420,0 0 0 4px #e2aa4e}
+.bparty i{display:block;width:calc(24px * var(--k1));height:4px;background:#161420}.bparty i b{display:block;height:100%;background:var(--ui-bar-fill-grn) 0 0 / 100% 100%;transition:width .25s}
+/* 오른쪽 아래: 반원 스킬 버튼 (아이콘만 · 24px 그림 ×2) */
+.bskills{position:absolute;right:4px;bottom:4px;width:176px;height:150px;pointer-events:none}
+.sk{position:absolute;pointer-events:auto;border:0;padding:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:#1e2132;box-shadow:0 0 0 2px #161420,0 0 0 4px #4a4e68,0 3px 0 4px rgba(0,0,0,.4);touch-action:none}
+.sk img{width:calc(24px * var(--k));height:calc(24px * var(--k));position:relative;z-index:1;pointer-events:none}
+.sk:active{transform:translateY(1px)}
+.sk-block{right:6px;bottom:6px;width:72px;height:72px;box-shadow:0 0 0 2px #161420,0 0 0 5px #e2aa4e,0 3px 0 5px rgba(0,0,0,.4)}
+.sk-block.warn{animation:bwarn .2s steps(1) infinite}
+@keyframes bwarn{50%{box-shadow:0 0 0 2px #161420,0 0 0 6px #ffe94a,0 0 14px 6px #ffe94a}}
+.sk-s1{right:66px;bottom:92px;width:56px;height:56px}.sk-s2{right:4px;bottom:92px;width:56px;height:56px}
+.sk-combo{right:92px;bottom:34px;width:56px;height:56px}
+.sk-auto{right:150px;bottom:6px;width:44px;height:44px}.sk-auto img{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+.sk-auto.on{box-shadow:0 0 0 2px #161420,0 0 0 4px #6fb04b}.sk-auto.on img{animation:gear 3s linear infinite}
+@keyframes gear{to{transform:rotate(360deg)}}
+.sk .cdc{position:absolute;inset:0;border-radius:50%;z-index:2;pointer-events:none}
+.sk .cdn{position:absolute;inset:0;display:grid;place-items:center;z-index:3;font-style:normal;font-weight:700;font-size:var(--f-big);color:#fff;text-shadow:2px 2px 0 var(--ink);pointer-events:none}
+.sk.pop{animation:skpop .35s ease}@keyframes skpop{40%{transform:translateY(-4px) scale(1.06);filter:brightness(1.6)}}
+.sk .ring{position:absolute;inset:-5px;border-radius:50%;z-index:0;-webkit-mask:radial-gradient(circle,transparent 58%,#000 60%);mask:radial-gradient(circle,transparent 58%,#000 60%)}
+.sk-combo.ready{animation:beat .6s ease infinite}.sk-combo.ready img{filter:drop-shadow(0 0 4px #ff7aa8)}
+@keyframes beat{30%{transform:scale(1.1)}60%{transform:scale(1)}}
+.sk[disabled]{cursor:default}.sk[disabled] img{filter:grayscale(.6) brightness(.7)}
+.sk .lk{position:absolute;right:6px;bottom:6px;width:calc(8px * var(--k1));height:calc(10px * var(--k1));background:var(--ui-lock) 0 0 / 100% 100%;z-index:4}
+/* 길게 누르기 설명 · 첫 판 안내 말풍선 */
+.btip{position:absolute;left:50%;top:28%;transform:translateX(-50%);z-index:50;max-width:80%;padding:8px 12px;display:flex;gap:8px;align-items:center;border:0 solid transparent;border-image:var(--ui-dialog) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream);font-size:var(--f-ui);pointer-events:none}
+.btip img{width:calc(24px * var(--k));height:calc(24px * var(--k))}.btip small{display:block;color:#cfd8ff}
+.battle #rFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:34}.battle #rFlash.go{animation:rfl .35s ease-out}
+/* 폰: 장면이 작으니 버튼도 한 단계 작게 (아이콘 24px ×1) */
+html[data-size="phone"] .bskills{width:150px;height:118px}
+html[data-size="phone"] .sk img{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+html[data-size="phone"] .sk-block{width:58px;height:58px;right:4px;bottom:4px}
+html[data-size="phone"] .sk-block img{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+html[data-size="phone"] .sk-s1{width:44px;height:44px;right:54px;bottom:72px}
+html[data-size="phone"] .sk-s2{width:44px;height:44px;right:2px;bottom:72px}
+html[data-size="phone"] .sk-combo{width:44px;height:44px;right:68px;bottom:20px}
+html[data-size="phone"] .sk-auto{width:38px;height:38px;right:118px;bottom:2px}
+html[data-size="phone"] .sk .cdn{font-size:var(--f-ui)}
+html[data-size="phone"] .btimer{width:32px;height:32px;font-size:var(--f-ui)}
+html[data-size="phone"] .bhud.top{width:56%}
+.battle :is(.bhud.top,.btimer,.bparty,.bskills,.btip){zoom:var(--hz,1)}
+.battle .bhud.top{top:calc(6px / var(--hz,1))}
+/* 리스킨 나머지: 정렬 버튼 = 탭, 목록 줄 = 칸 */
+.sortb button{border:0 solid transparent;border-image:var(--ui-tab-off) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none!important;color:#9aa6d8;padding:3px 8px}
+.sortb button.on{border-image-source:var(--ui-tab-on);color:var(--gold)}
+.glist button,.chemrow,.hcard,.regs button,.dexrw button{box-shadow:none;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none}
+.glist button:active{border-image-source:var(--ui-tile-pressed)}

@@ -11,6 +11,7 @@ import { openBoard } from './expedition';
 import { openBag } from './guests';
 import { openGarden, openSmith } from './smith';
 import { openAccount } from './account';
+import { resetBattleHints } from './battle';
 import { openRank } from './rank';
 import { rumorEnabled, setRumor } from './chat';
 import { me, online, sendLetter } from '../net/server';
@@ -232,7 +233,7 @@ export function openMenu() {
     `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button><button id="mRank">랭킹</button><button id="mAcc">${online() ? `계정 · ${esc(me.profile!.nickname)}` : '로그인 · 가입'}</button></div>
     <p class="sub" style="margin-top:10px">설정</p>
     <div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><button id="mIntro">오프닝 다시 보기</button><button id="mTitle">타이틀로</button></div>`,
+    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mTitle">타이틀로</button></div>`,
   );
   $$('[data-fs]').forEach(
     (b) =>
@@ -248,6 +249,10 @@ export function openMenu() {
   ($('#mAuto') as HTMLInputElement).onchange = (e) => {
     Prog.autoSalvage = (e.target as HTMLInputElement).checked;
     markDirty();
+  };
+  $('#mHints').onclick = () => {
+    resetBattleHints();
+    toast('다음 토벌·사냥 첫 판에 안내가 다시 나와요');
   };
   $('#mIntro').onclick = () => {
     closeWin();

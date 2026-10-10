@@ -45,8 +45,7 @@ export function initOwnerUi() {
 
 /** 아래 메뉴의 주인 초상화 버튼 */
 export function syncOwnerButton() {
-  const img = $<HTMLImageElement>('#bOwnerImg');
-  if (img) img.src = myPort();
+  // 아래 메뉴는 금테 아이콘(m_owner)이라 바꿀 게 없다 (초상화 축소는 정수 배율 규칙에 어긋남)
 }
 
 // ═════════════ 주인 만들기 ═════════════

@@ -32,6 +32,7 @@ import { dailyOwner, nightOwner } from './world/owner';
 import * as OWN from './world/owner';
 import { powerOf } from './world/adventurers';
 import { initOwnerUi, openOwner } from './ui/owner';
+import { initKit } from './ui/kit';
 import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
@@ -321,6 +322,7 @@ async function boot() {
     resize();
     syncZoomLabel();
   });
+  initKit();
   initScreen();
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
