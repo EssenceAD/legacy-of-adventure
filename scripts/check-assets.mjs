@@ -6,9 +6,12 @@ import { spawn } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
 const PORT = 4179;
-const URL = `http://localhost:${PORT}/`;
-const vite = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', shell: process.platform === 'win32' });
+// 라이브 확인: node scripts/check-assets.mjs https://…/  (주소를 주면 vite preview 없이 그 주소를 연다)
+const LIVE = process.argv[2];
+const URL = LIVE ?? `http://localhost:${PORT}/`;
+const vite = LIVE ? null : spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', shell: process.platform === 'win32' });
 const stop = () => {
+  if (!vite) return;
   try {
     if (process.platform === 'win32') spawn('taskkill', ['/pid', String(vite.pid), '/T', '/F']);
     else vite.kill();
@@ -46,7 +49,7 @@ try {
     if ((t === 'image' || t === 'media' || t === 'font') && ct.includes('text/html')) bad.add(`HTML ${r.url()}`);
   });
   p.on('requestfailed', (r) => kinds.has(r.resourceType()) && !/ERR_ABORTED/.test(r.failure()?.errorText ?? '') && bad.add(`FAIL ${r.url()} ${r.failure()?.errorText ?? ''}`));
-  await p.goto(URL, { waitUntil: 'networkidle' });
+  await p.goto(LIVE ? URL + "?t=" + Date.now() : URL, { waitUntil: 'networkidle' });
   await p.waitForTimeout(2500);
   // 첫 실행: 터치 → 소리 잠금 해제(효과음 미리 받기) → 티저 → 건너뛰기 → 시작하기(주인 만들기 창)
   await p.mouse.click(195, 420);
