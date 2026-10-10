@@ -664,6 +664,52 @@ export const CONFIG = {
     calmMood: 15,
     sparkle: { mats: [2, 5], dust: [10, 30] },
   },
+  /**
+   * 전투 개편 1차 (손맛 프로토타입): 쿼터뷰 필드 액션 — 숲 1-1~1-3만. 나머지 스테이지·토벌 직접 전투는 2차
+   * 거리 단위는 타일(마을과 같은 쿼터뷰 32×16), 시간은 초, 넉백은 화면 도트(px)
+   */
+  combat: {
+    /** 폰 기본 배율 (CSS px per 도트) — 캐릭터·몬스터·이펙트·바닥 모두 같은 정수배 */
+    scale: 3,
+    /** 1차에 열린 스테이지 (숲 1-1 ~ 1-protoMax). 장부 임무의 사냥 조건도 여기까지로 본다 */
+    protoMax: 3,
+    field: 11,
+    timeLimit: 90,
+    waves: 3,
+    pack: [4, 8],
+    move: 3.2,
+    dodge: { inv: 0.35, cd: 1.5, dist: 1.9, dur: 0.3 },
+    combo: { window: 0.55, swing: 0.24, range: 1.05, arc: 1.25, mult: [1, 1.1, 1.6] },
+    hold: 0.25,
+    hitstop: { hit: 0.05, crit: 0.09, kill: 0.12 },
+    knock: { hit: 6, crit: 12, kill: 20 },
+    shake: { crit: 2, boss: 4, dur: 0.12 },
+    critChance: 0.15,
+    /** 피해: 전투력 × dmgK × 콤보 배율 · 몬스터 체력 = 추천 전투력 × mobHpK */
+    dmgK: 0.32,
+    mobHpK: { slime: 0.9, goblin: 1.15 },
+    /** 파티 평균 전투력이 추천보다 세면 몬스터 체력 × (비율^toughExp, 비율은 최대 4) */
+    toughExp: 0.85,
+    toughCap: 6,
+    /** 동료 AI 피해 배율 (내 손이 주인공이 되게) */
+    allyDmg: 0.6,
+    /** 몬스터 공격력 = mobAtk + 추천 전투력 × mobAtkK */
+    mobAtk: 6,
+    mobAtkK: 0.12,
+    hpBase: 120,
+    hpPerLv: 12,
+    tele: 0.6,
+    recover: 0.8,
+    chemPerHit: 3,
+    ultMult: 3.5,
+    skillCd: [5, 8],
+    /** AUTO: 예고 범위 안이면 이 확률로 구른다 */
+    autoDodge: 0.5,
+    /** 평가 · 보상 배율 */
+    grade: { sHits: 3, sTime: 0.6, aHits: 8, bonus: { S: 0.3, A: 0.15, B: 0 } },
+    sweep: 0.7,
+    allyVol: 0.6,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

@@ -1,0 +1,178 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>임시 몬스터 도트 생성기 (전투 1차)</title>
+<!--
+  1차 손맛 프로토타입용 임시 몬스터 2종(슬라임 · 고블린)을 코드로 그려 sprite sheet + meta.json으로 뽑는다.
+  게임은 public/assets/mon/{id}/sheet.png + meta.json만 읽는다 (2차에 유료 도트로 갈아 끼우기만 하면 된다).
+  실행: 브라우저로 열면 window.MON = { slime: { png, meta }, goblin: {...} } (scratchpad 스크립트가 받아서 저장)
+  모든 그림은 오른쪽을 본다 (왼쪽은 게임이 좌우 반전).
+-->
+<script>
+  const OUT = '#1a1420';
+  function sheet(fw, fh, anims, draw) {
+    const rows = Object.keys(anims);
+    const cols = Math.max(...rows.map((k) => anims[k].frames));
+    const c = document.createElement('canvas');
+    c.width = fw * cols;
+    c.height = fh * rows.length;
+    const x = c.getContext('2d');
+    const meta = { frameW: fw, frameH: fh, anchor: [Math.floor(fw / 2), fh - 2], anims: {} };
+    rows.forEach((name, r) => {
+      const a = anims[name];
+      meta.anims[name] = { row: r, frames: a.frames, fps: a.fps, loop: a.loop !== false };
+      for (let i = 0; i < a.frames; i++) {
+        const g = grid(fw, fh);
+        draw(g, name, i);
+        g.outline();
+        g.blit(x, i * fw, r * fh);
+      }
+    });
+    return { png: c.toDataURL('image/png'), meta };
+  }
+  function grid(w, h) {
+    const p = Array.from({ length: h }, () => Array(w).fill(null));
+    const g = {
+      set(x, y, c) {
+        x = Math.round(x);
+        y = Math.round(y);
+        if (x >= 0 && y >= 0 && x < w && y < h) p[y][x] = c;
+      },
+      rect(x, y, rw, rh, c) {
+        for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) g.set(x + i, y + j, c);
+      },
+      ell(cx, cy, rx, ry, c, shade) {
+        for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+          for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+            const d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2;
+            if (d <= 1) g.set(x, y, shade && d > 0.55 && y + 0.5 > cy ? shade : c);
+          }
+      },
+      outline() {
+        const q = p.map((r) => r.slice());
+        for (let y = 0; y < h; y++)
+          for (let x = 0; x < w; x++) {
+            if (q[y][x]) continue;
+            if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => q[y + dy]?.[x + dx] && q[y + dy][x + dx] !== OUT)) p[y][x] = OUT;
+          }
+      },
+      blit(ctx, ox, oy) {
+        for (let y = 0; y < h; y++)
+          for (let x = 0; x < w; x++)
+            if (p[y][x]) {
+              ctx.fillStyle = p[y][x];
+              ctx.fillRect(ox + x, oy + y, 1, 1);
+            }
+      },
+    };
+    return g;
+  }
+
+  // ───── 슬라임 (24×24): 느리게 튀어 와서 몸통 박치기 ─────
+  const SL = { body: '#5fbf4a', dark: '#3f8a34', light: '#a8e88a', eye: '#1a1420', cheek: '#e88aa0' };
+  function slime(g, anim, i) {
+    let sq = 0; // +납작 / -길쭉
+    let lift = 0;
+    let lean = 0;
+    if (anim === 'idle') sq = i ? 1 : 0;
+    if (anim === 'move') [sq, lift] = [[2, 0], [-1, 3], [-2, 5], [0, 2]][i];
+    if (anim === 'attack') [sq, lift, lean] = [[3, 0, -1], [-2, 2, 4], [1, 0, 1]][i];
+    if (anim === 'hurt') [sq, lean] = [2, -2];
+    if (anim === 'die') sq = [3, 5, 7][i];
+    const rx = 8 + sq * 0.6;
+    const ry = Math.max(2, 7 - sq * 0.8);
+    const cx = 12 + lean;
+    const cy = 22 - ry - lift;
+    if (anim === 'die' && i === 2) {
+      g.ell(12, 21, 10, 2, SL.dark);
+      g.ell(12, 20.5, 8, 1.2, SL.body);
+      return;
+    }
+    g.ell(cx, cy, rx, ry, SL.body, SL.dark);
+    g.ell(cx - rx * 0.35, cy - ry * 0.45, rx * 0.28, ry * 0.25, SL.light);
+    if (anim !== 'die') {
+      const ey = Math.round(cy - ry * 0.05);
+      const ex = Math.round(cx + rx * 0.25);
+      if (anim === 'hurt') {
+        g.set(ex - 1, ey, SL.eye);
+        g.set(ex + 3, ey, SL.eye);
+      } else {
+        g.rect(ex - 1, ey - 1, 1, 2, SL.eye);
+        g.rect(ex + 3, ey - 1, 1, 2, SL.eye);
+      }
+      g.set(ex - 2, ey + 2, SL.cheek);
+      g.set(ex + 4, ey + 2, SL.cheek);
+      if (anim === 'attack' && i === 1) g.rect(ex, ey + 2, 3, 1, SL.eye);
+    }
+  }
+
+  // ───── 고블린 (24×33): 빠르게 와서 몽둥이 휘두르기 ─────
+  const GB = { skin: '#7cbf4a', skinD: '#4f8a34', cloth: '#7a4a2c', clothD: '#55321e', club: '#9a6a3c', clubD: '#6a4428', eye: '#ffe066', tooth: '#efe2c6' };
+  function goblin(g, anim, i) {
+    const bob = anim === 'idle' ? i : anim === 'move' ? [0, 1, 0, 1][i] : 0;
+    const step = anim === 'move' ? [1, 0, -1, 0][i] : 0;
+    const lean = anim === 'attack' ? [-1, 2, 1][i] : anim === 'hurt' ? -2 : 0;
+    if (anim === 'die') {
+      if (i === 2) {
+        g.ell(12, 30, 9, 2, GB.skinD);
+        g.rect(6, 29, 12, 2, GB.cloth);
+        return;
+      }
+      const t = i === 0 ? 2 : 6;
+      g.ell(12 - t * 0.3, 19 + t, 6, 6 - t * 0.5, GB.skin, GB.skinD);
+      g.rect(7, 25 + t * 0.5, 10, 6 - t * 0.6, GB.cloth);
+      return;
+    }
+    const y0 = bob;
+    // 다리
+    g.rect(9 + step, 26 + y0, 3, 6 - y0, GB.skinD);
+    g.rect(13 - step, 26 + y0, 3, 6 - y0, GB.skinD);
+    // 몸 · 허리천
+    g.rect(8 + lean, 18 + y0, 9, 9, GB.cloth);
+    g.rect(8 + lean, 18 + y0, 9, 1, '#9a6a44');
+    g.rect(8 + lean, 25 + y0, 9, 1, GB.clothD);
+    // 머리 (큰 귀)
+    const hx = 12.5 + lean;
+    const hy = 12 + y0;
+    g.ell(hx, hy, 5.5, 5, GB.skin, GB.skinD);
+    g.rect(Math.round(hx) - 9, hy - 2, 4, 2, GB.skin);
+    g.rect(Math.round(hx) + 5, hy - 2, 4, 2, GB.skin);
+    g.set(Math.round(hx) - 9, hy - 3, GB.skin);
+    g.set(Math.round(hx) + 8, hy - 3, GB.skin);
+    g.rect(Math.round(hx) + 1, hy - 1, 2, 2, GB.eye);
+    g.set(Math.round(hx) + 2, hy, '#1a1420');
+    g.rect(Math.round(hx) + 1, hy + 3, 3, 1, '#1a1420');
+    g.set(Math.round(hx) + 2, hy + 3, GB.tooth);
+    // 팔 + 몽둥이
+    const arm = anim === 'attack' ? i : anim === 'hurt' ? 0 : -1;
+    if (arm === 0) {
+      // 들어 올림 (예고)
+      g.rect(15 + lean, 12 + y0, 2, 7, GB.skin);
+      g.rect(14 + lean, 2 + y0, 4, 11, GB.club);
+      g.rect(14 + lean, 2 + y0, 4, 3, GB.clubD);
+    } else if (arm === 1) {
+      // 내려찍기
+      g.rect(17 + lean, 20 + y0, 4, 2, GB.skin);
+      g.rect(19 + lean, 20 + y0, 5, 4, GB.club);
+      g.rect(21 + lean, 18 + y0, 3, 8, GB.club);
+      g.rect(21 + lean, 24 + y0, 3, 2, GB.clubD);
+    } else if (arm === 2) {
+      g.rect(16 + lean, 21 + y0, 3, 2, GB.skin);
+      g.rect(18 + lean, 22 + y0, 6, 3, GB.club);
+    } else {
+      g.rect(17, 19 + y0, 2, 6, GB.skin);
+      g.rect(18, 15 + y0, 3, 10, GB.club);
+      g.rect(18, 15 + y0, 3, 2, GB.clubD);
+    }
+  }
+
+  window.MON = {
+    slime: sheet(24, 24, { idle: { frames: 2, fps: 3 }, move: { frames: 4, fps: 8 }, attack: { frames: 3, fps: 8, loop: false }, hurt: { frames: 1, fps: 1, loop: false }, die: { frames: 3, fps: 8, loop: false } }, slime),
+    goblin: sheet(24, 33, { idle: { frames: 2, fps: 3 }, move: { frames: 4, fps: 10 }, attack: { frames: 3, fps: 10, loop: false }, hurt: { frames: 1, fps: 1, loop: false }, die: { frames: 3, fps: 8, loop: false } }, goblin),
+  };
+  for (const k in window.MON) {
+    const im = new Image();
+    im.src = window.MON[k].png;
+    im.style.cssText = 'image-rendering:pixelated;width:' + 600 + 'px;display:block;margin:8px;background:#6a8a4a';
+    document.body.appendChild(im);
+  }
+</script>

@@ -20,6 +20,39 @@ export const SHADOW = '#2a1630';
 export const LIGHT = '#fff3d6';
 export const OUTL = '#1c1018';
 export const dk = (c: string, t = 0.32) => mix(c, SHADOW, t);
+
+/**
+ * 리마스터 명암 3단 (빛은 왼쪽 위): step +1 밝음 · 0 기본 · -1 어두움 · -2 외곽선
+ * 어두운 쪽은 검게만 하지 않고 색상을 돌린다 — 따뜻한 색은 붉은 보라 쪽, 차가운 색은 남색 쪽. 밝은 쪽은 노란빛으로.
+ */
+const RAMP = new Map<string, string>();
+export function ramp(c: string, step: number): string {
+  if (!step) return c;
+  const key = c + step;
+  const hit = RAMP.get(key);
+  if (hit) return hit;
+  const [r, g, b] = hex2rgb(c);
+  let [h, s, l] = hsl(r, g, b);
+  const warm = h < 90 || h >= 300;
+  const turn = (to: number, amt: number) => {
+    let d = ((to - h + 540) % 360) - 180;
+    d = Math.max(-amt, Math.min(amt, d));
+    h = (h + d + 360) % 360;
+  };
+  if (step > 0) {
+    turn(52, 10 * step);
+    l = Math.min(0.95, l + 0.11 * step + (l > 0.85 ? -0.04 : 0));
+    s = Math.min(1, s * 1.04);
+  } else {
+    const k = -step;
+    if (s > 0.08) turn(warm ? 300 : 238, 14 * k);
+    l = Math.max(0.06, l - (0.13 + (l > 0.8 ? 0.05 : 0)) * k);
+    s = Math.min(1, s + 0.06 * k + (s < 0.08 ? 0.05 * k : 0));
+  }
+  const out = rgb2hex(...hslToRgb(h, s, l));
+  RAMP.set(key, out);
+  return out;
+}
 export const lt = (c: string, t = 0.28) => mix(c, LIGHT, t);
 
 /** 같은 seed면 같은 수열 (xorshift) */
@@ -162,8 +195,9 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
       const cv = canvas(w, h);
       const ctx = cv.getContext('2d')!;
       const filled = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && !!g[y][x] && g[y][x]!.tag !== 'ol';
-      // 가장자리 명암 (빛은 왼쪽 위에서)
+      // 리마스터 명암 3단 (빛은 왼쪽 위에서) · 위 부위가 드리우는 그림자 (머리카락 밑 이마, 머리 밑 옷깃)
       const out = g.map((r) => r.map((p) => (p ? { ...p } : null)));
+      const at = (x: number, y: number) => (x >= 0 && y >= 0 && x < w && y < h ? g[y][x] : null);
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
           const p = g[y][x];
@@ -172,8 +206,13 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
           const b = !filled(x, y + 1);
           const l = !filled(x - 1, y);
           const t = !filled(x, y - 1);
-          if (r || b) out[y][x]!.c = dk(p.c, 0.3);
-          else if (t || (l && !filled(x - 1, y - 1))) out[y][x]!.c = lt(p.c, 0.22);
+          const up = at(x, y - 1);
+          const cast = !!up && up.c !== p.c && up.tag !== 'eye' && up.tag !== 'flat' && up.tag !== 'ol';
+          if (r || b) out[y][x]!.c = ramp(p.c, -1);
+          else if (cast) out[y][x]!.c = ramp(p.c, -1);
+          else if (t || (l && !filled(x - 1, y - 1))) out[y][x]!.c = ramp(p.c, 1);
+          // 오른쪽 아래 두 번째 줄은 반쯤 어둡게 (덩어리감)
+          else if (!filled(x + 2, y) && !filled(x + 1, y + 1)) out[y][x]!.c = ramp(p.c, -1);
         }
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
@@ -183,12 +222,21 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
-      // 테두리
-      ctx.fillStyle = opts.outline || OUTL;
+      // 선택적 외곽선: 그 부위 어두운 색보다 한 단계 더 어둡게 · 빛 받는 왼쪽 위 테두리는 한 단계 밝게
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
           if (filled(x, y)) continue;
-          if (filled(x + 1, y) || filled(x - 1, y) || filled(x, y + 1) || filled(x, y - 1)) ctx.fillRect(x, y, 1, 1);
+          const nb = [[1, 0], [0, 1], [-1, 0], [0, -1]].find(([dx, dy]) => filled(x + dx, y + dy));
+          if (!nb) continue;
+          if (opts.outline) {
+            ctx.fillStyle = opts.outline;
+          } else {
+            const n = g[y + nb[1]][x + nb[0]]!;
+            const lit = nb[0] === 1 || nb[1] === 1;
+            const base = n.tag === 'eye' || n.tag === 'flat' ? '#5a4a5a' : n.c;
+            ctx.fillStyle = mix(ramp(base, lit ? -2 : -3), OUTL, lit ? 0.35 : 0.55);
+          }
+          ctx.fillRect(x, y, 1, 1);
         }
       return cv;
     },

@@ -1,0 +1,40 @@
+{
+ "frameW": 24,
+ "frameH": 24,
+ "anchor": [
+  12,
+  22
+ ],
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 2,
+   "fps": 3,
+   "loop": true
+  },
+  "move": {
+   "row": 1,
+   "frames": 4,
+   "fps": 8,
+   "loop": true
+  },
+  "attack": {
+   "row": 2,
+   "frames": 3,
+   "fps": 8,
+   "loop": false
+  },
+  "hurt": {
+   "row": 3,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "die": {
+   "row": 4,
+   "frames": 3,
+   "fps": 8,
+   "loop": false
+  }
+ }
+}

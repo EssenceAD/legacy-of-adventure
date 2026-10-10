@@ -105,7 +105,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
 }
 
 /** 스테이지 돌파 (직접·자동 전투 한 판) */
-export function clearStage(r: RegionId, s: number, members: Actor[]): HuntReward {
+export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1): HuntReward {
   const key = `${r}-${s}`;
   const first = !P.hunt.firstClear.includes(key);
   if (first) P.hunt.firstClear.push(key);
@@ -114,7 +114,15 @@ export function clearStage(r: RegionId, s: number, members: Actor[]): HuntReward
   if (r === 'forest') P.counters.forestSends++;
   P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
-  const out = reward(r, s, members, first);
+  const out = reward(r, s, members, first, mult);
+  markDirty();
+  return out;
+}
+/** 소탕: 깬 스테이지만 · 전투 없이 기본 70% · 첫 돌파 보상 없음 */
+export function sweepStage(r: RegionId, s: number, members: Actor[]): HuntReward | null {
+  if (s > best(r)) return null;
+  P.counters.huntClears++;
+  const out = reward(r, s, members, false, CONFIG.combat.sweep);
   markDirty();
   return out;
 }

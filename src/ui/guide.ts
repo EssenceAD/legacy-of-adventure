@@ -133,7 +133,7 @@ export function syncGuide(force = false) {
   const card = $('#mission');
   const m = currentMission();
   // 전투 화면(토벌·사냥)이 떠 있으면 숨긴다
-  if (!S.started || S.visiting || !m || document.querySelector('.battle')) {
+  if (!S.started || S.visiting || !m || document.querySelector('.battle, .cbt')) {
     card.hidden = true;
     hideHand();
     return;

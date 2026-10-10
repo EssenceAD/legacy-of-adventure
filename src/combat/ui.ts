@@ -1,0 +1,339 @@
+// 전투 화면: 정수 배율 캔버스 · 왼쪽 절반 가상 조이스틱 · 오른쪽 아래 공격(꾹=연속)·회피·스킬 2·필살기 · AUTO · 초상화로 조종 바꾸기
+//  PC: WASD 이동 · J 공격 · K 회피 · U·I 스킬 · O 필살기. 위쪽 HUD는 웨이브·시간만 (큰 글자 없음)
+import { CONFIG } from '../data/config';
+import type { RegionId } from '../data/items';
+import { PORTRAITS } from '../engine/assets';
+import { pic } from '../ui/common';
+import { iconSrc, dpr } from '../ui/kit';
+import { battleMusic } from '../ui/sound';
+import type { Actor } from '../world/state';
+import { attack, dodge, grade, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type Unit } from './field';
+import { draw, sheets } from './draw';
+import { loadMon } from './mon';
+
+const C = CONFIG.combat;
+const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
+
+export interface CombatResult {
+  win: boolean;
+  grade: 'S' | 'A' | 'B';
+  autoUsed: boolean;
+  time: number;
+  hits: number;
+  kills: number;
+}
+
+let F: Field | null = null;
+let raf = 0;
+let last = 0;
+let root: HTMLElement | null = null;
+let onEnd: ((r: CombatResult) => void) | null = null;
+
+/** 개발용: 화면이 숨어 rAF가 멈췄을 때 sec초 진행 */
+export const devAdvance = (sec: number) => {
+  for (let i = 0; i < sec * 60 && F; i++) tick(1 / 60);
+  if (F) render();
+};
+export const devField = () => F;
+
+const SKILL_ICON: Record<string, [string, string]> = {
+  knight: ['skill_block', 'skill_pray'],
+  warrior: ['skill_fireslash', 'skill_attack'],
+  rogue: ['skill_attack', 'skill_fireslash'],
+  mage: ['skill_fireslash', 'skill_auto'],
+  priest: ['skill_pray', 'skill_attack'],
+  hunter: ['skill_attack', 'skill_block'],
+};
+
+export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void) {
+  await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
+  battleMusic.huntRegion = region;
+  F = makeField(region, stage, members, auto);
+  onEnd = done;
+  root = document.createElement('div');
+  root.id = 'hunt';
+  root.className = 'cbt';
+  root.innerHTML = `
+    <canvas id="cbCv"></canvas>
+    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO</button><button id="cbQuit" aria-label="포기">✕</button></div>
+    <div class="cbparty" id="cbParty"></div>
+    <div class="cbchain" id="cbChain"></div>
+    <div class="cbstick" id="cbStick" hidden><i></i></div>
+    <div class="cbpad">
+      <button class="cbb ult" id="cbUlt"><img src="${iconSrc('skill_combo')}" alt=""><i class="ring"></i></button>
+      <button class="cbb s2" id="cbS2"><img alt=""><i class="cd"></i><em></em></button>
+      <button class="cbb s1" id="cbS1"><img alt=""><i class="cd"></i><em></em></button>
+      <button class="cbb dodge" id="cbDodge"><b>⤼</b><i class="cd"></i></button>
+      <button class="cbb atk" id="cbAtk"><img src="${iconSrc('skill_attack')}" alt=""></button>
+    </div>
+    <div class="cbcut" id="cbCut" hidden></div>
+    <div class="cbres" id="cbRes" hidden></div>`;
+  document.getElementById('view')!.appendChild(root);
+  fit();
+  addEventListener('resize', fit);
+  bindInput();
+  buildParty();
+  syncSkillButtons();
+  last = performance.now();
+  raf = requestAnimationFrame(frame);
+}
+
+// ───────── 캔버스 (정수 배율) ─────────
+
+let lcv: HTMLCanvasElement;
+let lctx: CanvasRenderingContext2D;
+let LW = 130;
+let LH = 280;
+let K = 3;
+function fit() {
+  if (!root) return;
+  const cv = $<HTMLCanvasElement>('#cbCv');
+  const r = root.getBoundingClientRect();
+  // 기기 픽셀 정수배: 도트 1개 = K×K 기기 픽셀 (폰 기본 3 CSS px)
+  K = Math.max(1, Math.round(C.scale * dpr()));
+  const dw = Math.round(r.width * dpr());
+  const dh = Math.round(r.height * dpr());
+  LW = Math.ceil(dw / K);
+  LH = Math.ceil(dh / K);
+  cv.width = LW * K;
+  cv.height = LH * K;
+  cv.style.width = (LW * K) / dpr() + 'px';
+  cv.style.height = (LH * K) / dpr() + 'px';
+  lcv = document.createElement('canvas');
+  lcv.width = LW;
+  lcv.height = LH;
+  lctx = lcv.getContext('2d')!;
+  lctx.imageSmoothingEnabled = false;
+}
+
+// ───────── 루프 ─────────
+
+const keys = new Set<string>();
+let holding = false;
+function tick(dt: number) {
+  if (!F) return;
+  // 키보드 이동 (조이스틱이 없을 때)
+  if (!stickOn) {
+    const kx = (keys.has('d') ? 1 : 0) - (keys.has('a') ? 1 : 0);
+    const ky = (keys.has('s') ? 1 : 0) - (keys.has('w') ? 1 : 0);
+    const l = Math.hypot(kx, ky) || 1;
+    F.stick.x = kx / l;
+    F.stick.y = ky / l;
+  }
+  F.holdAtk = holding ? F.holdAtk + dt : 0;
+  step(F, dt);
+}
+function frame(now: number) {
+  if (!F || !root) return;
+  // rAF 시각은 performance.now()보다 조금 앞설 수 있다 (음수 dt 금지)
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000 || 0));
+  last = now;
+  tick(dt);
+  render();
+  raf = requestAnimationFrame(frame);
+}
+function render() {
+  if (!F) return;
+  draw(lctx, F, LW, LH);
+  const cv = $<HTMLCanvasElement>('#cbCv');
+  const x = cv.getContext('2d')!;
+  x.imageSmoothingEnabled = false;
+  x.drawImage(lcv, 0, 0, LW * K, LH * K);
+  hud();
+}
+
+function hud() {
+  const f = F!;
+  $('#cbWave').textContent = `웨이브 ${f.wave}/${C.waves}`;
+  $('#cbTime').textContent = `${Math.max(0, Math.ceil(f.time))}`;
+  $('#cbTime').classList.toggle('low', f.time < 15);
+  $('#cbAuto').classList.toggle('on', f.auto);
+  $('#cbChain').textContent = f.chain >= 2 && f.chainT > 0 ? `×${f.chain} 콤보` : '';
+  // 초상화 체력 · 조종 중
+  f.allies.forEach((u, i) => {
+    const b = document.querySelector<HTMLElement>(`[data-ally="${i}"]`);
+    if (!b) return;
+    b.classList.toggle('me', u === f.me);
+    b.classList.toggle('dead', u.dead);
+    (b.querySelector('u') as HTMLElement).style.width = Math.round((u.hp / u.max) * 100) + '%';
+  });
+  const me = f.me;
+  const cdBtn = (id: string, left: number, max: number) => {
+    const b = $(id);
+    (b.querySelector('.cd') as HTMLElement).style.background = left > 0 ? `conic-gradient(transparent ${(1 - left / max) * 360}deg, rgba(10,8,20,.7) 0)` : 'none';
+    const em = b.querySelector('em');
+    if (em) em.textContent = left > 0 ? String(Math.ceil(left)) : '';
+  };
+  cdBtn('#cbS1', me.cd![0], C.skillCd[0]);
+  cdBtn('#cbS2', me.cd![1], C.skillCd[1]);
+  cdBtn('#cbDodge', me.dodgeCd ?? 0, C.dodge.cd);
+  ($('#cbUlt').querySelector('.ring') as HTMLElement).style.background = `conic-gradient(#ff7aa8 ${f.chem * 3.6}deg, rgba(255,255,255,.12) 0)`;
+  $('#cbUlt').classList.toggle('ready', f.chem >= 100);
+  // 필살기 컷인 띠 (0.5초)
+  const cut = $('#cbCut');
+  if (f.ult > 0 && cut.hidden) {
+    cut.innerHTML = `<div class="band"></div>${f.allies.filter((a) => !a.dead).map((a) => `<img src="${pic(a.actor!)}" alt="">`).join('')}<b>${f.ultName}</b>`;
+    cut.hidden = false;
+  } else if (f.ult <= 0 && !cut.hidden) cut.hidden = true;
+  if (f.done && f.doneT > 1 && $('#cbRes').hidden) finish();
+}
+
+function buildParty() {
+  const f = F!;
+  $('#cbParty').innerHTML = f.allies
+    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name} 조종"><img src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
+    .join('');
+  document.querySelectorAll<HTMLElement>('[data-ally]').forEach(
+    (b) =>
+      (b.onpointerdown = (e) => {
+        e.stopPropagation();
+        const u = f.allies[+b.dataset.ally!];
+        if (!u.dead) {
+          f.me = u;
+          syncSkillButtons();
+        }
+      }),
+  );
+  void PORTRAITS;
+}
+function syncSkillButtons() {
+  const me = F!.me;
+  const [i1, i2] = SKILL_ICON[me.job!] ?? SKILL_ICON.warrior;
+  ($('#cbS1 img') as HTMLImageElement).src = iconSrc(i1 as never);
+  ($('#cbS2 img') as HTMLImageElement).src = iconSrc(i2 as never);
+  const [n1, n2] = SKILL_NAMES[me.job!];
+  $('#cbS1').setAttribute('aria-label', n1);
+  $('#cbS2').setAttribute('aria-label', n2);
+}
+
+// ───────── 조작 ─────────
+
+let stickOn = false;
+let stickId = -1;
+let sx0 = 0;
+let sy0 = 0;
+function bindInput() {
+  const r = root!;
+  const st = $('#cbStick');
+  const R = 46;
+  r.addEventListener('pointerdown', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('button') || !F || F.done) return;
+    // 왼쪽 절반 아무 데나: 그 자리에 조이스틱
+    if (e.clientX < r.clientWidth / 2 && !stickOn) {
+      stickOn = true;
+      stickId = e.pointerId;
+      sx0 = e.clientX;
+      sy0 = e.clientY;
+      st.hidden = false;
+      st.style.left = sx0 - R + 'px';
+      st.style.top = sy0 - R + 'px';
+      (st.firstElementChild as HTMLElement).style.transform = 'translate(0,0)';
+    }
+  });
+  r.addEventListener('pointermove', (e) => {
+    if (!stickOn || e.pointerId !== stickId || !F) return;
+    let dx = e.clientX - sx0;
+    let dy = e.clientY - sy0;
+    const l = Math.hypot(dx, dy);
+    if (l > R) {
+      dx = (dx / l) * R;
+      dy = (dy / l) * R;
+    }
+    (st.firstElementChild as HTMLElement).style.transform = `translate(${Math.round(dx)}px,${Math.round(dy)}px)`;
+    F.stick.x = dx / R;
+    F.stick.y = dy / R;
+  });
+  const up = (e: PointerEvent) => {
+    if (e.pointerId !== stickId) return;
+    stickOn = false;
+    stickId = -1;
+    st.hidden = true;
+    if (F) F.stick.x = F.stick.y = 0;
+  };
+  r.addEventListener('pointerup', up);
+  r.addEventListener('pointercancel', up);
+  const press = (id: string, fn: () => void) => {
+    const b = $(id);
+    b.onpointerdown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!F || F.done) return;
+      fn();
+    };
+  };
+  press('#cbAtk', () => {
+    holding = true;
+    attack(F!, F!.me);
+  });
+  const release = () => (holding = false);
+  $('#cbAtk').onpointerup = release;
+  $('#cbAtk').onpointerleave = release;
+  $('#cbAtk').onpointercancel = release;
+  press('#cbDodge', () => dodge(F!, F!.me));
+  press('#cbS1', () => skill(F!, F!.me, 0));
+  press('#cbS2', () => skill(F!, F!.me, 1));
+  press('#cbUlt', () => ultimate(F!));
+  press('#cbAuto', () => {
+    F!.auto = !F!.auto;
+    if (F!.auto) F!.autoUsed = true;
+  });
+  $('#cbQuit').onclick = () => {
+    if (!F || F.done) return;
+    if (confirm('사냥을 포기할까요? (패배로 기록돼요)')) {
+      F.done = 'lose';
+      F.doneT = 2;
+    }
+  };
+  addEventListener('keydown', onKey);
+  addEventListener('keyup', onKeyUp);
+}
+function onKey(e: KeyboardEvent) {
+  if (!F || F.done) return;
+  const k = e.key.toLowerCase();
+  if ('wasd'.includes(k) && k.length === 1) keys.add(k);
+  if (k === 'j') {
+    if (!holding) attack(F, F.me);
+    holding = true;
+  }
+  if (k === 'k') dodge(F, F.me);
+  if (k === 'u') skill(F, F.me, 0);
+  if (k === 'i') skill(F, F.me, 1);
+  if (k === 'o') ultimate(F);
+}
+function onKeyUp(e: KeyboardEvent) {
+  const k = e.key.toLowerCase();
+  keys.delete(k);
+  if (k === 'j') holding = false;
+}
+
+// ───────── 끝 ─────────
+
+function finish() {
+  const f = F!;
+  const res: CombatResult = { win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills };
+  onEnd?.(res);
+}
+
+/** 결과 카드를 전투 화면 위에 (hunt UI가 내용을 채운다) */
+export function showCombatResult(html: string, bind: () => void) {
+  const r = $('#cbRes');
+  r.innerHTML = `<div class="card px res">${html}</div>`;
+  r.hidden = false;
+  bind();
+}
+
+export function closeCombat() {
+  cancelAnimationFrame(raf);
+  removeEventListener('resize', fit);
+  removeEventListener('keydown', onKey);
+  removeEventListener('keyup', onKeyUp);
+  keys.clear();
+  holding = false;
+  stickOn = false;
+  root?.remove();
+  root = null;
+  F = null;
+}
+export const combatOn = () => !!F;
+export type { Unit };

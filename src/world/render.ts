@@ -20,6 +20,7 @@ import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
+import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
 import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from './spectacle';
 
@@ -427,9 +428,8 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
   const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));
   const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
-  ctx.globalAlpha = 0.25 * fade;
-  ctx.fillStyle = '#1c1018';
-  ctx.fillRect(X - 5, Y - 1, 10, 2);
+  // 리마스터: 발밑 그림자 2톤 도트 타원 (반투명 없이)
+  if (fade > 0.5) dotShadow(ctx, X, Y, 6, 2);
   ctx.globalAlpha = (a.pop ? 1 - a.pop / 0.4 : 1) * fade;
   const img = tinted(fr, NL);
   const x = X - 12;

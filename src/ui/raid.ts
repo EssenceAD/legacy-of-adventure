@@ -69,11 +69,10 @@ export function openRaidPrep(t: RaidTarget) {
     <p class="sub">파티 ${members.length}/${R.partySize} · 첫 번째가 대장(직접 조작)</p>
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
     <div class="btnrow raidgo">
-      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 전투</button>
-      <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 싸우기</button>
+      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌</button>
       ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
     </div>
-    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 직접 싸우면 피해량 최대 +${Math.round((R.manualMax - 1) * 100)}% · 실패해도 깎은 만큼 보상</p>`,
+    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 싸우는 토벌전은 새 전투로 곧 열려요</p>`,
   );
   $$('.pm').forEach(
     (el) =>
@@ -83,12 +82,13 @@ export function openRaidPrep(t: RaidTarget) {
         openRaidPrep(t);
       }),
   );
-  const go = (manual: boolean) => {
-    closeWin();
-    startBattle(t, members, manual, ex);
+  // 전투 개편 1차: 토벌은 자동 토벌만 — 전투 화면 없이 결과 카드 (새 토벌전은 2차)
+  $('#rgAuto').onclick = () => {
+    const sp = R.autoSpread;
+    const dmg = Math.round(ex.target * (1 - sp + Math.random() * sp * 2));
+    const out = settle(t, members, dmg, 'auto', ex);
+    showResult(t, out, ex, 'auto', members, false);
   };
-  $('#rgAuto').onclick = () => go(false);
-  $('#rgMan').onclick = () => go(true);
   const sw = document.getElementById('rgSweep');
   if (sw)
     sw.onclick = () => {
@@ -379,7 +379,8 @@ let active: { stop: () => void; advance: (sec: number) => void } | null = null;
 /** 개발용: 화면이 숨어 rAF가 멈췄을 때 전투를 sec초 진행 */
 export const _raidAdvance = (sec: number) => active?.advance(sec);
 
-function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
+/** 옛 토벌 전투 화면 — 1차 동안 쓰지 않는다 (2차에 새 토벌전으로 바꾼다) */
+export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
   notePrep('raid', ex.power);
   active?.stop();
   const b = t.boss;
