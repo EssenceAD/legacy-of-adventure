@@ -1,0 +1,93 @@
+// 건물 목록: 이름·발판·가격·손님 행동·레벨업 그림·열리는 땅 단계
+import { CONFIG } from './config';
+
+export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon';
+
+export interface BuildingDef {
+  name: string;
+  /** 그림 키 (public/assets/sprites/<키>.png). 모닥불은 코드로 그린다 */
+  sprite: string | null;
+  /** 발판 [가로, 세로] 타일 */
+  size: [number, number];
+  cost: number;
+  /** 손님 행동 */
+  act?: Act;
+  /** 장식: 문 앞 칸 검사를 하지 않는다 */
+  deco?: boolean;
+  /** 하나만 (여관, 던전) */
+  unique?: boolean;
+  /** 자리 고정 (던전) — 건설 목록에 안 나온다 */
+  fixed?: boolean;
+  /** 이 땅 단계부터 지을 수 있다 */
+  unlock: number;
+  /** 레벨업: 더 큰 그림으로. 앞 꼭짓점은 그대로, 뒤로 커진다 */
+  up?: { sprite: string; size: [number, number]; cost: number };
+  /** 지붕 색을 바꿀 수 있는지 */
+  roofable?: boolean;
+  desc: string;
+}
+
+export const CATALOG = {
+  inn: {
+    name: '여관 본관', sprite: 'inn', size: [3, 3], cost: 0, act: 'sleep', unique: true, unlock: 1, roofable: true,
+    up: { sprite: 'inn3', size: [4, 4], cost: CONFIG.upgrade.inn },
+    desc: '손님이 묵는 곳. 레벨이 오르면 방이 늘어요',
+  },
+  cottage: { name: '객실 별채', sprite: 'cottage', size: [2, 2], cost: 300, act: 'sleep', unlock: 4, roofable: true, desc: '방 2칸이 늘어나요' },
+  tavern: {
+    name: '주점', sprite: 'tavern', size: [3, 3], cost: 400, act: 'drink', unlock: 3, roofable: true,
+    up: { sprite: 'tavern2', size: [4, 4], cost: CONFIG.upgrade.tavern },
+    desc: '모험가들이 모여 떠들어요 · 케미 발생 ↑',
+  },
+  smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 4, roofable: true, desc: '장비 강화 · 파밍한 재료로 제작' },
+  bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, desc: '피로 회복 · 기분 ↑' },
+  training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, desc: '모험가 레벨업 · 허수아비를 팹니다' },
+  garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, desc: '식재료 수확 · 식사 품질 ↑' },
+  well: { name: '우물', sprite: 'well', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '마을 장식 · 주변 기분 +' },
+  board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, desc: '의뢰를 받아 던전에 나가요' },
+  tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
+  pine: { name: '소나무', sprite: 'pine', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
+  fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 2, desc: '밤이면 손님들이 둘러앉아요' },
+  dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
+} satisfies Record<string, BuildingDef>;
+
+export type Kind = keyof typeof CATALOG;
+export const def = (k: Kind): BuildingDef => CATALOG[k];
+
+/** 밤에 창문 불이 켜지는 그림 */
+export const LIT_SPRITES = ['inn', 'inn3', 'tavern', 'tavern2', 'smith', 'cottage', 'bath'];
+
+/** 굴뚝 연기 자리 (그림 왼쪽 위 기준) */
+export const SMOKE: Record<string, [number, number][]> = {
+  inn: [[44, 8]],
+  inn3: [[47, 26], [100, 26]],
+  tavern: [[67, 10]],
+  tavern2: [[100, 8]],
+  smith: [[69, 12]],
+  cottage: [],
+  bath: [[30, 74]],
+};
+
+/** 지붕 색 5종: [이름, 색상(hue) — null은 원래 색] */
+export const ROOFS: [string, number | null][] = [
+  ['원래', null],
+  ['청석', 215],
+  ['단풍', 8],
+  ['숲', 100],
+  ['밤하늘', 265],
+];
+
+/** 건물 안에 있을 때 하는 일 */
+export const INSIDE_TEXT: Partial<Record<Act, string>> = {
+  sleep: '자는 중',
+  drink: '한잔 중',
+  bath: '온천욕 중',
+  forge: '장비 손질 중',
+};
+
+/** 새 게임 시작 배치 (땅 1단계) */
+export const START_TOWN: [Kind, number, number][] = [
+  ['inn', 6, 4],
+  ['dungeon', 10, 1],
+  ['well', 5, 8],
+];

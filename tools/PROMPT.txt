@@ -1,0 +1,5 @@
+[건물·소품 공통 앞부분 — Scenario / Seedream 4.5 / 비율 1:1 / 참고 이미지 없음]
+Isometric pixel art game asset, 2:1 dimetric isometric angle viewed from the front-left, crisp clean pixel grid, no anti-aliasing, no blur, limited warm cozy palette, dark 1-pixel outlines, soft top-left lighting, cute cozy fantasy medieval style like Kairosoft and Stardew Valley. A single object centered on a plain flat pure white background, isolated, nothing else, no ground plane, no shadow on the background, no text, no letters, no UI. Object: <여기에 건물 설명>
+
+[초상화 공통 앞부분 — 비율 1:1, 결과를 64×64로 줄이고 색 28개로 정리]
+thick bold dark outlines, flat two-tone cel shading, big simple flat color areas, warm palette. Bust portrait (head and shoulders) of a single character, three-quarter view facing slightly right, centered, big head, friendly expressive face, plain flat solid dark navy blue background. Simple bold shapes, few details, high contrast, designed to be converted into pixel art. No text, no frame, no border. Character: <캐릭터 설명>
