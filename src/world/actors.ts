@@ -7,7 +7,7 @@ import { heroById } from '../data/heroes';
 import { sx } from '../engine/iso';
 import { blankActor, gainXp, makeAdventurer, makeHero } from './adventurers';
 import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
-import { absHours, onNewDay } from './clock';
+import { absHours, hourNow, onNewDay } from './clock';
 import { queueEvent } from './events';
 import { dueRuns, resolveRun } from './expeditions';
 import { bldSay, floatW, puffAt, say } from './fx';
@@ -90,9 +90,10 @@ function needTarget(a: Actor): { b: Building; why: string } | null {
   for (const [k, v] of needs) {
     if (v >= NE.seekBelow) break;
     let opts: Building[] = [];
-    if (k === 'hp') opts = S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
-    if (k === 'food') opts = byAct(['drink']).length ? byAct(['drink']) : byAct(['sleep']);
-    if (k === 'mood') opts = S.night ? byAct(['fire', 'bath', 'drink']) : byAct(['bath', 'drink', 'farm']);
+    const passer = a.status === 'passer';
+    if (k === 'hp') opts = passer ? byAct(['bath']) : S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
+    if (k === 'food') opts = byAct(['drink']).length || passer ? byAct(['drink']) : byAct(['sleep']);
+    if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink']) : byAct(['bath', 'drink', 'farm']);
     if (opts.length) return { b: pick(opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
   }
   return null;
@@ -113,7 +114,11 @@ function choose(a: Actor) {
   } else {
     const r = Math.random();
     const blds = ready();
-    if (S.night) {
+    if (a.status === 'passer') {
+      // 지나가는 손님은 묵지 않는다: 주점·온천·텃밭만
+      const day = byAct(['drink', 'bath', 'farm']);
+      if (day.length && r < A.dayBuildingChance) want = pick(day);
+    } else if (S.night) {
       const fire = blds.find((o) => o.kind === 'fire');
       const beds = blds.filter((o) => def(o.kind).act === 'sleep');
       if (fire && r < A.nightFireChance) want = fire;
@@ -378,13 +383,23 @@ function scanChem(dt: number) {
 
 // ───────── 손님 오고 가기 ─────────
 
-/** 입구에서 새 손님이 걸어 들어온다 (자리가 없으면 안 온다) */
+/** 묵는 손님(지나가는 손님 제외) — 정원은 이 수로 센다 */
+const stayers = () => guestsOf().filter((a) => a.status !== 'passer');
+
+/** 입구에서 새 손님이 걸어 들어온다. 방이 없으면 낮에만 「지나가는 손님」이 들른다 */
 export function arrive(a?: Actor): Actor | null {
   const [ex, ey] = entrance();
+  let back = false;
   if (!a) {
-    if (guestsOf().length >= capacity()) return null;
-    a = makeAdventurer(ex, ey, { day: S.day });
+    if (stayers().length < capacity()) a = makeAdventurer(ex, ey, { day: S.day });
+    else {
+      const h = hourNow();
+      const passers = guestsOf().filter((x) => x.status === 'passer').length;
+      if (h < G.passerFromHour || h >= G.passerUntilHour || passers >= G.passerMax || Math.random() > G.passerChance) return null;
+      a = makeAdventurer(ex, ey, { day: S.day, status: 'passer' });
+    }
   } else {
+    back = !!a.id && !a.heroId;
     a.x = ex;
     a.y = ey;
   }
@@ -394,11 +409,13 @@ export function arrive(a?: Actor): Actor | null {
   track('guestArrive');
   markDirty();
   const tag = a.rarity !== 'common' ? `<b style="color:${RARITY_INFO[a.rarity].color}">${RARITY_INFO[a.rarity].name}</b> ` : '';
-  uiHooks.toastHtml(`<span>${tag}새 손님 ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
-  // 입구에서 여관 문까지 걸어 들어온다
+  const what = back ? '다시 찾아온 손님' : a.status === 'passer' ? '지나가는 손님' : '새 손님';
+  uiHooks.toastHtml(`<span>${tag}${what} ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
+  // 입구에서 여관 문까지 걸어 들어온다 (지나가는 손님은 바로 할 일을 찾는다)
   const inn = findKind('inn');
   const who = a;
-  if (inn) {
+  if (a.status === 'passer') choose(a);
+  else if (inn) {
     const d = doorOf(inn);
     goTo(a, d[0], d[1], () => enter(who, inn));
   }
@@ -427,7 +444,29 @@ export function sendAway(a: Actor, happy: boolean) {
   markDirty();
 }
 
-const regularsCount = () => guestsOf().filter((x) => x.status !== 'visitor').length;
+const regularsCount = () => guestsOf().filter((x) => x.status === 'regular' || x.status === 'hero').length;
+
+/** 단골 자리가 없을 때: 대기 목록에 올리고 보낸다 (최대 3명, 꽉 차면 못 올림) */
+function toWaitlist(a: Actor) {
+  if (P.waitlist.length < G.waitlistMax && !P.waitlist.some((w) => w.id === a.id)) {
+    P.waitlist.push({ id: a.id, kind: a.kind, name: a.name, lvl: a.lvl, xp: a.xp, race: a.race, rarity: a.rarity, face: a.face, hair: a.hair });
+    uiHooks.toast(`${a.name}: 자리 나면 꼭 다시 올게요! (단골 대기 ${P.waitlist.length}/${G.waitlistMax})`);
+  }
+  sendAway(a, true);
+}
+
+let calledId = 0;
+/** 단골 자리가 나면 대기 손님이 다시 찾아와 제안한다 */
+function callWaitlist() {
+  if (!P.waitlist.length || regularsCount() >= capacity()) return;
+  // 앞서 부른 대기 손님의 제안이 끝날 때까지 기다린다
+  if (guestsOf().some((x) => x.id === calledId && x.status === 'visitor')) return;
+  const w = P.waitlist.shift()!;
+  calledId = w.id;
+  const a = Object.assign(blankActor(w.kind, w.name, 0, 0), w, { status: 'visitor' as const, hp: 80, food: 70, mood: 85, leaveDay: S.day + 1 });
+  arrive(a);
+  propose(a);
+}
 
 /** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 */
 function propose(a: Actor) {
@@ -446,7 +485,7 @@ function propose(a: Actor) {
           fn: () => {
             if (regularsCount() >= capacity()) {
               uiHooks.toast('단골 자리가 없어요 · 여관 레벨업이나 별채로 늘려요');
-              return sendAway(a, true);
+              return toWaitlist(a);
             }
             a.status = 'regular';
             addRep(CONFIG.reputation.newRegular);
@@ -463,14 +502,36 @@ function propose(a: Actor) {
 /** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
 export function dailyGuests() {
   if (S.visiting) return;
+  // 평판: 손님 기분 평균
+  const all = stayers();
+  if (all.length) {
+    const avg = all.reduce((s, a) => s + a.mood, 0) / all.length;
+    const R = CONFIG.reputation;
+    if (avg >= R.dailyMoodHigh) addRep(R.dailyMoodGain);
+    else if (avg < R.dailyMoodLow) addRep(R.dailyMoodLoss);
+  }
   for (const a of guestsOf()) {
     if (a.status !== 'visitor' || a.heroId || a.runId != null) continue;
     const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
     if (avg < G.leaveMood) sendAway(a, false);
     else if (S.day >= a.leaveDay) {
-      if (avg >= G.regularMood && regularsCount() < capacity()) propose(a);
-      else sendAway(a, true);
+      if (avg < G.regularMood) sendAway(a, true);
+      else if (regularsCount() < capacity()) propose(a);
+      else toWaitlist(a);
     }
+  }
+}
+
+/** 지나가는 손님: 저녁이 되면 떠난다. 기분이 좋았으면 단골 대기 목록에 */
+function passersLeave() {
+  if (hourNow() < G.passerLeaveHour && !S.night) return;
+  for (const a of guestsOf()) {
+    if (a.status !== 'passer') continue;
+    const avg = a.moodN ? (a.moodSum + a.mood) / (a.moodN + 1) : a.mood;
+    // 단골 자리가 있으면 그 자리에서 제안, 없으면 대기 목록
+    if (avg >= G.regularMood && regularsCount() < capacity()) propose(a);
+    else if (avg >= G.regularMood && P.waitlist.length < G.waitlistMax) toWaitlist(a);
+    else sendAway(a, avg >= G.leaveMood);
   }
 }
 onNewDay(dailyGuests);
@@ -484,8 +545,8 @@ function heroArrive(id: string) {
   queueEvent(() =>
     uiHooks.talk([
       ['narr', `방랑자의 서 — 「${h.title}」 ${h.name}${josa(h.name, "가")} 나타났다!`],
-      ...h.intro.map((t) => [h.kind, t, undefined, h.name] as [string, string, undefined, string]),
-      [h.kind, `부탁: ${h.request.text}`, undefined, h.name],
+      ...h.intro.map((t) => ['hero_' + h.id, t, undefined, h.name] as [string, string, undefined, string]),
+      ['hero_' + h.id, `부탁: ${h.request.text}`, undefined, h.name],
     ]),
   );
 }
@@ -503,7 +564,7 @@ function heroCheck() {
     markDirty();
     queueEvent(() =>
       uiHooks.talk([
-        [h.kind, '약속을 지켜 줬군. 이제부터 이 여관의 동료가 되겠다.', undefined, h.name],
+        ['hero_' + h.id, '약속을 지켜 줬군. 이제부터 이 여관의 동료가 되겠다.', undefined, h.name],
         ['narr', `${h.name} 영입! 고유 기술 「${h.skill.name}」 · 계정 전투력 +${Math.round(h.bonus * 100)}%`],
       ]),
     );
@@ -516,7 +577,7 @@ let hourAcc = 0;
 function tickGuests(dt: number) {
   const gh = dt / CONFIG.clock.realSecondsPerGameHour;
   const list = guestsOf();
-  const crowded = list.length > capacity();
+  const crowded = stayers().length > capacity();
   for (const a of list) {
     if (a.runId != null) continue;
     a.food = clamp(a.food + NE.foodPerHour * gh);
@@ -528,10 +589,12 @@ function tickGuests(dt: number) {
   hourAcc -= 1;
   // 한 시간마다: 기분 기록 · 손님 도착 · 영웅
   for (const a of list) {
-    if (a.status !== 'visitor') continue;
+    if (a.status !== 'visitor' && a.status !== 'passer') continue;
     a.moodSum += a.mood;
     a.moodN++;
   }
+  passersLeave();
+  callWaitlist();
   const h = absHours();
   if (h - P.lastArriveHour >= G.arriveEveryGameHours || h < P.lastArriveHour) {
     P.lastArriveHour = h;

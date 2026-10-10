@@ -10,6 +10,7 @@ import { openDex, openGoals, openLedger } from './book';
 import { openBoard } from './expedition';
 import { openBag } from './guests';
 import { openGarden, openSmith } from './smith';
+import { screen, setFontStep } from './screen';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -202,7 +203,15 @@ export function openMenu() {
     '메뉴',
     `<div class="menu grid"><button id="mGoal">오늘의 목표 · 평판</button><button id="mBag">가방</button><button id="mDex">도감</button><button id="mBook">장부</button></div>
     <p class="sub" style="margin-top:10px">설정</p>
+    <div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${Prog.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><button id="mIntro">오프닝 다시 보기</button><button id="mAcc">계정 · 클라우드 저장</button><button id="mTitle">타이틀로</button></div>`,
+  );
+  $$('[data-fs]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        setFontStep(+b.dataset.fs!);
+        $$('[data-fs]').forEach((x) => x.classList.toggle('on', x === b));
+      }),
   );
   $('#mGoal').onclick = () => openGoals();
   $('#mBag').onclick = () => openBag();

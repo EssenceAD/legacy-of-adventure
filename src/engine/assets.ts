@@ -1,4 +1,5 @@
 // 건물 PNG 로드, 밤 창문 마스크(windows.json), 지붕 색 바꾸기, 밤 색조 캐시
+import { HEROES } from '../data/heroes';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
 import { canvas, hsl, hslToRgb } from './pixel';
@@ -48,7 +49,7 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   }
   Object.assign(META, meta);
   const keys = Object.keys(meta);
-  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue'];
+  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id)];
   let done = 0;
   const total = keys.length + ports.length + 1;
   const tick = () => onProgress?.(++done / total);

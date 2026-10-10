@@ -85,8 +85,8 @@ export interface Actor {
   face?: Face;
   hair?: string;
   xp: number;
-  /** 방문 손님 / 단골(내 모험가) / 영웅 */
-  status: 'visitor' | 'regular' | 'hero';
+  /** 방문 손님(묵음) / 단골(내 모험가) / 영웅 / 지나가는 손님(낮에만 들렀다 저녁 전에 떠남) */
+  status: 'visitor' | 'regular' | 'hero' | 'passer';
   /** 방문 손님이 떠나는 날 */
   leaveDay: number;
   /** 머무는 동안 기분 평균 (단골 제안·일찍 떠나기 판단) */
@@ -103,6 +103,9 @@ export interface Actor {
   /** 지금 채우러 가는 욕구 (창에 표시) */
   intent?: string;
 }
+
+/** 단골 대기 목록에 보관하는 손님 (다시 찾아올 때 이 모습 그대로) */
+export type WaitGuest = Pick<Actor, 'id' | 'kind' | 'name' | 'lvl' | 'xp' | 'race' | 'rarity' | 'face' | 'hair'>;
 
 // ═════════════ 2단계 저장 데이터 모양 ═════════════
 
@@ -162,7 +165,8 @@ export interface RunResult {
   xp: number;
   mats: number;
   items: Item[];
-  report: [string, string][];
+  /** 보고서 줄: [말하는 사람(직업 키·영웅 초상화 키·narr), 문장, 이름표] */
+  report: [string, string, string?][];
   levelUps: string[];
   newChem: string[];
 }
@@ -233,6 +237,8 @@ export function freshProgress() {
     /** 지난 7일(게임 날) 수입 */
     week: [] as { day: number; gold: number }[],
     autoSalvage: false,
+    /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
+    waitlist: [] as WaitGuest[],
     /** 마지막으로 켜 있던 현실 시각 (방치 계산) */
     lastSeen: Date.now(),
     /** 게임 시간으로 마지막 손님 도착 판정 시각 (게임 시) */

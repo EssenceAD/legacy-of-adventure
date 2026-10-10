@@ -133,6 +133,30 @@ export const CONFIG = {
     typeMs: 32,
     chatTickMs: 5500,
   },
+  /** 핫픽스 3: 화면 크기 3단계(짧은 변 기준)와 글자 크기 */
+  UI_SCALE: {
+    /** 짧은 변이 이 이상이면 태블릿 */
+    tabletMin: 600,
+    /** 짧은 변이 이 이상이거나, 가로÷세로가 wideAspect 이상이면 넓은 화면 */
+    wideMin: 1024,
+    wideAspect: 1.3,
+    /** 태블릿·넓은 화면 배율(기기 픽셀 기준 정수). 기본값 = 마을이 짧은 변의 fill 안에 드는 가장 큰 정수 */
+    wideZooms: [1, 2, 3, 4],
+    fill: [0.7, 0.85],
+    /** 글자 크기 (px). Galmuri는 11의 배수에서 가장 또렷 */
+    fonts: {
+      phone: { dlg: 11, name: 11, ui: 11, small: 11, chat: 11, big: 22, tiny: 9 },
+      tablet: { dlg: 22, name: 22, ui: 18, small: 14, chat: 16, big: 22, tiny: 11 },
+      wide: { dlg: 22, name: 22, ui: 18, small: 14, chat: 16, big: 22, tiny: 11 },
+    } as Record<'phone' | 'tablet' | 'wide', Record<string, number>>,
+    /** 설정 → 글자 크기: 보통 · 크게 · 아주 크게 */
+    userScales: [1, 1.25, 1.5],
+    userLabels: ['보통', '크게', '아주 크게'],
+    /** 대화창 초상화 크기 (64px 그림을 정수배로) */
+    portrait: { phone: 96, tablet: 128, wide: 128 } as Record<'phone' | 'tablet' | 'wide', number>,
+    /** 맵 밖 숲을 몇 칸 더 그릴지 (넓은 화면에서 빈 곳 없게) */
+    groundRing: 12,
+  },
   // ═════════════ 2단계: 파밍 · 성장 · 케미 ═════════════
 
   /** 게임 안 시간: 현실 1분 = 게임 1시간. 하루 24분(낮 16분 06–22시 / 밤 8분 22–06시) */
@@ -149,8 +173,13 @@ export const CONFIG = {
     maxRealHours: 8,
     /** 게임 1시간마다 손님 1명이 버는 평균 금화 */
     goldPerGuestPerGameHour: 15,
-    /** 방치 수입은 켜 있을 때의 이 비율 */
-    rate: 0.7,
+    /** 방치 수입 비율 (손님 4명 3시간 ≈ 2,160G가 되게 맞춤) */
+    rate: 0.2,
+    /** 처음 이 시간(현실)까지는 그대로 쌓이고, 그 뒤로는 tailRate만큼만 */
+    fullHours: 3,
+    tailRate: 0.15,
+    /** 방치 금화는 다음 땅 넓히기(땅이 끝이면 가장 비싼 레벨업) 비용의 이 비율을 넘지 않는다 */
+    capShare: 0.8,
     /** 이보다 짧게 꺼져 있었으면 요약 창을 띄우지 않는다 (현실 초) */
     minSecondsForSummary: 60,
   },
@@ -164,6 +193,14 @@ export const CONFIG = {
     /** 기분 평균이 이 이상이면 단골 제안, 이 미만이면 일찍 떠남 */
     regularMood: 70,
     leaveMood: 35,
+    /** 단골 대기 목록 최대 (자리가 나면 다시 찾아와 제안) */
+    waitlistMax: 3,
+    /** 지나가는 손님: 정원이 차도 낮에 들른다. 이 시각(게임 시) 전까지 오고, 이 시각에 떠난다. 동시에 최대 몇 명 */
+    passerFromHour: 7,
+    passerUntilHour: 15,
+    passerLeaveHour: 18,
+    passerMax: 3,
+    passerChance: 0.5,
     /** 새 게임 시작 때 노주인이 남겨 둔 단골 수 */
     startRegulars: 2,
     /** 희귀도 확률 (특별·전설) */
@@ -288,12 +325,15 @@ export const CONFIG = {
     angryLeave: -2,
     /** 오늘의 목표 하나 달성 */
     goal: 5,
+    /** 날이 바뀔 때 손님 기분 평균: 이 이상이면 +, 이 미만이면 − */
+    dailyMoodHigh: 70,
+    dailyMoodLow: 40,
+    dailyMoodGain: 2,
+    dailyMoodLoss: -2,
   },
-  /** 영웅 별 올리기 (★n → ★n+1): 가루 = 현재 별 × heroStarDust, 금화 = 현재 별 × heroStarGold */
+  /** 영웅 별: 그 영웅이 낀 케미 친밀도 단계가 오를 때마다 +1 (최대) */
   heroes: {
     maxStars: 5,
-    starDust: 150,
-    starGold: 500,
   },
   dex: {
     /** 도감 칸 하나당 전투력 + (손님·아이템) */

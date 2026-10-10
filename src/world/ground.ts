@@ -1,10 +1,11 @@
 // 바닥 타일, 흙길, 울타리, 숲(야생 나무). 땅이나 길이 바뀔 때만 다시 그려 캐시한다.
+import { CONFIG } from '../data/config';
 import { BAYER, canvas, P, rng } from '../engine/pixel';
 import { N, sx, sy, TH, TW } from '../engine/iso';
 import { curLand, groundVersion, inLand, landBounds, pathT } from './town';
 
 /** 맵 밖으로 숲을 몇 칸 더 그릴지 (배율 1에서도 화면이 비지 않게) */
-const M = 8;
+const M = CONFIG.UI_SCALE.groundRing;
 
 export interface Wild {
   x: number;

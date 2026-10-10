@@ -1,6 +1,6 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
 import { CONFIG } from '../data/config';
-import { REGIONS, type RegionId, type Slot } from '../data/items';
+import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { markDirty, P, S, world, type Building, type Item } from './state';
@@ -12,8 +12,8 @@ export const smithLvl = () => smithObj()?.lvl ?? 0;
 
 // ───────── 분해 ─────────
 
-/** 가루는 한 통에 모은다 (P.dust.n) */
-export const dust = () => P.dust.n;
+/** 가루는 등급별로 따로 쌓인다 (일반 장비 → 잿빛 가루 …) */
+export const dustOf = (g: Grade) => P.dust[g];
 
 export function salvage(it: Item): number {
   if (it.owner != null) return 0;
@@ -21,7 +21,7 @@ export function salvage(it: Item): number {
   if (i < 0) return 0;
   P.bag.splice(i, 1);
   const n = SM.salvage[it.grade];
-  P.dust.n += n;
+  P.dust[it.grade] += n;
   track('salvage');
   markDirty();
   return n;
@@ -42,15 +42,15 @@ export function salvageAllCommon(): { count: number; dust: number } {
 // ───────── 강화 ─────────
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
-/** +5까지는 실패 없음, +6부터 확률 */
+/** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
 export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : SM.enhanceRates[it.enh - 5] ?? 0);
 
 export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
   if (it.enh >= SM.maxEnhance) return 'max';
   const cost = enhanceCost(it);
-  if (P.dust.n < cost) return 'poor';
-  P.dust.n -= cost;
+  if (P.dust[it.grade] < cost) return 'poor';
+  P.dust[it.grade] -= cost;
   track('enhance');
   markDirty();
   // 실패해도 단계는 떨어지지 않는다 (가루만 든다)

@@ -1,7 +1,7 @@
 // 케미 본편: 두 손님 사이의 친밀도(1~5단계) · 숨은 짝 발견 · 파티 배율
 import { CONFIG } from '../data/config';
 import { matchPair, pairById, type ChemPair, type Who } from '../data/chem';
-import { P, world, type Actor } from './state';
+import { P, uiHooks, world, type Actor } from './state';
 
 const C = CONFIG.chem;
 
@@ -38,8 +38,20 @@ export function addBond(a: Actor, b: Actor, xp: number): BondGain | null {
   while (bond.lv < 5 && bond.xp >= C.levels[bond.lv]) {
     bond.lv++;
     levelUp = bond.lv;
+    // 영웅: 그 영웅이 낀 친밀도가 오를 때마다 별 +1
+    for (const h of [a, b]) starUp(h);
   }
   return { pair, a, b, discovered, levelUp };
+}
+
+function starUp(h: Actor) {
+  if (!h.heroId || h.status !== 'hero') return;
+  const s = h.stars ?? 1;
+  if (s >= CONFIG.heroes.maxStars) return;
+  h.stars = s + 1;
+  const d = P.dex.heroes[h.heroId];
+  if (d) d.stars = h.stars;
+  uiHooks.toast(`${h.name} ★${h.stars}! 기술이 강해지고 계정 전투력이 올라요`);
 }
 
 /** 내 마을 손님들 (이웃 방문 중이어도) */

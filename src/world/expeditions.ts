@@ -81,7 +81,7 @@ export const activeRuns = () => P.runs.filter((r) => !r.result);
 
 /** 원정에 보낼 수 있나 (단골·영웅, 체력 30 이상, 쉬는 중) */
 export function canSend(a: Actor): string | null {
-  if (a.role || a.status === 'visitor') return '방문 손님은 원정에 못 가요';
+  if (a.role || (a.status !== 'regular' && a.status !== 'hero')) return '방문 손님은 원정에 못 가요';
   if (a.runId != null) return '원정 중';
   if (a.leaving) return '떠나는 중';
   if (a.hp < E.minHp) return `체력 ${E.minHp} 미만`;
@@ -143,7 +143,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const r = ri(q.region);
   const tierR = E.tierReward[q.tier];
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100));
+  // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem);
   const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
   const levelUps: string[] = [];
   for (const m of members) {
@@ -183,14 +184,14 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
 }
 
 /** 보고서 3~5줄: [말하는 사람(직업 키 또는 narr), 문장, 이름표] */
-function buildReport(members: Actor[], region: RegionId, win: boolean, items: { name: string; grade: string }[]): [string, string][] {
+function buildReport(members: Actor[], region: RegionId, win: boolean, items: { name: string; grade: string }[]): [string, string, string?][] {
   const reg = regionById(region).name;
   const a = pick(members);
   const b = pick(members.filter((m) => m !== a)) ?? a;
-  const lines: [string, string][] = [];
+  const lines: [string, string, string?][] = [];
   lines.push(['narr', fill(pick(REGION_OPEN[region]), a.name, b.name, reg)]);
   const c = pick(members);
-  lines.push([c.kind, fill(pick(CLASS_EVENT[c.kind as GuestKind] ?? CLASS_EVENT.knight), c.name, b.name, reg)]);
+  lines.push([c.heroId ? 'hero_' + c.heroId : c.kind, fill(pick(CLASS_EVENT[c.kind as GuestKind] ?? CLASS_EVENT.knight), c.name, b.name, reg), c.name]);
   // 짝이 같이 갔으면 케미 문장
   outer: for (const x of members)
     for (const y of members)

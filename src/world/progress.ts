@@ -120,7 +120,7 @@ export function claimGoal(i: number): { gold: number; dust?: number } | null {
 
 export function heroCtx(): HeroCtx {
   const objs = world.home?.objs ?? world.objs;
-  const regulars = (world.home?.actors ?? world.actors).filter((a) => a.status !== 'visitor' && !a.role);
+  const regulars = (world.home?.actors ?? world.actors).filter((a) => (a.status === 'regular' || a.status === 'hero') && !a.role);
   const bonds = Object.values(P.bonds);
   const smith = objs.find((o) => o.kind === 'smith');
   return {

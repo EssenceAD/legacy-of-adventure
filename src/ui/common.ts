@@ -18,6 +18,8 @@ export const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 const PICS: Record<string, string> = {};
 export function pic(a: Actor): string {
   if (a.role) return PORTRAITS[a.kind] || '';
+  // 영웅은 전용 초상화
+  if (a.heroId && PORTRAITS['hero_' + a.heroId]) return PORTRAITS['hero_' + a.heroId];
   const { key, def } = appearance(a);
   if (PICS[key]) return PICS[key];
   const f = framesFor(key, def).idle[0];

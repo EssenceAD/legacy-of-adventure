@@ -1,7 +1,8 @@
 // 원정 창: 의뢰 게시판(목록·진행 중 파티·천장) → 파티 고르기(전투력·성공률·전투력 올리기 안내) → 보고서 · 방치 요약
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
-import { GRADE_INFO, REGIONS, regionById } from '../data/items';
+import { GRADE_INFO, GRADES, REGIONS, regionById, type Grade } from '../data/items';
+import { talk } from './dialogue';
 import { powerOf } from '../world/adventurers';
 import { departParty, returnParty } from '../world/actors';
 import {
@@ -9,7 +10,7 @@ import {
 } from '../world/expeditions';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
-import { markDirty, P, S, world, type Quest, type Run } from '../world/state';
+import { markDirty, P, S, world, type Quest, type Run, type TalkLine } from '../world/state';
 import { $, $$, esc, fmt, itemCell, leftText, minText, nameTag, pct, pic } from './common';
 import { closeWin, openWin, toast } from './windows';
 
@@ -18,7 +19,7 @@ const TIER = ['짧은', '보통', '긴', '아주 긴'];
 const homeActors = () => world.home?.actors ?? world.actors;
 
 /** 원정 갈 수 있는 손님 (단골·영웅) */
-const crew = () => homeActors().filter((a) => !a.role && a.status !== 'visitor' && !a.leaving);
+const crew = () => homeActors().filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero') && !a.leaving);
 
 function runRow(r: Run) {
   const reg = regionById(r.quest.region);
@@ -53,7 +54,13 @@ export function openBoard() {
     ${locked}<p class="note pity">${pity}</p>`,
   );
   $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
-  $$('.run.done').forEach((b) => (b.onclick = () => showReport(P.runs.find((r) => r.id === +b.dataset.run!)!)));
+  $$('.run.done').forEach(
+    (b) =>
+      (b.onclick = () => {
+        closeWin();
+        showReport(P.runs.find((r) => r.id === +b.dataset.run!)!);
+      }),
+  );
   $('#qRef').onclick = () => {
     if (refreshQuests()) {
       markDirty();
@@ -87,7 +94,7 @@ function openParty(q: Quest, picked: number[] = []) {
         ? `파티 전투력 <b class="${short ? 'bad' : 'good'}">${fmt(info.power)}</b> / ${fmt(q.power)}${info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''}<br>성공률 <b>${pct(info.success)}</b> · 걸리는 시간 ${minText(info.minutes)}`
         : '함께 갈 손님을 골라요'
     }</div>
-    ${tips.length ? `<div class="tips"><b>⚔ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
+    ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
     <button class="bigbtn" id="pGo" ${sel.length >= E.partyMin ? '' : 'disabled'}>출발!</button>`,
   );
   $$('.pm').forEach(
@@ -110,15 +117,27 @@ function openParty(q: Quest, picked: number[] = []) {
 
 // ───────── 보고서 ─────────
 
+/** 귀환 보고서: 초상화 + 말풍선 대화창으로 사건 3~5줄 → 전리품 창 */
 export function showReport(run: Run) {
   const res = run.result;
   if (!res) return;
   const reg = regionById(run.quest.region);
-  const lines = res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('');
+  const lines: TalkLine[] = [
+    ['narr', `${reg.name} 원정 — ${res.win ? '성공!' : '실패…'}`],
+    ...res.report.map(([who, t, name]) => [who, t, undefined, who === 'narr' ? undefined : name] as TalkLine),
+  ];
+  talk(lines, () => showLoot(run));
+}
+
+/** 전리품 창 (게시판의 「보고서 보기」에서도) */
+function showLoot(run: Run) {
+  const res = run.result;
+  if (!res || run.claimed) return;
+  const reg = regionById(run.quest.region);
   const items = res.items.map((it) => `<div class="loot">${itemCell(it)}<span style="color:${GRADE_INFO[it.grade].color}">${GRADE_INFO[it.grade].name} ${esc(it.name)}</span></div>`).join('');
   openWin(
     `원정 보고서 · ${reg.name}`,
-    `<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${lines}</div>
+    `<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('')}</div>
     <div class="rew">금화 <b class="g">+${fmt(res.gold)}</b> · 경험치 +${res.xp} · ${reg.mat} +${res.mats}</div>
     ${items}
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
@@ -145,18 +164,23 @@ export function showOffline(s: OfflineSummary) {
   for (const r of s.runs) returnParty(r, false);
   const h = Math.floor(s.seconds / 3600);
   const m = Math.floor((s.seconds % 3600) / 60);
-  const capped = s.away > s.seconds + 1 ? ` <small>(최대 ${CONFIG.offline.maxRealHours}시간까지만 쌓여요)</small>` : '';
-  const runs = s.runs
-    .map((r) => `<div>· ${regionById(r.quest.region).name} 원정 ${r.result!.win ? '<b class="good">성공</b>' : '<b class="bad">실패</b>'} — 금화 +${fmt(r.result!.gold)}${r.result!.items.length ? `, 장비 ${r.result!.items.length}개` : ''}</div>`)
-    .join('');
+  const over = s.away > s.seconds + 1 ? ` <small>(최대 ${CONFIG.offline.maxRealHours}시간까지만 쌓여요)</small>` : '';
+  const wins = s.runs.filter((r) => r.result!.win).length;
+  const runGold = s.runs.reduce((t, r) => t + r.result!.gold, 0);
+  const items = (Object.entries(s.items) as [Grade, number][])
+    .sort((p, q) => GRADES.indexOf(q[0]) - GRADES.indexOf(p[0]))
+    .map(([g, n]) => `<b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name} ${n}</b>`)
+    .join(' · ');
   openWin(
     '그동안 마을에서는…',
-    `<p class="sub">${h ? `${h}시간 ` : ''}${m}분 동안${capped}</p>
+    `<p class="sub">${h ? `${h}시간 ` : ''}${m}분 동안${over}</p>
     <div class="offl">
-      <div>· 손님 ${s.guests}명이 묵고 갔어요 — 금화 <b class="g">+${fmt(s.gold)}</b></div>
-      ${runs}
-      ${s.ripe ? `<div>· 텃밭 작물 ${s.ripe}칸이 다 자랐어요</div>` : ''}
-      ${s.bonds.some((b) => b.discovered) ? `<div class="heart">· 원정에서 새 케미를 발견했어요!</div>` : ''}
+      <div>· 손님 ${s.guests}명이 묵고 갔어요 — 금화 <b class="g">+${fmt(s.gold)}</b>${s.capped ? ' <small>(다음 목표 비용의 80%까지)</small>' : ''}</div>
+      ${s.runs.length ? `<div>· 원정 ${s.runs.length}개 끝남 (성공 ${wins}) — 금화 +${fmt(runGold)} <small>(이미 금고에)</small></div>` : ''}
+      ${items ? `<div>· 얻은 장비: ${items}</div>` : ''}
+      ${s.levelUps.length ? `<div>· 레벨업: ${s.levelUps.map(esc).join(', ')}</div>` : ''}
+      ${s.newChem.length ? `<div class="heart">· 새 케미: ${s.newChem.map(esc).join(', ')}</div>` : ''}
+      ${s.harvested ? `<div>· 텃밭에서 채소 ${s.harvested}개를 거둬 뒀어요</div>` : ''}
     </div>
     <button class="bigbtn" id="offOk">모두 받기</button>`,
   );

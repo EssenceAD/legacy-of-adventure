@@ -6,7 +6,7 @@ import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
-import { getPref, writeSave } from './save/save';
+import { writeSave } from './save/save';
 import { enter, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
@@ -17,7 +17,8 @@ import { P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
-import { initHud, movePlacement, setOnZoom, setZoom, tickHud } from './ui/hud';
+import { initHud, movePlacement, setOnZoom, setZoom, syncZoomLabel, tickHud } from './ui/hud';
+import { initScreen, screen, setOnScreenChange } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
@@ -46,7 +47,7 @@ function loadFonts() {
 }
 
 function resize() {
-  resizeCanvas(cv, host, S.zoom);
+  resizeCanvas(cv, host, S.zoom, screen.devicePx);
 }
 
 // ───────── 루프 ─────────
@@ -249,8 +250,12 @@ async function boot() {
   buildThumbs();
 
   // 배율은 기기마다 기억 (1·2·3 중 하나)
-  const z = getPref<number>('zoom', CONFIG.view.defaultZoom);
-  if (CONFIG.view.zooms.includes(z)) S.zoom = z;
+  // 화면 크기 구간(폰·태블릿·넓은 화면) · 글자 크기 · 배율
+  setOnScreenChange(() => {
+    resize();
+    syncZoomLabel();
+  });
+  initScreen();
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
   uiHooks.talk = talk;
@@ -282,10 +287,6 @@ async function boot() {
     }
   });
 
-  addEventListener('resize', () => {
-    clearTimeout((window as unknown as { __r: number }).__r);
-    (window as unknown as { __r: number }).__r = window.setTimeout(resize, 150);
-  });
   const saveNow = () => S.started && writeSave();
   addEventListener('pagehide', saveNow);
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && saveNow());

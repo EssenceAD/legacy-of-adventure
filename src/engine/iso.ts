@@ -22,15 +22,20 @@ export const view = {
   OY: 0,
 };
 
-export function resizeCanvas(cv: HTMLCanvasElement, host: HTMLElement, zoom: number) {
+/**
+ * devicePx=false(폰): zoom = CSS px 배율 (지금 그대로)
+ * devicePx=true(태블릿·넓은 화면): zoom = 기기 픽셀 배율 → 도트 하나가 정확히 zoom×zoom 기기 픽셀 (흐림 없음)
+ */
+export function resizeCanvas(cv: HTMLCanvasElement, host: HTMLElement, zoom: number, devicePx = false) {
   const r = host.getBoundingClientRect();
-  view.SC = zoom;
-  view.LW = Math.max(1, Math.ceil(r.width / zoom));
-  view.LH = Math.max(1, Math.ceil(r.height / zoom));
+  const sc = devicePx ? zoom / devicePixelRatio : zoom;
+  view.SC = sc;
+  view.LW = Math.max(1, Math.ceil(r.width / sc));
+  view.LH = Math.max(1, Math.ceil(r.height / sc));
   cv.width = view.LW;
   cv.height = view.LH;
-  cv.style.width = view.LW * zoom + 'px';
-  cv.style.height = view.LH * zoom + 'px';
+  cv.style.width = view.LW * sc + 'px';
+  cv.style.height = view.LH * sc + 'px';
   cv.getContext('2d')!.imageSmoothingEnabled = false;
   clampCam();
 }

@@ -170,7 +170,7 @@ function validate(d: any): SaveData | null {
         rarity: (RARITIES as string[]).includes(a.rarity) ? a.rarity : 'common',
         face: a.face && typeof a.face === 'object' ? a.face : undefined,
         hair: typeof a.hair === 'string' ? a.hair : undefined,
-        status: ['visitor', 'regular', 'hero'].includes(a.status) ? a.status : 'regular',
+        status: ['visitor', 'regular', 'hero', 'passer'].includes(a.status) ? a.status : 'regular',
         leaveDay: num(a.leaveDay, 0), moodSum: num(a.moodSum, 0), moodN: num(a.moodN, 0),
         equip: { weapon: eq.weapon ?? null, armor: eq.armor ?? null, acc: eq.acc ?? null },
         runId: typeof a.runId === 'number' ? a.runId : null,

@@ -1,10 +1,9 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { def, type Kind } from '../data/catalog';
-import { CONFIG } from '../data/config';
 import { NEIGHBORS } from '../data/neighbors';
 import { P } from '../engine/pixel';
 import * as game from '../game';
-import { setPref } from '../save/save';
+
 import { setNight } from '../world/daynight';
 import { stars } from '../world/progress';
 import { S } from '../world/state';
@@ -12,6 +11,7 @@ import { blocksDoor, canPlace, placing, suggestSpot, type Placement } from '../w
 import { openNotices } from './notice';
 import { openBoard, runsWaiting } from './expedition';
 import { openGuests } from './guests';
+import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
 import { openBuild, openMenu, openWin, toast } from './windows';
 
@@ -159,17 +159,18 @@ let onZoom: () => void = () => {};
 export function setOnZoom(fn: () => void) {
   onZoom = fn;
 }
+export const syncZoomLabel = () => zoomLabel();
 function zoomLabel() {
   $('#bZoom').textContent = '×' + S.zoom;
 }
 
 /** 배율 바꾸기 (버튼·핀치 공용). 정수 배율만 */
 export function setZoom(z: number) {
-  const zs = CONFIG.view.zooms;
+  const zs = zoomsNow();
   z = Math.max(zs[0], Math.min(zs[zs.length - 1], Math.round(z)));
   if (z === S.zoom) return;
   S.zoom = z;
-  setPref('zoom', z);
+  saveZoom();
   zoomLabel();
   onZoom();
 }
@@ -196,7 +197,7 @@ export function initHud() {
   };
   $('#bZoom').onclick = () => {
     // 1 → 2 → 3 → 1 …
-    const zs = CONFIG.view.zooms;
+    const zs = zoomsNow();
     setZoom(zs[(zs.indexOf(S.zoom) + 1) % zs.length]);
   };
   $('#placeNo').onclick = cancelPlace;

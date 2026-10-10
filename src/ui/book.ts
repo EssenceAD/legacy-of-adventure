@@ -107,7 +107,7 @@ export function openGoals() {
     .map((g, i) => {
       const t = GOAL_TEMPLATES.find((x) => x.id === g.id)!;
       const done = g.progress >= g.target;
-      return `<div class="goal ${g.claimed ? 'got' : ''}"><span><b>${t.text(g.target)}</b><small>${g.progress}/${g.target} · 보상 ${fmt(t.reward.gold)}G${t.reward.dust ? ` + 가루 ${t.reward.dust}` : ''} · 평판 +${CONFIG.reputation.goal}</small></span><button data-g="${i}" ${done && !g.claimed ? '' : 'disabled'}>${g.claimed ? '받음' : done ? '받기' : '진행 중'}</button></div>`;
+      return `<div class="goal ${g.claimed ? 'got' : ''}"><span><b>${t.text(g.target)}</b><small>${g.progress}/${g.target} · 보상 ${fmt(t.reward.gold)}G${t.reward.dust ? ` + 잿빛 가루 ${t.reward.dust}` : ''} · 평판 +${CONFIG.reputation.goal}</small></span><button data-g="${i}" ${done && !g.claimed ? '' : 'disabled'}>${g.claimed ? '받음' : done ? '받기' : '진행 중'}</button></div>`;
     })
     .join('');
   const s = stars();
