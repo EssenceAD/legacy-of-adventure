@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#07091a" />
+    <title>모험의 유산</title>
+    <script type="module" crossorigin src="./assets/index-HQE_Z6wp.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BcnnDW83.css">
+  </head>
+  <body>
+    <div id="view">
+      <canvas id="scene"></canvas>
+      <div id="over"></div>
+      <div id="flash"></div>
+
+      <div id="hud" hidden>
+        <div class="top">
+          <div class="stat px">
+            <div class="nm" id="innv">여관</div>
+            <div class="r1">
+              <span><i class="coin"></i><span id="gold"><span id="goldv">0</span></span></span>
+              <span id="dayv">1일차 · 낮</span>
+            </div>
+          </div>
+          <div class="sp"></div>
+          <button class="ibtn px" id="bNotice" aria-label="새 소식">!<span class="dot" hidden></span></button>
+          <button class="ibtn px" id="bDN" aria-label="낮과 밤">☾</button>
+          <button class="ibtn px" id="bMenu" aria-label="메뉴">≡</button>
+        </div>
+        <div id="toast" class="px"></div>
+        <div id="visitbar" class="px" hidden><span id="vName"></span><button id="vLike">♥</button><button id="vHome">집으로</button></div>
+        <div id="chatlog" aria-label="채팅 열기"></div>
+        <nav class="dk px">
+          <button id="bBuild"><canvas width="16" height="16" data-ic="hammer"></canvas>건설</button>
+          <button id="bLand"><canvas width="16" height="16" data-ic="land"></canvas>땅</button>
+          <button id="bGuest"><canvas width="16" height="16" data-ic="guest"></canvas>손님</button>
+          <button id="bVillage"><canvas width="16" height="16" data-ic="village"></canvas><span class="lbl">마을</span></button>
+          <button id="bBook"><canvas width="16" height="16" data-ic="book"></canvas>장부</button>
+        </nav>
+        <div id="placebar" class="px" hidden><span id="placeTxt">지을 곳을 눌러요</span><button id="placeOk">여기에 짓기</button><button id="placeNo">취소</button></div>
+        <button class="ibtn px" id="bZoom" aria-label="확대 배율">×2</button>
+      </div>
+
+      <div id="scrim"></div>
+      <section class="win px" id="win" role="dialog" aria-modal="true">
+        <div class="hd"><b id="winT"></b><button id="winX" aria-label="닫기">✕</button></div>
+        <div id="winB"></div>
+      </section>
+
+      <div id="dlg" hidden>
+        <div class="keys">Z NEXT<button id="dSkip">X SKIP</button></div>
+        <div class="box px"><img id="dPort" alt="" /><span id="dName"></span><p id="dText"></p><span class="more">▼</span></div>
+      </div>
+      <div id="namebox" class="px" hidden>
+        <b>새 간판에 쓸 여관 이름</b>
+        <div class="row"><input id="nameIn" maxlength="8" placeholder="예) 별빛" autocomplete="off" /><button id="nameOk">결정</button></div>
+      </div>
+
+      <div id="title">
+        <div class="logo">
+          <div class="ko">모험의 유산</div>
+          <div class="en">LEGACY OF ADVENTURE</div>
+          <span class="ch">제1장 · 은퇴한 주인의 여관</span>
+        </div>
+        <div class="tbtns">
+          <button class="px" id="tStart">새 여관 열기<small>오프닝부터</small></button>
+          <button class="px" id="tCont">이어하기<small id="tContSub">저장된 마을이 없어요</small></button>
+        </div>
+        <div class="ver">v0.1</div>
+      </div>
+      <div id="loading">불러오는 중…</div>
+      <div id="fade"></div>
+    </div>
+  </body>
+</html>
