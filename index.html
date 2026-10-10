@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#07091a" />
     <title>모험의 유산</title>
-    <script type="module" crossorigin src="./assets/index-dAZFhHbG.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DOvdaztw.css">
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="모험의 유산" />
+    <script type="module" crossorigin src="./assets/index-PQX3KZWc.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BaPjHwy8.css">
   </head>
   <body>
     <div id="view">
@@ -20,7 +26,8 @@
             <div class="nm" id="innv">여관</div>
             <div class="r1">
               <span><i class="coin"></i><span id="gold"><span id="goldv">0</span></span></span>
-              <span id="dayv">1일차 · 낮</span>
+              <span id="dayv">1일차 · 06시</span>
+              <span id="starv" class="star">★1</span>
             </div>
           </div>
           <div class="sp"></div>
@@ -33,10 +40,10 @@
         <div id="chatlog" aria-label="채팅 열기"></div>
         <nav class="dk px">
           <button id="bBuild"><canvas width="16" height="16" data-ic="hammer"></canvas>건설</button>
-          <button id="bLand"><canvas width="16" height="16" data-ic="land"></canvas>땅</button>
+          <button id="bExp"><canvas width="16" height="16" data-ic="sword"></canvas>원정</button>
           <button id="bGuest"><canvas width="16" height="16" data-ic="guest"></canvas>손님</button>
           <button id="bVillage"><canvas width="16" height="16" data-ic="village"></canvas><span class="lbl">마을</span></button>
-          <button id="bBook"><canvas width="16" height="16" data-ic="book"></canvas>장부</button>
+          <button id="bMenu2"><canvas width="16" height="16" data-ic="book"></canvas>메뉴</button>
         </nav>
         <div id="placebar" class="px" hidden><span id="placeTxt">지을 곳을 눌러요</span><button id="placeOk">여기에 짓기</button><button id="placeNo">취소</button></div>
         <button class="ibtn px" id="bZoom" aria-label="확대 배율">×2</button>
@@ -51,6 +58,7 @@
       <div id="dlg" hidden>
         <div class="keys">Z NEXT<button id="dSkip">X SKIP</button></div>
         <div class="box px"><img id="dPort" alt="" /><span id="dName"></span><p id="dText"></p><span class="more">▼</span></div>
+        <div id="dChoice" hidden></div>
       </div>
       <div id="namebox" class="px" hidden>
         <b>새 간판에 쓸 여관 이름</b>
@@ -67,7 +75,7 @@
           <button class="px" id="tStart">새 여관 열기<small>오프닝부터</small></button>
           <button class="px" id="tCont">이어하기<small id="tContSub">저장된 마을이 없어요</small></button>
         </div>
-        <div class="ver">v0.1</div>
+        <div class="ver">v0.2</div>
       </div>
       <div id="loading">불러오는 중…</div>
       <div id="fade"></div>
