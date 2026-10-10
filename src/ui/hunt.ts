@@ -1,6 +1,7 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
+import { notePrep, prepLine } from './power';
 import { hfx } from '../world/harmony';
 import { REGIONS, type RegionId } from '../data/items';
 import { BOSS_IMG, MOB_IMG, RAID_BG, scaled } from '../engine/assets';
@@ -96,7 +97,7 @@ function openHuntPrep(r: RegionId, s: number) {
   openWin(
     `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
     `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 3웨이브 · ${esc(mobs.join(' · '))}</p>
-    <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
+    <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티 ${prepLine('hunt', pw)}</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>
     <div class="plist">${rows || `<p class="note">${awayNote()}</p>`}</div>
@@ -164,6 +165,7 @@ const whiteOf = (src: HTMLCanvasElement) => {
 };
 
 function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
+  notePrep('hunt', partyPower(members));
   const leader = members[0];
   const rec = recPower(r, s);
   const power = partyPower(members);

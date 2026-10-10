@@ -803,3 +803,17 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 #settle .bars i.now b{background:#e8a23a;box-shadow:inset 0 2px 0 #ffd36b}
 #settle .bars small{position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:var(--f-tiny);color:#8a8fa8}
 #settle .tap{text-align:center;color:#6a7098;font-size:var(--f-tiny)}
+
+/* ── 베타 5장: 전투력 ── */
+.stat .nmrow{display:flex;align-items:center;gap:8px;justify-content:space-between}
+#pwr{position:relative;display:inline-flex;align-items:center;gap:3px;border:0;background:none;padding:0;color:#ffb0a0;font-weight:700;font-size:var(--f-small);cursor:pointer;font-variant-numeric:tabular-nums}
+#pwr img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+#pwr.up{animation:pwrup .9s ease}
+@keyframes pwrup{20%{transform:scale(1.25);filter:brightness(1.8)}}
+#pwrWhy{position:absolute;left:0;top:100%;white-space:nowrap;color:#8fe08f;font-size:var(--f-tiny);background:rgba(7,9,26,.85);padding:1px 5px;margin-top:2px;z-index:6;animation:blup .3s ease-out}
+#pcard{position:absolute;left:50%;top:26%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:31;display:flex;align-items:center;gap:10px;padding:10px 16px;border:0 solid transparent;border-image:var(--ui-dialog) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream);pointer-events:none}
+#pcard img{width:calc(11px * var(--k));height:calc(11px * var(--k));image-rendering:pixelated;animation:beat .6s ease infinite}
+#pcard span{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;min-width:180px;max-width:260px}
+#pcard small{color:#ffb0a0;font-size:var(--f-small)}#pcard b{font-size:var(--f-big);color:var(--gold);word-break:keep-all}#pcard em{font-style:normal;font-size:var(--f-small);color:#8fe08f}
+#pcard.go{animation:hban .45s cubic-bezier(.2,1.6,.4,1)}
+.talking #pcard{visibility:hidden}

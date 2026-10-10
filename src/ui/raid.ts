@@ -2,6 +2,7 @@
 // 시안(raid_battle.html)의 전투를 옮겼다. 피해량은 「자동 기대 피해량」에 맞춰 보정한다:
 //  · 자동: 기대 피해량 ±10% (끝까지 버텼을 때)  · 직접: 자동의 90% ~ 130%
 import { CONFIG } from '../data/config';
+import { notePrep, prepLine } from './power';
 import type { BossDef } from '../data/bosses';
 import { CLASSES } from '../data/classes';
 import { heroById } from '../data/heroes';
@@ -62,7 +63,7 @@ export function openRaidPrep(t: RaidTarget) {
       <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
       <p class="note">패턴: ${b.patterns.join(' · ')}<br>상성 ↑ ${b.weak.map((k) => CLASSES[k].name).join('·')} / ↓ ${b.resist.map((k) => CLASSES[k].name).join('·')}</p>
     </div></div>
-    <div class="pw"><span>권장 전투력</span><em>${fmt(b.power)}</em><span>우리 파티 (케미 ×${ex.chem.toFixed(2)})</span><em class="${low ? 'bad' : ex.power >= b.power ? 'good' : ''}">${fmt(ex.power)}</em><span>예상 피해량</span><em>${fmt(ex.target)}</em></div>
+    <div class="pw"><span>권장 전투력</span><em>${fmt(b.power)}</em><span>우리 파티 (케미 ×${ex.chem.toFixed(2)}) ${prepLine('raid', ex.power)}</span><em class="${low ? 'bad' : ex.power >= b.power ? 'good' : ''}">${fmt(ex.power)}</em><span>예상 피해량</span><em>${fmt(ex.target)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${members.length}/${R.partySize} · 첫 번째가 대장(직접 조작)</p>
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
@@ -378,6 +379,7 @@ let active: { stop: () => void; advance: (sec: number) => void } | null = null;
 export const _raidAdvance = (sec: number) => active?.advance(sec);
 
 function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
+  notePrep('raid', ex.power);
   active?.stop();
   const b = t.boss;
   const leader = members[0];

@@ -387,6 +387,8 @@ export function freshProgress() {
       pending: [] as DayLog[],
       best: 0,
     },
+    /** 베타 5장: 강해지는 순간 — 마지막으로 보여 준 전투력 · 구성(이유 찾기) · 도감 단계 카드 · 사냥/토벌 준비 지난 전투력 */
+    power: { shown: 0, comps: {} as Record<string, number>, dexMs: 0, prep: {} as Record<string, number> },
     /**
      * 베타 2장 여관 평가단: 이번 시즌(실제 주) · 테마 · 암행 보너스 · 평가를 마친 시즌 · 최고 등급(0 없음~4 전설) · 지난 결과
      */
