@@ -18,6 +18,7 @@ import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
 import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
 import { bfx, hfx, incMult } from './harmony';
+import { dailyAdd } from './daily';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -508,6 +509,8 @@ export function arrive(a?: Actor): Actor | null {
   world.actors.push(a);
   const fresh = dexAddGuest(a);
   track('guestArrive');
+  dailyAdd('arrivals');
+  if (fresh) dailyAdd('newDex');
   markDirty();
   const tag = a.rarity !== 'common' ? `<b style="color:${RARITY_INFO[a.rarity].color}">${RARITY_INFO[a.rarity].name}</b> ` : '';
   const what = back ? '다시 찾아온 손님' : a.status === 'passer' ? '지나가는 손님' : '새 손님';

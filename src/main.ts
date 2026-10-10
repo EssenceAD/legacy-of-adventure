@@ -24,6 +24,7 @@ import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastH
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
 import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
+import { showSettlement, tickSettle } from './ui/daily';
 import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
@@ -166,6 +167,7 @@ function tick(dt: number) {
   stepGradeAnim(dt);
   tickHarmony(dt);
   tickEval(dt);
+  tickSettle(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -432,6 +434,7 @@ async function boot() {
       __grade: (g: number) => (gradeDev.g = g),
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
+      __settle: showSettlement,
       __harm: { sets: harmonySets, computeSets, checkDiscover, props: propsNow, openPropInfo },
       /** 개발용: 그 칸에 짓기 미리보기 (확정은 #placeOk) */
       __place: (k: Kind, x: number, y: number) => {

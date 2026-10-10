@@ -9,6 +9,7 @@ import { townGrade } from './guide';
 import { addRep, stars } from './progress';
 import { earn, P, S, world, type Building } from './state';
 import { floatW } from './fx';
+import { dailyAdd } from './daily';
 
 const H = CONFIG.harmony;
 export interface HSet {
@@ -149,6 +150,7 @@ export function checkDiscover(silent = false): HSet[] {
     S.gold += g;
     addRep(H.rep);
     harmonyHooks.found(s, g);
+    dailyAdd('newHarm');
   }
   return fresh;
 }

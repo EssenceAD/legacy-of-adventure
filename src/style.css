@@ -786,3 +786,20 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 .evres.t2 b{color:#cfd8e8}.evres.t3 b{color:var(--gold)}.evres.t4 b{color:#ff9ad0}.evres.t0 b{color:#8a8fa8}
 .evres.t3,.evres.t4{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:hban .45s cubic-bezier(.2,1.6,.4,1)}
 .evmiss{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#2a2440;margin:6px 0}.evmiss img{width:calc(11px * var(--k));height:calc(11px * var(--k))}.evmiss span{display:flex;flex-direction:column;gap:2px}.evmiss small{color:#cfd8ff}
+
+/* ── 베타 3장: 하루 마감 정산 ── */
+#settle{position:absolute;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,6,20,.45);opacity:0;transition:opacity .2s;cursor:pointer}
+#settle.on{opacity:1}
+#settle .card{width:100%;max-width:340px;padding:14px;display:flex;flex-direction:column;gap:8px;animation:hban .4s cubic-bezier(.2,1.6,.4,1)}
+#settle .t{font-size:var(--f-big);color:var(--gold);text-align:center}
+#settle .rec{margin:0;text-align:center;color:#ffd36b;font-weight:700;display:flex;justify-content:center;align-items:center;gap:6px;animation:beat .6s ease infinite}
+#settle .rec img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+#settle.record .card{box-shadow:0 0 0 3px var(--gold)}
+#settle .sts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#settle .sts span{display:flex;flex-direction:column;padding:6px 8px;background:#161a30}#settle .sts small{color:#9aa6d8;font-size:var(--f-small)}#settle .sts b{font-size:var(--f-big)}
+#settle .bars{display:flex;align-items:flex-end;gap:6px;height:72px;padding:4px 6px 16px;background:#161a30;position:relative}
+#settle .bars i{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative}
+#settle .bars b{display:block;width:100%;background:#4a5a9a;box-shadow:inset 0 2px 0 #6a7ac0}
+#settle .bars i.now b{background:#e8a23a;box-shadow:inset 0 2px 0 #ffd36b}
+#settle .bars small{position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:var(--f-tiny);color:#8a8fa8}
+#settle .tap{text-align:center;color:#6a7098;font-size:var(--f-tiny)}

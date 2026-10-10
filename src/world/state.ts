@@ -379,6 +379,15 @@ export function freshProgress() {
      */
     harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[] },
     /**
+     * 베타 3장 하루 마감 정산: 이번 날(자정까지) 모으는 중 · 지난 날들 · 아직 못 보여 준 정산 · 최고 수입
+     */
+    daily: {
+      cur: { day: 0, gold0: -1, arrivals: 0, newHarm: 0, newDex: 0, moodSum: 0, moodN: 0 },
+      log: [] as DayLog[],
+      pending: [] as DayLog[],
+      best: 0,
+    },
+    /**
      * 베타 2장 여관 평가단: 이번 시즌(실제 주) · 테마 · 암행 보너스 · 평가를 마친 시즌 · 최고 등급(0 없음~4 전설) · 지난 결과
      */
     evaluation: {
@@ -393,6 +402,16 @@ export function freshProgress() {
       base: {} as Record<string, number>,
     },
   };
+}
+
+/** 하루 마감 정산 한 장 */
+export interface DayLog {
+  day: number;
+  gold: number;
+  guests: number;
+  mood: number;
+  newHarm: number;
+  newDex: number;
 }
 
 /** 우편함: 출석·랭킹·운영자 선물·앞 주인 편지 */
