@@ -82,6 +82,7 @@ export function evalParts(theme = P.evaluation.theme): EvalPart[] {
         part('huntBest', '사냥 최고 스테이지', Object.values(P.hunt.best).reduce((s, v) => s + v, 0), a.huntBest),
         part('trains', '훈련', delta('trains', C().trains), a.trains),
         part('raids', '토벌 도전', delta('raids', C().raidTries ?? 0), a.raids),
+        part('harmonies', '모험가 어울림', themeSets(TH.adventure), a.harmonies),
       ];
     default: {
       const roofs = new Set(world.objs.filter((o) => def(o.kind).roofable).map((o) => String(o.hue))).size;
@@ -116,6 +117,7 @@ const MISS: Record<string, [string, number[]]> = {
   'adventure.huntBest': ['나부끼는 깃발 아래서 땀 흘렸다면 더 깊이 갔을 텐데…', [12]],
   'adventure.trains': ['훈련장에서 화살 꽂히는 소리가 들리지 않던데…', [8, 22]],
   'adventure.raids': ['자랑할 트로피를 한데 모아 두면 사기가 오르지 않을까…', [20, 12]],
+  'adventure.harmonies': ['훈련장 곁에 과녁이 있었다면 모험가들 눈빛이 달랐을 텐데…', [8, 3]],
   'scenery.decos': ['장식이 조금 더 있었다면 사진이 잘 나왔을 텐데…', [10, 21]],
   'scenery.kinds': ['좌판이 늘어선 장터 하나쯤 있었으면…', [21, 9]],
   'scenery.found': ['건물들이 서로 어울리는 모습을 더 보고 싶었다…', []],

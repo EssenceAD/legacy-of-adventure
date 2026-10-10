@@ -636,12 +636,13 @@ export const CONFIG = {
     /** 마지막 날(일요일) 게임 속 이 시각 이후 마을을 보고 있으면 평가단이 온다 */
     tourHour: 17,
     secretBonus: 30,
-    gourmet: { meals: [120, 300], harvests: [24, 200], harmonies: [3, 250], mood: [100, 250] },
-    relax: { mood: [100, 400], harmonies: [4, 300], decos: [12, 300] },
-    adventure: { wins: [25, 300], huntBest: [20, 250], trains: [50, 200], raids: [6, 250] },
+    // 밤샘 ④-2 평가단 일주일 시뮬(tests/eval-sim): 성실히 하면 실버 · 그 주 테마 어울림을 노리면 골드가 되게 다시 맞춤
+    gourmet: { meals: [200, 250], harvests: [30, 200], harmonies: [3, 300], mood: [100, 250] },
+    relax: { mood: [100, 300], harmonies: [4, 350], decos: [15, 350] },
+    adventure: { wins: [25, 250], huntBest: [20, 200], trains: [50, 150], raids: [6, 200], harmonies: [3, 200] },
     scenery: { decos: [15, 150], kinds: [8, 150], found: [12, 250], grade: [4, 250], roofs: [4, 200] },
     /** 테마별 어울림 (data/harmony 번호) */
-    themeHarmony: { gourmet: [1, 6, 7, 18], relax: [2, 4, 5, 13, 14, 16, 17, 23] },
+    themeHarmony: { gourmet: [1, 6, 7, 18], relax: [2, 4, 5, 13, 14, 16, 17, 23], adventure: [3, 8, 11, 12, 20, 22] },
     /** 보상: 등급별 금화 · 잿빛 가루 · 증표 조각 */
     rewards: [
       { gold: 800, dust: 60, shards: 2 },
