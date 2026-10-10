@@ -7,7 +7,7 @@ import { P, S, world, type Building } from '../world/state';
 import * as game from '../game';
 import { $, $$, bindTabs, esc, fmt, itemCell, leftText, pct, tabs } from './common';
 import { showItem } from './guests';
-import { openWin, toast } from './windows';
+import { appendMoveButton, openWin, toast } from './windows';
 
 let craftRegion: RegionId = 'forest';
 let smTab = 0;
@@ -99,6 +99,7 @@ export function openSmith(o: Building, tab = smTab) {
   );
   const up = document.getElementById('smUp');
   if (up) up.onclick = () => (game.upgrade(o), openSmith(o));
+  appendMoveButton(o);
 }
 
 export function openGarden(o: Building) {
@@ -136,5 +137,6 @@ export function openGarden(o: Building) {
         openGarden(o);
       }),
   );
+  appendMoveButton(o);
   void S;
 }

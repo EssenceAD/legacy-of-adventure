@@ -1,8 +1,8 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
 import { CONFIG } from '../data/config';
-import { IMG, PORTRAITS } from '../engine/assets';
-import { canvas, P } from '../engine/pixel';
+import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
+import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
 import { markDirty, P as Prog, S, type Building } from '../world/state';
 import { buildableKinds, maxLevel, nextLevelCost } from '../world/town';
@@ -14,7 +14,7 @@ import { screen, setFontStep } from './screen';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
-import { startPlace } from './hud';
+import { startMove, startPlace } from './hud';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -55,13 +55,21 @@ const THUMBS: Partial<Record<Kind, string>> = {};
 const THUMB_W = 96;
 const THUMB_H = 56;
 
-function fireThumb() {
-  const c = canvas(24, 20);
-  const p = P(c.getContext('2d')!);
-  p.rect(6, 14, 12, 3, '#7a7480');
-  p.rect(7, 12, 10, 2, '#6a4428');
-  for (let i = -3; i <= 3; i++) for (let j = 0; j < 6 - Math.abs(i); j++) p.px(12 + i, 11 - j, j < 2 ? '#ffe08a' : j < 4 ? '#ff9a3c' : '#e0482e');
-  return c;
+/** 모닥불 썸네일 = campfire.png 1번 프레임 */
+const fireThumb = () => FIRE_FRAMES[0] ?? canvas(32, 34);
+
+/** 창 맨 아래에 「옮기기 · 방향」 버튼 (던전처럼 고정된 건물·이웃 마을은 없음) */
+export function appendMoveButton(o: Building) {
+  if (S.visiting || def(o.kind).fixed || o.build !== undefined) return;
+  const b = document.createElement('button');
+  b.className = 'bigbtn sm ghost';
+  b.id = 'moveB';
+  b.textContent = '옮기기 · 방향 바꾸기 ↻';
+  b.onclick = () => {
+    closeWin();
+    startMove(o);
+  };
+  $('#winB').appendChild(b);
 }
 
 /** 그림을 썸네일 칸 크기에 맞춰 정수 배율로(도트가 뭉개지지 않게) 미리 그려 둔다 */
@@ -165,7 +173,10 @@ export function showObj(o: Building) {
   if (!S.visiting) {
     if (o.kind === 'smith' && o.build === undefined) return openSmith(o);
     if (o.kind === 'garden' && o.build === undefined) return openGarden(o);
-    if (o.kind === 'board' || o.kind === 'dungeon') return openBoard();
+    if (o.kind === 'board' || o.kind === 'dungeon') {
+      openBoard();
+      return appendMoveButton(o);
+    }
   }
   const cost = nextLevelCost(o);
   const canUp = cost != null;
@@ -179,7 +190,7 @@ export function showObj(o: Building) {
           ([n, h]) => `<button data-h="${h}" title="${n}" aria-label="${n}" class="${o.hue === h ? 'on' : ''}" style="background:${h == null ? '#8a8a96' : `hsl(${h} 55% 45%)`}"></button>`,
         ).join('')}</div>`
       : '';
-  const grows = d.up && o.sprite !== d.up.sprite ? '더 큰 건물로 · ' : '';
+  const grows = d.up && o.sprite && baseKey(o.sprite) !== d.up.sprite ? '더 큰 건물로 · ' : '';
   const up = canUp && !S.visiting ? `<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${grows}${d.levelText ?? ''} (${fmt(cost!)} G)</button>` : '';
   openWin(
     d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
@@ -192,6 +203,7 @@ export function showObj(o: Building) {
         $$('.roofs button').forEach((x) => x.classList.toggle('on', x === b));
       }),
   );
+  appendMoveButton(o);
   const ub = document.getElementById('upB');
   if (ub) ub.onclick = () => game.upgrade(o);
 }

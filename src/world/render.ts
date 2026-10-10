@@ -5,7 +5,7 @@
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
 import { SMOKE } from '../data/catalog';
 import { CONFIG } from '../data/config';
-import { IMG, META, recolored, tinted, tintColor } from '../engine/assets';
+import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
 import { P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
@@ -15,10 +15,10 @@ import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, type Wild } from './ground';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { placing, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
-type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { ghost: Placement });
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild });
 
 /**
  * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
@@ -68,14 +68,13 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalCompositeOperation = 'source-over';
   }
   const pl = placing.pl;
-  if (pl && pl.tx != null) drawGhostTiles(ctx, pl);
 
   // 2) 깊이 정렬: 건물·나무를 먼저 기존 키로 정렬하고,
   //    캐릭터는 하나씩 "자기가 앞에 있어야 하는 마지막 건물" 바로 뒤에 끼워 넣는다
   const things: Thing[] = [];
-  for (const o of world.objs) things.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
+  // 옮기는 중인 건물은 제자리에 그리지 않는다 (유령으로만)
+  for (const o of world.objs) if (o !== pl?.move) things.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
   for (const w of ground.wild) things.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
-  if (pl && pl.tx != null && pl.ty != null) things.push({ d: depthBuilding(pl.tx, pl.ty, pl.fw, pl.fh) + 0.1, tx: pl.tx, ty: pl.ty, fw: pl.fw, fh: pl.fh, ghost: pl });
   things.sort((p, q) => p.d - q.d);
   /** slots[k] = things[k] 앞에 그릴 캐릭터들 (마지막 칸은 맨 끝) */
   const slots: Actor[][] = Array.from({ length: things.length + 1 }, () => []);
@@ -102,14 +101,13 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
       const ds = atDoor.get(it.o);
       if (ds) drawDoorActors(ctx, it.o, ds);
       if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
-    } else if ('w' in it) drawWild(ctx, it.w);
-    else drawGhost(ctx, it.ghost);
+    } else drawWild(ctx, it.w);
   }
 
   // 연기·불티
   if (Math.random() < dt * 3)
     for (const o of world.objs) {
-      const s = o.sprite ? SMOKE[o.sprite] : null;
+      const s = smokeOf(o.sprite);
       if (!s || o.build) continue;
       const [bx, by] = objTL(o);
       for (const [x, y] of s) puff(bx + x - OX, by + y - OY, nt > 0.5 ? '#8a90b0' : '#ece6dc', 2 + Math.random() * 3, -7 - Math.random() * 4, 2.8, 1 + ((Math.random() * 2) | 0));
@@ -117,7 +115,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   for (const o of world.objs)
     if (o.kind === 'fire' && Math.random() < dt * 6) {
       const X = sx(o.tx + 0.5, o.ty + 0.5);
-      const Y = sy(o.tx + 0.5, o.ty + 0.5) - 4;
+      const Y = sy(o.tx + 0.5, o.ty + 0.5) - FIRE_FLAME_Y;
       puff(X + (Math.random() - 0.5) * 4, Y, '#ffb04a', (Math.random() - 0.5) * 4, -14, 0.6, 1);
     }
   updDrawParts(ctx, dt);
@@ -129,13 +127,29 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
       if (o.kind === 'fire') {
         const X = OX + sx(o.tx + 0.5, o.ty + 0.5);
         const Y = OY + sy(o.tx + 0.5, o.ty + 0.5);
-        glow(ctx, X, Y - 4, 34, nt * (0.45 + Math.sin(T * 9) * 0.05));
+        glow(ctx, X, Y - FIRE_FLAME_Y, 34, nt * (0.45 + Math.sin(T * 9) * 0.05));
       }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
   drawAmbient(ctx, T, LW, LH);
   drawNamePlate(ctx, nt);
+  // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
+  if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
+}
+
+/** 모닥불 불꽃 높이 (칸 중심에서 위로 px) — 불티·빛의 중심 */
+const FIRE_FLAME_Y = 12;
+
+/** 굴뚝 연기 자리 (반전 그림이면 x도 뒤집는다) */
+const SMOKE_CACHE: Record<string, [number, number][] | undefined> = {};
+function smokeOf(key: string | null): [number, number][] | undefined {
+  if (!key) return undefined;
+  if (key in SMOKE_CACHE) return SMOKE_CACHE[key];
+  const b = baseKey(key);
+  const s = SMOKE[b];
+  const w = IMG[b]?.width ?? 0;
+  return (SMOKE_CACHE[key] = s && isFlipKey(key) ? s.map(([x, y]) => [w - 1 - x, y] as [number, number]) : s);
 }
 
 function drawWild(ctx: CanvasRenderingContext2D, w: Wild) {
@@ -147,20 +161,13 @@ function drawWild(ctx: CanvasRenderingContext2D, w: Wild) {
   if (Y + im.height > -10 && Y < view.LH + 10 && X + im.width > -10 && X < view.LW + 10) ctx.drawImage(im, X, Y);
 }
 
-function drawFire(ctx: CanvasRenderingContext2D, o: { tx: number; ty: number }) {
-  const X = view.OX + sx(o.tx + 0.5, o.ty + 0.5);
-  const Y = view.OY + sy(o.tx + 0.5, o.ty + 0.5) + 2;
-  const p = P(ctx);
-  p.rect(X - 6, Y - 2, 12, 3, '#7a7480');
-  p.rect(X - 5, Y - 3, 10, 1, '#9a96a6');
-  p.rect(X - 4, Y - 4, 8, 2, '#6a4428');
-  p.rect(X - 3, Y - 5, 6, 1, '#8a5a34');
-  for (let i = -3; i <= 3; i++) {
-    const h = 3 + Math.round((Math.sin(S.T * 11 + i * 1.9) + 1) * 2.2 + Math.random() * 1.5) - Math.abs(i);
-    for (let j = 0; j < h; j++) p.px(X + i, Y - 6 - j, j < 2 ? '#ffe08a' : j < 4 ? '#ff9a3c' : '#e0482e');
-  }
-  p.rect(X - 12, Y - 1, 5, 2, '#8a5a34');
-  p.rect(X + 8, Y + 1, 5, 2, '#8a5a34');
+/** 모닥불: campfire.png 32×34 프레임 4장, 0.15초마다. 프레임 아래에서 7px 위가 칸 중심. 밤에도 불꽃은 밝게 */
+function drawFire(ctx: CanvasRenderingContext2D, o: { tx: number; ty: number }, night = NL, dy = 0) {
+  if (!FIRE_FRAMES.length) return;
+  const X = Math.round(view.OX + sx(o.tx + 0.5, o.ty + 0.5));
+  const Y = Math.round(view.OY + sy(o.tx + 0.5, o.ty + 0.5));
+  const im = fireFrame(Math.floor(S.T / CONFIG.fire.frameSeconds), night);
+  ctx.drawImage(im, X - FIRE_W / 2, Y - (im.height - CONFIG.fire.baseFromBottom) + dy);
 }
 
 function baseImage(o: { sprite: string | null; hue: number | null }) {
@@ -215,35 +222,115 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   }
 }
 
-function drawGhost(ctx: CanvasRenderingContext2D, pl: Placement) {
-  if (pl.kind === 'fire') {
-    ctx.globalAlpha = 0.6;
-    drawFire(ctx, { tx: pl.tx!, ty: pl.ty! });
-    ctx.globalAlpha = 1;
-    return;
+// ───────── 배치 미리보기 ─────────
+
+/** 마름모 한 칸 채우기 (타일 좌표) */
+function fillTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const X = view.OX + sx(x, y);
+  const Y = view.OY + sy(x, y);
+  for (let k = 0; k < TH; k++) {
+    const hw = (k < TH / 2 ? k + 1 : TH - k) * 2;
+    ctx.fillRect(X - hw, Y + k, hw * 2, 1);
   }
-  if (!pl.sprite || !IMG[pl.sprite]) return;
-  const [x, y] = objTL({ sprite: pl.sprite, tx: pl.tx!, ty: pl.ty!, fw: pl.fw, fh: pl.fh });
-  ctx.globalAlpha = 0.6;
-  ctx.drawImage(IMG[pl.sprite], x, y);
-  ctx.globalAlpha = 1;
 }
 
-/** 발판 칸 표시 (초록 = 가능, 빨강 = 불가) */
-function drawGhostTiles(ctx: CanvasRenderingContext2D, pl: Placement) {
-  const p = P(ctx);
-  const c = pl.ok ? '#7fe07f' : '#ff6a6a';
+/** 타일 좌표 두 점을 잇는 1px 도트 선 */
+function isoLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
+  const X0 = view.OX + sx(x0, y0);
+  const Y0 = view.OY + sy(x0, y0);
+  const X1 = view.OX + sx(x1, y1);
+  const Y1 = view.OY + sy(x1, y1);
+  const n = Math.max(Math.abs(X1 - X0), Math.abs(Y1 - Y0));
+  for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(X0 + ((X1 - X0) * i) / n), Math.round(Y0 + ((Y1 - Y0) * i) / n), 1, 1);
+}
+
+/** 빨간 실루엣 (겹치는 건물 깜빡임) */
+const RED = new WeakMap<Drawable, HTMLCanvasElement>();
+function redOf(im: Drawable): HTMLCanvasElement {
+  let c = RED.get(im);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = im.width;
+  c.height = im.height;
+  const x = c.getContext('2d')!;
+  x.drawImage(im, 0, 0);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = '#ff4a4a';
+  x.fillRect(0, 0, c.width, c.height);
+  RED.set(im, c);
+  return c;
+}
+
+function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
+  const T = S.T;
+  const tx = pl.tx!;
+  const ty = pl.ty!;
+  const PL = CONFIG.placement;
+  // 1) 주변 어둡게
+  ctx.fillStyle = `rgba(8,10,24,${PL.dim})`;
+  ctx.fillRect(0, 0, view.LW, view.LH);
+  // 2) 겹치는 건물은 빨갛게 깜빡
+  const hit = new Set<Building>();
   for (let j = 0; j < pl.fh; j++)
     for (let i = 0; i < pl.fw; i++) {
-      const x = pl.tx! + i;
-      const y = pl.ty! + j;
-      const X = view.OX + sx(x, y);
-      const Y = view.OY + sy(x, y);
-      for (let k = 0; k < TH; k++) {
-        const hw = (k < TH / 2 ? k + 1 : TH - k) * 2;
-        for (let q = -hw; q < hw; q++) if (((k + q) & 3) === 0) p.px(X + q, Y + k, c);
-      }
+      const g = grid[ty + j]?.[tx + i];
+      if (g && g !== pl.move) hit.add(g);
     }
+  const blink = Math.sin(T * 10) > 0 ? 0.7 : 0.3;
+  for (const o of hit) {
+    ctx.globalAlpha = blink;
+    if (o.sprite && IMG[o.sprite]) {
+      const [x, y] = objTL(o);
+      ctx.drawImage(redOf(baseImage(o)), x, y);
+    } else {
+      ctx.fillStyle = '#ff4a4a';
+      fillTile(ctx, o.tx, o.ty);
+    }
+  }
+  // 3) 발자국 칸: 반투명 채움 + 밝은 1px 테두리 (초록 = 가능, 빨강 = 불가)
+  const ok = pl.ok;
+  ctx.globalAlpha = 0.38;
+  for (let j = 0; j < pl.fh; j++)
+    for (let i = 0; i < pl.fw; i++) {
+      const free = inLand(tx + i, ty + j) && (!grid[ty + j]?.[tx + i] || grid[ty + j][tx + i] === pl.move);
+      ctx.fillStyle = ok ? '#5fd06a' : free ? '#e0a040' : '#ff4040';
+      fillTile(ctx, tx + i, ty + j);
+    }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = ok ? '#b8ffb0' : '#ffb0b0';
+  isoLine(ctx, tx, ty, tx + pl.fw, ty);
+  isoLine(ctx, tx + pl.fw, ty, tx + pl.fw, ty + pl.fh);
+  isoLine(ctx, tx + pl.fw, ty + pl.fh, tx, ty + pl.fh);
+  isoLine(ctx, tx, ty + pl.fh, tx, ty);
+  // 4) 문 방향 화살표 (문 앞 칸이 막혀 있으면 빨강)
+  if (pl.sprite && !['well', 'board', 'tree', 'pine', 'fire'].includes(pl.kind)) {
+    const [dx, dy] = doorOf({ tx, ty, fw: pl.fw, fh: pl.fh, flip: pl.flip });
+    const g = grid[dy]?.[dx];
+    const blocked = !inLand(dx, dy) || (!!g && g !== pl.move);
+    const X = Math.round(view.OX + sx(dx + 0.5, dy + 0.5));
+    const Y = Math.round(view.OY + sy(dx + 0.5, dy + 0.5));
+    const p = P(ctx);
+    const c = blocked ? '#ff5a5a' : '#ffffff';
+    // 문이 바라보는 쪽(앞 왼쪽 / 반전이면 앞 오른쪽)으로 꺾쇠
+    const s = pl.flip ? 1 : -1;
+    const bob = Math.round(Math.sin(T * 6));
+    for (let k = 0; k < 4; k++) {
+      p.px(X + s * (k * 2) + s * bob, Y + k - 2, c);
+      p.px(X + s * (k * 2) + s * bob, Y - k + 4, c);
+      p.px(X + s * (k * 2 + 1) + s * bob, Y + k - 2, c);
+      p.px(X + s * (k * 2 + 1) + s * bob, Y - k + 4, c);
+    }
+  }
+  // 5) 유령 건물: 75% 불투명, 위아래 2px 둥실 · 칸에 붙는 순간 1px 톡
+  const bob = Math.round(Math.sin(T * 3) * PL.bobPx) - (pl.snapT != null && T - pl.snapT < PL.snapSeconds ? 1 : 0);
+  ctx.globalAlpha = PL.ghostAlpha;
+  if (pl.kind === 'fire') drawFire(ctx, { tx, ty }, 0, bob);
+  else if (pl.sprite && IMG[pl.sprite]) {
+    const [x, y] = objTL({ sprite: pl.sprite, tx, ty, fw: pl.fw, fh: pl.fh });
+    const hue = pl.move?.hue ?? null;
+    ctx.drawImage(baseImage({ sprite: pl.sprite, hue }), x, y + bob);
+  }
+  ctx.globalAlpha = 1;
 }
 
 /** pose: 문 연출 중일 때 발 위치(월드 원점 기준)·뒷모습·방향 */
@@ -342,12 +429,12 @@ export function buildingAt(mx: number, my: number, alphaAt: (k: string, x: numbe
     const im = IMG[o.sprite!];
     if (mx >= x && my >= y && mx < x + im.width && my < y + im.height && alphaAt(o.sprite!, mx - x, my - y)) return o;
   }
-  // 모닥불 (그림이 없어 칸으로)
+  // 모닥불 (건물 그림이 아니라 칸으로)
   for (const o of world.objs) {
     if (o.kind !== 'fire') continue;
     const X = view.OX + sx(o.tx + 0.5, o.ty + 0.5);
     const Y = view.OY + sy(o.tx + 0.5, o.ty + 0.5);
-    if (Math.abs(mx - X) < 10 && my > Y - 16 && my < Y + 6) return o;
+    if (Math.abs(mx - X) < 14 && my > Y - 26 && my < Y + 7) return o;
   }
   return null;
 }

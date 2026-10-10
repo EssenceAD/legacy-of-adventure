@@ -131,8 +131,13 @@ export const CONFIG = {
     toastMs: 2200,
     /** 대화창 한 글자 간격 (ms) */
     typeMs: 32,
-    chatTickMs: 5500,
   },
+  /** [소문] 채팅: 다음 줄까지 (ms), 여러 줄 대화 확률·줄 간격 */
+  chat: { minMs: 9000, maxMs: 22000, threadChance: 0.25, threadGapMs: 5000 },
+  /** 모닥불 그림 (campfire.png): 프레임 넘김 간격, 칸 중심이 프레임 아래에서 몇 px 위인지 */
+  fire: { frameSeconds: 0.15, baseFromBottom: 7 },
+  /** 배치 미리보기 */
+  placement: { dim: 0.3, ghostAlpha: 0.75, bobPx: 2, snapSeconds: 0.12, dragLiftPx: 40 },
   /** 핫픽스 3: 화면 크기 3단계(짧은 변 기준)와 글자 크기 */
   UI_SCALE: {
     /** 짧은 변이 이 이상이면 태블릿 */

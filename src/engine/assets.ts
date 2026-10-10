@@ -12,7 +12,9 @@ export interface SpriteMeta {
 }
 
 const BASE = 'assets/';
-export const IMG: Record<string, HTMLImageElement> = {};
+export type Drawable = HTMLImageElement | HTMLCanvasElement;
+/** 건물 그림. 좌우 반전 그림은 키 뒤에 '~f' (예: inn~f) */
+export const IMG: Record<string, Drawable> = {};
 export const META: Record<string, SpriteMeta> = {};
 /** 창문 불빛 마스크 (그림과 같은 크기, 창문 픽셀만 밝게) */
 export const LIGHTS: Record<string, HTMLCanvasElement> = {};
@@ -55,9 +57,18 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   const tick = () => onProgress?.(++done / total);
   await Promise.all([
     ...keys.map(async (k) => {
-      IMG[k] = await loadImage(`${BASE}sprites/${k}.png`);
-      if (LIT_SPRITES.includes(k)) LIGHTS[k] = windowMask(IMG[k], windows[k] || []);
+      const im = await loadImage(`${BASE}sprites/${k}.png`);
+      IMG[k] = im;
+      if (LIT_SPRITES.includes(k)) LIGHTS[k] = windowMask(im, windows[k] || []);
+      makeFlipped(k);
       tick();
+    }),
+    loadImage(`${BASE}sprites/campfire.png`).then((im) => {
+      for (let i = 0; i < im.width / FIRE_W; i++) {
+        const c = canvas(FIRE_W, im.height);
+        c.getContext('2d')!.drawImage(im, -i * FIRE_W, 0);
+        FIRE_FRAMES.push(c);
+      }
     }),
     ...ports.map(async (k) => {
       const src = `${BASE}portraits/${k}.png`;
@@ -71,6 +82,63 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     // 캔버스에 쓰는 글꼴은 미리 불러 둬야 첫 프레임부터 도트 글꼴로 나온다
     document.fonts.load('10px "Galmuri9"').then(tick, tick),
   ]);
+}
+
+// ───────── 좌우 반전 그림 (건물 방향 바꾸기) ─────────
+
+export const FLIP = '~f';
+export const isFlipKey = (k: string) => k.endsWith(FLIP);
+export const baseKey = (k: string) => (isFlipKey(k) ? k.slice(0, -FLIP.length) : k);
+
+function mirror(src: Drawable): HTMLCanvasElement {
+  const c = canvas(src.width, src.height);
+  const x = c.getContext('2d')!;
+  x.translate(src.width, 0);
+  x.scale(-1, 1);
+  x.drawImage(src, 0, 0);
+  return c;
+}
+
+/** k~f: 그림·창문 빛·문 영역·지붕 다각형을 x' = 폭 − x 로 뒤집어 둔다 (발판은 정사각형이라 그대로) */
+function makeFlipped(k: string) {
+  const f = k + FLIP;
+  const w = IMG[k].width;
+  IMG[f] = mirror(IMG[k]);
+  if (META[k]) META[f] = { ...META[k], fw: META[k].fh, fh: META[k].fw };
+  if (LIGHTS[k]) LIGHTS[f] = mirror(LIGHTS[k]);
+  const d = DOORS[k];
+  if (d) DOORS[f] = [w - 1 - d[2], d[1], w - 1 - d[0], d[3]];
+  if (OPEN_FRONT.has(k)) OPEN_FRONT.add(f);
+  if (ROOF_POLYS[k]) ROOF_POLYS[f] = ROOF_POLYS[k].map((p) => p.map(([x, y]) => [w - x, y] as [number, number]));
+}
+
+// ───────── 모닥불: campfire.png (32×34 프레임 4장) ─────────
+
+export const FIRE_W = 32;
+export const FIRE_FRAMES: HTMLCanvasElement[] = [];
+
+/** 불꽃 픽셀(밝은 주황·노랑) */
+const isFlame = (r: number, g: number, b: number) => r > 200 && g > 90 && b < 140 && r - b > 90;
+
+/** 밤 모닥불: 장작·돌은 밤 색으로, 불꽃은 그대로 밝게 */
+const FIRE_NIGHT = new Map<HTMLCanvasElement, Record<number, HTMLCanvasElement>>();
+export function fireFrame(i: number, level: number): Drawable {
+  const fr = FIRE_FRAMES[i % FIRE_FRAMES.length];
+  if (!level) return fr;
+  let m = FIRE_NIGHT.get(fr);
+  if (!m) FIRE_NIGHT.set(fr, (m = {}));
+  if (m[level]) return m[level];
+  const c = canvas(fr.width, fr.height);
+  const x = c.getContext('2d')!;
+  x.drawImage(tinted(fr, level), 0, 0);
+  const src = fr.getContext('2d')!.getImageData(0, 0, fr.width, fr.height);
+  const out = x.getImageData(0, 0, fr.width, fr.height);
+  for (let j = 0; j < src.data.length; j += 4) {
+    if (!src.data[j + 3] || !isFlame(src.data[j], src.data[j + 1], src.data[j + 2])) continue;
+    for (let q = 0; q < 4; q++) out.data[j + q] = src.data[j + q];
+  }
+  x.putImageData(out, 0, 0);
+  return (m[level] = c);
 }
 
 /**
@@ -174,7 +242,6 @@ export function tintColor(nt: number): string {
   return `rgb(${Math.round(255 - 200 * nt)},${Math.round(255 - 175 * nt)},${Math.round(255 - 90 * nt)})`;
 }
 
-type Drawable = HTMLImageElement | HTMLCanvasElement;
 const TINT = new WeakMap<Drawable, Record<number, HTMLCanvasElement>>();
 
 /** 밤 단계 level(0~tintSteps)로 물든 그림. 0이면 원본 */

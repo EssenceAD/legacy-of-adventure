@@ -7,7 +7,9 @@ import * as game from '../game';
 import { setNight } from '../world/daynight';
 import { stars } from '../world/progress';
 import { S } from '../world/state';
-import { blocksDoor, canPlace, placing, suggestSpot, type Placement } from '../world/town';
+import { baseKey, FLIP } from '../engine/assets';
+import { blocksDoor, canPlace, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
+import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, runsWaiting } from './expedition';
 import { openGuests } from './guests';
@@ -18,34 +20,80 @@ import { openBuild, openMenu, openWin, toast } from './windows';
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
-// ───────── 배치 모드 ─────────
+// ───────── 배치 모드 (짓기 · 옮기기) ─────────
 
-function placeText(pl: Placement) {
-  $('#placeOk').toggleAttribute('disabled', !pl.ok);
-  $('#placeTxt').textContent = pl.tx == null ? '지을 곳을 눌러요' : pl.ok ? `${def(pl.kind).name} · 여기 괜찮아요` : '여기엔 못 지어요';
+/** 놓을 수 없는 까닭 (놓을 수 있으면 null) */
+function whyNot(pl: Placement): string | null {
+  if (pl.tx == null || pl.ty == null) return '놓을 곳을 눌러요';
+  const ign = pl.move;
+  for (let j = 0; j < pl.fh; j++)
+    for (let i = 0; i < pl.fw; i++) if (!inLand(pl.tx + i, pl.ty + j)) return '땅 밖이에요';
+  for (let j = 0; j < pl.fh; j++)
+    for (let i = 0; i < pl.fw; i++) {
+      const g = grid[pl.ty + j]?.[pl.tx + i];
+      if (g && g !== ign) return '다른 건물과 겹쳐요';
+    }
+  if (!canPlace(pl, ign)) return '문 앞 칸이 막혀 있어요';
+  if (blocksDoor(pl, ign)) return '다른 건물의 문 앞을 막아요';
+  return null;
 }
 
 function check(pl: Placement) {
-  pl.ok = canPlace(pl) && !blocksDoor(pl);
+  pl.why = whyNot(pl) ?? undefined;
+  pl.ok = !pl.why;
+}
+
+function placeText(pl: Placement) {
+  $('#placeOk').toggleAttribute('disabled', !pl.ok);
+  $('#placeRot').toggleAttribute('disabled', !pl.sprite);
+  $('#placeTxt').textContent = `${def(pl.kind).name}${pl.move ? ' 옮기기' : ''} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}`;
+  const w = $('#placeWhy');
+  w.textContent = pl.why ?? '';
+  w.hidden = pl.ok;
+}
+
+function openPlace(pl: Placement) {
+  placing.pl = pl;
+  check(pl);
+  $('#placebar').hidden = false;
+  $('#view').classList.add('placing');
+  placeText(pl);
+  if (pl.tx != null) game.focusTile(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
 }
 
 export function startPlace(kind: Kind) {
   const d = def(kind);
   const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false };
   suggestSpot(pl);
-  check(pl);
-  placing.pl = pl;
-  $('#placebar').hidden = false;
-  placeText(pl);
-  if (pl.tx != null) game.focusTile(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
+  openPlace(pl);
 }
 
-/** 배치 중 탭: 그 자리로 미리보기를 옮긴다 */
+/** 이미 지은 건물 옮기기 (방향도 바꿀 수 있다) */
+export function startMove(o: Building) {
+  openPlace({ kind: o.kind, sprite: o.sprite, fw: o.fw, fh: o.fh, tx: o.tx, ty: o.ty, ok: false, flip: !!o.flip, move: o });
+}
+
+/** 배치 중 탭·끌기: 그 자리로 미리보기를 옮긴다 (칸이 바뀌면 톡) */
 export function movePlacement(fx: number, fy: number) {
   const pl = placing.pl;
   if (!pl) return;
-  pl.tx = Math.floor(fx - pl.fw / 2 + 0.5);
-  pl.ty = Math.floor(fy - pl.fh / 2 + 0.5);
+  const tx = Math.floor(fx - pl.fw / 2 + 0.5);
+  const ty = Math.floor(fy - pl.fh / 2 + 0.5);
+  if (tx === pl.tx && ty === pl.ty) return;
+  pl.tx = tx;
+  pl.ty = ty;
+  pl.snapT = S.T;
+  check(pl);
+  placeText(pl);
+}
+
+/** ↻ 회전: 원래 방향 ↔ 좌우 반전 */
+export function rotatePlacement() {
+  const pl = placing.pl;
+  if (!pl || !pl.sprite) return;
+  pl.flip = !pl.flip;
+  pl.sprite = baseKey(pl.sprite) + (pl.flip ? FLIP : '');
+  pl.snapT = S.T;
   check(pl);
   placeText(pl);
 }
@@ -53,6 +101,13 @@ export function movePlacement(fx: number, fy: number) {
 export function cancelPlace() {
   placing.pl = null;
   $('#placebar').hidden = true;
+  $('#view').classList.remove('placing');
+}
+
+function confirmPlace() {
+  const pl = placing.pl;
+  if (!pl || !pl.ok) return;
+  if (pl.move ? game.moveBuilding(pl) : game.placeBuilding(pl)) cancelPlace();
 }
 
 // ───────── 독 아이콘 (도트) ─────────
@@ -201,11 +256,8 @@ export function initHud() {
     setZoom(zs[(zs.indexOf(S.zoom) + 1) % zs.length]);
   };
   $('#placeNo').onclick = cancelPlace;
-  $('#placeOk').onclick = () => {
-    const pl = placing.pl;
-    if (!pl || !pl.ok) return;
-    if (game.placeBuilding(pl)) cancelPlace();
-  };
+  $('#placeRot').onclick = rotatePlacement;
+  $('#placeOk').onclick = confirmPlace;
   $('#vLike').onclick = game.likeNeighbor;
   $('#vHome').onclick = game.goHome;
 }

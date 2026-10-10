@@ -1,7 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
 import { CONFIG } from './data/config';
-import { alphaAt, IMG, loadAssets, pumpTintWarmup, queueTintWarmup, recolored } from './engine/assets';
+import { alphaAt, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored } from './engine/assets';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
@@ -140,6 +140,18 @@ function tick(dt: number) {
 
 let drag: { x: number; y: number; cx: number; cy: number } | null = null;
 let moved = false;
+/** 배치 중 유령 건물을 손가락으로 끄는 중 (카메라 대신 건물이 따라온다) */
+let ghostDrag = false;
+
+/** 화면 점이 배치 중인 유령 건물 위(근처)인가 */
+function onGhost(clientX: number, clientY: number): boolean {
+  const pl = placing.pl;
+  if (!pl || pl.tx == null || pl.ty == null) return false;
+  const [mx, my] = toLogical(cv, clientX, clientY);
+  const [X, Y] = scr(pl.tx + pl.fw / 2, pl.ty + pl.fh / 2);
+  const h = pl.sprite && META[pl.sprite] ? META[pl.sprite].h : 34;
+  return Math.abs(mx - X) < pl.fw * 16 + 10 && my > Y - h && my < Y + pl.fh * 8 + 10;
+}
 /** 화면에 닿아 있는 손가락들 (핀치용) */
 const touches = new Map<number, { x: number; y: number }>();
 /** 핀치 기준 거리 — 이 비율을 넘을 때마다 배율을 한 단계 바꾼다 */
@@ -162,6 +174,7 @@ function bindInput() {
     }
     drag = { x: e.clientX, y: e.clientY, cx: view.cam.x, cy: view.cam.y };
     moved = false;
+    ghostDrag = onGhost(e.clientX, e.clientY);
     cv.setPointerCapture?.(e.pointerId);
   });
   cv.addEventListener('pointermove', (e) => {
@@ -179,6 +192,12 @@ function bindInput() {
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > CONFIG.view.dragThreshold) moved = true;
+    if (moved && ghostDrag) {
+      // 건물이 손가락보다 살짝 위에 따라와서 손에 가리지 않게
+      const [fx, fy] = toTile(cv, e.clientX, e.clientY - CONFIG.placement.dragLiftPx);
+      movePlacement(fx, fy);
+      return;
+    }
     if (moved) {
       view.cam.x = drag.cx - dx / view.SC;
       view.cam.y = drag.cy - dy / view.SC;
@@ -190,6 +209,7 @@ function bindInput() {
     if (touches.size < 2) pinchBase = 0;
     const was = drag;
     drag = null;
+    ghostDrag = false;
     if (moved || !was || e.type === 'pointercancel') return;
     tap(e);
   };

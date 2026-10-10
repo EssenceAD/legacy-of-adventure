@@ -24,6 +24,8 @@ export interface Building {
   pop?: number;
   /** 텃밭 칸 (작물, 심은 시각 ms) */
   plots?: { crop: string | null; at: number }[];
+  /** 좌우 반전 (문이 오른쪽 면으로). 그림 키는 sprite~f */
+  flip?: boolean;
 }
 
 export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';

@@ -14,7 +14,7 @@ import { itemById } from './world/items';
 import { computeOffline } from './world/offline';
 import { ensureGoals, stars } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
-import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
+import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { OPENING, talk } from './ui/dialogue';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
@@ -163,12 +163,12 @@ function applySave(d: SaveData) {
   S.innName = d.innName;
   Object.assign(S.ledger, d.ledger);
   resetProgress(d.progress);
-  world.objs = [];
-  for (const b of d.buildings) {
-    const o = addObj(b.kind, b.tx, b.ty, { hue: b.hue, lvl: b.lvl, ...(b.plots ? { plots: b.plots } : {}) });
-    const up = def(b.kind).up;
-    if (b.lvl > 1 && up) Object.assign(o, { fw: up.size[0], fh: up.size[1], sprite: up.sprite });
-  }
+  // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
+  const fix = placeLayout(
+    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: b.plots ? { plots: b.plots } : {} })),
+    d.land,
+  );
+  if (import.meta.env.DEV && (fix.moved || fix.dropped)) console.warn('저장 배치 바로잡음', fix);
   rebuildPaths();
   world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
   // 장비 주인 표시를 손님 쪽 기록에 맞춘다
@@ -243,7 +243,7 @@ export function placeBuilding(pl: Placement): boolean {
     return false;
   }
   S.gold -= d.cost;
-  const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds });
+  const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
   rebuildPaths();
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
@@ -271,6 +271,24 @@ export function upgrade(o: Building) {
   puffAt(o, '#fff3b0', 20);
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 70, `${def(o.kind).name} Lv.${o.lvl}!`, 'big');
   markDirty();
+}
+
+/** 지은 건물 옮기기·방향 바꾸기 (무료). 안에 있던 손님은 새 문 앞으로 나온다 */
+export function moveBuilding(pl: Placement): boolean {
+  const o = pl.move;
+  if (!o || pl.tx == null || pl.ty == null) return false;
+  const inside = [...o.inside];
+  o.inside = [];
+  for (const a of world.actors) if (a.door?.o === o) a.door = null;
+  Object.assign(o, { tx: pl.tx, ty: pl.ty, flip: !!pl.flip, sprite: pl.sprite, pop: 1 });
+  rebuildPaths();
+  const d = doorOf(o);
+  for (const a of inside) Object.assign(a, { hidden: false, at: null, x: d[0], y: d[1], st: 'idle', t: 0.3, pop: 0.4 });
+  for (const a of world.actors) if (a.door === null && a.st === 'door') Object.assign(a, { st: 'idle', t: 0.3 });
+  puffAt(o, '#fff3b0', 12);
+  floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '쿵!', 'big');
+  markDirty();
+  return true;
 }
 
 export function setRoof(o: Building, hue: number | null) {

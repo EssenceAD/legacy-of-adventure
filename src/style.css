@@ -285,7 +285,7 @@ html:not([data-size="phone"]) #dlg .box{left:50%;right:auto;width:min(760px,calc
 html:not([data-size="phone"]) #dChoice{bottom:calc(env(safe-area-inset-bottom,0px) + var(--port) + 80px)}
 html:not([data-size="phone"]) #namebox{left:50%;right:auto;width:min(560px,calc(100% - 28px));transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + var(--port) + 80px)}
 html:not([data-size="phone"]) .dk{left:50%;right:auto;width:min(560px,calc(100% - 16px));transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
-html:not([data-size="phone"]) #chatlog{right:auto;width:min(480px,calc(100% - 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 110px)}
+html:not([data-size="phone"]) #chatlog{right:auto;width:min(480px,calc(100% - 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 132px)}
 html:not([data-size="phone"]) #bZoom{bottom:calc(env(safe-area-inset-bottom,0px) + 110px)}
 html:not([data-size="phone"]) .dk canvas{width:48px;height:48px}
 /* 누르는 영역 최소 44×44 */
@@ -306,4 +306,18 @@ html:not([data-size="phone"]) .quest{grid-template-columns:5.5em 1fr auto}
 html:not([data-size="phone"]) .cat img{height:72px}
 .fsrow{display:flex;gap:6px;align-items:center;margin:4px 0 8px;flex-wrap:wrap}.fsrow .tab{margin:0}
 .talking #bZoom,.talking #placebar{visibility:hidden}
-html[data-size="wide"] .dk{left:calc((100% - min(460px,55%) - 16px) / 2);width:min(560px,calc(100% - min(460px,55%) - 48px))}
+html[data-size="wide"] #view:has(#win.on) .dk{left:calc((100% - min(460px,55%) - 16px) / 2);width:min(560px,calc(100% - min(460px,55%) - 48px))}
+
+/* ── 핫픽스 4: 배치 확인 바 (버튼 최소 56px) · 배치 중엔 말풍선·채팅 숨김 ── */
+#placebar{flex-direction:column;align-items:stretch;gap:6px;padding:8px;white-space:normal;width:min(380px,calc(100% - 24px));text-align:center}
+#placebar p{margin:0}
+#placeWhy{color:#ffb0b0}
+#placebar .pbtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+#placebar .pbtns button{min-height:56px;min-width:56px;font-size:var(--f-ui);font-weight:700;padding:4px 6px}
+#placeRot{background:#3f5fc8}
+#placeOk[disabled],#placeRot[disabled]{background:#4a4e60;color:#9aa0b8;cursor:default}
+.placing .bub,.placing .flt,.placing #chatlog{visibility:hidden}
+/* [소문]: 실유저 채팅과 헷갈리지 않게 연한 색 + '마을 사람' */
+.ch-rumor{color:#b8a8d8}.rumor-who{color:#d8cfe8;font-weight:400}.rumor{color:#c8c0d8}
+small.npc{margin-left:4px;padding:0 3px;background:#3a3458;color:#b8a8d8;font-size:var(--f-tiny)}
+html:not([data-size="phone"]) #placebar{bottom:calc(env(safe-area-inset-bottom,0px) + 128px)}

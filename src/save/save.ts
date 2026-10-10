@@ -13,6 +13,8 @@ export interface SavedBuilding {
   lvl: number;
   hue: number | null;
   plots?: { crop: string | null; at: number }[];
+  /** 좌우 반전 (핫픽스 4, 예전 저장은 false) */
+  flip?: boolean;
 }
 
 /** 저장되는 손님 필드 (그림·이동 상태는 빼고) */
@@ -49,7 +51,7 @@ export function snapshot(): SaveData {
     version: CONFIG.save.version,
     savedAt: Date.now(),
     land: S.visiting && world.home ? world.home.land : S.land,
-    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, ...(o.plots ? { plots: o.plots } : {}) })),
+    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, flip: !!o.flip, ...(o.plots ? { plots: o.plots } : {}) })),
     gold: S.gold,
     day: S.day,
     clock: S.clock,
@@ -149,7 +151,7 @@ function validate(d: any): SaveData | null {
   const buildings: SavedBuilding[] = d.buildings
     .filter((b: any) => b && b.kind in CATALOG && Number.isFinite(b.tx) && Number.isFinite(b.ty))
     .map((b: any) => ({
-      kind: b.kind, tx: b.tx, ty: b.ty, lvl: Math.max(1, num(b.lvl, 1)), hue: typeof b.hue === 'number' ? b.hue : null,
+      kind: b.kind, tx: b.tx, ty: b.ty, lvl: Math.max(1, num(b.lvl, 1)), hue: typeof b.hue === 'number' ? b.hue : null, flip: b.flip === true,
       ...(Array.isArray(b.plots) ? { plots: b.plots.map((p: any) => ({ crop: typeof p?.crop === 'string' ? p.crop : null, at: num(p?.at, 0) })) } : {}),
     }));
   if (!buildings.some((b) => b.kind === 'inn')) return null;
