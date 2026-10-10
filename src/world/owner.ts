@@ -550,6 +550,7 @@ export function finishEnding(kind: 'go' | 'solo' | 'stay', partner: string | nul
   if (!ids.length) return;
   for (const id of ids) {
     if (!P.legacy.seen.includes(id)) P.legacy.seen.push(id);
+    if (!P.legacy.album.includes(id)) P.legacy.album.push(id);
     P.legacy.cards[id] = { at: Date.now(), gen: P.legacy.gen, owner: o.name, job: o.job, gender: o.gender, partner: partner ?? undefined, rel };
   }
   o.ended = ids[0];
@@ -581,7 +582,15 @@ export function bonusText(e: EndingDef): string {
   if (b.k === 'kindPower') return `${({ knight: '기사', mage: '마법사', dwarf: '전사', rogue: '도적', cleric: '사제' } as const)[b.kind]} 계열 전투력 ${pct}`;
   return ({ power: '모든 전투력', rep: '평판', gold: '모든 건물 수입', xp: '경험치', mood: '손님 기분', tavern: '주점 수입' } as const)[b.k] + ' ' + pct;
 }
-export const albumCount = () => `${P.legacy.seen.length}/${ENDINGS.length}`;
+export const albumCount = () => `${P.legacy.album.length}/${ENDINGS.length}`;
+
+/** 앨범 바로잡기: 4단계 첫 배포 저장은 album이 없다 → 본 엔딩(seen)으로 채운다 */
+export function sanitizeAlbum() {
+  const L = P.legacy;
+  L.album = [...new Set([...(Array.isArray(L.album) ? L.album : []), ...(Array.isArray(L.seen) ? L.seen : [])])].filter((id) => !!endingById(id));
+  L.seen = (Array.isArray(L.seen) ? L.seen : []).filter((id) => !!endingById(id));
+  if (!L.cards || typeof L.cards !== 'object') L.cards = {};
+}
 
 /** 유산을 잇는다: 마을·건물·영웅·도감·트로피는 그대로, 주인·인연·불씨·달력만 새로 */
 export function inheritLegacy(name: string, gender: Gender, job: Job, origin: string) {

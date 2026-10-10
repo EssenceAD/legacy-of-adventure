@@ -316,13 +316,13 @@ export function openAlbum() {
   const groups: [string, EndingDef['type']][] = [['모험 엔딩', 'adventure'], ['여관 엔딩', 'inn'], ['진짜 엔딩', 'true'], ['특별', 'solo']];
   openWin(
     `엔딩 앨범 ${albumCount()}`,
-    `<p class="sub">본 엔딩마다 영구 「유산 보너스」가 쌓여요</p>
+    `<p class="sub">지금까지 본 엔딩 전부 (새 여관을 열어도 남아요) · 유산 보너스는 이 마을에서 본 엔딩만큼 쌓여요 (지금 ${P.legacy.seen.length}개)</p>
     ${groups
       .map(
         ([g, ty]) =>
           `<div class="qhd"><b class="g">${g}</b></div><div class="album">${ENDINGS.filter((e) => e.type === ty)
             .map((e) =>
-              P.legacy.seen.includes(e.id)
+              P.legacy.album.includes(e.id)
                 ? `<button class="acell seen" data-e="${e.id}">${cardHtml(e)}</button>`
                 : `<div class="acell"><span class="silh">?</span><small>${esc(e.hint)}</small></div>`,
             )

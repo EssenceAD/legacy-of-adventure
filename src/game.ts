@@ -17,7 +17,7 @@ import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building 
 import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
-import { sanitizeOwner } from './world/owner';
+import { sanitizeAlbum, sanitizeOwner } from './world/owner';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
@@ -84,7 +84,10 @@ export function newGame() {
   S.innName = '';
   S.clock = 0;
   for (const k of Object.keys(S.ledger) as (keyof typeof S.ledger)[]) S.ledger[k] = 0;
+  // 엔딩 앨범은 새 여관을 열어도 남긴다 (유산 보너스·세대·앞 주인은 처음부터)
+  const album = { album: [...P.legacy.album], cards: { ...P.legacy.cards } };
   resetProgress();
+  Object.assign(P.legacy, album);
   startTown();
   rebuildPaths();
   spawnStart();
@@ -176,6 +179,7 @@ function applySave(d: SaveData) {
   Object.assign(S.ledger, d.ledger);
   resetProgress(d.progress);
   sanitizeOwner();
+  sanitizeAlbum();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
     d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: b.plots ? { plots: b.plots } : {} })),

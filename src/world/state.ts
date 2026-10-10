@@ -325,8 +325,11 @@ export function freshProgress() {
     ties: {} as Record<string, TieState>,
     /** 선물 가방 */
     gifts: {} as Record<string, number>,
-    /** 유산: 세대 · 본 엔딩(앨범) · 앞 주인 */
-    legacy: { gen: 1, seen: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
+    /**
+     * 유산: 세대 · seen = 이 마을에서 본 엔딩(유산 보너스 기준, 새 여관 열기 때 초기화)
+     * album·cards = 엔딩 앨범(지금까지 본 엔딩 전부, 새 여관 열기를 해도 남는다) · 앞 주인
+     */
+    legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
   };
 }
 
