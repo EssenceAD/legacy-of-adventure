@@ -2,7 +2,7 @@
 // 「깨지지 않게」: 그림은 늘 정수 배율(×1·×2)로만 키우고 pixelated, 9-slice는 border-image(그림 픽셀 × --k)로 늘린다.
 // CSS의 url()은 빌드 경로(base './')에서 깨지므로, 그림 주소는 여기서 CSS 변수(--ui-*)로 넣는다 (문서 기준 절대 주소).
 
-const UI = [
+export const UI = [
   'panel', 'titlebar', 'btn', 'btn_pressed', 'btn_disabled', 'btn_primary',
   'tile', 'tile_pressed', 'tile_selected', 'tile_locked', 'tile_grade_n', 'tile_grade_r', 'tile_grade_e', 'tile_grade_l', 'tile_grade_a',
   'tab_on', 'tab_off', 'bar_frame', 'bar_fill_hp', 'bar_fill_xp', 'bar_fill_mp', 'bar_fill_bond', 'bar_fill_grn',

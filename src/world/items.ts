@@ -205,5 +205,8 @@ export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'>):
 /** 등급 굴림 확률 미리보기 (보상 표시) */
 export function dropChances(region: RegionId, tier: number) {
   const m = Math.pow(E.regionDrop, regionIdx(region)) * (1 + 0.5 * tier);
-  return { r: E.baseDrop.r * m, e: E.baseDrop.e * m, l: E.baseDrop.l * m };
+  // 깊은 지역·긴 의뢰는 합이 100%를 넘는다 → 희귀를 남은 몫으로 자른다 (굴림 결과는 같다: 일반이 안 나올 뿐)
+  const l = Math.min(1, E.baseDrop.l * m);
+  const e = Math.min(1 - l, E.baseDrop.e * m);
+  return { r: Math.max(0, Math.min(1 - l - e, E.baseDrop.r * m)), e, l };
 }

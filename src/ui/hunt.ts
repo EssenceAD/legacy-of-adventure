@@ -4,6 +4,7 @@ import { battleMusic } from './sound';
 import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
 import { closeCombat, showCombatResult, startCombat } from '../combat/ui';
+import { gradeBonus } from '../combat/field';
 import { hfx } from '../world/harmony';
 import { REGIONS, type RegionId } from '../data/items';
 import { BOSS_IMG, MOB_IMG, RAID_BG, scaled } from '../engine/assets';
@@ -505,7 +506,6 @@ void LH;
 
 // ───────── 전투 개편 1차: 쿼터뷰 필드 액션 · 소탕 ─────────
 
-const G = CONFIG.combat.grade;
 function lootHtml(r: RegionId, out: HuntReward): string {
   const items = out.items.map((it) => itemCell(it)).join('');
   return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}`;
@@ -514,7 +514,7 @@ function lootHtml(r: RegionId, out: HuntReward): string {
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   notePrep('hunt', partyPower(ms));
   void startCombat(r, s, ms, auto, (res) => {
-    const bonus = res.win && !res.autoUsed ? G.bonus[res.grade] : 0;
+    const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
     // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
     const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
     out.items.push(...res.items);

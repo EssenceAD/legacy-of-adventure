@@ -1,20 +1,23 @@
 {
   "name": "legacy-of-adventure",
   "private": true,
-  "version": "0.8.1-beta",
+  "version": "0.9.0-beta",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview --host",
     "deploy": "node scripts/deploy.mjs",
-    "check": "node scripts/check-assets.mjs"
+    "check": "node scripts/check-assets.mjs",
+    "test": "vitest run"
   },
   "devDependencies": {
+    "jsdom": "^26.1.0",
     "playwright-core": "^1.47.2",
     "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3"

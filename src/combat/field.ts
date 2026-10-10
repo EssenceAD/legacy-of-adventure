@@ -1135,6 +1135,8 @@ export function gradeScore(hits: number, timeUsedRatio: number, maxStreak: numbe
 export function gradeOf(score: number): 'S' | 'A' | 'B' {
   return score >= C.grade.s ? 'S' : score >= C.grade.a ? 'A' : 'B';
 }
+/** 평가 보너스: 이겼고 AUTO를 안 썼을 때만 */
+export const gradeBonus = (win: boolean, autoUsed: boolean, g: 'S' | 'A' | 'B') => (win && !autoUsed ? C.grade.bonus[g] : 0);
 export function grade(f: Field): 'S' | 'A' | 'B' {
   const limit = C.timeLimit;
   return gradeOf(gradeScore(f.hitsTaken, (limit - f.time) / limit, f.maxStreak));
