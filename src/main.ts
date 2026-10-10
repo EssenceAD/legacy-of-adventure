@@ -491,6 +491,18 @@ async function boot() {
         return s;
       },
       __openHunt: openHunt,
+      // 전투 2차 시험: 사람처럼 조작하는 봇으로 n판 (평가 비율·시간)
+      __sim: async (region: string, stage: number, n = 20, powerK = 1, skillLv = 0.7, auto = false) => {
+        const { simulate } = await import('./combat/sim');
+        const ms = (world.home?.actors ?? world.actors).filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero')).slice(0, 3);
+        return Array.from({ length: n }, () => simulate(region as never, stage, ms, powerK, skillLv, auto));
+      },
+      __openRaid: async () => {
+        const w = await import('./world/raid');
+        const r = await import('./ui/raid');
+        w.ensureWeek();
+        r.openRaidPrep(w.weeklyTarget());
+      },
       __power: powerOf,
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);

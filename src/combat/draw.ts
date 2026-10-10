@@ -4,10 +4,67 @@ import { CONFIG } from '../data/config';
 import { IMG } from '../engine/assets';
 import { sx, sy, TH, TW } from '../engine/iso';
 import { frameAt, flipOf, whiteOf, type MonSheet } from './mon';
-import { screenDx, type Field, type Unit } from './field';
+import { GRADE_COLOR, screenDx, type Field, type Unit } from './field';
 
 const C = CONFIG.combat;
 export const sheets: Partial<Record<string, MonSheet>> = {};
+
+// ───────── 전투 2차: Ninja Adventure 이펙트 (1배) ─────────
+
+interface FxSheet {
+  w: number;
+  h: number;
+  n: number;
+  /** [회전 0·90·180·270][프레임] */
+  rot: HTMLCanvasElement[][];
+}
+const fxs: Partial<Record<string, FxSheet>> = {};
+let fxLoading: Promise<void> | null = null;
+export function loadFx(): Promise<void> {
+  return (fxLoading ??= (async () => {
+    try {
+      const meta = (await (await fetch(new URL('assets/fx/fx.json', document.baseURI).href)).json()) as Record<string, { w: number; h: number; n: number }>;
+      await Promise.all(
+        Object.entries(meta).map(
+          ([id, m]) =>
+            new Promise<void>((ok) => {
+              const im = new Image();
+              im.onload = () => {
+                const rot: HTMLCanvasElement[][] = [0, 1, 2, 3].map((q) =>
+                  Array.from({ length: m.n }, (_, i) => {
+                    const c = document.createElement('canvas');
+                    c.width = q % 2 ? m.h : m.w;
+                    c.height = q % 2 ? m.w : m.h;
+                    const x = c.getContext('2d')!;
+                    x.translate(c.width / 2, c.height / 2);
+                    x.rotate((q * Math.PI) / 2);
+                    x.drawImage(im, i * m.w, 0, m.w, m.h, -m.w / 2, -m.h / 2, m.w, m.h);
+                    return c;
+                  }),
+                );
+                fxs[id] = { ...m, rot };
+                ok();
+              };
+              im.onerror = () => ok();
+              im.src = new URL(`assets/fx/${id}.png`, document.baseURI).href;
+            }),
+        ),
+      );
+    } catch {
+      /* 이펙트가 없으면 코드 이펙트 그대로 */
+    }
+  })());
+}
+/** 이펙트 한 프레임 (가운데 기준) · q = 90° 회전 수 */
+function fxDraw(ctx: CanvasRenderingContext2D, id: string, X: number, Y: number, p: number, q = 0): boolean {
+  const s = fxs[id];
+  if (!s) return false;
+  const im = s.rot[q & 3][Math.min(s.n - 1, Math.floor(p * s.n))];
+  ctx.drawImage(im, Math.round(X - im.width / 2), Math.round(Y - im.height / 2));
+  return true;
+}
+/** 이번 장의 장비 이름표 (논리 좌표 · 화면 캔버스에 글자로) */
+export const labelsOut: { x: number; y: number; text: string; col: string }[] = [];
 
 // ───────── 지역 바닥 (마을 타일과 같은 32×16 쿼터뷰 · 숲: 풀과 흙) ─────────
 
@@ -154,11 +211,38 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
   // 예고 범위 (발밑 빨간 타원 · 정수 줄로 그려 도트 유지)
   for (const m of f.units) {
     if (m.st !== 'tele' || !m.tele) continue;
-    const prog = 1 - (m.stT ?? 0) / C.tele;
-    const [X, Y] = W(m.tele.x, m.tele.y);
-    ellipse(ctx, X, Y, m.tele.r * (TW / 2), m.tele.r * (TH / 2), 'rgba(255,60,50,0.28)', '#ff5a4a');
-    ellipse(ctx, X, Y, m.tele.r * (TW / 2) * prog, m.tele.r * (TH / 2) * prog, 'rgba(255,90,70,0.35)', null);
+    const prog = 1 - (m.stT ?? 0) / (m.teleMax ?? C.tele);
+    const tl = m.tele;
+    if (tl.x2 != null) {
+      // 직선 돌진 예고: 띠 + 끝까지 차오르는 안쪽
+      const band = (to: number, fill: string) => {
+        const ex = tl.x + (tl.x2! - tl.x) * to;
+        const ey = tl.y + (tl.y2! - tl.y) * to;
+        const [nx, ny] = [-(tl.y2! - tl.y), tl.x2! - tl.x];
+        const l = Math.hypot(nx, ny) || 1;
+        const ox2 = (nx / l) * tl.w!;
+        const oy2 = (ny / l) * tl.w!;
+        const pts = [W(tl.x + ox2, tl.y + oy2), W(ex + ox2, ey + oy2), W(ex - ox2, ey - oy2), W(tl.x - ox2, tl.y - oy2)];
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+        ctx.closePath();
+        ctx.fill();
+      };
+      band(1, 'rgba(255,60,50,0.28)');
+      band(prog, 'rgba(255,90,70,0.35)');
+      continue;
+    }
+    const [X, Y] = W(tl.x, tl.y);
+    ellipse(ctx, X, Y, tl.r * (TW / 2), tl.r * (TH / 2), 'rgba(255,60,50,0.28)', '#ff5a4a');
+    ellipse(ctx, X, Y, tl.r * (TW / 2) * prog, tl.r * (TH / 2) * prog, 'rgba(255,90,70,0.35)', null);
   }
+  // 정예: 발밑 금빛 고리 (깜빡)
+  for (const m of f.units)
+    if (m.elite && !m.boss && !m.dead && m.st !== 'spawn') {
+      const [X, Y] = W(m.x, m.y);
+      ellipse(ctx, X, Y, 11, 5, null, Math.floor(m.t * 4) % 2 ? '#ffd36b' : '#ff9a3a');
+    }
   for (const fx of f.fx) {
     const [X, Y] = W(fx.x, fx.y);
     const p = fx.t / fx.dur;
@@ -205,6 +289,37 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
       });
   }
   for (const u of f.units) things.push({ d: u.x + u.y, draw: () => (u.team === 'ally' ? drawAlly(ctx, f, u, W) : drawMob(ctx, u, W)) });
+  // 장비: 등급 색 보석 + 영웅 이상은 빛기둥
+  labelsOut.length = 0;
+  for (const l of f.loot)
+    things.push({
+      d: l.x + l.y,
+      draw: () => {
+        const [X, Y] = W(l.x, l.y);
+        const col = GRADE_COLOR[l.item.grade];
+        const hi = l.item.grade === 'e' || l.item.grade === 'l' || l.item.grade === 'a';
+        if (hi) {
+          // 빛기둥: 반투명 없이 바둑 점 (위로 갈수록 성기게)
+          for (let y = 0; y < 44; y++)
+            for (let x = -2; x <= 2; x++) {
+              if ((x + y + Math.floor(l.t * 12)) % 2 || (y > 22 && (x + y) % 4)) continue;
+              ctx.fillStyle = Math.abs(x) <= 0 ? '#ffffff' : col;
+              ctx.fillRect(X + x, Y - 4 - y, 1, 1);
+            }
+        }
+        const z = Math.round(l.z);
+        const by = Y - 3 - z + (l.t > 0.8 ? Math.round(Math.sin(l.t * 4)) : 0);
+        ctx.fillStyle = '#140c18';
+        ctx.fillRect(X - 3, by - 2, 7, 5);
+        ctx.fillRect(X - 2, by - 3, 5, 7);
+        ctx.fillStyle = col;
+        ctx.fillRect(X - 2, by - 1, 5, 3);
+        ctx.fillRect(X - 1, by - 2, 3, 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(X - 1, by - 1, 1, 1);
+        labelsOut.push({ x: X, y: by - 6, text: l.item.name, col });
+      },
+    });
   for (const d of f.drops)
     things.push({
       d: d.x + d.y,
@@ -226,8 +341,16 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
   for (const fx of f.fx) {
     const [X, Y] = W(fx.x, fx.y);
     const p = fx.t / fx.dur;
-    if (fx.kind === 'slash') slash(ctx, X, Y - 12, fx.ax ?? 1, fx.ay ?? 0, Math.min(2, Math.floor(p * 3)), !!fx.big);
-    if (fx.kind === 'puff') puff(ctx, X, Y - 8, p, !!fx.big);
+    if (fx.kind === 'slash') {
+      // Ninja Adventure 베기 (바라보는 쪽으로 90° 단위 회전 · 3단째는 회오리)
+      const sdx = screenDx(fx.ax ?? 1, fx.ay ?? 0);
+      const sdy = (((fx.ax ?? 1) + (fx.ay ?? 0)) * TH) / 2;
+      const q = Math.abs(sdx) > Math.abs(sdy) ? (sdx > 0 ? 3 : 1) : sdy > 0 ? 0 : 2;
+      const ok = fx.big ? fxDraw(ctx, 'circular', X, Y - 12, p) : fxDraw(ctx, 'arc', X + Math.sign(sdx) * 4, Y - 12, p, q);
+      if (!ok) slash(ctx, X, Y - 12, fx.ax ?? 1, fx.ay ?? 0, Math.min(2, Math.floor(p * 3)), !!fx.big);
+    }
+    if (fx.kind === 'puff' && !fxDraw(ctx, 'smoke', X, Y - 10, p)) puff(ctx, X, Y - 8, p, !!fx.big);
+    if (fx.kind === 'ring' && (fx.r ?? 0) >= 1.5) fxDraw(ctx, 'smokering', X, Y, p);
   }
   for (const pj of f.proj) {
     const [X, Y] = W(pj.x, pj.y);
@@ -285,13 +408,18 @@ function drawMob(ctx: CanvasRenderingContext2D, m: Unit, W: (x: number, y: numbe
   const sh = sheets[m.mon!];
   const [X, Y] = W(m.x, m.y);
   if (m.st === 'spawn') return;
-  dotShadow(ctx, X, Y, m.mon === 'slime' ? 8 : 7, 3);
+  dotShadow(ctx, X, Y, m.boss ? Math.round(m.r * 20) : 7, m.boss ? 5 : 3);
   if (!sh) return;
   let anim = 'idle';
   let t = m.t;
   if (m.dead) {
     anim = 'die';
     t = m.deadT;
+  } else if (m.boss && m.st === 'tele') {
+    anim = sh.meta.anims.charge ? 'charge' : 'attack';
+  } else if (m.boss && m.st === 'strike') {
+    anim = 'attack';
+    t = 0.35 - (m.stT ?? 0);
   } else if (m.st === 'tele') {
     anim = 'attack';
     t = 0;
@@ -312,7 +440,15 @@ function drawMob(ctx: CanvasRenderingContext2D, m: Unit, W: (x: number, y: numbe
   ctx.globalAlpha = m.dead ? Math.max(0, 1 - m.deadT * 1.8) : 1;
   ctx.drawImage(img, X - px, Y - ay);
   ctx.globalAlpha = 1;
-  if (!m.dead && m.hp < m.max) bar(ctx, X, Y - ay - 3, m.hp / m.max, '#ff6a5a');
+  // 보스 체력은 위쪽 HUD 막대 · 정예는 금빛 막대 + 왕관 점
+  if (!m.dead && !m.boss && m.hp < m.max) bar(ctx, X, Y - ay - 3, m.hp / m.max, m.elite ? '#ffd36b' : '#ff6a5a');
+  if (m.elite && !m.boss && !m.dead) {
+    ctx.fillStyle = '#ffd36b';
+    ctx.fillRect(X - 2, Y - ay - 8, 5, 1);
+    ctx.fillRect(X - 2, Y - ay - 9, 1, 1);
+    ctx.fillRect(X, Y - ay - 9, 1, 1);
+    ctx.fillRect(X + 2, Y - ay - 9, 1, 1);
+  }
   if (m.stun > 0) {
     ctx.fillStyle = '#ffd36b';
     const k = Math.floor(m.t * 8) % 3;

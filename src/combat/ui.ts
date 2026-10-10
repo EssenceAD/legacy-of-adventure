@@ -6,9 +6,10 @@ import { PORTRAITS } from '../engine/assets';
 import { pic } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
-import type { Actor } from '../world/state';
-import { attack, dodge, grade, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type Unit } from './field';
-import { digits, draw, numsOut, sheets } from './draw';
+import type { Actor, Item } from '../world/state';
+import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
+import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
+import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
 import { loadMon } from './mon';
@@ -23,6 +24,12 @@ export interface CombatResult {
   time: number;
   hits: number;
   kills: number;
+  maxStreak: number;
+  /** 전투 중 주운 장비 */
+  items: Item[];
+  /** 토벌: 보스에게 준 피해(필드 단위) · 보스를 쓰러뜨렸나 */
+  raidDmg: number;
+  bossDown: boolean;
 }
 
 let F: Field | null = null;
@@ -39,19 +46,38 @@ export const devAdvance = (sec: number) => {
 export const devField = () => F;
 
 
-export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void) {
-  await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
+export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void, opts: FieldOpts = {}) {
+  // 전투 2차: 이 판에 나올 몬스터·정예·보스·부하 그림 + 이펙트를 미리
+  const ids = new Set<string>(stageMons(region, stage).map((m) => m.id));
+  if (stage >= 10) {
+    ids.add(REGION_BOSS[region].id);
+    ids.add(REGION_BOSS[region].minion);
+  }
+  if (opts.raid) {
+    ids.add(opts.raid.look.id);
+    ids.add(opts.raid.look.minion);
+  }
+  await Promise.all([...[...ids].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx()]);
+  // 그림이 없으면 1차 코드 그림으로 (예비)
+  if ([...ids].some((id) => !sheets[id])) await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
+  for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
-  F = makeField(region, stage, members, auto);
+  F = makeField(region, stage, members, auto, opts);
   onEnd = done;
   root = document.createElement('div');
-  root.id = 'hunt';
+  // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
+  root.id = opts.mode === 'raid' ? 'raid' : 'hunt';
   root.className = 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
     <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO</button><button id="cbQuit" aria-label="포기">✕</button></div>
     <div class="cbparty" id="cbParty"></div>
     <div class="cbchain" id="cbChain"></div>
+    <div class="cbhit" id="cbHit"><b id="cbHitN"></b><small id="cbHitB"></small><strong id="cbKills"></strong></div>
+    <div class="cbboss" id="cbBoss" hidden><span id="cbBossN"></span><i><u id="cbBossHp"></u></i></div>
+    <div class="cbbanner" id="cbBanner" hidden></div>
+    <div class="cbgoal" id="cbGoal"></div>
+    <div class="cbloot" id="cbLoot"></div>
     <div class="cbstick" id="cbStick" hidden><i></i></div>
     <div class="cbpad">
       <div class="cbnames" id="cbNames" hidden><span id="cbN1"></span><span id="cbN2"></span></div>
@@ -175,16 +201,57 @@ function render() {
   const pn = Math.max(2, Math.round(K / 2));
   const pc = Math.max(3, Math.round(K * 0.75));
   for (const n of numsOut) digits(x, n.text, n.x * K, n.y * K, n.col, n.crit ? pc : pn);
+  // 장비 이름표 (등급 색 · 어두운 테두리)
+  if (labelsOut.length) {
+    const fs = Math.round(11 * dpr());
+    x.font = `700 ${fs}px Galmuri11, sans-serif`;
+    x.textAlign = 'center';
+    x.textBaseline = 'bottom';
+    x.lineWidth = Math.max(2, Math.round(dpr() * 2));
+    x.strokeStyle = '#140c18';
+    for (const l of labelsOut) {
+      x.strokeText(l.text, l.x * K, l.y * K);
+      x.fillStyle = l.col;
+      x.fillText(l.text, l.x * K, l.y * K);
+    }
+  }
   hud();
 }
 
 function hud() {
   const f = F!;
-  $('#cbWave').textContent = `웨이브 ${f.wave}/${C.waves}`;
+  $('#cbWave').textContent = f.mode === 'raid' ? '토벌' : '';
   $('#cbTime').textContent = `${Math.max(0, Math.ceil(f.time))}`;
   $('#cbTime').classList.toggle('low', f.time < 15);
   $('#cbAuto').classList.toggle('on', f.auto);
-  $('#cbChain').textContent = f.chain >= 2 && f.chainT > 0 ? `×${f.chain} 콤보` : '';
+  $('#cbChain').textContent = '';
+  // 전투 2차: 연타 HIT (+피해) · KILLS 연속
+  $('#cbHitN').textContent = f.hit >= 2 ? `${f.hit} HIT` : '';
+  const hb = hitBonus(f.hit);
+  $('#cbHitB').textContent = f.hit >= 2 && hb > 0 ? `+${Math.round(hb * 100)}% DMG` : '';
+  $('#cbKills').textContent = f.streak >= 2 ? `${f.streak} KILLS` : '';
+  // 목표: 처치 n/목표 → 정예 등장
+  $('#cbGoal').textContent = f.mode === 'raid' ? '' : f.elite ? (f.elite.boss ? `보스 · ${f.elite.boss.name}` : '정예를 쓰러뜨려요!') : `처치 ${f.kills}/${f.killGoal}`;
+  // 보스 체력 막대
+  const bb = $('#cbBoss');
+  const boss = f.elite?.boss ? f.elite : null;
+  bb.hidden = !boss || boss.dead || boss.st === 'spawn';
+  if (boss) {
+    $('#cbBossN').textContent = boss.boss!.name + (boss.enraged ? ' · 분노' : '');
+    $('#cbBossHp').style.width = Math.max(0, Math.round((boss.hp / boss.max) * 100)) + '%';
+    // 토벌: 체력 30% 아래 → 「마지막 일격」 음악
+    if (f.mode === 'raid' && boss.hp / boss.max < 0.3) battleMusic.raidLow = true;
+  }
+  const bn = $('#cbBanner');
+  if (f.bannerT > 0) {
+    if (bn.textContent !== f.banner) bn.textContent = f.banner;
+    bn.hidden = false;
+  } else if (!bn.hidden) bn.hidden = true;
+  // 획득 알림 (왼쪽 아래 최대 4줄 · 4초)
+  const lg = f.lootLog.filter((g) => g.t < 4);
+  const lh = lg.map((g) => `<p style="color:${GRADE_COLOR[g.grade]}">${g.text.replace(/[<>&]/g, '')}</p>`).join('');
+  const lb = $('#cbLoot');
+  if (lb.innerHTML !== lh) lb.innerHTML = lh;
   // 초상화 체력 · 조종 중
   f.allies.forEach((u, i) => {
     const b = document.querySelector<HTMLElement>(`[data-ally="${i}"]`);
@@ -425,7 +492,10 @@ function onKeyUp(e: KeyboardEvent) {
 
 function finish() {
   const f = F!;
-  const res: CombatResult = { win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills };
+  const res: CombatResult = {
+    win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
+    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead,
+  };
   onEnd?.(res);
 }
 

@@ -83,8 +83,20 @@ function groups(): [string, Item[]][] {
       { icon: 'm_settings', name: '설정', open: () => openSettings() },
       { icon: 'm_guide', name: '안내서', open: () => openManual() },
       { icon: 'm_letter', name: '모모에게 편지', open: () => openReport() },
+      { icon: 'm_album', name: '만든 사람', open: () => openCredits() },
     ]],
   ];
+}
+
+/** 만든 사람 (크레딧) · 빌려 쓴 그림·글꼴 */
+export function openCredits() {
+  openWin(
+    '만든 사람',
+    `<div class="credits"><p class="pn-title">모험의 유산</p>
+    <p class="pn-h">몬스터 · 보스 · 이펙트</p><p>Ninja Adventure Asset Pack — pixel-boy (CC0)</p>
+    <p class="pn-h">글꼴</p><p>Galmuri — quiple (SIL Open Font License)</p>
+    <p class="sub">그 밖의 그림 · 음악 · 코드는 모험의 유산 제작팀이 만들었어요</p></div>`,
+  );
 }
 
 /** 격자 메뉴 */

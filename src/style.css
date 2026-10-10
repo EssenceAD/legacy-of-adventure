@@ -995,3 +995,19 @@ html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px
 .pn-title{font-size:var(--f-big);color:var(--gold);margin:0 0 4px}
 #nbody .pnlist{margin-top:4px}
 .ver{border:0;background:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-size:13px;color:#b9c3ea}
+/* ── 전투 2차: HIT · KILLS · 보스 막대 · 알림 띠 · 목표 · 획득 알림 ── */
+.cbhit{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 200px);z-index:3;display:flex;flex-direction:column;align-items:flex-start;pointer-events:none;text-shadow:2px 2px 0 #140c18,-1px -1px 0 #140c18}
+.cbhit b{font-size:17px;color:#fff;line-height:1.1}
+.cbhit small{font-size:13px;color:#ffd36b;font-weight:700}
+.cbhit strong{font-size:28px;color:#ff8a5a;line-height:1.1;margin-top:2px;letter-spacing:1px}
+.cbboss{position:absolute;left:70px;right:16px;top:calc(env(safe-area-inset-top,0px) + 50px);z-index:3;pointer-events:none;display:flex;flex-direction:column;gap:3px}
+.cbboss[hidden]{display:none}
+.cbboss span{font-size:15px;font-weight:700;color:#ffd36b;text-shadow:1px 1px 0 #140c18;text-align:center}
+.cbboss i{display:block;height:10px;background:#2a1822;box-shadow:0 0 0 2px #140c18,0 0 0 3px #8a5a4a}
+.cbboss u{display:block;height:100%;background:linear-gradient(#ff7a5a,#d8392a);text-decoration:none;transition:width .2s steps(4)}
+.cbbanner{position:absolute;left:50%;top:40%;transform:translateX(-50%);z-index:6;font-size:22px;font-weight:700;color:#ffd36b;background:rgba(10,8,20,.75);padding:6px 16px;box-shadow:0 0 0 2px #ffd36b;white-space:nowrap;pointer-events:none;animation:updIn .3s steps(3)}
+.cbbanner[hidden]{display:none}
+.cbgoal{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 30px);text-align:center;z-index:3;font-size:13px;color:#efe2c6;text-shadow:1px 1px 0 #140c18;pointer-events:none}
+.cbloot{position:absolute;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 214px);z-index:4;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.cbloot p{margin:0;font-size:14px;font-weight:700;background:rgba(10,8,20,.7);padding:2px 8px;text-shadow:1px 1px 0 #140c18;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html:not([data-size="phone"]) .cbloot{bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}

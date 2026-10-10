@@ -9,6 +9,10 @@ import { TH, TW } from '../engine/iso';
 import { sfx } from '../audio/sfx';
 import { recPower } from '../world/hunt';
 import { pairOf } from '../world/chem';
+import { addToBag, makeItem, rollGrade } from '../world/items';
+import type { Grade } from '../data/items';
+import type { Item } from '../world/state';
+import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
 
 const C = CONFIG.combat;
 export type Job = 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';
@@ -27,6 +31,10 @@ export interface Area {
   x: number;
   y: number;
   r: number;
+  /** 직선 돌진 예고: (x,y)→(x2,y2) 폭 w */
+  x2?: number;
+  y2?: number;
+  w?: number;
 }
 export interface Unit {
   id: number;
@@ -74,10 +82,19 @@ export interface Unit {
   /** AI가 지금 예고를 피할지 정했다 */
   dodgeDecided?: number;
   // 몬스터
-  mon?: 'slime' | 'goblin';
+  mon?: string;
   st?: 'spawn' | 'move' | 'tele' | 'strike' | 'recover';
   stT?: number;
+  /** 이번 예고 길이 (보스는 패턴마다 다르다) */
+  teleMax?: number;
   tele?: Area;
+  /** 전투 2차: 정예 · 보스 · 보스가 부른 부하 */
+  elite?: boolean;
+  boss?: BossLook;
+  minion?: boolean;
+  pat?: number;
+  enraged?: boolean;
+  dash?: { vx: number; vy: number; t: number };
   atk?: number;
   speed?: number;
   target?: Unit;
@@ -107,6 +124,17 @@ export interface Fx {
   r?: number;
   owner?: Unit;
 }
+/** 바닥에 떨어진 장비 (가까이 가거나 판이 끝나면 줍는다) */
+export interface Loot {
+  x: number;
+  y: number;
+  z: number;
+  vz: number;
+  t: number;
+  item: Item;
+}
+export const GRADE_COLOR: Record<Grade, string> = { n: '#ffffff', r: '#6aa8ff', e: '#c07aff', l: '#ffa040', a: '#ff4a4a' };
+
 export interface Num {
   x: number;
   y: number;
@@ -167,6 +195,29 @@ export interface Field {
   /** 내가 쓴 스킬 이름 (아래 가운데 0.6초) */
   castTxt: string;
   castT: number;
+  // ── 전투 2차 ──
+  mode: 'hunt' | 'raid';
+  /** 처치 목표 (채우면 정예/보스) · 지금까지 내보낸 수 */
+  killGoal: number;
+  spawned: number;
+  elite: Unit | null;
+  /** 연타: 2초 안에 계속 때리면 쌓인다 (10HIT마다 +1%, 최대 +10%) */
+  hit: number;
+  hitT: number;
+  /** 처치 연속 (KILLS) · 최고 기록 */
+  streak: number;
+  streakT: number;
+  maxStreak: number;
+  loot: Loot[];
+  picked: Item[];
+  lootLog: { text: string; grade: Grade; t: number }[];
+  /** 장비가 나올 확률 (처치 1마리당) */
+  dropK: number;
+  /** 토벌: 보스에게 준 피해 합 · 보스 체력(필드 단위) */
+  raidDmg: number;
+  /** 정예·보스 등장 알림 */
+  banner: string;
+  bannerT: number;
 }
 
 // ───────── 좌표 ─────────
@@ -189,7 +240,12 @@ const pxToTile = (px: number) => px / 14;
 
 /** 동료 자리: 나를 기준으로 서로 다른 방향 (왼쪽 뒤 · 오른쪽 뒤) */
 const SLOTS = [0, Math.PI * 0.75, -Math.PI * 0.25 + Math.PI * 1.5];
-export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean): Field {
+export interface FieldOpts {
+  mode?: 'hunt' | 'raid';
+  /** 토벌 보스 그림·이름 · 보스 체력(필드 단위) · 제한 시간 */
+  raid?: { look: BossLook; hp: number; seconds: number; power: number };
+}
+export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
@@ -205,39 +261,111 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   const props: Field['props'] = [];
   // 가장자리 숲 · 안쪽 바위 몇 개 (부딪힘)
   // 안쪽은 낮은 바위만 (큰 나무는 캐릭터를 가린다 · 나무는 가장자리 숲)
-  for (let i = 0; i < 4; i++) props.push({ x: 1.5 + Math.random() * (N - 3), y: 1.5 + Math.random() * (N - 3), r: 0.35, kind: 'rock' });
+  for (let i = 0; i < 7; i++) props.push({ x: 1.5 + Math.random() * (N - 3), y: 1.5 + Math.random() * (N - 3), r: 0.35, kind: 'rock' });
+  const mode = opts.mode ?? 'hunt';
+  const boss = stage >= 10;
+  const killGoal = mode === 'raid' ? 0 : boss ? C.bossKillGoal : Math.round(C.killGoal[0] + ((C.killGoal[1] - C.killGoal[0]) * (stage - 1)) / 8);
   const f: Field = {
-    region, stage, rec: recPower(region, stage), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
-    wave: 0, waveLeft: 0, time: C.timeLimit, stop: 0, shake: 0, shakeAmp: 0, chem: 0, ult: 0, ultName: '', hitsTaken: 0, autoUsed: auto, auto, kills: 0, chain: 0, chainT: 0,
+    region, stage, rec: opts.raid ? opts.raid.power : recPower(region, stage), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
+    mode, killGoal, spawned: 0, elite: null, hit: 0, hitT: 0, streak: 0, streakT: 0, maxStreak: 0, loot: [], picked: [], lootLog: [], dropK: C.dropsPerRun / Math.max(1, killGoal), raidDmg: 0, banner: '', bannerT: 0,
+    wave: 0, waveLeft: 0, time: opts.raid ? opts.raid.seconds : C.timeLimit, stop: 0, shake: 0, shakeAmp: 0, chem: 0, ult: 0, ultName: '', hitsTaken: 0, autoUsed: auto, auto, kills: 0, chain: 0, chainT: 0,
     done: '', doneT: 0, stick: { x: 0, y: 0 }, holdAtk: 0, nextId: 100, stats: { teleIn: 0, dodged: 0 }, castTxt: '', castT: 0, props: props.filter((p) => Math.hypot(p.x - N / 2, p.y - N / 2) > 2.2),
   };
-  spawnWave(f);
+  if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
+  else {
+    // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
+    spawnPack(f, false);
+    spawnPack(f, false);
+  }
   return f;
 }
 
-function spawnWave(f: Field) {
-  f.wave++;
-  const N = C.field;
-  const n = Math.min(C.pack[1], C.pack[0] + Math.floor(Math.random() * (2 + f.stage)));
-  const goblinShare = [0.15, 0.4, 0.6][Math.min(2, f.stage - 1)] ?? 0.5;
-  for (let i = 0; i < n; i++) {
-    const kind: 'slime' | 'goblin' = Math.random() < goblinShare ? 'goblin' : 'slime';
-    // 필드 가장자리에서 뿅
-    const side = Math.floor(Math.random() * 4);
-    const t = 0.8 + Math.random() * (N - 1.6);
-    const [x, y] = side === 0 ? [t, 0.8] : side === 1 ? [N - 0.8, t] : side === 2 ? [t, N - 0.8] : [0.8, t];
-    // 파티가 추천보다 아주 세면 몬스터도 조금 버틴다 (손맛 확인용 · 여전히 더 빨리 잡힌다)
-    const avg = f.allies.reduce((a, u) => a + (u.power ?? 50), 0) / Math.max(1, f.allies.length);
-    const tough = Math.pow(Math.max(1, Math.min(C.toughCap, avg / f.rec)), C.toughExp);
-    const max = Math.round(f.rec * C.mobHpK[kind] * tough * (f.wave === C.waves ? 1.15 : 1));
-    f.units.push({
-      id: f.nextId++, team: 'mob', mon: kind, x, y, vx: 0, vy: 0, r: kind === 'slime' ? 0.3 : 0.32, hp: max, max, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: Math.random(), dead: false, deadT: 0,
-      st: 'spawn', stT: 0.45 + i * 0.08, atk: C.mobAtk + f.rec * C.mobAtkK * (kind === 'goblin' ? 1.1 : 0.9), speed: kind === 'slime' ? 0.95 : 1.9,
-    });
-    f.fx.push({ kind: 'puff', x, y, t: 0, dur: 0.5, big: true });
-  }
-  f.waveLeft = n;
+// ───────── 전투 2차: 무리 · 정예 · 보스 ─────────
+
+/** 몬스터 체력 기준: 추천 전투력 파티의 한 사람이 2~3대에 쓰러뜨릴 만큼 (스테이지가 오르면 조금씩 단단) */
+export function mobBaseHp(rec: number, stage: number, avgPower: number): number {
+  const hits = C.hitsToKill[0] + ((C.hitsToKill[1] - C.hitsToKill[0]) * (Math.min(10, stage) - 1)) / 9;
+  // 파티가 추천보다 아주 세면 몬스터도 조금 버틴다 (여전히 더 빨리 잡힌다)
+  const tough = Math.pow(Math.max(1, Math.min(C.toughCap, avgPower / Math.max(1, rec / 3))), C.toughExp);
+  return (rec / 3) * C.dmgK * hits * tough;
 }
+const avgPow = (f: Field) => f.allies.reduce((a, u) => a + (u.power ?? 50), 0) / Math.max(1, f.allies.length);
+
+function addMob(f: Field, id: string, x: number, y: number, o: { delay?: number; hpMul?: number; atkMul?: number; elite?: boolean; minion?: boolean } = {}): Unit {
+  const d = monDef(id);
+  const max = Math.round(mobBaseHp(f.rec, f.stage, avgPow(f)) * d.hp * (o.hpMul ?? 1));
+  const u: Unit = {
+    id: f.nextId++, team: 'mob', mon: id, x, y, vx: 0, vy: 0, r: d.r + (o.elite ? 0.08 : 0), hp: max, max, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: Math.random(), dead: false, deadT: 0,
+    st: 'spawn', stT: o.delay ?? 0.45, atk: (C.mobAtk + f.rec * C.mobAtkK * d.atk) * (o.atkMul ?? 1), speed: d.speed * (o.elite ? 1.1 : 1), elite: o.elite, minion: o.minion,
+  };
+  f.units.push(u);
+  f.fx.push({ kind: 'puff', x, y, t: 0, dur: 0.5, big: true });
+  return u;
+}
+
+/** 무리 하나 (5~8마리) — atEdge면 가장자리에서 들어온다 */
+export function spawnPack(f: Field, atEdge: boolean) {
+  const N = C.field;
+  const kinds = stageMons(f.region, f.stage);
+  const n = Math.min(C.pack[0] + Math.floor(Math.random() * (C.pack[1] - C.pack[0] + 1)), f.killGoal - f.spawned);
+  if (n <= 0) return;
+  let cx = 0;
+  let cy = 0;
+  for (let tries = 0; tries < 20; tries++) {
+    if (atEdge) {
+      const side = Math.floor(Math.random() * 4);
+      const t = 1.5 + Math.random() * (N - 3);
+      [cx, cy] = side === 0 ? [t, 1.2] : side === 1 ? [N - 1.2, t] : side === 2 ? [t, N - 1.2] : [1.2, t];
+    } else [cx, cy] = [1.8 + Math.random() * (N - 3.6), 1.8 + Math.random() * (N - 3.6)];
+    if (Math.hypot(cx - f.me.x, cy - f.me.y) > 4) break;
+  }
+  // 무리 안에서 한두 종이 섞인다
+  const main = kinds[Math.floor(Math.random() * kinds.length)];
+  for (let i = 0; i < n; i++) {
+    const k = Math.random() < 0.65 ? main : kinds[Math.floor(Math.random() * kinds.length)];
+    const a = Math.random() * Math.PI * 2;
+    const rr = 0.4 + Math.random() * 1.1;
+    const x = Math.max(0.8, Math.min(N - 0.8, cx + Math.cos(a) * rr));
+    const y = Math.max(0.8, Math.min(N - 0.8, cy + Math.sin(a) * rr));
+    addMob(f, k.id, x, y, { delay: 0.3 + i * 0.07 });
+  }
+  f.spawned += n;
+  f.wave++;
+}
+
+/** 처치 목표를 채우면: 지역 정예 1마리 (x-10은 지역 보스) */
+function spawnElite(f: Field) {
+  const N = C.field;
+  const [x, y] = [Math.max(1.5, Math.min(N - 1.5, f.me.x + (f.me.x < N / 2 ? 3.5 : -3.5))), Math.max(1.5, Math.min(N - 1.5, f.me.y + (f.me.y < N / 2 ? 2.5 : -2.5)))];
+  if (f.stage >= 10) {
+    const look = REGION_BOSS[f.region];
+    spawnBoss(f, look, Math.round(mobBaseHp(f.rec, f.stage, avgPow(f)) * C.bossHp), x, y);
+    return;
+  }
+  const kinds = stageMons(f.region, f.stage);
+  const k = kinds[kinds.length - 1];
+  const e = addMob(f, k.id, x, y, { delay: 0.8, hpMul: C.eliteHp, atkMul: 1.5, elite: true });
+  f.elite = e;
+  f.banner = `정예 ${k.name} 등장!`;
+  f.bannerT = 2;
+  shake(f, 2);
+}
+
+export function spawnBoss(f: Field, look: BossLook, hp: number, x: number, y: number) {
+  const u: Unit = {
+    id: f.nextId++, team: 'mob', mon: look.id, x, y, vx: 0, vy: 0, r: look.r, hp, max: hp, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
+    st: 'spawn', stT: 1, atk: (C.mobAtk + f.rec * C.mobAtkK) * C.bossAtk, speed: 1.2, boss: look, pat: 0,
+  };
+  f.units.push(u);
+  f.elite = u;
+  f.fx.push({ kind: 'puff', x, y, t: 0, dur: 0.8, big: true });
+  f.banner = `${look.name} 등장!`;
+  f.bannerT = 2.2;
+  shake(f, C.shake.boss);
+}
+
+/** 연타 보너스 (10HIT마다 +1%, 최대 +10%) */
+export const hitBonus = (hit: number) => Math.min(C.hitBonusMax, Math.floor(hit / 10) * 0.01);
 
 // ───────── 피해 ─────────
 
@@ -246,16 +374,23 @@ const isMe = (f: Field, u: Unit) => u === f.me;
 export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: boolean; knock?: number; heavy?: boolean; stun?: number; silent?: boolean } = {}) {
   if (m.dead || m.st === 'spawn') return;
   const crit = !!o.crit;
+  // 연타: 내가(직접 조작) 2초 안에 계속 때리면 HIT가 쌓이고 피해 +
+  if (by === f.me && !f.auto) {
+    f.hit = f.hitT > 0 ? f.hit + 1 : 1;
+    f.hitT = C.hitWindow;
+    dmg *= 1 + hitBonus(f.hit);
+  }
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg;
+  if (f.mode === 'raid' && m.boss) f.raidDmg += Math.min(dmg, Math.max(0, m.hp + dmg));
   m.flash = 1 / 30 + 0.001;
-  if (o.stun) m.stun = Math.max(m.stun, o.stun);
+  if (o.stun) m.stun = Math.max(m.stun, o.stun * (m.boss ? 0.3 : 1));
   const kill = m.hp <= 0;
   // 넉백: 때린 쪽에서 밀려난다 (벽에 부딪히면 멈춤)
   const [nx, ny] = norm(m.x - by.x, m.y - by.y);
   const kpx = kill ? C.knock.kill : crit ? C.knock.crit : C.knock.hit;
   // 예고 중(버티는 자세)에는 30%만 밀린다
-  const k = pxToTile(kpx * (o.knock ?? 1)) * 8 * (m.st === 'tele' && !kill ? 0.3 : 1);
+  const k = pxToTile(kpx * (o.knock ?? 1)) * 8 * (m.st === 'tele' && !kill ? 0.3 : 1) * (m.boss ? 0.08 : m.elite ? 0.35 : 1);
   m.vx += nx * k;
   m.vy += ny * k;
   // 히트스톱: 내 타격은 늘, 동료는 치명타·막타만
@@ -281,7 +416,17 @@ function killMob(f: Field, m: Unit) {
   f.waveLeft--;
   f.chain = f.chainT > 0 ? f.chain + 1 : 1;
   f.chainT = 2;
+  // KILLS: 4초 안에 계속 쓰러뜨리면 이어진다
+  f.streak = f.streakT > 0 ? f.streak + 1 : 1;
+  f.streakT = C.streakWindow;
+  f.maxStreak = Math.max(f.maxStreak, f.streak);
   f.fx.push({ kind: 'puff', x: m.x, y: m.y, t: 0, dur: 0.55, big: true });
+  // 장비: 원정과 같은 등급표·천장 · 정예/보스는 반드시 1개 (토벌은 장비 대신 보상표)
+  if (f.mode === 'hunt' && !m.minion && (m.elite || m.boss || Math.random() < f.dropK)) {
+    const it = makeItem(f.region, rollGrade(f.region, m.boss ? 1 : 0));
+    f.loot.push({ x: m.x, y: m.y, z: 0, vz: 70, t: 0, item: it });
+    if (it.grade === 'e' || it.grade === 'l' || it.grade === 'a') sfx('rare');
+  }
   // 금화·재료가 튀어나와 1초 뒤 주인공에게 빨려 온다
   for (let i = 0; i < 3 + (Math.random() < 0.5 ? 1 : 0); i++) {
     const a = Math.random() * Math.PI * 2;
@@ -615,23 +760,25 @@ function aiMob(f: Field, m: Unit, dt: number) {
   const taunter = allies.find((a) => (a.taunt ?? 0) > 0 && dist(a, m) < 4);
   if (taunter) m.target = taunter;
   if (!m.target || m.target.dead) m.target = allies.sort((a, b) => dist(a, m) - dist(b, m))[0];
+  if (m.boss) return aiBoss(f, m, m.target, dt);
   const t = m.target;
+  const md = monDef(m.mon!);
   // 예고는 조금 먼 데서부터 (넉백에 밀려도 공격이 나온다)
-  const reach = m.mon === 'slime' ? 1.25 : 1.15;
+  const reach = md.reach + (m.elite ? 0.15 : 0);
   switch (m.st) {
     case 'move': {
       const d = dist(m, t);
       if (d <= reach) {
         faceTo(m, t);
         m.st = 'tele';
-        m.stT = C.tele;
-        const off = m.mon === 'slime' ? 0.85 : 0.75;
-        m.tele = { x: m.x + m.ax * off, y: m.y + m.ay * off, r: m.mon === 'slime' ? 0.62 : 0.72 };
+        m.stT = m.teleMax = C.tele * (m.elite ? 1.1 : 1);
+        const off = md.hop ? 0.85 : 0.75;
+        m.tele = { x: m.x + m.ax * off, y: m.y + m.ay * off, r: md.hitR * (m.elite ? 1.35 : 1) };
         return;
       }
       const [nx, ny] = norm(t.x - m.x, t.y - m.y);
-      // 슬라임은 통통 튀며 (빠르기 출렁)
-      const hop = m.mon === 'slime' ? 0.45 + Math.max(0, Math.sin(m.t * 6)) * 1.1 : 1;
+      // 슬라임류는 통통 튀며 (빠르기 출렁)
+      const hop = md.hop ? 0.45 + Math.max(0, Math.sin(m.t * 6)) * 1.1 : 1;
       m.x += nx * m.speed! * hop * dt * 0.62;
       m.y += ny * m.speed! * hop * dt * 0.62;
       m.ax = nx;
@@ -644,8 +791,8 @@ function aiMob(f: Field, m: Unit, dt: number) {
       if (m.stT! <= 0) {
         m.st = 'strike';
         m.stT = 0.18;
-        // 슬라임: 몸통 박치기 (앞으로 튀어 나간다)
-        if (m.mon === 'slime') {
+        // 슬라임류: 몸통 박치기 (앞으로 튀어 나간다)
+        if (md.hop) {
           m.vx += m.ax * 5;
           m.vy += m.ay * 5;
         }
@@ -666,6 +813,107 @@ function aiMob(f: Field, m: Unit, dt: number) {
       return;
   }
 }
+
+/** 보스: 다가오기 → 패턴 (직선 돌진 · 원형 내려찍기 · 부하 소환) · 체력 50%부터 빨라짐 */
+function aiBoss(f: Field, m: Unit, t: Unit, dt: number) {
+  const look = m.boss!;
+  if (!m.enraged && m.hp < m.max * 0.5) {
+    m.enraged = true;
+    f.banner = `${look.name}이(가) 화났다!`;
+    f.bannerT = 1.6;
+    shake(f, C.shake.boss);
+  }
+  const fast = m.enraged ? C.bossEnrage : 1;
+  if (m.dash && m.dash.t > 0) {
+    m.dash.t -= dt;
+    m.x += m.dash.vx * dt;
+    m.y += m.dash.vy * dt;
+    m.moving = true;
+  }
+  switch (m.st) {
+    case 'move': {
+      m.stT = (m.stT ?? 1.4) - dt;
+      const d = dist(m, t);
+      if (d > 1.2) {
+        const [nx, ny] = norm(t.x - m.x, t.y - m.y);
+        m.x += nx * m.speed! * fast * dt * 0.62;
+        m.y += ny * m.speed! * fast * dt * 0.62;
+        m.ax = nx;
+        m.ay = ny;
+        m.moving = true;
+      }
+      if ((m.stT ?? 0) > 0) return;
+      // 패턴 고르기: 멀면 돌진, 가까우면 내려찍기, 가끔 부하
+      const minions = f.units.filter((u) => u.minion && !u.dead).length;
+      const p = (m.pat ?? 0) % 4 === 3 && minions < 6 ? 2 : d > 2.4 ? 0 : 1;
+      m.pat = (m.pat ?? 0) + 1;
+      faceTo(m, t);
+      m.st = 'tele';
+      const tl = [0.95, 1.1, 0.7][p] / fast;
+      m.stT = m.teleMax = tl;
+      if (p === 0) {
+        const L = 4.5;
+        m.tele = { x: m.x, y: m.y, r: 0, x2: m.x + m.ax * L, y2: m.y + m.ay * L, w: 0.55 };
+      } else if (p === 1) m.tele = { x: m.x, y: m.y, r: 1.9 + (m.enraged ? 0.3 : 0) };
+      else m.tele = { x: m.x, y: m.y, r: 0.9 };
+      (m as Unit & { curPat?: number }).curPat = p;
+      f.castTxt = look.pats[p];
+      f.castT = tl;
+      return;
+    }
+    case 'tele': {
+      m.stT! -= dt;
+      if (m.stT! > 0) return;
+      const p = (m as Unit & { curPat?: number }).curPat ?? 1;
+      const tl = m.tele!;
+      m.st = 'strike';
+      m.stT = 0.35;
+      if (p === 0) {
+        // 직선 돌진: 선 위의 아군 피해 + 보스가 끝까지 달려간다
+        const L = Math.hypot(tl.x2! - tl.x, tl.y2! - tl.y);
+        m.dash = { vx: ((tl.x2! - tl.x) / 0.3), vy: ((tl.y2! - tl.y) / 0.3), t: 0.3 };
+        void L;
+        for (const a of f.allies) if (!a.dead && segDist(a.x, a.y, tl.x, tl.y, tl.x2!, tl.y2!) <= tl.w! + a.r) hurtAlly(f, a, m.atk! * 1.3, m);
+      } else if (p === 1) {
+        for (const a of f.allies) if (!a.dead && Math.hypot(a.x - tl.x, a.y - tl.y) <= tl.r + a.r) hurtAlly(f, a, m.atk! * 1.5, m);
+        f.fx.push({ kind: 'ring', x: tl.x, y: tl.y, t: 0, dur: 0.45, r: tl.r });
+        shake(f, 3);
+      } else {
+        // 부하 셋
+        const look2 = monDef(look.minion);
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * Math.PI * 2 + Math.random();
+          const x = Math.max(0.8, Math.min(C.field - 0.8, m.x + Math.cos(a) * 1.6));
+          const y = Math.max(0.8, Math.min(C.field - 0.8, m.y + Math.sin(a) * 1.6));
+          addMob(f, look2.id, x, y, { delay: 0.4, hpMul: 0.7, minion: true });
+        }
+      }
+      return;
+    }
+    case 'strike':
+      m.stT! -= dt;
+      if (m.stT! <= 0) {
+        m.st = 'recover';
+        m.stT = C.recover * 1.3 / fast;
+        m.tele = undefined;
+      }
+      return;
+    case 'recover':
+      m.stT! -= dt;
+      if (m.stT! <= 0) {
+        m.st = 'move';
+        m.stT = (1.2 + Math.random() * 0.8) / fast;
+      }
+      return;
+  }
+}
+const segDist = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const l2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+  return Math.hypot(px - (x1 + dx * t), py - (y1 + dy * t));
+};
 
 // ───────── 한 걸음 ─────────
 
@@ -692,6 +940,11 @@ export function step(f: Field, dt: number) {
   }
   f.time -= dt;
   f.chainT = Math.max(0, f.chainT - dt);
+  f.bannerT = Math.max(0, f.bannerT - dt);
+  f.hitT = Math.max(0, f.hitT - dt);
+  if (f.hitT <= 0) f.hit = 0;
+  f.streakT = Math.max(0, f.streakT - dt);
+  if (f.streakT <= 0) f.streak = 0;
   const N = C.field;
   for (const u of f.units) {
     u.t += dt;
@@ -809,12 +1062,19 @@ export function step(f: Field, dt: number) {
           hurtMob(f, m, (fx.owner?.power ?? 50) * C.dmgK, fx.owner ?? f.me, { silent: true, knock: 0 });
         }
   stepFx(f, dt);
-  // 다음 웨이브 · 끝
-  if (f.waveLeft <= 0 && !f.units.some((u) => u.team === 'mob' && !u.dead)) {
-    if (f.wave >= C.waves) end(f, 'win');
-    else spawnWave(f);
+  // 전투 2차: 무리가 줄면 가장자리에서 새 무리 · 목표를 채우면 정예/보스 · 정예/보스를 쓰러뜨리면 끝
+  if (f.mode === 'hunt') {
+    const alive = f.units.filter((u) => u.team === 'mob' && !u.dead && !u.minion).length;
+    if (!f.elite && f.spawned < f.killGoal && alive < C.refillBelow) spawnPack(f, true);
+    if (!f.elite && f.kills >= f.killGoal) spawnElite(f);
+    if (f.elite && f.elite.dead) end(f, 'win');
+    if (!f.allies.some((a) => !a.dead) || f.time <= 0) end(f, 'lose');
+  } else {
+    // 토벌: 시간이 끝나면 그때까지 준 피해로 · 보스를 쓰러뜨리면 바로
+    if (f.elite && f.elite.dead) end(f, 'win');
+    else if (f.time <= 0) end(f, 'win');
+    if (!f.allies.some((a) => !a.dead)) end(f, 'lose');
   }
-  if (!f.allies.some((a) => !a.dead) || f.time <= 0) end(f, 'lose');
   f.units = f.units.filter((u) => !(u.team === 'mob' && u.dead && u.deadT > 0.5));
 }
 
@@ -839,6 +1099,25 @@ function stepFx(f: Field, dt: number) {
     }
   }
   f.drops = f.drops.filter((d) => !(d.t > 1 && Math.hypot(d.x - f.me.x, d.y - f.me.y) < 0.2));
+  // 장비: 튀어 올랐다 떨어지고, 가까이 가거나 판이 끝나면 줍는다
+  for (const l of f.loot) {
+    l.t += dt;
+    l.vz -= 260 * dt;
+    l.z = Math.max(0, l.z + l.vz * dt);
+  }
+  for (const l of [...f.loot]) if ((f.done && f.doneT > 0.4) || (l.t > 0.6 && f.allies.some((a) => !a.dead && Math.hypot(a.x - l.x, a.y - l.y) < C.pickR))) pickLoot(f, l);
+  for (const g of f.lootLog) g.t += dt;
+}
+
+function pickLoot(f: Field, l: Loot) {
+  f.loot = f.loot.filter((x) => x !== l);
+  const r = addToBag(l.item);
+  if (r === 'ok') {
+    f.picked.push(l.item);
+    f.lootLog.push({ text: `${l.item.name} 획득!`, grade: l.item.grade, t: 0 });
+    sfx('item');
+  } else f.lootLog.push({ text: r === 'salvaged' ? `${l.item.name} 자동 분해` : '가방이 가득해요!', grade: l.item.grade, t: 0 });
+  if (f.lootLog.length > 4) f.lootLog.splice(0, f.lootLog.length - 4);
 }
 
 function end(f: Field, r: 'win' | 'lose') {
@@ -848,11 +1127,15 @@ function end(f: Field, r: 'win' | 'lose') {
   sfx(r);
 }
 
-/** 평가: S = 맞은 횟수 3번 이하 + 제한 시간 60% 안 · A = 8번 이하 · 그 밖 B */
-export function grade(f: Field): 'S' | 'A' | 'B' {
+/** 평가 (전투 2차): 맞은 횟수 + 시간 + 최대 KILLS 연속 — 점수로 합쳐 S/A/B */
+export function gradeScore(hits: number, timeUsedRatio: number, maxStreak: number): number {
   const G = C.grade;
-  const used = C.timeLimit - f.time;
-  if (f.hitsTaken <= G.sHits && used <= C.timeLimit * G.sTime) return 'S';
-  if (f.hitsTaken <= G.aHits) return 'A';
-  return 'B';
+  return 100 - hits * G.perHit - Math.max(0, timeUsedRatio - G.timeFree) * G.perTime + Math.min(G.streakCap, maxStreak) * G.perStreak;
+}
+export function gradeOf(score: number): 'S' | 'A' | 'B' {
+  return score >= C.grade.s ? 'S' : score >= C.grade.a ? 'A' : 'B';
+}
+export function grade(f: Field): 'S' | 'A' | 'B' {
+  const limit = C.timeLimit;
+  return gradeOf(gradeScore(f.hitsTaken, (limit - f.time) / limit, f.maxStreak));
 }

@@ -22,6 +22,9 @@ import { $, $$, esc, fmt, nameTag, pct, pic } from './common';
 import { mine } from '../net/server';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx } from './battle';
 import { closeWin, openWin, toast } from './windows';
+import { BOSSES } from '../data/bosses';
+import { RAID_LOOKS, type BossLook } from '../combat/mons';
+import { closeCombat, startCombat } from '../combat/ui';
 
 const R = CONFIG.raid;
 /** 보스 기본 x · 돌진 거리 (장면 356×200 기준) */
@@ -69,10 +72,11 @@ export function openRaidPrep(t: RaidTarget) {
     <p class="sub">파티 ${members.length}/${R.partySize} · 첫 번째가 대장(직접 조작)</p>
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
     <div class="btnrow raidgo">
-      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌</button>
+      <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 토벌</button>
+      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
       ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
     </div>
-    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 싸우는 토벌전은 새 전투로 곧 열려요</p>`,
+    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 이번 주 모습: <b class="g">${esc(raidLook(t).name)}</b> · 직접 토벌만 랭킹 최고 기록에 도전해요</p>`,
   );
   $$('.pm').forEach(
     (el) =>
@@ -82,13 +86,14 @@ export function openRaidPrep(t: RaidTarget) {
         openRaidPrep(t);
       }),
   );
-  // 전투 개편 1차: 토벌은 자동 토벌만 — 전투 화면 없이 결과 카드 (새 토벌전은 2차)
+  // 전투 2차: 자동 토벌은 소탕 역할 (전투 화면 없이 기대 피해의 70% · 보상도 70%)
   $('#rgAuto').onclick = () => {
-    const sp = R.autoSpread;
-    const dmg = Math.round(ex.target * (1 - sp + Math.random() * sp * 2));
+    const dmg = Math.round(ex.target * CONFIG.combat.raidAuto);
     const out = settle(t, members, dmg, 'auto', ex);
     showResult(t, out, ex, 'auto', members, false);
   };
+  // 직접 토벌: 사냥과 같은 쿼터뷰 필드 액션 · 보스 패턴 3개 · 50%부터 빨라짐 · 30%부터 「마지막 일격」
+  $('#rgMan').onclick = () => fieldRaid(t, members, ex);
   const sw = document.getElementById('rgSweep');
   if (sw)
     sw.onclick = () => {
@@ -687,6 +692,54 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     view.log(`가한 피해 ${fmt(damage)}`, 'loot');
     setTimeout(() => showResult(t, out, ex, manual ? 'manual' : 'auto', members, true, S.died, S.bestStreak), killedNow ? 1400 : 500);
   }
+}
+
+// ───────── 전투 2차: 새 토벌전 (필드 액션) ─────────
+
+/** 이번 주(떠돌이는 보스마다) 토벌 보스 그림 — 주간 4종을 주마다 돌린다 */
+export function raidLook(t: RaidTarget): BossLook {
+  if (t.kind === 'weekly') {
+    const [y, mo, da] = P.raid.week.split('-').map(Number);
+    const wk = Math.round(new Date(y, mo - 1, da).getTime() / (7 * 864e5));
+    return RAID_LOOKS[((wk % 4) + 4) % 4];
+  }
+  return RAID_LOOKS[Math.max(0, BOSSES.findIndex((b) => b.id === t.boss.id)) % 4];
+}
+/** 필드 피해 → 토벌 피해 단위: 「자동으로 버틴 파티가 R.seconds 동안 넣는 필드 피해」를 기대 피해량에 맞춘다 */
+export const fieldExpect = (members: Actor[]) => members.reduce((s, m) => s + powerOf(m), 0) * CONFIG.combat.dmgK * CONFIG.combat.raidFieldDps * R.seconds;
+
+function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect) {
+  notePrep('raid', ex.power);
+  closeWin();
+  const look = raidLook(t);
+  const fexp = fieldExpect(members);
+  const scale = ex.target / Math.max(1, fexp);
+  // 보스 체력(필드 단위) = 남은 주간 체력을 피해 단위로 바꾼 것
+  const hp = Math.max(1, Math.round(t.hpLeft / scale));
+  void startCombat(
+    t.boss.region,
+    10,
+    members,
+    false,
+    (res) => {
+      const live = res.raidDmg * scale;
+      const survived = res.win;
+      let damage = survived ? Math.max(ex.target * R.manualMin, Math.min(ex.target * R.manualMax, live)) : Math.max(live, ex.target * R.manualMin * 0.5);
+      if (res.bossDown) damage = Math.max(damage, t.hpLeft);
+      // 랭킹 이론치 검사(기록 상한)를 넘지 않게
+      damage = Math.round(Math.min(damage, ex.theory * R.recordCap * 0.99));
+      const mode = res.autoUsed ? 'auto' : 'manual';
+      const out = settle(t, members, damage, mode, ex);
+      void showFieldRaidResult(t, out, ex, mode, members, !survived);
+    },
+    { mode: 'raid', raid: { look, hp, seconds: R.seconds, power: t.boss.power } },
+  );
+}
+
+async function showFieldRaidResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode: 'auto' | 'manual', members: Actor[], died: boolean) {
+  await showResult(t, out, ex, mode, members, false, died);
+  // 결과 창은 마을 위에 · 전투 화면은 닫는다
+  closeCombat();
 }
 
 // ───────── 결과 ─────────

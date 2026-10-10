@@ -1,0 +1,48 @@
+{
+ "frameW": 40,
+ "frameH": 40,
+ "anchor": [
+  20,
+  32
+ ],
+ "boss": true,
+ "source": "Ninja Adventure (CC0) GiantFrog",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 5,
+   "fps": 6,
+   "loop": true
+  },
+  "move": {
+   "row": 1,
+   "frames": 6,
+   "fps": 10,
+   "loop": true
+  },
+  "attack": {
+   "row": 2,
+   "frames": 3,
+   "fps": 10,
+   "loop": false
+  },
+  "charge": {
+   "row": 3,
+   "frames": 7,
+   "fps": 12,
+   "loop": true
+  },
+  "hurt": {
+   "row": 4,
+   "frames": 3,
+   "fps": 12,
+   "loop": false
+  },
+  "die": {
+   "row": 5,
+   "frames": 3,
+   "fps": 8,
+   "loop": false
+  }
+ }
+}

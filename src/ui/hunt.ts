@@ -35,17 +35,15 @@ export function openHunt(region?: RegionId) {
   manualPick = false;
   if (region) curRegion = region;
   if (!huntRegionOpen(regionIdx(curRegion))) curRegion = 'forest';
-  // 전투 개편 1차: 숲 1-1~1-3만 새 전투로 · 나머지 지역·스테이지는 「곧 열려요」
-  curRegion = 'forest';
-  const PM = CONFIG.combat.protoMax;
+  // 전투 2차: 5지역 × 10스테이지 모두 새 전투
   const tabs = REGIONS.map((r, i) => {
-    const open = i === 0 && huntRegionOpen(i);
+    const open = huntRegionOpen(i);
     return `<button class="tab ${r.id === curRegion ? 'on' : ''}" data-r="${r.id}" ${open ? '' : 'disabled'}>${open ? r.name : `🔒 ${r.name}`}</button>`;
   }).join('');
   const b = best(curRegion);
   const cells = Array.from({ length: H.stages }, (_, i) => {
     const s = i + 1;
-    const soon = s > PM;
+    const soon = false;
     const open = !soon && stageOpen(curRegion, s);
     const done = s <= b && !soon;
     const boss = isBoss(s);
@@ -59,7 +57,7 @@ export function openHunt(region?: RegionId) {
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap">${cells}</div>
     <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 자동 사냥 중 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${H.autoSeconds}초마다 한 판</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지는 「자동 사냥」으로 반복해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
-    <p class="note">새 전투 시험판: 숲 1-1~1-${PM}만 열려 있어요 · 나머지 스테이지와 지역은 곧 열려요</p>`,
+    <p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
   );
   $$('[data-r]').forEach((el) => (el.onclick = () => openHunt(el.dataset.r as RegionId)));
@@ -510,26 +508,28 @@ void LH;
 const G = CONFIG.combat.grade;
 function lootHtml(r: RegionId, out: HuntReward): string {
   const items = out.items.map((it) => itemCell(it)).join('');
-  return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}`;
+  return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}`;
 }
 
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   notePrep('hunt', partyPower(ms));
   void startCombat(r, s, ms, auto, (res) => {
     const bonus = res.win && !res.autoUsed ? G.bonus[res.grade] : 0;
-    const out = res.win ? clearStage(r, s, ms, 1 + bonus) : failStage(r, s, ms);
+    // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
+    const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
+    out.items.push(...res.items);
     for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
     markDirty();
     const next = s + 1;
-    const canNext = res.win && next <= CONFIG.combat.protoMax && stageOpen(r, next);
+    const canNext = res.win && next <= H.stages && stageOpen(r, next);
     const gradeLine = res.win
       ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
       : '';
     showCombatResult(
       `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
-      <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills}</p>
+      <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
       ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${lootHtml(r, out)}
-      <p class="note">S: 맞은 횟수 ${G.sHits}번 이하 + 제한 시간 ${Math.round(G.sTime * 100)}% 안 · A: 맞은 횟수 ${G.aHits}번 이하</p>
+      <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
       <div class="go">${canNext ? `<button class="a" id="cNext">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
       <div class="go"><button class="b" id="cMap">사냥터 지도</button>${canNext ? '<button class="b" id="cAgain">다시 하기</button>' : ''}</div>`,
       () => {

@@ -26,13 +26,8 @@ export function guideCtx(): GuideCtx {
     has: (k) => homeObjs().some((o) => o.kind === k && o.build === undefined),
     guestTalks: C.guestTalks,
     goalsClaimed: C.goalsClaimed,
-    // 전투 개편 1차: 사냥은 숲 1-protoMax(3)까지만 열려 있으니, 거기까지 깨면 더 높은 사냥 임무(1-5 · 1-10 · 2-1)도 된 걸로 본다
-    huntBest: (r) => {
-      const b = P.hunt.best[r] ?? 0;
-      const pm = CONFIG.combat.protoMax;
-      if (pm < 10 && (P.hunt.best.forest ?? 0) >= pm) return r === 'forest' ? Math.max(b, 10) : Math.max(b, 1);
-      return b;
-    },
+    // 전투 2차: 모든 스테이지가 열려 원래 조건으로 (1차 동안 이미 인정받은 임무는 진행 기록에 남아 그대로)
+    huntBest: (r) => P.hunt.best[r] ?? 0,
     huntAutoUsed: C.huntAutoUsed > 0,
     regulars: regs.length,
     land: world.home?.land ?? S.land,

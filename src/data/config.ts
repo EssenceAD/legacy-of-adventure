@@ -674,10 +674,33 @@ export const CONFIG = {
     scale: 3,
     /** 1차에 열린 스테이지 (숲 1-1 ~ 1-protoMax). 장부 임무의 사냥 조건도 여기까지로 본다 */
     protoMax: 3,
-    field: 11,
-    timeLimit: 90,
+    /** 전투 2차: 필드를 넓히고(15칸) 무리 단위로 · 제한 시간 150초 */
+    field: 15,
+    timeLimit: 150,
     waves: 3,
-    pack: [4, 8],
+    pack: [5, 8],
+    /** 토벌: 자동 토벌(소탕 역할) 비율 · 필드 피해 기준 (전투력 합 × dmgK × 이 값 = 초당 피해, 봇으로 맞춤) */
+    raidAuto: 0.7,
+    raidFieldDps: 1,
+    /** 한 판 처치 목표 (1 → 9스테이지) · x-10은 이만큼 잡고 보스 */
+    killGoal: [30, 50],
+    bossKillGoal: 24,
+    /** 추천 전투력이면 잡몹이 몇 대에 쓰러지나 (1 → 10스테이지) */
+    hitsToKill: [2.3, 2.9],
+    /** 정예·보스 체력 (잡몹 기준 배) · 보스 공격 배 · 50%부터 빨라지는 배 */
+    eliteHp: 10,
+    bossHp: 45,
+    bossAtk: 1.8,
+    bossEnrage: 1.35,
+    /** 남은 몹이 이보다 적으면 새 무리 */
+    refillBelow: 5,
+    /** 연타: 이 시간 안에 계속 때려야 이어짐 · 보너스 상한 / KILLS 연속 시간 */
+    hitWindow: 2,
+    hitBonusMax: 0.1,
+    streakWindow: 4,
+    /** 장비: 한 판 기대 개수(정예 확정 1개 별도) · 줍는 거리 */
+    dropsPerRun: 1.2,
+    pickR: 0.9,
     move: 3.2,
     dodge: { inv: 0.35, cd: 1.5, dist: 1.9, dur: 0.3 },
     combo: { window: 0.55, swing: 0.24, range: 1.05, arc: 1.25, mult: [1, 1.1, 1.6] },
@@ -722,7 +745,8 @@ export const CONFIG = {
     /** AUTO: 예고 범위 안이면 이 확률로 구른다 */
     autoDodge: 0.5,
     /** 평가 · 보상 배율 */
-    grade: { sHits: 3, sTime: 0.6, aHits: 8, bonus: { S: 0.3, A: 0.15, B: 0 } },
+    /** 평가 점수 = 100 − 맞은 횟수×perHit − (시간 비율−timeFree)×perTime + min(KILLS 연속, streakCap)×perStreak → s 이상 S · a 이상 A */
+    grade: { perHit: 4, timeFree: 0.45, perTime: 60, perStreak: 1, streakCap: 20, s: 90, a: 70, bonus: { S: 0.3, A: 0.15, B: 0 } },
     sweep: 0.7,
     allyVol: 0.6,
   },

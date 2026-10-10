@@ -105,7 +105,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
 }
 
 /** 스테이지 돌파 (직접·자동 전투 한 판) */
-export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1): HuntReward {
+export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true): HuntReward {
   const key = `${r}-${s}`;
   const first = !P.hunt.firstClear.includes(key);
   if (first) P.hunt.firstClear.push(key);
@@ -114,7 +114,7 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1): 
   if (r === 'forest') P.counters.forestSends++;
   P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
-  const out = reward(r, s, members, first, mult);
+  const out = reward(r, s, members, first, mult, dropItem);
   markDirty();
   return out;
 }
