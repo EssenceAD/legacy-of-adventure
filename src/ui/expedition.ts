@@ -9,8 +9,11 @@ import { powerOf } from '../world/adventurers';
 import { addEmber } from '../world/owner';
 import { departParty, returnParty } from '../world/actors';
 import {
-  activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, powerTips, refreshQuests, regionUnlocked, sendParty,
+  activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
 } from '../world/expeditions';
+import { equip, itemPower } from '../world/items';
+import { floatW } from '../world/fx';
+import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Quest, type Run, type TalkLine } from '../world/state';
@@ -29,13 +32,17 @@ function runRow(r: Run) {
   const names = r.members.map((id) => homeActors().find((a) => a.id === id)?.name ?? '?').join(' · ');
   if (r.result)
     return `<button class="run done" data-run="${r.id}"><b>${reg.name} ${r.result.win ? '성공!' : '실패…'}</b><small>${esc(names)}</small><em>보고서 보기</em></button>`;
-  return `<div class="run"><b>${reg.name} · ${TIER[r.quest.tier]} 의뢰</b><small>${esc(names)}</small><div class="pbar" data-start="${r.start}" data-end="${r.end}"><i><b></b></i><em>${leftText(r.end - Date.now())}</em></div></div>`;
+  return `<button class="run go" data-log="${r.id}"><b>${esc(questName(r.quest))}</b><small>${esc(names)} · 눌러서 진행 일지</small><div class="pbar" data-start="${r.start}" data-end="${r.end}"><i><b></b></i><em>${leftText(r.end - Date.now())}</em></div></button>`;
 }
+
+/** 의뢰 이름: 이름이 있으면 그대로, 아니면 「지역 · 짧은 의뢰」 */
+export const questName = (q: Quest) => q.name ?? `${regionById(q.region).name} · ${TIER[q.tier]} 의뢰`;
+const durText = (m: number) => (m < 1 ? `${Math.round(m * 60)}초` : minText(m));
 
 function questRow(q: Quest) {
   const reg = regionById(q.region);
   const dc = dropChances(q.region, q.tier);
-  return `<button class="quest" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${TIER[q.tier]} 의뢰 · ${minText(q.minutes)}</b><small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small><small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
+  return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small><small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
 }
 
 /** 의뢰 게시판 */
@@ -63,6 +70,7 @@ export function openBoard() {
     ${locked}<p class="note pity">${pity}</p>`,
   );
   $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
+  $$('[data-log]').forEach((b) => (b.onclick = () => openRunLog(P.runs.find((r) => r.id === +b.dataset.log!)!)));
   const rw = document.getElementById('rWeek');
   if (rw) rw.onclick = () => openRaidPrep(weeklyTarget());
   const rd = document.getElementById('rWander');
@@ -98,17 +106,18 @@ function openParty(q: Quest, picked: number[] = []) {
       return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
+  const pmin = partyMinFor(q);
   openWin(
-    `${reg.name} · ${TIER[q.tier]} 의뢰`,
-    `<p class="sub">파티 ${E.partyMin}~${E.partyMax}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${minText(q.minutes)}</p>
+    questName(q),
+    `<p class="sub">파티 ${pmin}~${E.partyMax}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
     <div class="plist">${rows || '<p class="note">단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요</p>'}</div>
     <div class="psum">${
       info
-        ? `파티 전투력 <b class="${short ? 'bad' : 'good'}">${fmt(info.power)}</b> / ${fmt(q.power)}${info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''}<br>성공률 <b>${pct(info.success)}</b> · 걸리는 시간 ${minText(info.minutes)}`
+        ? `파티 전투력 <b class="${short ? 'bad' : 'good'}">${fmt(info.power)}</b> / ${fmt(q.power)}${info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''}<br>성공률 <b>${q.tutorial ? '100%' : pct(info.success)}</b> · 걸리는 시간 ${durText(info.minutes)}`
         : '함께 갈 손님을 골라요'
     }</div>
     ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
-    <button class="bigbtn" id="pGo" ${sel.length >= E.partyMin ? '' : 'disabled'}>출발!</button>`,
+    <button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
   );
   $$('.pm').forEach(
     (b) =>
@@ -124,8 +133,56 @@ function openParty(q: Quest, picked: number[] = []) {
     departParty(r);
     markDirty();
     closeWin();
-    toast(`${reg.name}${josa(reg.name, "로")} 출발! (${minText(partyInfo(sel, q).minutes)})`);
+    toast(`${reg.name}${josa(reg.name, "로")} 출발! (${durText(partyInfo(sel, q).minutes)})`);
+    if (q.tutorial)
+      talk([
+        ['narr', `${durText(q.minutes)}면 돌아온다. 아래 원정 막대를 누르면 진행 일지를 볼 수 있다.`],
+        ['me', '기다리는 동안 오늘의 목표를 해 볼까. 모닥불 짓기, 손님에게 말 걸기, 지붕 색 바꾸기!'],
+        ['narr', '오늘의 목표: 메뉴 → 오늘의 목표 · 다 하면 금화를 받아요'],
+      ]);
   };
+}
+
+// ───────── 원정 진행 일지 ─────────
+
+let logTimer = 0;
+/** 원정 중인 파티의 일지: 10~20초마다 한 줄씩 쌓인다 (창을 열어 두면 실시간) */
+export function openRunLog(run: Run) {
+  if (!run) return;
+  if (run.result) {
+    closeWin();
+    return showReport(run);
+  }
+  const names = run.members.map((id) => homeActors().find((a) => a.id === id)?.name ?? '?').join(' · ');
+  const draw = () =>
+    runLog(run)
+      .map((l) => `<div><small>${Math.floor(l.at / 60)}:${String(Math.floor(l.at % 60)).padStart(2, '0')}</small> ${esc(l.text)}</div>`)
+      .join('');
+  openWin(
+    questName(run.quest),
+    `<p class="sub">${esc(names)}</p><div class="pbar" data-start="${run.start}" data-end="${run.end}"><i><b></b></i><em>${leftText(run.end - Date.now())}</em></div>
+    <div class="runlog" id="runlog">${draw()}</div>
+    <button class="bigbtn ghost" id="rlBack">게시판으로</button>`,
+  );
+  const box = $('#runlog');
+  box.scrollTop = box.scrollHeight;
+  $('#rlBack').onclick = () => openBoard();
+  let n = box.children.length;
+  clearInterval(logTimer);
+  logTimer = window.setInterval(() => {
+    const el = document.getElementById('runlog');
+    if (!el || !document.getElementById('win')!.classList.contains('on')) return clearInterval(logTimer);
+    if (run.result) {
+      clearInterval(logTimer);
+      return openRunLog(run);
+    }
+    el.innerHTML = draw();
+    if (el.children.length !== n) {
+      n = el.children.length;
+      el.lastElementChild?.classList.add('new');
+    }
+    el.scrollTop = el.scrollHeight;
+  }, 1000);
 }
 
 // ───────── 보고서 ─────────
@@ -162,7 +219,40 @@ function showLoot(run: Run) {
   $('#repOk').onclick = () => {
     claimRun(run);
     closeWin();
+    if (run.quest.tutorial) guideEquip(run);
   };
+}
+
+/** 첫 원정 뒤: 받은 희귀 장비를 바로 끼워 전투력이 오르는 걸 보여 준다 */
+function guideEquip(run: Run) {
+  const it = run.result?.items.find((x) => x.owner == null && P.bag.includes(x));
+  const a = run.members.map((id) => homeActors().find((x) => x.id === id)).find(Boolean);
+  if (!it || !a) return;
+  talk(
+    [
+      ['narr', `희귀 장비 「${it.name}」${josa(it.name, '를')} 얻었다!`],
+      ['me', `${a.name}에게 끼워 주면 더 강해지겠지?`],
+    ],
+    undefined,
+    [
+      {
+        label: `${a.name}에게 장착하기`,
+        fn: () => {
+          const before = powerOf(a);
+          const cur = P.bag.find((x) => x.id === a.equip[it.slot]);
+          if (!cur || itemPower(it) > itemPower(cur)) equip(a, it);
+          const after = powerOf(a);
+          markDirty();
+          floatW(a.x, a.y, 40, `전투력 +${fmt(after - before)}!`, 'big');
+          uiHooks.talk([
+            ['narr', `${a.name}의 전투력 ${fmt(before)} → ${fmt(after)} (+${fmt(after - before)})`],
+            ['narr', '장비는 원정에서 계속 얻어요. 손님 창의 장비 칸을 눌러 바꿀 수 있어요.'],
+          ]);
+        },
+      },
+      { label: '나중에', fn: () => toast('손님 창의 장비 칸에서 언제든 끼울 수 있어요') },
+    ],
+  );
 }
 
 /** 받은 원정은 목록에서 정리 */

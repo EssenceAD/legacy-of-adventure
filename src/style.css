@@ -462,3 +462,18 @@ html:not([data-size="phone"]) #placebar{bottom:calc(env(safe-area-inset-bottom,0
 .ecard.big .eports img{width:96px;height:96px;box-shadow:0 0 0 2px var(--ink)}.ecard.big b{font-size:var(--f-big)}
 .ecard.t-true{background:linear-gradient(180deg,#4a3a20,#141a3a)}
 .stp img.sp{background:#141a3a}
+
+/* ── 초반 원정 템포: 진행 바 · 진행 일지 · 첫 원정 ── */
+#runbar{position:absolute;left:8px;right:56px;bottom:calc(env(safe-area-inset-bottom,0px) + 86px + 2.8 * var(--f-chat) + 22px);display:flex;flex-wrap:wrap;gap:4px;pointer-events:none;font-size:var(--f-small)}
+#runbar button{pointer-events:auto;border:0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;padding:3px 8px;background:rgba(7,9,26,.8);box-shadow:0 0 0 2px var(--ink);cursor:pointer;flex:1 1 150px;max-width:260px;min-height:30px;color:var(--cream)}
+#runbar b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9em}
+#runbar i{display:block;height:6px;background:#2a3060;box-shadow:0 0 0 1px var(--ink)}#runbar u{display:block;height:100%;width:0;background:var(--gold);text-decoration:none}
+#runbar em{font-style:normal;color:#9ab0ff;font-variant-numeric:tabular-nums}
+#runbar button.done{background:rgba(58,40,10,.9);box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:rdy 1s steps(2) infinite}#runbar button.done em{color:var(--gold)}#runbar button.done i{visibility:hidden}
+html:not([data-size="phone"]) #runbar{right:auto;width:min(480px,calc(100% - 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 132px + 2.8 * var(--f-chat) + 22px)}
+.talking #runbar,.placing #runbar{visibility:hidden}
+.runlog{margin-top:8px;max-height:42vh;overflow:auto;background:#0b0f26;padding:6px 8px;display:flex;flex-direction:column;gap:3px;box-shadow:inset 0 0 0 2px var(--navy2)}
+.runlog small{color:#6a76a8;margin-right:4px;font-variant-numeric:tabular-nums}.runlog .new{animation:newl .6s ease}
+@keyframes newl{from{background:#3a3010}to{background:transparent}}
+.run.go{border:0;width:100%;text-align:left;cursor:pointer}
+.quest.tut{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold);animation:rdy 1.2s steps(2) infinite}

@@ -5,12 +5,15 @@ import * as game from '../game';
 
 import { setNight } from '../world/daynight';
 import { stars } from '../world/progress';
-import { S } from '../world/state';
+import { P as PG, S } from '../world/state';
+import { CONFIG } from '../data/config';
+import { regionById } from '../data/items';
+import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
 import { blocksDoor, canPlace, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
-import { openBoard, runsWaiting } from './expedition';
+import { openBoard, openRunLog, runsWaiting } from './expedition';
 import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
@@ -247,6 +250,36 @@ export function initHud() {
   $('#vHome').onclick = game.goHome;
 }
 
+/** 마을 아래 원정 진행 바: 나가 있는 파티마다 남은 시간 (누르면 진행 일지 · 끝났으면 보고서) */
+let runbarKey = '';
+function updateRunbar() {
+  const bar = $('#runbar');
+  const runs = S.visiting ? [] : PG.runs.filter((r) => !r.claimed).slice(0, CONFIG.expedition.maxParties);
+  bar.hidden = !runs.length;
+  if (!runs.length) return;
+  const now = Date.now();
+  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',');
+  if (key !== runbarKey) {
+    runbarKey = key;
+    bar.innerHTML = runs
+      .map((r) => `<button class="px" data-rb="${r.id}"><b>${esc(r.quest.name ?? regionById(r.quest.region).name)}</b><i><u></u></i><em></em></button>`)
+      .join('');
+    bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => (b.onclick = () => openRunLog(PG.runs.find((r) => r.id === +b.dataset.rb!)!)));
+  }
+  bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => {
+    const r = PG.runs.find((x) => x.id === +b.dataset.rb!);
+    if (!r) return;
+    const done = !!r.result || now >= r.end;
+    b.classList.toggle('done', done);
+    (b.querySelector('u') as HTMLElement).style.width = `${Math.min(100, ((now - r.start) / Math.max(1, r.end - r.start)) * 100)}%`;
+    b.querySelector('em')!.textContent = r.result ? '도착! 보고서' : done ? '돌아오는 중' : clockText(r.end - now);
+  });
+}
+const clockText = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
 /** 매 프레임: 금화가 바뀌면 숫자 갱신 + 반짝 */
 let shownGold = -1;
 let timerAcc = 0;
@@ -255,8 +288,9 @@ export function tickHud() {
   if (now - timerAcc > 500) {
     timerAcc = now;
     tickTimers();
-    // 원정 결과가 기다리면 원정 버튼이 반짝
-    $('#bExp').classList.toggle('ready', runsWaiting());
+    // 원정 결과가 기다리면 원정 버튼이 반짝 (새 게임: 첫 원정을 보내기 전에도)
+    $('#bExp').classList.toggle('ready', runsWaiting() || (S.started && !S.visiting && PG.counters.expeditions === 0));
+    updateRunbar();
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
   }

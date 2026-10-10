@@ -5,17 +5,19 @@ import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
 import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
-import { CLASSES, RACE_NAME, RARITY_INFO } from '../data/classes';
+import { CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, sendAway } from '../world/actors';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
 import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
-import { markDirty, P, world, type Actor, type Item } from '../world/state';
+import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
+import { track } from '../world/progress';
+import { talk } from './dialogue';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, tabs } from './common';
 import { dustLine } from './smith';
-import { openWin, toast } from './windows';
+import { closeWin, openWin, toast } from './windows';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 let gTab = 0;
@@ -60,6 +62,20 @@ export function openGuests() {
   if (gb) gb.onclick = () => openBag();
 }
 
+/** 손님에게 말 걸기: 한마디 듣고 기분 + (손님마다 하루 한 번만 기분이 오른다) */
+const talkedDay = new Map<number, number>();
+function talkGuest(a: Actor) {
+  closeWin();
+  const fresh = talkedDay.get(a.id) !== S.day;
+  talkedDay.set(a.id, S.day);
+  if (fresh) a.mood = Math.min(100, a.mood + 5);
+  track('guestTalk');
+  markDirty();
+  const pool = a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
+  const line = a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0];
+  talk([[a.heroId ? 'hero_' + a.heroId : a.legendId ? 'legend_' + a.legendId : a.kind, line, undefined, a.name], ...(fresh ? [['narr', `${a.name}의 기분이 조금 좋아졌다.`] as TalkLine] : [])]);
+}
+
 /** 손님 상세 */
 export function showActor(a: Actor) {
   if (!a.id) {
@@ -91,8 +107,10 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    ${a.status === 'regular' && a.runId == null ? '<button class="bigbtn sm" id="aBye">단골 보내 주기</button>' : ''}`,
+    <div class="btnrow">${a.runId == null && !S.visiting ? '<button class="bigbtn sm" id="aTalk">말 걸기</button>' : ''}${a.status === 'regular' && a.runId == null ? '<button class="bigbtn sm ghost" id="aBye">단골 보내 주기</button>' : ''}</div>`,
   );
+  const tk = document.getElementById('aTalk');
+  if (tk) tk.onclick = () => talkGuest(a);
   $$('.slot').forEach((b) => (b.onclick = () => pickGear(a, b.dataset.s as Slot)));
   bindLegend(a);
   const bye = document.getElementById('aBye');

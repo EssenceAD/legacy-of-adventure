@@ -5,7 +5,7 @@ import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
 import { REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS } from '../data/classes';
-import { legendHooks, P, S, world, type Actor, type Item } from './state';
+import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
 
 // ───────── 평판 ★ ─────────
 
@@ -98,7 +98,12 @@ export const today = () => {
 
 export function ensureGoals() {
   if (P.goals.day === today()) return;
-  const pool = [...GOAL_TEMPLATES];
+  // 새 게임 첫날: 첫 원정을 기다리는 동안 할 수 있는 셋 (모닥불 · 손님 말 걸기 · 지붕 색)
+  if (!P.goals.day && P.counters.expeditions === 0) {
+    P.goals = { day: today(), list: GOAL_TEMPLATES.filter((t) => t.first).map((t) => ({ id: t.id, target: t.min, progress: 0, claimed: false })) };
+    return;
+  }
+  const pool = GOAL_TEMPLATES.filter((t) => !t.first);
   const list: typeof P.goals.list = [];
   for (let i = 0; i < CONFIG.goals.count && pool.length; i++) {
     const t = pool.splice((Math.random() * pool.length) | 0, 1)[0];
@@ -112,7 +117,9 @@ export function track(event: GoalEvent, n = 1) {
   ensureGoals();
   for (const g of P.goals.list) {
     const t = GOAL_TEMPLATES.find((x) => x.id === g.id);
-    if (t && t.event === event) g.progress = Math.min(g.target, g.progress + n);
+    if (!t || t.event !== event || g.progress >= g.target) continue;
+    g.progress = Math.min(g.target, g.progress + n);
+    if (g.progress >= g.target) uiHooks.toast(`오늘의 목표 달성! 「${t.text(g.target)}」 · 메뉴 → 오늘의 목표에서 받아요`);
   }
 }
 

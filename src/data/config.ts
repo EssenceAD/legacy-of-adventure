@@ -24,8 +24,8 @@ export const CONFIG = {
   },
   /** 땅 넓히기 5단계: 울타리 범위 [시작, 끝) 과 비용 */
   land: [
-    { size: '6×6', from: 4, to: 10, cost: 0, opens: '여관 본관, 우물' },
-    { size: '8×8', from: 3, to: 11, cost: 300, opens: '나무·모닥불 자리' },
+    { size: '6×6', from: 4, to: 10, cost: 0, opens: '여관 본관, 우물, 모닥불' },
+    { size: '8×8', from: 3, to: 11, cost: 300, opens: '나무 자리' },
     { size: '10×10', from: 2, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판' },
     { size: '12×12', from: 1, to: 13, cost: 1600, opens: '대장간·객실 별채' },
     { size: '14×14', from: 0, to: 14, cost: 3000, opens: '온천, 최대 크기' },
@@ -238,10 +238,16 @@ export const CONFIG = {
   },
   /** 원정 */
   expedition: {
-    /** 의뢰 걸리는 시간 (현실 분): 짧음·보통·김·아주 김 */
-    tierMinutes: [5, 30, 120, 480],
+    /** 의뢰 걸리는 시간 (현실 분): 짧음·보통·김·아주 김. 짧은 건 분당 효율이 좋고, 긴 건 방치용 */
+    tierMinutes: [1, 10, 60, 480],
     /** 걸리는 시간 단계마다 보상 배수 */
-    tierReward: [1, 3, 8, 20],
+    tierReward: [0.5, 3, 8, 20],
+    /** 게시판엔 늘 이 시간(분) 이하 의뢰가 하나는 있다 */
+    quickMinutes: 1,
+    /** 새 게임 첫 원정: 30초 「숲 입구 정찰」, 귀환 때 희귀 장비 확정 */
+    tutorial: { name: '숲 입구 정찰', minutes: 0.5, power: 60, gold: [80, 120] as [number, number] },
+    /** 원정 진행 일지: 이 초 간격(최소~최대)마다 한 줄 */
+    logGap: [10, 20] as [number, number],
     /** 첫 지역 첫 단계: 추천 전투력·금화·장비 확률 */
     basePower: 100,
     baseGold: [60, 120],
@@ -252,8 +258,8 @@ export const CONFIG = {
     regionReward: 2.5,
     regionDrop: 1.5,
     regionPower: 2.2,
-    /** 걸리는 시간 단계마다 추천 전투력 배수 */
-    tierPower: [1, 1.4, 1.9, 2.6],
+    /** 걸리는 시간 단계마다 추천 전투력 배수 (1분 의뢰는 처음 단골 한 명으로도 대개 성공하게) */
+    tierPower: [0.6, 1.4, 1.9, 2.6],
     /** 성공률 = (파티 전투력 ÷ 추천) × 이 값, 최소·최대 */
     successScale: 0.85,
     successMin: 0.05,
@@ -263,6 +269,8 @@ export const CONFIG = {
     failHp: 45,
     winHp: 15,
     partyMin: 2,
+    /** 짧은 의뢰(1단계)는 1명만 보내도 된다 */
+    partyMinShort: 1,
     partyMax: 4,
     /** 원정에 못 가는 체력 */
     minHp: 30,
@@ -270,7 +278,8 @@ export const CONFIG = {
     questsMin: 3,
     questsMax: 5,
     freeRefreshPerDay: 1,
-    /** 동시에 보낼 수 있는 파티 = 1 + 게시판 레벨 (최대) */
+    /** 동시에 보낼 수 있는 파티 = 기본 + 게시판 레벨 (최대) */
+    partiesBase: 2,
     maxParties: 4,
     /** 천장: 같은 지역에서 전설이 이만큼 안 나오면 다음은 확정 (테스트할 땐 낮춘다) */
     pity: 50,

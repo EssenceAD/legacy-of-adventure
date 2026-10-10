@@ -168,6 +168,10 @@ export interface Item {
 
 export interface Quest {
   id: number;
+  /** 새 게임 첫 원정 (30초 · 성공 · 희귀 장비 확정) */
+  tutorial?: boolean;
+  /** 이름이 있는 의뢰 */
+  name?: string;
   region: RegionId;
   /** 걸리는 시간 단계 0~3 */
   tier: number;

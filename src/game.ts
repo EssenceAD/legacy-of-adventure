@@ -7,12 +7,12 @@ import { readSave, writeSave, getPref, setPref, type SaveData } from './save/sav
 import { addOwner, addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
 import { hourNow, settleNight } from './world/clock';
-import { clearEvents } from './world/events';
+import { clearEvents, queueEvent } from './world/events';
 import { ensureQuests } from './world/expeditions';
 import { clearBubbles, clearParts, floatW, puff, puffAt } from './world/fx';
 import { itemById } from './world/items';
 import { computeOffline } from './world/offline';
-import { ensureGoals, stars } from './world/progress';
+import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
 import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { talk } from './ui/dialogue';
@@ -116,6 +116,13 @@ export function newGame() {
     for (const a of world.actors) if (a.st === 'in') leave(a);
     keeperExit(keeper);
     addOwner();
+    // 첫 원정 안내: 원정 버튼이 반짝이고, 30초짜리 「숲 입구 정찰」이 기다린다
+    queueEvent(() =>
+      talk([
+        ['me', '단골들이 몸이 근질근질한가 봐. 첫 원정을 보내 볼까?'],
+        ['narr', '아래 「원정」 → ★ 숲 입구 정찰 (30초 · 희귀 장비 확정)'],
+      ]),
+    );
     syncOwnerButton();
     syncHud();
     writeSave();
@@ -262,6 +269,7 @@ export function placeBuilding(pl: Placement): boolean {
   }
   S.gold -= d.cost;
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
+  if (pl.kind === 'fire') track('buildFire');
   rebuildPaths();
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
@@ -310,6 +318,7 @@ export function moveBuilding(pl: Placement): boolean {
 }
 
 export function setRoof(o: Building, hue: number | null) {
+  if (o.hue !== hue) track('roof');
   o.hue = hue;
   o.pop = 0.6;
   puffAt(o, '#fff3b0', 8);

@@ -1,5 +1,7 @@
 // 오늘의 목표 (현실 날짜로 매일 3개). event는 world/progress.ts 의 track(event)와 같은 이름.
-export type GoalEvent = 'expeditionSent' | 'meal' | 'chem' | 'salvage' | 'enhance' | 'harvest' | 'guestArrive' | 'expeditionWin' | 'craft' | 'train';
+export type GoalEvent =
+  | 'expeditionSent' | 'meal' | 'chem' | 'salvage' | 'enhance' | 'harvest' | 'guestArrive' | 'expeditionWin' | 'craft' | 'train'
+  | 'buildFire' | 'guestTalk' | 'roof';
 
 export interface GoalTemplate {
   id: string;
@@ -9,6 +11,8 @@ export interface GoalTemplate {
   min: number;
   max: number;
   reward: { gold: number; dust?: number };
+  /** 새 게임 첫날 전용 (첫 원정을 기다리는 동안 할 수 있는 것) */
+  first?: boolean;
 }
 
 export const GOAL_TEMPLATES: GoalTemplate[] = [
@@ -21,4 +25,8 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
   { id: 'harvest', event: 'harvest', text: (n) => `텃밭 ${n}번 수확하기`, min: 1, max: 3, reward: { gold: 100 } },
   { id: 'guest', event: 'guestArrive', text: (n) => `새 손님 ${n}명 맞이하기`, min: 2, max: 4, reward: { gold: 120 } },
   { id: 'train', event: 'train', text: (n) => `훈련장에서 ${n}번 수련하기`, min: 3, max: 6, reward: { gold: 90 } },
+  // 새 게임 첫날: 첫 원정을 기다리는 동안
+  { id: 'fire1', event: 'buildFire', text: () => '모닥불 짓기 (건설 → 모닥불)', min: 1, max: 1, reward: { gold: 100 }, first: true },
+  { id: 'talk1', event: 'guestTalk', text: () => '손님 1명에게 말 걸기 (손님을 눌러요)', min: 1, max: 1, reward: { gold: 80 }, first: true },
+  { id: 'roof1', event: 'roof', text: () => '지붕 색 바꾸기 (여관을 눌러요)', min: 1, max: 1, reward: { gold: 80 }, first: true },
 ];

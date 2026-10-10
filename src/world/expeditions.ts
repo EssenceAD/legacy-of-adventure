@@ -5,7 +5,7 @@ import { hourNow } from './clock';
 import { maybeWander } from './raid';
 import { pairById } from '../data/chem';
 import { REGIONS, GRADE_INFO, SLOT_NAME, regionById, type RegionId } from '../data/items';
-import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, WIN_LINES } from '../data/reports';
+import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, RUN_BEATS, RUN_COMMON, WIN_LINES } from '../data/reports';
 import type { GuestKind } from '../data/classes';
 import { gainXp, powerOf, xpToNext } from './adventurers';
 import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
@@ -44,24 +44,39 @@ export function makeQuest(region: RegionId, tier: number): Quest {
   };
 }
 
+/** 새 게임 첫 원정: 30초 「숲 입구 정찰」 (늘 성공, 희귀 장비 확정) */
+export function tutorialQuest(): Quest {
+  const T = E.tutorial;
+  return { id: P.quests.nextId++, region: 'forest', tier: 0, power: T.power, minutes: T.minutes, gold: [...T.gold], tutorial: true, name: T.name };
+}
+
+/** 게시판엔 늘 1분짜리 의뢰가 하나는 있다 (짧게 자주 보내는 재미) */
+function ensureQuick(list: Quest[]) {
+  if (!list.some((q) => q.minutes <= E.quickMinutes)) list.unshift(makeQuest('forest', 0));
+}
+
+/** 짧은 의뢰는 1명만 보내도 된다 */
+export const partyMinFor = (q: Quest) => (q.tier === 0 ? E.partyMinShort : E.partyMin);
+
 function rollQuests(): Quest[] {
   const open = REGIONS.filter((_, i) => regionUnlocked(i));
   const n = rnd(E.questsMin, E.questsMax);
   const list: Quest[] = [];
-  // 처음 원정은 늘 「숲 동굴 5분」부터
-  if (P.counters.expeditions === 0) list.push(makeQuest('forest', 0));
+  // 새 게임 첫 원정은 「숲 입구 정찰」 30초
+  if (P.counters.expeditions === 0) list.push(tutorialQuest());
   while (list.length < n) {
     const reg = open[Math.min(open.length - 1, Math.floor(Math.pow(Math.random(), 0.7) * open.length))];
     const t = Math.random();
     const tier = t < 0.35 ? 0 : t < 0.7 ? 1 : t < 0.9 ? 2 : 3;
     list.push(makeQuest(reg.id, tier));
   }
+  ensureQuick(list);
   return list;
 }
 
 /** 매일(현실 날짜) 아침 갱신 */
 export function ensureQuests() {
-  if (P.quests.day === today()) return;
+  if (P.quests.day === today()) return ensureQuick(P.quests.list);
   P.quests.day = today();
   P.quests.refreshUsed = 0;
   P.quests.list = rollQuests();
@@ -79,7 +94,7 @@ export function refreshQuests(): boolean {
 // ───────── 파티 ─────────
 
 export const boardLevel = () => homeObjs().find((o) => o.kind === 'board' && o.build === undefined)?.lvl ?? 0;
-export const maxParties = () => Math.min(E.maxParties, 1 + boardLevel());
+export const maxParties = () => Math.min(E.maxParties, E.partiesBase + boardLevel());
 export const activeRuns = () => P.runs.filter((r) => !r.result);
 
 /** 원정에 보낼 수 있나 (단골·영웅, 체력 30 이상, 쉬는 중) */
@@ -117,7 +132,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
 /** 출발: 의뢰는 목록에서 빠지고, 실제 걸어가는 연출은 actors.ts가 한다 */
 export function sendParty(q: Quest, members: Actor[]): Run | string {
   if (activeRuns().length >= maxParties()) return `동시에 ${maxParties()}파티까지 보낼 수 있어요 (게시판 레벨업)`;
-  if (members.length < E.partyMin || members.length > E.partyMax) return `파티는 ${E.partyMin}~${E.partyMax}명이에요`;
+  if (members.length < partyMinFor(q) || members.length > E.partyMax) return `파티는 ${partyMinFor(q)}~${E.partyMax}명이에요`;
   for (const m of members) {
     const why = canSend(m);
     if (why) return `${m.name}: ${why}`;
@@ -128,6 +143,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   const run: Run = { id: P.nextRunId++, quest: q, members: members.map((m) => m.id), start: now, end: now + info.minutes * 60000 * scale };
   P.runs.push(run);
   P.quests.list = P.quests.list.filter((x) => x.id !== q.id);
+  ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
   P.counters.expeditions++;
   track('expeditionSent');
@@ -153,7 +169,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const q = run.quest;
   const members = run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[];
   const info = partyInfo(members, q);
-  const win = Math.random() < info.success;
+  // 첫 원정(튜토리얼)은 늘 성공
+  const win = q.tutorial || Math.random() < info.success;
   const r = ri(q.region);
   const tierR = E.tierReward[q.tier];
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
@@ -174,7 +191,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const nItems = win ? 1 + (q.tier >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
   const items = [];
   for (let i = 0; i < nItems; i++) {
-    const it = makeItem(q.region, rollGrade(q.region, q.tier));
+    // 첫 원정은 희귀 장비 확정 (바로 끼워서 전투력이 오르는 걸 보여 준다)
+    const it = makeItem(q.region, q.tutorial ? 'r' : rollGrade(q.region, q.tier));
     addToBag(it);
     items.push(it);
   }
@@ -242,6 +260,56 @@ function buildReport(members: Actor[], region: RegionId, win: boolean, items: { 
   const best = [...items].sort((p, q) => 'naerl'.indexOf(q.grade) - 'naerl'.indexOf(p.grade))[0];
   if (best) lines.push(['narr', fill(pick(LOOT_LINES), a.name, b.name, reg, `${GRADE_INFO[best.grade as keyof typeof GRADE_INFO].name} ${best.name}`)]);
   return lines.slice(0, 5);
+}
+
+// ───────── 원정 진행 일지 (실시간으로 한 줄씩) ─────────
+
+/** 원정마다 같은 일지가 나오게: 원정 번호로 정해지는 난수 */
+function seeded(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export interface LogLine {
+  /** 출발 뒤 몇 초 */
+  at: number;
+  text: string;
+}
+
+/** 지금까지 쌓인 일지 (최근 max줄). 10~20초마다 한 줄, 보고서 조각을 다시 쓴다 */
+export function runLog(run: Run, now = Date.now(), max = 40): LogLine[] {
+  const rand = seeded(run.id * 7919 + (run.start % 100000));
+  const pk = <T>(a: readonly T[]) => a[Math.floor(rand() * a.length)];
+  const ms = run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[];
+  const names = ms.length ? ms.map((m) => m.name) : ['파티'];
+  const reg = regionById(run.quest.region).name;
+  const total = (run.end - run.start) / 1000;
+  const el = Math.min(total, (now - run.start) / 1000);
+  const out: LogLine[] = [{ at: 0, text: fill('{a}가 앞장서 출발했다!', names[0], names[1] ?? names[0], reg) }];
+  let t = 0;
+  const [g0, g1] = E.logGap;
+  // 짧은 원정은 간격을 줄여 끝나기 전에 몇 줄은 보이게
+  const scale = Math.min(1, total / 60);
+  for (;;) {
+    t += (g0 + rand() * (g1 - g0)) * Math.max(0.4, scale);
+    if (t >= total - 1 || t > el) break;
+    const a = pk(names);
+    const b = pk(names.filter((n) => n !== a)) ?? a;
+    const r = rand();
+    const m = pk(ms);
+    // 첫 줄은 늘 도착 (RUN_BEATS[지역][0]), 그다음은 지역·공통·직업 사건 섞어서
+    const beats = RUN_BEATS[run.quest.region];
+    const s = out.length === 1 ? beats[0] : r < 0.55 ? pk(beats.slice(1)) : r < 0.8 || !m ? pk(RUN_COMMON) : pk(CLASS_EVENT[m.kind as GuestKind] ?? CLASS_EVENT.knight).replace('{a}', '{m}');
+    out.push({ at: t, text: fillNames(s, { a, b, r: reg, m: m?.name ?? a }) });
+  }
+  if (el >= total) out.push({ at: total, text: '임무 끝! 마을로 돌아가는 중…' });
+  return out.slice(-max);
 }
 
 /** 끝났는데 아직 결과가 안 정해진 원정들 */

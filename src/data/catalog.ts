@@ -55,7 +55,7 @@ export const CATALOG = {
   board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, levels: [300, 800, 1600], levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
   tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   pine: { name: '소나무', sprite: 'pine', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
-  fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 2, desc: '밤이면 손님들이 둘러앉아요' },
+  fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 1, desc: '밤이면 손님들이 둘러앉아요' },
   // 3단계: 보스 첫 처치 트로피 (장식, 무료, 처치한 보스만). 그림은 보스 그림으로 코드에서 만든다
   trophy_boar: { name: '멧돼지 왕 머리', sprite: 'trophy_boar', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_mushroom: { name: '버섯 거인 갓', sprite: 'trophy_mushroom', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
