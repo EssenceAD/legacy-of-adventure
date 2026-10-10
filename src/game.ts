@@ -410,7 +410,9 @@ export function syncHud() {
   $('#innv').textContent = S.innName || '여관';
   $('#dayv').textContent = `${S.day}일차 · ${String(hourNow()).padStart(2, '0')}시`;
   $('#starv').textContent = '★' + stars();
-  $('#bDN').textContent = S.night ? '☀' : '☾';
+  // 핫픽스 7: 아이콘 + 짧은 글자 (누르면 바뀌는 쪽을 보여 준다)
+  $('#bDNi').textContent = S.night ? '☀' : '☾';
+  $('#bDNl').textContent = S.night ? '낮' : '밤';
 }
 
 /** 배치 모드 시작 시 카메라를 그 자리로 */

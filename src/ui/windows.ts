@@ -25,24 +25,85 @@ const fmt = (n: number) => n.toLocaleString('ko-KR');
 /** 창 제목 → 안내서 쪽 (ui/menu가 채운다): 「?」 버튼 */
 export const helpHook = { page: (_title: string): string | null => null, open: (_key: string) => {} };
 
-export function openWin(title: string, html: string, cls = '') {
-  if (!$('#win').classList.contains('on')) sfx('open');
+// ───────── 창 쌓기 (핫픽스 7): 창 안에서 다른 창으로 들어가면 ← 뒤로 · Esc · 안드로이드 뒤로가기 ─────────
+
+interface WinState {
+  title: string;
+  cls: string;
+  /** 창 내용 그대로 (버튼에 단 동작까지 살아 있게 노드째 보관) */
+  nodes: Node[];
+}
+const stack: WinState[] = [];
+/** 창 때문에 쌓은 history 항목 수 · 우리가 부른 popstate는 무시 */
+let histDepth = 0;
+let ignorePop = 0;
+function pushHist() {
+  try {
+    history.pushState({ legacyWin: histDepth + 1 }, '');
+    histDepth++;
+  } catch {
+    /* 무시 */
+  }
+}
+function dropHist(n: number) {
+  if (n <= 0) return;
+  histDepth = Math.max(0, histDepth - n);
+  ignorePop++;
+  history.go(-n);
+}
+function showHead(title: string) {
   $('#winT').textContent = title;
   const hp = helpHook.page(title);
   const hb = $('#winHelp');
   hb.hidden = !hp;
   if (hp) hb.onclick = () => helpHook.open(hp);
+  $('#winBack').hidden = !stack.length;
+}
+const setOpen = (on: boolean) => {
+  $('#scrim').classList.toggle('on', on);
+  document.body.classList.toggle('winopen', on);
+};
+
+export function openWin(title: string, html: string, cls = '') {
+  const was = $('#win').classList.contains('on');
+  if (!was) {
+    sfx('open');
+    stack.length = 0;
+    pushHist();
+  } else if ($('#winT').textContent !== title && !winLocked) {
+    // 다른 창으로 들어간다: 지금 창을 쌓아 둔다 (같은 제목이면 다시 그리기일 뿐)
+    stack.push({ title: $('#winT').textContent ?? '', cls: $('#win').className.replace(/\bon\b/, '').trim(), nodes: [...$('#winB').childNodes] });
+    if (stack.length > 8) stack.shift();
+    pushHist();
+  }
   $('#winB').innerHTML = html;
   $('#win').className = 'win px on ' + cls;
-  $('#scrim').classList.add('on');
+  showHead(title);
+  setOpen(true);
+}
+
+/** ← 뒤로: 직전 창으로 (없으면 닫기) */
+export function winBack(fromPop = false) {
+  if (winLocked) return;
+  const s = stack.pop();
+  if (!s) return closeWin(fromPop);
+  if (!fromPop) dropHist(1);
+  sfx('close');
+  $('#winB').replaceChildren(...s.nodes);
+  $('#win').className = s.cls + ' on';
+  showHead(s.title);
 }
 const closeHooks: (() => void)[] = [];
 /** 창이 닫힌 뒤 (다음 창이 바로 열리면 그 뒤) 부를 것 — 놓치면 안 되는 창(저장 고르기)을 다시 띄울 때 */
 export const onWinClose = (f: () => void) => closeHooks.push(f);
-export function closeWin() {
+export function closeWin(fromPop = false) {
   if ($('#win').classList.contains('on')) sfx('close');
   $('#win').classList.remove('on');
-  $('#scrim').classList.remove('on');
+  setOpen(false);
+  stack.length = 0;
+  $('#winBack').hidden = true;
+  if (!fromPop) dropHist(histDepth);
+  else histDepth = 0;
   setTimeout(() => closeHooks.forEach((f) => f()), 0);
 }
 export const isWinOpen = () => $('#win').classList.contains('on');
@@ -65,9 +126,57 @@ export function setWinLock(v: boolean) {
 }
 const userClose = () => !winLocked && closeWin();
 
+/** 왼쪽 위 HUD 쌓기 (핫픽스 7): 상태 카드 → 임무 카드 → 평판 띠를 실제 높이대로 겹치지 않게 */
+function stackHud() {
+  const st = document.querySelector('.stat');
+  if (!st) return;
+  let y = st.getBoundingClientRect().bottom + 6;
+  for (const id of ['#mission', '#evalbar']) {
+    const e = document.querySelector<HTMLElement>(id);
+    if (!e || e.hidden) continue;
+    e.style.top = y + 'px';
+    y += e.getBoundingClientRect().height + 4;
+  }
+}
+
 export function initWindows() {
-  $('#scrim').onclick = userClose;
+  const ro = new ResizeObserver(stackHud);
+  for (const s of ['.stat', '#mission', '#evalbar']) {
+    const e = document.querySelector(s);
+    if (e) ro.observe(e);
+  }
+  addEventListener('resize', stackHud);
+  // 바깥 어두운 곳: 닫기 (글을 쓰는 창은 빼고)
+  $('#scrim').onclick = () => {
+    if ($('#winB').querySelector('input[type=text], input:not([type]), textarea')) return;
+    userClose();
+  };
   $('#winX').onclick = userClose;
+  $('#winBack').onclick = () => winBack();
+  // PC: Esc 한 단계씩
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !isWinOpen()) return;
+    e.preventDefault();
+    if (stack.length) winBack();
+    else userClose();
+  });
+  // 안드로이드 뒤로가기 (history)
+  addEventListener('popstate', () => {
+    if (ignorePop) {
+      ignorePop--;
+      return;
+    }
+    if (!isWinOpen()) return;
+    if (winLocked) {
+      // 꼭 골라야 하는 창: 뒤로가기로 닫히지 않게 다시 쌓는다
+      histDepth = Math.max(0, histDepth - 1);
+      pushHist();
+      return;
+    }
+    histDepth = Math.max(0, histDepth - 1);
+    if (stack.length) winBack(true);
+    else closeWin(true);
+  });
 }
 
 // ───────── 건설 ─────────

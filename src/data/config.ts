@@ -175,11 +175,12 @@ export const CONFIG = {
     /** 태블릿·넓은 화면 배율(기기 픽셀 기준 정수). 기본값 = 마을이 짧은 변의 fill 안에 드는 가장 큰 정수 */
     wideZooms: [1, 2, 3, 4],
     fill: [0.7, 0.85],
-    /** 글자 크기 (px). Galmuri는 11의 배수에서 가장 또렷 */
+    /** 글자 크기 (px) */
     fonts: {
-      phone: { dlg: 11, name: 11, ui: 11, small: 11, chat: 11, big: 22, tiny: 9 },
-      tablet: { dlg: 22, name: 22, ui: 18, small: 14, chat: 16, big: 22, tiny: 11 },
-      wide: { dlg: 22, name: 22, ui: 18, small: 14, chat: 16, big: 22, tiny: 11 },
+      // 핫픽스 7 글자 체계: 제목 20 · 대사 17 · 본문 16 · 알림 15 · 작은 글 13 · 마을 말풍선 14 (PC도 같은 비율 ×1.12)
+      phone: { dlg: 17, name: 16, ui: 16, notice: 15, small: 13, chat: 14, bub: 14, big: 20, tiny: 12 },
+      tablet: { dlg: 19, name: 18, ui: 18, notice: 17, small: 15, chat: 16, bub: 15, big: 22, tiny: 13 },
+      wide: { dlg: 19, name: 18, ui: 18, notice: 17, small: 15, chat: 16, bub: 15, big: 22, tiny: 13 },
     } as Record<'phone' | 'tablet' | 'wide', Record<string, number>>,
     /** 설정 → 글자 크기: 보통 · 크게 · 아주 크게 */
     userScales: [1, 1.25, 1.5],

@@ -937,3 +937,37 @@ html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 132p
 .cgrade{display:flex;align-items:center;gap:12px;justify-content:center;margin:6px 0}
 .cgrade b{font-size:calc(var(--f-big) * 2.2);line-height:1}.cgrade.gS b{color:#ffd36b;text-shadow:0 0 12px rgba(255,211,107,.6)}.cgrade.gA b{color:#9ad0ff}.cgrade.gB b{color:#c8c0d0}
 .cgrade span{font-size:var(--f-small);color:#cfd8ff}
+
+/* ── 핫픽스 7: 글자 체계 (대사 17 · 알림 15 · 말풍선 14) · 겹침 방지 ── */
+:root{--f-notice:15px;--f-bub:14px}
+#dText{font-size:var(--f-dlg);line-height:1.6}
+#dlg.narr #dText{font-size:var(--f-dlg);line-height:1.5}
+#toast,#hBanner em,#hBanner i,#pcard em,.tbanner em{font-size:var(--f-notice)}
+.bub{font-size:var(--f-bub);line-height:1.2}
+.win .hd #winT{font-size:var(--f-big);line-height:1.2;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res h2,.cbres h2,.rov .card h2{font-size:var(--f-big);line-height:1.3;margin:0 0 8px}
+.cgrade{margin:10px 0;line-height:1}.cgrade b{font-size:calc(var(--f-big) * 2);line-height:1;display:block}
+.cgrade span{line-height:1.3}
+.evres b{line-height:1.1}
+
+/* ── 핫픽스 7: 상단 HUD 버튼 (UI 키트 버튼 배경 + 아이콘 + 짧은 글자, 44px) ── */
+.ibtn.hb{width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 0 0;color:var(--cream)}
+.ibtn.hb img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+.ibtn.hb b{font-size:16px;line-height:16px;color:var(--gold)}
+.ibtn.hb small{font-size:10px;line-height:11px;color:#efe2c6;white-space:nowrap}
+html:not([data-size="phone"]) .ibtn.hb{width:52px;height:52px}
+#bHarm{top:calc(env(safe-area-inset-top,0px) + 72px)}
+#hSpk{top:calc(env(safe-area-inset-top,0px) + 122px)}
+html:not([data-size="phone"]) #bHarm{top:calc(env(safe-area-inset-top,0px) + 84px)}
+html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 142px)}
+.stat .r1 #goldv{font-size:max(16px,var(--f-ui))}
+/* ── 핫픽스 7: 창·메뉴가 열리면 60% 어둡게 · 위 HUD 정보 숨김 · ✕ 44px · ← 뒤로 · 메뉴 묶음 판 ── */
+#scrim,html[data-size] #scrim{background:rgba(0,0,0,.6)}
+body.winopen :is(#mission,#evalbar,#runbar,#chatlog,#bHarm,#hSpk,#pcard,#hBanner,.bub){visibility:hidden}
+.win .hd #winX{width:44px;height:44px;flex:none}
+.win .hd #winBack{width:44px;height:44px;flex:none;margin-right:6px;font-size:20px;font-weight:700;color:var(--gold);border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;text-shadow:1px 1px 0 var(--ink)}
+.win .hd #winBack[hidden]{display:none}
+.win .hd #winT{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu .mgroup{display:contents}
+.mgroup{padding:8px;margin:0 0 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+.ibtn.hb{flex:none;min-width:44px}

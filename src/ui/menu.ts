@@ -95,12 +95,12 @@ export function openGridMenu() {
     `${myTitle() ? `<p class="sub">칭호 「<b class="g">${esc(myTitle())}</b>」</p>` : ''}${gs
       .map(
         ([g, items], gi) =>
-          `<div class="mgrp"><b class="g">${g}</b></div><div class="mgrid">${items
+          `<section class="mgroup"><div class="mgrp"><b class="g">${g}</b></div><div class="mgrid">${items
             .map(
               (it, i) =>
                 `<button class="mtile ${it.lock ? 'lock' : ''}" data-m="${gi}-${i}"><img src="${iconSrc(it.icon)}" alt=""><span>${esc(it.name)}</span>${it.lock ? `<small>${esc(it.lock)}에 열려요</small><u class="lk"></u>` : ''}${it.dot ? '<i class="mdot"></i>' : ''}</button>`,
             )
-            .join('')}</div>`,
+            .join('')}</div></section>`,
       )
       .join('')}`,
     'menuw',
