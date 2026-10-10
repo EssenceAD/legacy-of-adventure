@@ -5,12 +5,13 @@ import * as game from '../game';
 
 import { setNight } from '../world/daynight';
 import { stars } from '../world/progress';
-import { P as PG, S } from '../world/state';
+import { P as PG, S, world } from '../world/state';
 import { CONFIG } from '../data/config';
 import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
-import { blocksDoor, canPlace, gateOk, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
+import { blocksDoor, canPlace, gateOk, grid, inLand, landBounds, placing, suggestSpot, type Placement } from '../world/town';
+import { computeSets } from '../world/harmony';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, openRunLog, runsWaiting } from './expedition';
@@ -75,7 +76,32 @@ export function startPlace(kind: Kind, prop?: string) {
   const d = def(kind);
   const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false, prop };
   suggestSpot(pl);
+  // 베타: 장식은 어울림이 생기는 자리를 먼저 권한다 (아직 못 찾은 어울림이면 더)
+  if (d.deco && kind !== 'gate') {
+    const best = harmonySpot(pl);
+    if (best) [pl.tx, pl.ty] = best;
+  }
   openPlace(pl);
+}
+
+/** 어울림이 생기는 빈자리 (가장 좋은 곳) */
+function harmonySpot(pl: Placement): [number, number] | null {
+  const [a, b] = landBounds();
+  let best: [number, number] | null = null;
+  let bs = 0;
+  for (let y = a; y < b; y++)
+    for (let x = a; x < b; x++) {
+      const t = { ...pl, tx: x, ty: y };
+      if (!canPlace(t) || blocksDoor(t)) continue;
+      const ghost = { kind: pl.kind, tx: x, ty: y, fw: pl.fw, fh: pl.fh, lvl: 1, hue: null, inside: [], sprite: pl.sprite } as unknown as Building;
+      const sets = computeSets(world.objs.concat(ghost)).filter((s) => s.members.includes(ghost));
+      const sc = sets.reduce((s, h) => s + (PG.harmony.found.includes(h.id) ? 1 : 3), 0);
+      if (sc > bs) {
+        bs = sc;
+        best = [x, y];
+      }
+    }
+  return best;
 }
 
 /** 이미 지은 건물 옮기기 (방향도 바꿀 수 있다) */

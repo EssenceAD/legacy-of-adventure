@@ -66,7 +66,7 @@ export function initPowerUI() {
   $('#pwr').onclick = () => toast(`마을 전투력 ${fmt(townPower())} · 단골·영웅 전투력 합 (레벨·장비·도감·케미)`);
 }
 
-let acc = 0;
+let acc = 1;
 export function tickPowerUI(dt: number) {
   tickPower(dt);
   acc += dt;

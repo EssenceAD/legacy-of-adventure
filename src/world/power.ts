@@ -32,7 +32,7 @@ export const powerHooks = {
 };
 
 const MS = [10, 25, 50, 75, 100];
-let acc = 0;
+let acc = 1;
 export function tickPower(dt: number) {
   if (S.visiting || !S.started) return;
   acc += dt;

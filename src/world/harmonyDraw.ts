@@ -117,7 +117,12 @@ export function drawPlacementHarmony(ctx: CanvasRenderingContext2D, pl: Placemen
     drawSet(ctx, s, 1, false);
     const h = harmonyById(s.id);
     const known = h.open || P.harmony.found.includes(s.id);
-    const text = known ? `+ ${h.name} · ${h.text}` : '+ ??? 무언가 어울릴 것 같다';
-    label(ctx, text, Math.round(view.OX + sx(tx + pl.fw / 2, ty + pl.fh / 2)), top - i * 15, known);
+    // 이름 줄 + 효과 줄 (폰 폭에서 잘리지 않게 두 줄)
+    const cx = Math.round(view.OX + sx(tx + pl.fw / 2, ty + pl.fh / 2));
+    const y = top - i * 30;
+    if (known) {
+      label(ctx, `+ ${h.name}`, cx, y, true);
+      label(ctx, h.text, cx, y + 14, true);
+    } else label(ctx, '+ ??? 무언가 어울릴 것 같다', cx, y + 14, false);
   });
 }
