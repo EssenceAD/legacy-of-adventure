@@ -13,6 +13,7 @@ import { addRep, today, track } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type RaidRecord } from './state';
 import { addEmber, ownerGain, raidDmgMult, tieRaid } from './owner';
 import { feature } from './guide';
+import { track as trackEv } from '../net/telemetry';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -195,6 +196,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
     if (!P.titles.includes(b.title)) P.titles.push(b.title);
   }
   const rank = mode === 'sweep' ? 'B' : rankOf(damage, ex.target);
+  trackEv('raid_end', { boss: b.id, dmg: damage, mode });
   // 보상: 깎은 체력만큼 (실패해도) + 처치 보너스
   const ratio = damage / Math.max(1, b.power * R.seconds * R.dmgPerPowerSec);
   const gold = Math.round(b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0));

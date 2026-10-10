@@ -1,4 +1,5 @@
 // 베타 1장: 어울림 화면 — 발견 배너 · 「어울림 보기」 토글 · 마을 등급 장식 옮기기 · 건물 창의 어울림 줄
+import { track as trackEv } from '../net/telemetry';
 import { def, type Kind } from '../data/catalog';
 import { harmonyById } from '../data/harmony';
 import { advanceHint, dailyHarmonyRep, harmonyHooks, hintText, setsOf, type HSet } from '../world/harmony';
@@ -81,6 +82,7 @@ export function syncHarmonyToggle() {
 export function initHarmonyUI() {
   objExtra.html = harmonyRows;
   harmonyHooks.found = (s, gold) => {
+    trackEv('harmony_found', { id: s.id });
     queue.push({ s, gold });
     markDirty();
     if (!showing) next();

@@ -14,6 +14,7 @@ import { decoLock } from '../world/harmony';
 import { online, sendLetter } from '../net/server';
 import { openAccount } from './account';
 import { APP_VERSION } from './update';
+import { track as trackEv } from '../net/telemetry';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -78,6 +79,7 @@ export function openWin(title: string, html: string, cls = '') {
     if (stack.length > 8) stack.shift();
     pushHist();
   }
+  if ($('#winT').textContent !== title || !was) trackEv('screen_open', { name: title.slice(0, 30) });
   $('#winB').innerHTML = html;
   $('#win').className = 'win px on ' + cls;
   showHead(title);

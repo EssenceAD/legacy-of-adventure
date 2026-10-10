@@ -5,6 +5,7 @@ import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
 import { closeCombat, showCombatResult, startCombat } from '../combat/ui';
 import { gradeBonus } from '../combat/field';
+import { track as trackEv } from '../net/telemetry';
 import { hfx } from '../world/harmony';
 import { REGIONS, type RegionId } from '../data/items';
 import { BOSS_IMG, MOB_IMG, RAID_BG, scaled } from '../engine/assets';
@@ -513,7 +514,9 @@ function lootHtml(r: RegionId, out: HuntReward): string {
 
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   notePrep('hunt', partyPower(ms));
+  trackEv('hunt_start', { stage: `${r}-${s}`, mode: auto ? 'auto' : 'manual' });
   void startCombat(r, s, ms, auto, (res) => {
+    trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
     const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
     // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
     const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
@@ -558,6 +561,7 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
 function sweep(r: RegionId, s: number, ms: Actor[]) {
   const out = sweepStage(r, s, ms);
   if (!out) return toast('한 번 깬 스테이지만 소탕할 수 있어요');
+  trackEv('hunt_end', { stage: `${r}-${s}`, mode: 'sweep', result: 'win', sec: 0, grade: '' });
   sfx('coin');
   openWin(
     `소탕 · ${stageName(r, s)}`,

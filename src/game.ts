@@ -24,6 +24,7 @@ import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
+import { track as trackEv } from './net/telemetry';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -250,6 +251,7 @@ export function expandLand(l: number) {
   if (S.gold < cost) return toast('금화가 모자라요');
   S.gold -= cost;
   S.land = l;
+  trackEv('land_up', { lv: l });
   rebuildPaths();
   // 울타리를 따라 먼지
   const [a, b] = landBounds();
@@ -277,6 +279,7 @@ export function placeBuilding(pl: Placement): boolean {
   S.gold -= cost;
   if (pl.prop) P.harmony.moved.push(pl.prop);
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
+  trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
   sfx('build');
   rebuildPaths();

@@ -8,6 +8,7 @@ import { chaptersDone, setEvalScoreHook, townGrade } from './guide';
 import { hourNow } from './clock';
 import { mondayKey } from './raid';
 import { markDirty, P, S, world } from './state';
+import { track as trackEv } from '../net/telemetry';
 
 const E = CONFIG.evaluation;
 export type ThemeKey = 'gourmet' | 'relax' | 'adventure' | 'scenery';
@@ -185,6 +186,7 @@ export function judge(): EvalResult {
   const parts = evalParts(ev.theme);
   const score = Math.min(1000 + E.secretBonus, parts.reduce((s, p) => s + p.pts, 0) + ev.bonus);
   const tier = tierOf(score);
+  trackEv('eval_result', { theme: ev.theme, score, tier });
   const miss = missHint(ev.theme, parts);
   if (miss.harmony) bumpHint(miss.harmony);
   const reward = tier ? E.rewards[tier - 1] : null;

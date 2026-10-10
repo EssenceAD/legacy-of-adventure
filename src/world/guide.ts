@@ -97,12 +97,14 @@ export const rewardText = (m: Mission) =>
   [m.reward.gold ? `금화 ${m.reward.gold}` : '', m.reward.dust ? `잿빛 가루 ${m.reward.dust}` : '', m.reward.tokens ? `인연의 증표 ${m.reward.tokens}` : ''].filter(Boolean).join(' · ');
 
 /** 다 한 임무 받기: 보상 + 버나드 한마디 + 다음 임무. 장이 끝나면 장 보상 */
+import { track as trackEv } from '../net/telemetry';
 export function claimMission(silent = false): TalkLine[] {
   const m = currentMission();
   if (!m || !missionProgress(m).done) return [];
   grant(m);
   P.guide.claimed.push(m.id);
   P.guide.idx++;
+  trackEv('guide_step', { ch: m.ch, n: P.guide.idx });
   markDirty();
   if (!silent) sfx('mission');
   const lines: TalkLine[] = silent ? [] : [['keeper', m.line, undefined, '노주인 버나드'], ['narr', `임무 보상: ${rewardText(m)}`]];

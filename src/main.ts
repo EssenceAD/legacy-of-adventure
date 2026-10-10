@@ -30,6 +30,8 @@ import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
+import { initTelemetry } from './net/telemetry';
+import { hasSave } from './save/save';
 import { combatOn } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
 import * as audioEngine from './audio/engine';
@@ -413,6 +415,8 @@ async function boot() {
   document.getElementById('tLetter')!.onclick = () => openReport();
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   initUpdate(() => combatOn());
+  // 밤샘 ④-3: 플레이 기록 (설정에서 끌 수 있음)
+  initTelemetry(!hasSave());
   const ver = document.getElementById('tVer');
   if (ver) {
     ver.textContent = `v${APP_VERSION} · 패치노트`;
