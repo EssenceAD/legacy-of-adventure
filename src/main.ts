@@ -27,6 +27,10 @@ import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
 import { showSettlement, tickSettle } from './ui/daily';
 import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
+import { battleMusic, initSound, tickSound } from './ui/sound';
+import * as audioEngine from './audio/engine';
+import * as audioMusic from './audio/music';
+import * as audioSfx from './audio/sfx';
 import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
@@ -175,6 +179,7 @@ function tick(dt: number) {
   tickSettle(dt);
   tickSpectacles(dt);
   tickPowerUI(dt);
+  tickSound(dt);
   const t0 = performance.now();
   let t = t0;
   // 규칙은 고정 간격(30fps)으로
@@ -391,6 +396,7 @@ async function boot() {
   initHarmonyUI();
   initEvalUI();
   initPowerUI();
+  initSound();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));
@@ -446,6 +452,7 @@ async function boot() {
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
       __settle: showSettlement,
+      __audio: { engine: audioEngine, music: audioMusic, sfx: audioSfx, battle: battleMusic },
       __event: forceSpectacle,
       __events: spectacles,
       __resolve: resolveSpectacle,

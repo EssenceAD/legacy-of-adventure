@@ -27,7 +27,7 @@ function next() {
   showing = true;
   const h = harmonyById(q.s.id);
   harmonyAnim.push({ set: q.s, t0: S.T });
-  sfx('perfect');
+  sfx('harmony');
   // 점선이 이어진 뒤(0.8초) 가운데 배너
   setTimeout(() => {
     const b = $('#hBanner');

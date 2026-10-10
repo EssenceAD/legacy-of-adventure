@@ -1,5 +1,5 @@
 // 서비스워커: 에셋 캐시. 페이지(HTML)는 네트워크 먼저(업데이트가 바로 반영), 나머지는 캐시 먼저 + 뒤에서 새로 받아 둠.
-const CACHE = 'legacy-v13';
+const CACHE = 'legacy-v14';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -18,6 +18,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // 배경음악·마을 소리: 서비스워커 캐시에 넣지 않는다 (곡이 커서 · <audio>의 부분 요청이 깨지지 않게)
+  if (/\/audio\/(bgm|amb)\//.test(new URL(req.url).pathname)) return;
   if (req.mode === 'navigate') {
     // 페이지: 네트워크 먼저, 오프라인이면 캐시
     e.respondWith(

@@ -1,4 +1,5 @@
 // 4단계: 여관 주인(나) · 인연(호감도) · 방랑의 불씨 · 엔딩 · 유산
+import { sfx } from '../audio/sfx';
 // 주인 능력치는 전투력에 「주인 보너스 최대 +15%」로만 들어가고, 인연 단계는 그 영웅 전투력 +2%/단계.
 // 다른 world 모듈이 import해도 꼬이지 않게: state · data · events · clock · progress만 쓴다. 창은 ownerHooks로.
 import { BONDS, bondById, GIFTS, REPLY, STAGE_NAMES, type BondDef, type GiftKey, type ReplyStyle } from '../data/bonds';
@@ -29,6 +30,8 @@ export const ownerHooks = {
   ending: (_ids: string[], _partner: string | null, _rel: 'lover' | 'comrade' | undefined) => {},
   /** 우편함 (world/meta가 채운다) */
   mail: (_title: string, _body: string, _reward: { gold?: number }) => {},
+  /** 배경음악: 방랑의 불씨 독백·다락 선택 (ui/sound가 채운다) */
+  ember: () => {},
 };
 
 // ───────── 글자 ─────────
@@ -272,6 +275,7 @@ export function addTie(id: string, n: number, raw = false) {
 function maybeEvent(id: string) {
   const t = P.ties[id];
   if (!t || stageOf(t.pts) <= t.stage) return;
+  sfx('heart');
   queueEvent(() => tieEvent(id), 'tie:' + id);
 }
 /** 놓친 인연 이벤트 다시 (접속 때) */
@@ -487,7 +491,10 @@ export function nightOwner(night: boolean) {
     o.emberMarks.push(m);
     markDirty();
     const text = og ? og.embers[i] : LEGACY_EMBERS[i];
-    queueEvent(() => uiHooks.talk([['narr', '밤. 다락 창으로 달빛이 들어온다.'], ['me', fillT(text)]]), 'ember' + m);
+    queueEvent(() => {
+      ownerHooks.ember();
+      uiHooks.talk([['narr', '밤. 다락 창으로 달빛이 들어온다.'], ['me', fillT(text)]]);
+    }, 'ember' + m);
   });
   if (canDecide()) queueEvent(askDecision, 'decide');
 }
@@ -496,6 +503,7 @@ onNightFlip(nightOwner);
 /** 「다락의 옛 장비 앞에 선다」: 다시 떠난다 / 아직은 아니야 / 여기가 내 자리다 */
 export function askDecision() {
   if (!canDecide()) return;
+  ownerHooks.ember();
   const heir = heirName();
   const comps = companions();
   const canGo = !!heir && (comps.length > 0 || canSolo());

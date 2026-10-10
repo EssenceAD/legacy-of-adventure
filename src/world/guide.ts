@@ -1,4 +1,5 @@
 // 5단계 1장: 가이드 임무 「버나드의 장부」 진행 · 장 보상(기능 열기 · 마을 등급)
+import { sfx } from '../audio/sfx';
 // 이미 해 둔 일은 그 임무 차례가 오면 바로 완료(받기까지) — 예전 저장도 자연스럽게 따라온다.
 import { CHAPTERS, MISSIONS, type GuideCtx, type Mission } from '../data/guide';
 import { HEROES } from '../data/heroes';
@@ -102,6 +103,7 @@ export function claimMission(silent = false): TalkLine[] {
   P.guide.claimed.push(m.id);
   P.guide.idx++;
   markDirty();
+  if (!silent) sfx('mission');
   const lines: TalkLine[] = silent ? [] : [['keeper', m.line, undefined, '노주인 버나드'], ['narr', `임무 보상: ${rewardText(m)}`]];
   const ch = chapterOf(m.ch);
   if (ch.missions.every((x) => P.guide.claimed.includes(x.id))) {

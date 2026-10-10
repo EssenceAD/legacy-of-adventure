@@ -30,6 +30,8 @@ const isMe = (who: string) => who === 'me' || (who === 'hero' && !!P.owner);
 
 let DQ: Talk | null = null;
 export const isTalking = () => DQ !== null;
+/** 인연 이벤트(초상화 마주보기) 중 — 배경음악 「마주 앉은 밤」 */
+export const isDuo = () => !!DQ?.duo;
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 

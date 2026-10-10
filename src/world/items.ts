@@ -1,4 +1,5 @@
 // 장비: 만들기(등급·랜덤 옵션·세트) · 천장 · 가방 · 장착 · 옵션 합 · 아이콘
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
@@ -7,7 +8,7 @@ import {
   type Grade, type OptKey, type RegionId, type Slot, type StatKey,
 } from '../data/items';
 import { canvas, dk, lt, P as Paint } from '../engine/pixel';
-import { P, pick, world, type Actor, type Item, type ItemOpt } from './state';
+import { P, pick, S, world, type Actor, type Item, type ItemOpt } from './state';
 import { dexAddItem } from './progress';
 
 const I = CONFIG.items;
@@ -91,6 +92,7 @@ export function addToBag(it: Item): 'ok' | 'salvaged' | 'full' {
     return 'full';
   }
   P.bag.push(it);
+  if (S.started) sfx(['e', 'l', 'a'].includes(it.grade) ? 'rare' : 'item');
   return 'ok';
 }
 

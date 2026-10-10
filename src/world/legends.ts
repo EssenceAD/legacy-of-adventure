@@ -1,4 +1,5 @@
 // 전설 영웅 14명 (3단계 8장): 소문 → 인연 게이지 → 밤 판정(실제 날짜 하루 1번) → 방문 → 부탁 → 영입 → 증표로 ★
+import { sfx } from '../audio/sfx';
 // 다른 모듈은 legendHooks.bond / legendHooks.req 로만 알린다 (import가 꼬이지 않게).
 import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
@@ -212,6 +213,7 @@ function recruit(key: string) {
   const d = legendByKey(key)!;
   const st = P.legends[key];
   st.st = 'joined';
+  sfx('legend');
   const a = legendActor(key);
   if (a) {
     a.status = 'hero';

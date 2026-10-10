@@ -41,7 +41,7 @@ export function showSettlement(): boolean {
   void c.offsetWidth;
   c.classList.add('on');
   c.classList.toggle('record', record);
-  if (record) sfx('perfect');
+  if (record) sfx('record');
   c.onclick = close;
   timer = window.setTimeout(close, 4000);
   return true;

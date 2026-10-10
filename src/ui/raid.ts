@@ -1,4 +1,5 @@
 // 토벌전 화면 (3단계 2~4장): 준비 창(파티·권장 전투력·경고) → 와이프 전환 → 옆에서 보는 도트 전투장 → 결과
+import { battleMusic } from './sound';
 // 시안(raid_battle.html)의 전투를 옮겼다. 피해량은 「자동 기대 피해량」에 맞춰 보정한다:
 //  · 자동: 기대 피해량 ±10% (끝까지 버텼을 때)  · 직접: 자동의 90% ~ 130%
 import { CONFIG } from '../data/config';
@@ -442,6 +443,7 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
   const hooks: Hooks = {
     num(x, y, u, cls, text) {
       view.num(x, y, text ?? fmt(u * scale), cls);
+      if (cls === '') sfx('hit');
       // 세로 화면 기록창: 알림 · 맞은 피해만 (때린 숫자는 장면에)
       if (cls === 'msg') view.log(text === '!' ? '보스가 번쩍인다 · 막기 꾹!' : text ?? '', text === '!' ? 'bad' : 'kill');
       else if (cls === 'hurt') view.log(`파티가 맞았다 ${text ?? ''}`, 'bad');
@@ -470,6 +472,8 @@ function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidE
   let logQ = Math.ceil((hpNow() / t.max) * 4);
   const ui = () => {
     const p = hpNow() / t.max;
+    // 보스 체력 30% 아래 → 「마지막 일격」
+    if (p < 0.3) battleMusic.raidLow = true;
     if (S.bstate !== logState) {
       logState = S.bstate;
       if (S.bstate === 'warn') view.log(`${['위', '가운데', '아래'][S.warnLane] ?? ''} 줄로 돌진 예고 · 줄을 옮겨요!`, 'bad');

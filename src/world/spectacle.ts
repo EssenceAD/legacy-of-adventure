@@ -1,4 +1,5 @@
 // 베타 4장: 구경거리 사건 10종 — 게임 하루에 0~2번, 마을을 보고 있을 때만. 머리 위 이모트로 표시, 게임 1시간 뒤 사라진다
+import { sfx } from '../audio/sfx';
 //  해결(탭 → 고르기)은 ui/spectacle.ts. 여기는 생기기·위치·그리기·탭 판정
 import { CONFIG } from '../data/config';
 import type { ClassDef } from '../data/classes';
@@ -127,6 +128,7 @@ export function spawn(kind: SpecKind): Spectacle | null {
     }
   }
   spectacles.push(ev);
+  sfx('event');
   return ev;
 }
 

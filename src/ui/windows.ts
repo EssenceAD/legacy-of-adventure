@@ -1,5 +1,6 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
@@ -25,6 +26,7 @@ const fmt = (n: number) => n.toLocaleString('ko-KR');
 export const helpHook = { page: (_title: string): string | null => null, open: (_key: string) => {} };
 
 export function openWin(title: string, html: string, cls = '') {
+  if (!$('#win').classList.contains('on')) sfx('open');
   $('#winT').textContent = title;
   const hp = helpHook.page(title);
   const hb = $('#winHelp');
@@ -38,6 +40,7 @@ const closeHooks: (() => void)[] = [];
 /** 창이 닫힌 뒤 (다음 창이 바로 열리면 그 뒤) 부를 것 — 놓치면 안 되는 창(저장 고르기)을 다시 띄울 때 */
 export const onWinClose = (f: () => void) => closeHooks.push(f);
 export function closeWin() {
+  if ($('#win').classList.contains('on')) sfx('close');
   $('#win').classList.remove('on');
   $('#scrim').classList.remove('on');
   setTimeout(() => closeHooks.forEach((f) => f()), 0);

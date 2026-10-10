@@ -1,5 +1,6 @@
 // 4단계 화면: 「당신은 누구였나요?」(주인 만들기·출신 컷) · 주인 정보창(6각형·달력) · 인연 목록 · 선물 · 엔딩 앨범 · 엔딩 카드
 import { BONDS, bondById, GIFT_KEYS, GIFTS, type BondDef, type GiftKey } from '../data/bonds';
+import { musicFlags } from './sound';
 import type { ClassDef } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { ENDINGS, endingById, type EndingDef } from '../data/endings';
@@ -343,6 +344,7 @@ function epilogue(e: EndingDef, rel?: 'lover' | 'comrade'): TalkLine[] {
 
 function replayEnding(id: string) {
   const e = endingById(id)!;
+  musicFlags.ending = e.type === 'inn' ? 'ending_inn' : 'ending_adv';
   const card = P.legacy.cards[id];
   closeWin();
   talk(epilogue(e, card?.rel), () => openWin(e.title, `${cardHtml(e, true)}<p class="note">유산 보너스: ${esc(bonusText(e))}</p><button class="bigbtn ghost" id="aBack2">앨범으로</button>`, 'endw'));
@@ -374,6 +376,7 @@ function openPartner(list: BondDef[], solo: boolean, done: (id: string | null) =
 /** 엔딩: 에필로그 → 엔딩 카드 → 유산을 잇는다 / 계속 운영한다 */
 function playEnding(ids: string[], partner: string | null, rel: 'lover' | 'comrade' | undefined) {
   const main = endingById(ids[0])!;
+  musicFlags.ending = main.type === 'inn' ? 'ending_inn' : 'ending_adv';
   const extra = ids.slice(1).map((i) => endingById(i)!);
   const lines: TalkLine[] = [...epilogue(main, main.type === 'adventure' ? rel : undefined), ...extra.flatMap((e) => epilogue(e, rel))];
   const p = partner ? bondById(partner) : null;

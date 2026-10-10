@@ -1,4 +1,5 @@
 // 5단계 4장: 업적 · 칭호 · 출석(7일·28일) · 상점(일일 진열) · 우편함 — 가볍게, 전부 progress 안이라 클라우드 저장에도 같이
+import { sfx } from '../audio/sfx';
 import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
 import { evalTitles } from './evaluation';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
@@ -65,6 +66,7 @@ export function claimAch(id: string): AchDef['reward'] | null {
   const d = ACHIEVEMENTS.find((x) => x.id === id);
   if (!d || P.meta.ach.includes(id) || !achProgress(d).done) return null;
   P.meta.ach.push(id);
+  sfx('coin');
   if (d.reward.gold) S.gold += d.reward.gold;
   if (d.reward.dust) P.dust.n += d.reward.dust;
   markDirty();
@@ -107,6 +109,7 @@ export function claimMail(id: number): Mail['reward'] | null {
   const m = P.meta.mail.find((x) => x.id === id);
   if (!m || m.claimed) return null;
   m.claimed = true;
+  if (hasReward(m)) sfx('coin');
   const r = m.reward;
   if (r.gold) S.gold += r.gold;
   if (r.dust) P.dust.n += r.dust;

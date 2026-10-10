@@ -46,7 +46,7 @@ function nextCard() {
   el.classList.remove('go');
   void el.offsetWidth;
   el.classList.add('go');
-  sfx('perfect');
+  sfx('item');
   setTimeout(nextCard, 3000);
 }
 

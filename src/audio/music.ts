@@ -1,0 +1,216 @@
+// 배경음악: <audio> 두 개(크로스페이드) → MediaElementSource → 배경음악 볼륨. 지금 상황의 곡만 받는다.
+//  마을(낮·밤): 섞어 틀기(직전 곡 빼고) + 곡이 끝나면 20~60초 쉼(그동안 마을 소리) · 전투·이벤트: 끝나면 바로 처음부터
+//  상황 전환 1.2초 크로스페이드 · 낮↔밤은 4초 페이드아웃 뒤 새 목록 · 전투에서 마을로 오면 아까 곡의 그 자리에서 이어서
+import { getPref, setPref } from '../save/save';
+import { bgmBus, ctx, onUnlock } from './engine';
+import { PLAYLISTS, TRACKS, VILLAGE, type Scene } from './playlists';
+
+const DIR = 'audio/bgm/';
+interface Deck {
+  el: HTMLAudioElement;
+  gain: GainNode | null;
+  track: string | null;
+}
+const decks: Deck[] = [];
+let cur = 0;
+let amb: Deck | null = null;
+let ambKey = '';
+
+let scene: Scene = 'none';
+let lastPick: Partial<Record<string, string>> = {};
+/** 마을 곡을 떠날 때 자리 (돌아오면 이어서) */
+const resumeAt: Partial<Record<Scene, { track: string; t: number }>> = {};
+let restT = 0;
+let resting = false;
+let switchT = 0;
+let unlocked = false;
+
+export const heard = new Set<string>(getPref<string[]>('heard', []));
+
+function mkDeck(loop = false): Deck {
+  const el = new Audio();
+  el.preload = 'auto';
+  el.loop = loop;
+  el.crossOrigin = 'anonymous';
+  const d: Deck = { el, gain: null, track: null };
+  if (ctx) {
+    const src = ctx.createMediaElementSource(el);
+    d.gain = ctx.createGain();
+    d.gain.gain.value = 0;
+    src.connect(d.gain).connect(bgmBus);
+  }
+  return d;
+}
+
+function ramp(d: Deck, to: number, sec: number) {
+  if (!ctx || !d.gain) return;
+  const t = ctx.currentTime;
+  d.gain.gain.cancelScheduledValues(t);
+  d.gain.gain.setValueAtTime(d.gain.gain.value, t);
+  d.gain.gain.linearRampToValueAtTime(to, t + Math.max(0.01, sec));
+}
+
+/** 곡 하나 틀기 (덱을 바꿔 크로스페이드) */
+function play(track: string, fade: number, at = 0, loop = false) {
+  resting = false;
+  const old = decks[cur];
+  cur = 1 - cur;
+  const d = decks[cur];
+  d.track = track;
+  d.el.loop = loop;
+  d.el.src = DIR + TRACKS[track].file + '.mp3';
+  const start = () => {
+    if (at > 0 && Number.isFinite(d.el.duration) && at < d.el.duration - 2) d.el.currentTime = at;
+  };
+  d.el.onloadedmetadata = start;
+  d.el.onplaying = () => {
+    if (!heard.has(track)) {
+      heard.add(track);
+      setPref('heard', [...heard]);
+    }
+  };
+  d.el.onended = () => onEnded(d);
+  // 파일이 없거나 실패하면 조용히 넘어간다 (마을이면 쉼 뒤 다음 곡)
+  d.el.onerror = () => {
+    if (decks[cur] === d && VILLAGE.has(scene)) rest();
+  };
+  ramp(d, 1, fade);
+  void d.el.play().catch(() => {});
+  if (old?.track) {
+    ramp(old, 0, fade);
+    const o = old;
+    window.setTimeout(() => {
+      if (decks[cur] !== o) {
+        o.el.pause();
+        o.track = null;
+      }
+    }, fade * 1000 + 100);
+  }
+  ambFade(0, 3);
+}
+
+function pick(list: string[], key: string): string {
+  const pool = list.length > 1 ? list.filter((t) => t !== lastPick[key]) : list;
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  lastPick[key] = t;
+  return t;
+}
+
+/** 마을 곡이 끝남 → 20~60초 쉼 (마을 소리) → 다음 곡 */
+function onEnded(d: Deck) {
+  if (decks[cur] !== d || !VILLAGE.has(scene)) return;
+  d.track = null;
+  rest();
+}
+function rest() {
+  clearTimeout(restT);
+  resting = true;
+  ambOn(scene === 'night' ? 'amb_night' : 'amb_day');
+  restT = window.setTimeout(() => {
+    resting = false;
+    if (VILLAGE.has(scene)) play(pick(PLAYLISTS[scene as 'day'], scene), 1.2);
+  }, (20 + Math.random() * 40) * 1000);
+}
+
+// ───────── 마을 소리 (쉼 동안 루프 · 이미 아주 작게 맞춰 둔 파일이라 더 키우지 않는다) ─────────
+
+function ambOn(key: string) {
+  if (!amb) return;
+  if (ambKey !== key) {
+    ambKey = key;
+    amb.el.src = `audio/amb/${key}.mp3`;
+    amb.el.onerror = () => {};
+  }
+  void amb.el.play().catch(() => {});
+  ramp(amb, 1, 2);
+}
+function ambFade(to: number, sec: number) {
+  if (!amb || !amb.gain) return;
+  ramp(amb, to, sec);
+  if (to === 0) window.setTimeout(() => amb!.gain!.gain.value < 0.01 && amb!.el.pause(), sec * 1000 + 100);
+}
+
+// ───────── 상황 바꾸기 ─────────
+
+export function setScene(next: Scene) {
+  if (next === scene || !unlocked) {
+    if (!unlocked) scene = next;
+    return;
+  }
+  const prev = scene;
+  scene = next;
+  clearTimeout(restT);
+  clearTimeout(switchT);
+  const d = decks[cur];
+  // 마을 곡을 떠날 때 자리 기억
+  if (VILLAGE.has(prev) && d.track && !d.el.paused) resumeAt[prev] = { track: d.track, t: d.el.currentTime };
+  if (next === 'none') {
+    ramp(d, 0, 1.2);
+    ambFade(0, 1.2);
+    return;
+  }
+  // 낮 ↔ 밤: 지금 곡을 4초 페이드아웃한 뒤 새 목록
+  if (VILLAGE.has(prev) && VILLAGE.has(next)) {
+    if (resting) return rest();
+    ramp(d, 0, 4);
+    switchT = window.setTimeout(() => {
+      if (scene === next) play(pick(PLAYLISTS[next as 'day'], next), 1.2);
+    }, 4000);
+    return;
+  }
+  const raidSwap = prev === 'raid' && next === 'raid2';
+  if (VILLAGE.has(next)) {
+    const r = resumeAt[next];
+    delete resumeAt[next];
+    if (r) return play(r.track, 1.2, r.t);
+    return play(pick(PLAYLISTS[next as 'day'], next), 1.2);
+  }
+  play(PLAYLISTS[next][0], raidSwap ? 2 : 1.2, 0, true);
+}
+export const currentScene = () => scene;
+
+/** 설정 「음악 목록」 미리 듣기 */
+let previewing = false;
+export function previewTrack(id: string | null) {
+  if (!unlocked) return;
+  if (id) {
+    previewing = true;
+    clearTimeout(restT);
+    play(id, 0.6, 0, true);
+  } else if (previewing) {
+    previewing = false;
+    const s = scene;
+    scene = 'none';
+    setScene(s);
+  }
+}
+export const isPreviewing = () => previewing;
+
+/** 첫 터치: 덱을 만들고 지금 상황 곡을 0.8초 페이드인 */
+onUnlock(() => {
+  decks.push(mkDeck(), mkDeck());
+  amb = mkDeck(true);
+  unlocked = true;
+  const s = scene;
+  scene = 'none';
+  if (s === 'none') return;
+  if (VILLAGE.has(s)) play(pick(PLAYLISTS[s as 'day'], s), 0.8);
+  else {
+    scene = s;
+    play(PLAYLISTS[s][0], 0.8, 0, true);
+  }
+  scene = s;
+});
+
+/** 개발용: 덱 상태 */
+export const deckState = () => ({
+  scene,
+  resting,
+  decks: decks.map((d) => ({ track: d.track, paused: d.el.paused, t: Math.round(d.el.currentTime * 10) / 10, gain: d.gain ? Math.round(d.gain.gain.value * 100) / 100 : null, err: d.el.error?.code ?? 0 })),
+  amb: amb ? { key: ambKey, paused: amb.el.paused, gain: amb.gain?.gain.value } : null,
+});
+/** 개발용: 지금 곡을 끝 sec초 전으로 */
+export const devSeekEnd = (sec = 1) => {
+  const d = decks[cur];
+  if (d && Number.isFinite(d.el.duration)) d.el.currentTime = Math.max(0, d.el.duration - sec);
+};

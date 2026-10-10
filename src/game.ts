@@ -1,4 +1,5 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
+import { sfx } from './audio/sfx';
 import { def } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
@@ -274,6 +275,7 @@ export function placeBuilding(pl: Placement): boolean {
   if (pl.prop) P.harmony.moved.push(pl.prop);
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
   if (pl.kind === 'fire') track('buildFire');
+  sfx('build');
   rebuildPaths();
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
@@ -316,6 +318,7 @@ export function moveBuilding(pl: Placement): boolean {
   for (const a of inside) Object.assign(a, { hidden: false, at: null, x: d[0], y: d[1], st: 'idle', t: 0.3, pop: 0.4 });
   for (const a of world.actors) if (a.door === null && a.st === 'door') Object.assign(a, { st: 'idle', t: 0.3 });
   puffAt(o, '#fff3b0', 12);
+  sfx('build');
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '쿵!', 'big');
   markDirty();
   return true;

@@ -1,4 +1,5 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
+import { battleMusic } from './sound';
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
@@ -165,6 +166,7 @@ const whiteOf = (src: HTMLCanvasElement) => {
 };
 
 function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
+  battleMusic.huntRegion = r;
   notePrep('hunt', partyPower(members));
   const leader = members[0];
   const rec = recPower(r, s);
@@ -241,6 +243,7 @@ function startHunt(r: RegionId, s: number, members: Actor[], manual: boolean) {
     W.atk = 0.22;
     const crit = Math.random() < 0.15;
     hurt(f, (dps * 0.5) / 4 * (crit ? 2 : 1), crit ? 'crit' : '');
+    sfx(crit ? 'crit' : 'hit');
     if (crit) W.shake = 0.1;
   };
   const skill1 = () => {

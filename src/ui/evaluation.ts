@@ -1,4 +1,5 @@
 // 베타 2장: 평가단 화면 — 임무 카드 아래 평가 바 · 평가 창 · 새 시즌 알림 · 평가단 순회 → 결과 카드
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { def, type Kind } from '../data/catalog';
 import { submitEval } from '../net/server';
@@ -44,6 +45,7 @@ export function openEval() {
 }
 
 function showResult(r: EvalResult) {
+  sfx((['fail', 'eval_bronze', 'eval_silver', 'eval_gold', 'eval_legend'] as const)[r.tier]);
   void submitEval({ week: r.season, theme: r.theme, score: r.score, parts: Object.fromEntries(r.parts.map((p) => [p.key, p.pts])) });
   const rows = r.parts.map((p) => `<div class="evrow"><span>${p.label}</span><i><b style="width:${Math.round((p.pts / p.max) * 100)}%"></b></i><em>${fmt(p.pts)}/${p.max}</em></div>`).join('');
   const rw = r.reward ? `<p class="good">금화 +${fmt(r.reward.gold)} · 잿빛 가루 +${r.reward.dust} · 증표 조각 +${r.reward.shards}</p>` : '<p class="note">이번엔 등급에 들지 못했어요</p>';

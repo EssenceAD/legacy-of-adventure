@@ -1,4 +1,5 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
+import { sfx } from '../audio/sfx';
 import {
   CLASS_RACES, CLASS_STATS, CLASS_WEAPON, CLASSES, FACE_POOL, GUEST_KINDS, HAIR_COLORS, RACE_NAMES, RARITY_INFO,
   type ClassDef, type ClassKey, type Face, type GuestKind, type Race, type Rarity,
@@ -6,7 +7,7 @@ import {
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
 import { GRADE_INFO, STATS, type StatKey } from '../data/items';
-import { P, pick, world, type Actor } from './state';
+import { P, pick, S, world, type Actor } from './state';
 import { equippedItems, itemStat, optSum } from './items';
 import { dexBonus, heroStarBonus } from './progress';
 import { bondTierBonus, legacyPower, ownerBonus, xpMult } from './owner';
@@ -118,6 +119,7 @@ export function gainXp(a: Actor, n: number): boolean {
     a.lvl++;
     up = true;
   }
+  if (up && S.started && !S.visiting) sfx('levelup');
   return up;
 }
 

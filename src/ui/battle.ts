@@ -19,8 +19,9 @@ export interface SkillBtn {
   desc: string;
 }
 
-/** 나중에 소리를 넣을 자리 */
-export const sfx = (_name: 'tap' | 'skill' | 'block' | 'perfect' | 'hit' | 'crit' | 'win' | 'lose') => {};
+/** 효과음 (audio/sfx.ts) — 예전 호출부는 그대로 */
+import { sfx } from '../audio/sfx';
+export { sfx };
 
 export interface BattleView {
   root: HTMLElement;

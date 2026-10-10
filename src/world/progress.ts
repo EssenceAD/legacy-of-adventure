@@ -1,4 +1,5 @@
 // 성장 지표: 평판(★) · 도감(손님·아이템·케미·영웅) · 오늘의 목표 · 영웅 조건
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals';
 import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
@@ -146,6 +147,7 @@ export function claimGoal(i: number): { gold: number; dust?: number } | null {
   if (!g || g.claimed || g.progress < g.target) return null;
   const t = GOAL_TEMPLATES.find((x) => x.id === g.id)!;
   g.claimed = true;
+  sfx('coin');
   P.counters.goalsClaimed++;
   S.gold += t.reward.gold;
   if (t.reward.dust) P.dust.n += t.reward.dust;

@@ -1,4 +1,5 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { BOSSES, bossById } from '../data/bosses';
 import { josa } from '../data/josa';
@@ -64,7 +65,11 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'no
   ownerGain('enhance');
   markDirty();
   // 실패해도 단계는 떨어지지 않는다 (가루만 든다)
-  if (Math.random() >= enhanceRate(it)) return 'fail';
+  if (Math.random() >= enhanceRate(it)) {
+    sfx('fail');
+    return 'fail';
+  }
+  sfx('levelup');
   it.enh++;
   P.counters.enhanceMax = Math.max(P.counters.enhanceMax, it.enh);
   return 'ok';

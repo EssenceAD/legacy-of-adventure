@@ -1,4 +1,5 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
+import { sfx } from '../audio/sfx';
 import { def, type Kind } from '../data/catalog';
 import { P } from '../engine/pixel';
 import * as game from '../game';
@@ -120,6 +121,7 @@ export function movePlacement(fx: number, fy: number) {
   pl.ty = ty;
   pl.snapT = S.T;
   check(pl);
+  if (!pl.ok) sfx('place_bad');
   placeText(pl);
 }
 

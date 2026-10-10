@@ -21,6 +21,7 @@ let handUntil = 0;
 export function initGuide() {
   guideHooks.chapterDone = (no) => {
     const c = chapterOf(no);
+    sfx('chapter');
     uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 장부 ${no}장 「${c.name}」${josa(c.name, '을')} 마쳤습니다!`);
     queueChapter(no);
   };
@@ -48,7 +49,7 @@ export function playGradeUp(to: number, then: () => void) {
   const z0 = S.zoom;
   tempZoom(1);
   startGradeAnim(from, to);
-  sfx('win');
+  sfx('grade_up');
   setTimeout(() => {
     const name = `${S.innName || '여관'}`;
     const b = document.createElement('div');
