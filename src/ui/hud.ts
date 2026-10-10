@@ -82,6 +82,8 @@ export function startPlace(kind: Kind, prop?: string) {
     const best = harmonySpot(pl);
     if (best) [pl.tx, pl.ty] = best;
   }
+  // 땅에 이 크기 빈자리가 하나도 없으면: 그냥 「못 놓아요」로 두지 않고 할 일을 알려 준다 (밤샘 봇이 여기서 막힘)
+  if (pl.tx == null) toast(`${d.name}을(를) 놓을 빈자리가 없어요 · 건물을 눌러 「옮기기」로 자리를 모으거나 땅을 넓혀요`);
   openPlace(pl);
 }
 
