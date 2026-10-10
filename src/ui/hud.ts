@@ -7,18 +7,22 @@ import { setNight } from '../world/daynight';
 import { stars } from '../world/progress';
 import { P as PG, S } from '../world/state';
 import { CONFIG } from '../data/config';
-import { regionById } from '../data/items';
+import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
 import { blocksDoor, canPlace, grid, inLand, placing, suggestSpot, type Placement } from '../world/town';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, openRunLog, runsWaiting } from './expedition';
+import { syncGuide } from './guide';
+import { autoTick } from '../world/hunt';
+import { iconSrc } from './kit';
+import { openHunt } from './hunt';
 import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { openBuild, openMenu, toast } from './windows';
+import { openBuild, openMenu, toast, toastHtml } from './windows';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -255,16 +259,31 @@ let runbarKey = '';
 function updateRunbar() {
   const bar = $('#runbar');
   const runs = S.visiting ? [] : PG.runs.filter((r) => !r.claimed).slice(0, CONFIG.expedition.maxParties);
-  bar.hidden = !runs.length;
-  if (!runs.length) return;
+  const au = S.visiting ? null : PG.hunt.auto;
+  bar.hidden = !runs.length && !au;
+  if (bar.hidden) return;
   const now = Date.now();
-  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',');
+  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '');
   if (key !== runbarKey) {
     runbarKey = key;
     bar.innerHTML = runs
       .map((r) => `<button class="px" data-rb="${r.id}"><b>${esc(r.quest.name ?? regionById(r.quest.region).name)}</b><i><u></u></i><em></em></button>`)
       .join('');
     bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => (b.onclick = () => openRunLog(PG.runs.find((r) => r.id === +b.dataset.rb!)!)));
+    if (au) {
+      const hb = document.createElement('button');
+      hb.className = 'px hunt';
+      hb.id = 'rbHunt';
+      hb.innerHTML = `<b>자동 사냥 ${regionById(au.region as never).name.slice(0, 2)} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage}</b><i><u></u></i><em></em>`;
+      hb.onclick = () => openHunt(au.region as never);
+      bar.appendChild(hb);
+    }
+  }
+  const hb = document.getElementById('rbHunt');
+  if (hb && au) {
+    const f = Math.min(1, (now - PG.hunt.idleAt) / (CONFIG.hunt.autoSeconds * 1000));
+    (hb.querySelector('u') as HTMLElement).style.width = f * 100 + '%';
+    hb.querySelector('em')!.textContent = `${Math.max(0, Math.ceil(CONFIG.hunt.autoSeconds * (1 - f)))}초`;
   }
   bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => {
     const r = PG.runs.find((x) => x.id === +b.dataset.rb!);
@@ -291,6 +310,10 @@ export function tickHud() {
     // 원정 결과가 기다리면 원정 버튼이 반짝 (새 게임: 첫 원정을 보내기 전에도)
     $('#bExp').classList.toggle('ready', runsWaiting() || (S.started && !S.visiting && PG.counters.expeditions === 0));
     updateRunbar();
+    syncGuide();
+    // 5단계: 자동 사냥 — 켜 있으면 30초마다 한 판
+    const hr = autoTick();
+    if (hr) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>자동 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
   }

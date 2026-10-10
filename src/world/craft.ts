@@ -25,6 +25,7 @@ export function salvage(it: Item): number {
   P.bag.splice(i, 1);
   const n = SM.salvage[it.grade];
   P.dust[it.grade] += n;
+  P.counters.salvaged++;
   track('salvage');
   markDirty();
   return n;

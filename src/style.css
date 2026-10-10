@@ -636,3 +636,35 @@ html[data-size="phone"] .bhud.top{width:56%}
 .cat small.lock{color:#e2aa4e}
 .cat .lk,.tile-lk{position:absolute;right:6px;top:6px;width:calc(8px * var(--k));height:calc(10px * var(--k));background:var(--ui-lock) 0 0 / 100% 100%}
 .goal button.go{border-image-source:var(--ui-btn)!important;color:var(--cream)!important;font-weight:400}
+
+/* ── 5단계 1장: 임무 카드(왼쪽 위, HUD 아래) · 손가락 안내 ── */
+#mission{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;text-align:left;padding:6px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;cursor:pointer;color:var(--cream);z-index:4}
+#mission .mi,#mission .rw{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+#mission span{display:flex;flex-direction:column;min-width:0}
+#mission small{color:#9aa6d8;font-size:var(--f-tiny)}
+#mission b{font-size:var(--f-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mission em{font-style:normal;font-size:var(--f-small);color:var(--gold)}
+#mission.done{border-image-source:var(--ui-tile-selected);animation:mglow 1s steps(2) infinite}
+@keyframes mglow{50%{filter:brightness(1.35)}}
+#mission:active{transform:translateY(1px)}
+#hand{position:absolute;z-index:60;width:calc(16px * var(--k));height:calc(16px * var(--k));pointer-events:none;image-rendering:pixelated}
+.talking #mission,.placing #mission{visibility:hidden}
+html:not([data-size="phone"]) #mission{top:calc(env(safe-area-inset-top,0px) + 80px)}
+
+/* ── 5단계 2장: 사냥터 지도 ── */
+.hmap{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0}
+.hst{position:relative;border:0 solid transparent;border-image:var(--ui-tile) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;padding:8px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;color:var(--cream)}
+.hst b{font-size:var(--f-ui)}.hst small{font-size:var(--f-tiny);color:#9aa6d8}
+.hst.done{border-image-source:var(--ui-tile-pressed)}.hst.done i{position:absolute;right:4px;top:2px;font-style:normal;color:#8fe08f}
+.hst.next{border-image-source:var(--ui-tile-selected);animation:mglow 1s steps(2) infinite}
+.hst.lock{border-image-source:var(--ui-tile-locked);opacity:.6;cursor:default}
+.hst.boss b{color:#ff9a3c}
+.hauto{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+.hauto img{width:calc(24px * var(--k1));height:calc(24px * var(--k1));vertical-align:middle}
+.raidcard.hunt img{width:calc(24px * var(--k));height:calc(24px * var(--k));object-fit:none}
+#runbar button.hunt{background:rgba(20,40,20,.85)}
+/* 결과 카드 버튼도 키트로 */
+:is(.res,.rov) .go button{border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--cream);min-height:40px;padding:6px 10px;cursor:pointer}
+:is(.res,.rov) .go button.a:not([disabled]){border-image-source:var(--ui-btn-primary);color:var(--ink);font-weight:700}
+:is(.res,.rov) .go button[disabled]{border-image-source:var(--ui-btn-disabled);color:#8a8fa8}
+:is(.res,.rov) .go button:active{border-image-source:var(--ui-btn-pressed);transform:translateY(1px)}

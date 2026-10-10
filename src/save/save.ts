@@ -132,6 +132,8 @@ export function migrate(d: any): any {
   if (d.version === 2) d = { ...d, version: 3 };
   // v3 → v4 (4단계): 주인·인연·유산 칸이 늘었다. 주인이 없으면(null) 다음 접속 때 「당신은 누구였나요?」 창으로 만든다
   if (d.version === 3) d = { ...d, version: 4 };
+  // v4 → v5 (5단계): 임무·사냥 칸이 늘었다. 예전 저장은 기능을 잠그지 않는다(legacy) — 임무는 이미 한 일부터 바로 완료
+  if (d.version === 4) d = { ...d, version: 5, progress: { ...(d.progress ?? {}), guide: { ...(d.progress?.guide ?? {}), legacy: true } } };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }

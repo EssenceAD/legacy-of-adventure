@@ -12,6 +12,7 @@ import { openBag } from './guests';
 import { openGarden, openSmith } from './smith';
 import { openAccount } from './account';
 import { resetBattleHints } from './battle';
+import { feature, featureChapter } from '../world/guide';
 import { openRank } from './rank';
 import { rumorEnabled, setRumor } from './chat';
 import { me, online, sendLetter } from '../net/server';
@@ -112,16 +113,21 @@ export function buildThumbs() {
 const decoded: HTMLImageElement[] = [];
 const thumb = (k: Kind) => THUMBS[k] ?? '';
 
+const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 'smith', garden: 'garden', cottage: 'cottage' };
+
 export function openBuild() {
   if (S.visiting) return;
   const items = buildableKinds()
     .map((k) => {
       const d = def(k);
       const noStar = (d.stars ?? 0) > stars();
-      const locked = d.unlock > S.land || noStar;
+      // 5단계: 장부 장 보상으로 여는 건물 (대장간 3장 · 텃밭·별채 5장)
+      const gate = GATED[k];
+      const noGuide = !!gate && !feature(gate);
+      const locked = d.unlock > S.land || noStar || noGuide;
       const poor = S.gold < d.cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
-      const why = d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
+      const why = noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
       const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(d.cost)} G</small>`;
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     })
@@ -132,6 +138,11 @@ export function openBuild() {
     (b) =>
       (b.onclick = () => {
         const k = b.dataset.k as Kind;
+        const gate = GATED[k];
+        if (gate && !feature(gate)) {
+          toast(`버나드의 장부 ${featureChapter(gate)}장을 마치면 지을 수 있어요`);
+          return;
+        }
         if (def(k).unlock > S.land) {
           toast(`땅을 ${def(k).unlock}단계까지 넓히면 지을 수 있어요`);
           return;

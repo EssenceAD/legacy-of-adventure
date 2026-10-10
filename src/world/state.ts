@@ -270,6 +270,12 @@ export function freshProgress() {
       goldTotal: 0,
       moodTopDays: 0,
       relicEver: 0,
+      // 5단계: 임무 확인용
+      guestTalks: 0,
+      quickRuns: 0,
+      goalsClaimed: 0,
+      salvaged: 0,
+      huntAutoUsed: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {
@@ -329,6 +335,20 @@ export function freshProgress() {
     ties: {} as Record<string, TieState>,
     /** 선물 가방 */
     gifts: {} as Record<string, number>,
+    /**
+     * 5단계 가이드 임무 「버나드의 장부」: 지금 임무 번호 · 받은 임무 · 본 장 컷 · 연 기능
+     * legacy = 5단계 전 저장 (기능을 잠그지 않는다 — 이미 쓰던 걸 막으면 안 된다)
+     */
+    guide: { idx: 0, claimed: [] as string[], cut: 0, legacy: false, unlocked: [] as string[] },
+    /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
+    hunt: {
+      best: {} as Record<string, number>,
+      firstClear: [] as string[],
+      auto: null as null | { region: string; stage: number; members: number[] },
+      idleAt: 0,
+      /** 증표 조각 (10개 = 인연의 증표 1) */
+      shards: 0,
+    },
     /**
      * 유산: 세대 · seen = 이 마을에서 본 엔딩(유산 보너스 기준, 새 여관 열기 때 초기화)
      * album·cards = 엔딩 앨범(지금까지 본 엔딩 전부, 새 여관 열기를 해도 남는다) · 앞 주인

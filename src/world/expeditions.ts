@@ -25,7 +25,8 @@ const homeObjs = () => world.home?.objs ?? world.objs;
 /** 지역 i가 열렸나: 앞 지역 3번 성공 또는 평판 ★(i+1) */
 export function regionUnlocked(i: number): boolean {
   if (i === 0) return true;
-  return (P.counters.regionWins[REGIONS[i - 1].id] ?? 0) >= 3 || stars() >= i + 1;
+  // 5단계: 앞 지역 사냥 보스(x-10)를 깨도 열린다
+  return (P.counters.regionWins[REGIONS[i - 1].id] ?? 0) >= 3 || stars() >= i + 1 || (P.hunt.best[REGIONS[i - 1].id] ?? 0) >= CONFIG.hunt.stages;
 }
 
 export function makeQuest(region: RegionId, tier: number): Quest {
@@ -146,6 +147,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
   P.counters.expeditions++;
+  if (q.tier === 0 && !q.tutorial) P.counters.quickRuns++;
   track('expeditionSent');
   ownerGain('expedition');
   if (q.region === 'ice' || q.region === 'abyss') ownerGain('dangerRun');

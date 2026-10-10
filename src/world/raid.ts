@@ -11,6 +11,7 @@ import { regionUnlocked } from './expeditions';
 import { addRep, today, track } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type RaidRecord } from './state';
 import { addEmber, ownerGain, raidDmgMult, tieRaid } from './owner';
+import { feature } from './guide';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -58,7 +59,8 @@ export const triesLeft = () => {
 
 /** 이번 주 보스 경보 (그 주에 처음 마을이 돌아갈 때 한 번): 화면 흔들림 + 대화창 */
 export function maybeAlarm() {
-  if (!S.started || S.visiting) return;
+  // 5단계: 토벌전은 장부 4장에 열린다 (예전 저장은 그대로)
+  if (!S.started || S.visiting || !feature('raid')) return;
   ensureWeek();
   if (P.raid.alarmed) return;
   P.raid.alarmed = true;

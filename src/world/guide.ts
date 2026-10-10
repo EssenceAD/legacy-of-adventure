@@ -1,0 +1,117 @@
+// 5단계 1장: 가이드 임무 「버나드의 장부」 진행 · 장 보상(기능 열기 · 마을 등급)
+// 이미 해 둔 일은 그 임무 차례가 오면 바로 완료(받기까지) — 예전 저장도 자연스럽게 따라온다.
+import { CHAPTERS, MISSIONS, type GuideCtx, type Mission } from '../data/guide';
+import { HEROES } from '../data/heroes';
+import { LEGENDS } from '../data/legends';
+import { stars } from './progress';
+import { markDirty, P, S, uiHooks, world, type TalkLine } from './state';
+
+const homeObjs = () => world.home?.objs ?? world.objs;
+const homeActors = () => world.home?.actors ?? world.actors;
+
+export function guideCtx(): GuideCtx {
+  const C = P.counters;
+  const regs = homeActors().filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero'));
+  return {
+    expeditions: C.expeditions,
+    quickRuns: C.quickRuns,
+    equippedRare: P.bag.some((it) => it.owner != null && it.grade !== 'n'),
+    has: (k) => homeObjs().some((o) => o.kind === k && o.build === undefined),
+    guestTalks: C.guestTalks,
+    goalsClaimed: C.goalsClaimed,
+    huntBest: (r) => P.hunt.best[r] ?? 0,
+    huntAutoUsed: C.huntAutoUsed > 0,
+    regulars: regs.length,
+    land: world.home?.land ?? S.land,
+    stars: stars(),
+    regionWins: (r) => (r === 'all' ? Object.values(C.regionWins).reduce((s, v) => s + v, 0) : C.regionWins[r as keyof typeof C.regionWins] ?? 0),
+    salvaged: C.salvaged,
+    enhanceMax: C.enhanceMax,
+    crafted: Object.values(C.crafted).reduce((s, v) => s + v, 0),
+    raidTries: P.raid.personalBest > 0 || P.raid.tries > 0 || Object.keys(P.raid.kills).length ? 1 : 0,
+    raidKills: P.raid.weeksKilled,
+    heroes: HEROES.filter((h) => P.dex.heroes[h.id]?.recruited).length + LEGENDS.filter((l) => P.legends[l.key]?.st === 'joined').length,
+    chem: P.dex.chem.length,
+    rumors: Object.keys(P.legends).length,
+    harvests: C.harvests,
+    regularLv: (lv) => regs.filter((a) => a.lvl >= lv).length,
+    itemDex: P.dex.items.length,
+  };
+}
+
+/** 지금 임무 (다 끝났으면 null) */
+export const currentMission = (): (Mission & { ch: number }) | null => MISSIONS[P.guide.idx] ?? null;
+export const chapterOf = (no: number) => CHAPTERS.find((c) => c.no === no)!;
+export function missionProgress(m: Mission): { cur: number; need: number; done: boolean } {
+  const [cur, need] = m.check(guideCtx());
+  return { cur, need, done: cur >= need };
+}
+/** 끝낸 장 수 */
+export const chaptersDone = () => {
+  let n = 0;
+  for (const c of CHAPTERS) if (c.missions.every((m) => P.guide.claimed.includes(m.id))) n = c.no;
+  return n;
+};
+/** 마을 등급 0 오두막 · 1 쉼터 · 2 마을 · 3 고을 · 4 도시 (임무 장 보상) */
+export function townGrade(): number {
+  let g = 0;
+  for (const c of CHAPTERS) if (c.grade != null && c.missions.every((m) => P.guide.claimed.includes(m.id))) g = Math.max(g, c.grade);
+  return g;
+}
+
+/** 기능이 열렸나 (5단계 전 저장은 모두 열림) */
+export function feature(f: 'hunt' | 'smith' | 'shop' | 'raid' | 'garden' | 'cottage'): boolean {
+  return P.guide.legacy || P.guide.unlocked.includes(f) || P.guide.unlocked.includes('all');
+}
+/** 잠긴 기능 → 몇 장에 열리는지 */
+export function featureChapter(f: string): number {
+  return CHAPTERS.find((c) => (c.unlock as string[]).includes(f))?.no ?? 0;
+}
+
+/** ui가 채운다: 장 끝 보상 연출 · 마을 등급 연출(2차) */
+export const guideHooks = {
+  chapterDone: (_no: number) => {},
+  gradeUp: (_g: number) => {},
+};
+
+function grant(m: Mission) {
+  const r = m.reward;
+  if (r.gold) S.gold += r.gold;
+  if (r.dust) P.dust.n += r.dust;
+  if (r.tokens) P.tokens += r.tokens;
+}
+export const rewardText = (m: Mission) =>
+  [m.reward.gold ? `금화 ${m.reward.gold}` : '', m.reward.dust ? `잿빛 가루 ${m.reward.dust}` : '', m.reward.tokens ? `인연의 증표 ${m.reward.tokens}` : ''].filter(Boolean).join(' · ');
+
+/** 다 한 임무 받기: 보상 + 버나드 한마디 + 다음 임무. 장이 끝나면 장 보상 */
+export function claimMission(silent = false): TalkLine[] {
+  const m = currentMission();
+  if (!m || !missionProgress(m).done) return [];
+  grant(m);
+  P.guide.claimed.push(m.id);
+  P.guide.idx++;
+  markDirty();
+  const lines: TalkLine[] = silent ? [] : [['keeper', m.line, undefined, '노주인 버나드'], ['narr', `임무 보상: ${rewardText(m)}`]];
+  const ch = chapterOf(m.ch);
+  if (ch.missions.every((x) => P.guide.claimed.includes(x.id))) {
+    const before = P.guide.unlocked.length;
+    for (const u of ch.unlock) if (!P.guide.unlocked.includes(u)) P.guide.unlocked.push(u);
+    void before;
+    guideHooks.chapterDone(ch.no);
+    if (ch.grade != null) guideHooks.gradeUp(ch.grade);
+  }
+  return lines;
+}
+
+/** 차례가 온 임무가 이미 해 둔 일이면 바로 완료 (연달아). 몇 개를 넘겼는지 */
+export function skipDone(): number {
+  let n = 0;
+  for (let guard = 0; guard < MISSIONS.length; guard++) {
+    const m = currentMission();
+    if (!m || !missionProgress(m).done) break;
+    claimMission(true);
+    n++;
+  }
+  if (n) uiHooks.toast(`장부: 이미 해 둔 일 ${n}개를 완료했어요`);
+  return n;
+}

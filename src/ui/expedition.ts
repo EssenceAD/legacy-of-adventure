@@ -7,6 +7,9 @@ import { bossPic, openRaidPrep } from './raid';
 import { triesLeft, wanderTarget, weeklyTarget, type RaidTarget } from '../world/raid';
 import { powerOf } from '../world/adventurers';
 import { addEmber } from '../world/owner';
+import { feature, featureChapter } from '../world/guide';
+import { openHunt } from './hunt';
+import { iconSrc } from './kit';
 import { departParty, returnParty } from '../world/actors';
 import {
   activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
@@ -59,10 +62,18 @@ export function openBoard() {
   const wd = wanderTarget();
   const raidCard = (t: RaidTarget, id: string) =>
     `<button class="raidcard" id="${id}"><img src="${bossPic(t.boss)}" alt=""><span><b>${t.kind === 'weekly' ? '주간 보스' : '떠돌이 보스'} · ${t.boss.name}</b><small>권장 ${fmt(t.boss.power)} · ${t.hpLeft <= 0 ? '이번 주 처치 완료!' : `남은 체력 ${pct(t.hpLeft / t.max)}`}${t.kind === 'wander' ? ` · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음` : ''}</small><i class="bhp"><i style="width:${(t.hpLeft / t.max) * 100}%"></i></i></span><em>토벌 ›</em></button>`;
+  // 5단계: 사냥터 카드 (장부 1장) · 토벌은 장부 4장에 열린다 (5단계 전 저장은 그대로)
+  const huntBest = REGIONS.map((r) => `${r.name} ${P.hunt.best[r.id] ?? 0}/10`).filter((_, i) => i === 0 || (P.hunt.best[REGIONS[i - 1].id] ?? 0) >= 10);
+  const huntHtml = feature('hunt')
+    ? `<div class="qhd"><b class="g">사냥</b><span class="note">${P.hunt.auto ? '자동 사냥 중' : '스테이지 돌파 · 자동 반복'}</span></div><button class="raidcard hunt" id="rHunt"><img src="${iconSrc('m_hunt')}" alt=""><span><b>사냥터</b><small>${huntBest.join(' · ')}</small></span><em>사냥 ›</em></button>`
+    : `<div class="qlock">🔒 사냥터 — 장부 ${featureChapter('hunt')}장을 마치면 열려요</div>`;
+  const raidHtml = feature('raid')
+    ? `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${CONFIG.raid.triesPerDay} · 증표 ${P.tokens}</span></div>
+    <div class="raids">${wk.hpLeft > 0 || !P.raid.killed ? raidCard(wk, 'rWeek') : `<div class="raidcard done"><img src="${bossPic(wk.boss)}" alt=""><span><b>주간 보스 · ${wk.boss.name}</b><small>이번 주 처치 완료! 월요일에 새 보스가 와요</small></span></div>`}${wd ? raidCard(wd, 'rWander') : ''}</div>`
+    : `<div class="qlock">🔒 토벌전 — 장부 ${featureChapter('raid')}장을 마치면 열려요</div>`;
   openWin(
     '원정 · 의뢰 게시판',
-    `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${CONFIG.raid.triesPerDay} · 증표 ${P.tokens}</span></div>
-    <div class="raids">${wk.hpLeft > 0 || !P.raid.killed ? raidCard(wk, 'rWeek') : `<div class="raidcard done"><img src="${bossPic(wk.boss)}" alt=""><span><b>주간 보스 · ${wk.boss.name}</b><small>이번 주 처치 완료! 월요일에 새 보스가 와요</small></span></div>`}${wd ? raidCard(wd, 'rWander') : ''}</div>
+    `${huntHtml}${raidHtml}
     <p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>
     ${runs.length ? `<div class="runs">${runs.map(runRow).join('')}</div>` : ''}
     <div class="qhd"><b class="g">오늘의 의뢰</b><button id="qRef" ${free > 0 ? '' : 'disabled'}>새로고침 ${free > 0 ? '(무료)' : '(내일)'}</button></div>
@@ -71,6 +82,8 @@ export function openBoard() {
   );
   $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
   $$('[data-log]').forEach((b) => (b.onclick = () => openRunLog(P.runs.find((r) => r.id === +b.dataset.log!)!)));
+  const rh = document.getElementById('rHunt');
+  if (rh) rh.onclick = () => openHunt();
   const rw = document.getElementById('rWeek');
   if (rw) rw.onclick = () => openRaidPrep(weeklyTarget());
   const rd = document.getElementById('rWander');
@@ -286,6 +299,7 @@ export function showOffline(s: OfflineSummary) {
       ${s.levelUps.length ? `<div>· 레벨업: ${s.levelUps.map(esc).join(', ')}</div>` : ''}
       ${s.newChem.length ? `<div class="heart">· 새 케미: ${s.newChem.map(esc).join(', ')}</div>` : ''}
       ${s.harvested ? `<div>· 텃밭에서 채소 ${s.harvested}개를 거둬 뒀어요</div>` : ''}
+      ${s.hunt ? `<div>· 방치 사냥 ${esc(s.hunt.label)} ${s.hunt.clears}판 — 금화 +${fmt(s.hunt.gold)} · 경험치 +${fmt(s.hunt.xp)} · 재료 +${s.hunt.mats}${Object.keys(s.hunt.items).length ? ` · 장비 ${Object.values(s.hunt.items).reduce((a, b) => a + (b ?? 0), 0)}개` : ''} <small>(이미 금고에)</small></div>` : ''}
     </div>
     <button class="bigbtn" id="offOk">모두 받기</button>`,
   );

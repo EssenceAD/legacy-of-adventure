@@ -19,9 +19,10 @@ import { initChat } from './ui/chat';
 import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, setZoom, syncZoomLabel, tickHud } from './ui/hud';
 import { initScreen, screen, setOnScreenChange } from './ui/screen';
-import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { buildThumbs, initWindows, isWinOpen, openMenu, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
+import { computeOffline } from './world/offline';
 import { _raidAdvance } from './ui/raid';
 import { announce, rumorNow } from './ui/chat';
 import { initAuth, online } from './net/server';
@@ -33,6 +34,11 @@ import * as OWN from './world/owner';
 import { powerOf } from './world/adventurers';
 import { initOwnerUi, openOwner } from './ui/owner';
 import { initKit } from './ui/kit';
+import { initGuide } from './ui/guide';
+import { navHooks } from './ui/nav';
+import { _huntAdvance, openHunt } from './ui/hunt';
+import { openDex, openGoals } from './ui/book';
+import { skipDone } from './world/guide';
 import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
@@ -100,6 +106,8 @@ function update(dt: number) {
       // 4단계: 매일 첫 접속 능력치 · 계절 · 놓친 인연 이벤트 · 밤이면 불씨 독백/선택
       dailyOwner();
       if (S.night) nightOwner(true);
+      // 5단계: 장부 — 이미 해 둔 일은 바로 완료
+      skipDone();
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
@@ -344,6 +352,9 @@ async function boot() {
   initDialogue();
   initHud();
   initOwnerUi();
+  initGuide();
+  // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
+  Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openMenu() });
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   void initAuth().then(() => (online() ? afterLogin() : undefined));
@@ -393,6 +404,15 @@ async function boot() {
       __srv: SRV,
       __sync: SYNC,
       __own: OWN,
+      __hunt: _huntAdvance,
+      // 방치 시험: sec초 꺼져 있었던 것처럼 정산
+      __offline: (sec: number) => {
+        P.lastSeen = Date.now() - sec * 1000;
+        const s = computeOffline();
+        if (s) showOffline(s);
+        return s;
+      },
+      __openHunt: openHunt,
       __power: powerOf,
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);

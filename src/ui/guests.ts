@@ -70,6 +70,7 @@ function talkGuest(a: Actor) {
   talkedDay.set(a.id, S.day);
   if (fresh) a.mood = Math.min(100, a.mood + 5);
   track('guestTalk');
+  P.counters.guestTalks++;
   markDirty();
   const pool = a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
   const line = a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0];

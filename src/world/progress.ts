@@ -146,6 +146,7 @@ export function claimGoal(i: number): { gold: number; dust?: number } | null {
   if (!g || g.claimed || g.progress < g.target) return null;
   const t = GOAL_TEMPLATES.find((x) => x.id === g.id)!;
   g.claimed = true;
+  P.counters.goalsClaimed++;
   S.gold += t.reward.gold;
   if (t.reward.dust) P.dust.n += t.reward.dust;
   addRep(CONFIG.reputation.goal);

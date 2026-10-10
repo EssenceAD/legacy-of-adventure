@@ -47,7 +47,7 @@ export const CATALOG = {
     levels: [CONFIG.upgrade.tavern], levelText: '더 넓은 주점',
     desc: '모험가들이 모여 떠들어요 · 케미 발생 ↑',
   },
-  smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 4, stars: 2, roofable: true, levels: CONFIG.smith.levelCosts.slice(1), levelText: '가방 +20칸 · 제작 등급 ↑', desc: '장비 강화 · 파밍한 재료로 제작' },
+  smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 3, stars: 2, roofable: true, levels: CONFIG.smith.levelCosts.slice(1), levelText: '가방 +20칸 · 제작 등급 ↑', desc: '장비 강화 · 파밍한 재료로 제작' },
   bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, stars: 3, levels: [1200, 2000, 3200, 5000], levelText: '회복·기분 +15%', desc: '피로 회복 · 기분 ↑' },
   training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, levels: [400, 700, 1100, 1600, 2200, 3000, 4000], levelText: '수련 경험치 +20%', desc: '모험가 레벨업 · 허수아비를 팹니다' },
   garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, levels: [300, 600, 1000, 1600, 2400], levelText: '2레벨마다 밭 +1칸', desc: '식재료 수확 · 식사 품질 ↑' },

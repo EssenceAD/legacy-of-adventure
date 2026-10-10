@@ -26,8 +26,8 @@ export const CONFIG = {
   land: [
     { size: '6×6', from: 4, to: 10, cost: 0, opens: '여관 본관, 우물, 모닥불' },
     { size: '8×8', from: 3, to: 11, cost: 300, opens: '나무 자리' },
-    { size: '10×10', from: 2, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판' },
-    { size: '12×12', from: 1, to: 13, cost: 1600, opens: '대장간·객실 별채' },
+    { size: '10×10', from: 2, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
+    { size: '12×12', from: 1, to: 13, cost: 1600, opens: '객실 별채' },
     { size: '14×14', from: 0, to: 14, cost: 3000, opens: '온천, 최대 크기' },
   ],
   economy: {
@@ -431,6 +431,44 @@ export const CONFIG = {
     /** [세계]가 이만큼(ms) 조용할 때만 [소문]이 흐른다 */
     rumorQuietMs: 120000,
   },
+  /** 5단계 2장: 사냥 (스테이지 돌파형) */
+  hunt: {
+    stages: 10,
+    /** 추천 전투력 = basePower × regionPower^지역 × (1 + stagePower × (스테이지-1)) */
+    basePower: 70,
+    regionPower: 2.2,
+    stagePower: 0.17,
+    /** 한 판 제한 시간(초) · 웨이브 수 · 웨이브마다 몬스터 수 */
+    seconds: 45,
+    waves: 3,
+    pack: [2, 4] as [number, number],
+    /** 파티 초당 피해 = 전투력 × dpsK · 한 판 몬스터 체력 합 = 추천 × dpsK × stageHpSec (추천만큼이면 걷는 시간 포함 약 30초) */
+    dpsK: 0.55,
+    stageHpSec: 40,
+    /** 붙어 있는 몬스터 하나가 파티(1000)에 주는 초당 피해 × (추천 ÷ 전투력)^dangerExp · 보스 배수 */
+    mobDps: 20,
+    bossMult: 3,
+    dangerExp: 2,
+    /** 보상: 금화(지역마다 ×2.5, 스테이지마다 +12%) · 경험치 · 지역 재료 · 장비 확률(원정과 같은 등급표·천장) */
+    gold: [40, 70] as [number, number],
+    goldPerStage: 0.12,
+    xp: 18,
+    mats: [1, 2] as [number, number],
+    dropChance: 0.3,
+    /** 첫 돌파: 잿빛 가루 × (지역+1) · 증표 조각 (보스는 3개, 10개 = 인연의 증표 1) */
+    firstDust: 30,
+    firstShards: 1,
+    bossShards: 3,
+    shardsPerToken: 10,
+    /** 자동 사냥: 이 초마다 한 판 (전투력이 추천 × autoRatio 이상일 때) · 방치는 이 비율로 */
+    autoSeconds: 30,
+    autoRatio: 0.9,
+    idleRate: 0.25,
+    /** 방치 판 하나의 보상 비율 (금화·경험치·재료) */
+    idleReward: 0.5,
+    /** 방치 장비는 이 개수까지 */
+    idleItemsMax: 8,
+  },
   /** 4단계: 주인공 · 인연 · 방랑의 불씨 · 엔딩 */
   owner: {
     nameMin: 2,
@@ -516,7 +554,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 4,
+    version: 5,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

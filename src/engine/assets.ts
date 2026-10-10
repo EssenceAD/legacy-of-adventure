@@ -71,6 +71,9 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     // 토벌전: 보스 5마리 · 지역별 전투 배경 (트로피·기념비는 meta.json 건물 그림으로 같이 불러온다)
     ...BOSSES.map((b) => loadImage(`${BASE}sprites/boss_${b.id}.png`).then((im) => (BOSS_IMG[b.id] = toCanvas(im)))),
     ...REGIONS.map((r) => loadImage(`${BASE}sprites/${r.id === 'forest' ? 'raid_bg' : 'raid_bg_' + r.id}.png`).then((im) => (RAID_BG[r.id] = im))),
+    // 5단계 사냥 몬스터 10종 (왼쪽을 봄) · 마을 등급 장식 8종
+    ...MOB_KEYS.map((k) => loadImage(`${BASE}monsters/mob_${k}.png`).then((im) => (MOB_IMG[k] = toCanvas(im)))),
+    ...PROP_KEYS.map((k) => loadImage(`${BASE}props/${k}.png`).then((im) => (PROP_IMG[k] = toCanvas(im)))),
     loadImage(`${BASE}sprites/campfire.png`).then((im) => {
       for (let i = 0; i < im.width / FIRE_W; i++) {
         const c = canvas(FIRE_W, im.height);
@@ -123,6 +126,21 @@ function makeFlipped(k: string) {
 // ───────── 토벌전 그림 ─────────
 
 export const BOSS_IMG: Record<string, HTMLCanvasElement> = {};
+/** 5단계: 사냥 몬스터 (assets/monsters/mob_*.png) · 마을 장식 (assets/props/*.png) */
+export const MOB_KEYS = ['slime', 'wolf', 'goblin', 'mushimp', 'frog', 'bat', 'kobold', 'iceimp', 'snowwolf', 'shadow'];
+export const MOB_IMG: Record<string, HTMLCanvasElement> = {};
+export const PROP_KEYS = ['lamppost', 'stonewall', 'bench', 'flowerbed', 'banner', 'stall', 'fountain', 'gate'];
+export const PROP_IMG: Record<string, HTMLCanvasElement> = {};
+/** 그림을 정해진 배율로 (가장 가까운 픽셀) — 지역 보스(x-10)는 토벌 보스 0.6배 */
+export function scaled(src: HTMLCanvasElement, k: number): HTMLCanvasElement {
+  const w = Math.max(1, Math.round(src.width * k));
+  const h = Math.max(1, Math.round(src.height * k));
+  const c = canvas(w, h);
+  const x = c.getContext('2d')!;
+  x.imageSmoothingEnabled = false;
+  x.drawImage(src, 0, 0, w, h);
+  return c;
+}
 /** 전투 배경: 지역별 (숲 = raid_bg.png) */
 export const RAID_BG: Partial<Record<string, HTMLImageElement>> = {};
 

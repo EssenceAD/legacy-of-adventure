@@ -7,6 +7,7 @@ import { harvest, plotLeft, plotsOf } from './craft';
 import { dueRuns, resolveRun } from './expeditions';
 import { P, S, world, type Run } from './state';
 import { nextLevelCost } from './town';
+import { idleHunt, type IdleHunt } from './hunt';
 
 const O = CONFIG.offline;
 
@@ -27,6 +28,8 @@ export interface OfflineSummary {
   /** 텃밭에서 저절로 거둔 채소 */
   harvested: number;
   bonds: BondGain[];
+  /** 5단계: 방치 사냥 (가장 높은 스테이지 기준) */
+  hunt: IdleHunt | null;
 }
 
 /** 지금 마을의 "다음 큰 지출": 다음 땅 넓히기, 땅이 끝이면 남은 레벨업 중 가장 비싼 것 */
@@ -78,7 +81,11 @@ export function computeOffline(now = Date.now()): OfflineSummary | null {
   let harvested = 0;
   for (const o of world.home?.objs ?? world.objs)
     if (o.kind === 'garden') plotsOf(o).forEach((p, i) => plotLeft(p, now) === 0 && (harvested += harvest(o, i)));
+  // 방치 사냥: 손님 금화와 합쳐 방치 상한(capShare)을 넘지 않게 (원정과 합산)
+  const next = nextGoalCost();
+  const cap = next == null ? Infinity : Math.round(next * O.capShare);
+  const hunt = seconds >= CONFIG.hunt.autoSeconds ? idleHunt(seconds, Math.max(0, cap - gold)) : null;
   P.lastSeen = now;
   if (away < O.minSecondsForSummary && !runs.length) return null;
-  return { seconds, away, guests, gold, capped, runs, items, levelUps, newChem, harvested, bonds };
+  return { seconds, away, guests, gold, capped, runs, items, levelUps, newChem, harvested, bonds, hunt };
 }
