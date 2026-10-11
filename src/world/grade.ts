@@ -57,8 +57,10 @@ export function outerRoad(g = gradeNow()): [number, number][] {
 }
 
 /** 등급별 장식 자리 (입구 x · 앞쪽 울타리 b 기준) */
+/** TOWN T1: 쇼케이스 이웃 마을(실제 유저가 아닌 예시 마을)은 등급 장식 대신 마을마다 다른 입구를 배치표에 직접 둔다 */
+export const showcaseVisit = () => !!S.visiting && !S.visiting.uid;
 export function gradeProps(g = gradeNow()): Prop[] {
-  if (g < 1) return [];
+  if (g < 1 || showcaseVisit()) return [];
   const [, b] = landBounds();
   const [ex] = entrance();
   const P = (k: Prop['k'], x: number, y: number, fw = 1, fh = 1): Prop => ({ k, x, y, fw, fh });
@@ -94,6 +96,7 @@ export function gradeProps(g = gradeNow()): Prop[] {
 
 /** 등급 NPC (코드 도트): 상인(마을) · 경비병(고을) · 음유시인(도시) */
 export function gradeFolk(g = gradeNow()): { who: 'merchant' | 'guard' | 'bard'; x: number; y: number }[] {
+  if (showcaseVisit()) return [];
   const [, b] = landBounds();
   const [ex] = entrance();
   const out: { who: 'merchant' | 'guard' | 'bard'; x: number; y: number }[] = [];
