@@ -5,18 +5,27 @@ import { NEIGHBORS, type Neighbor } from '../data/neighbors';
 import * as game from '../game';
 import { PORTRAITS } from '../engine/assets';
 import { getVillage, likeVillage, listVillages, online, sb, type VillageRow } from '../net/server';
+import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
 import { $$, esc, fmt } from './common';
 import { openWin, toast } from './windows';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
 export function toNeighbor(r: VillageRow): Neighbor | null {
-  const s = r.snapshot as { land?: number; innName?: string; owner?: string; layout?: unknown[]; repHero?: string | null; grade?: number };
+  const s = r.snapshot as { v?: number; land?: number; innName?: string; owner?: string; layout?: unknown[]; repHero?: string | null; grade?: number };
   if (!s || !Array.isArray(s.layout)) return null;
   const layout = s.layout
     .filter((e): e is unknown[] => Array.isArray(e) && typeof e[0] === 'string' && (e[0] as string) in CATALOG)
     .map((e) => [e[0] as Kind, Number(e[1]), Number(e[2]), Number(e[3]) || 1, typeof e[4] === 'number' ? e[4] : null, !!e[5]] as Neighbor['layout'][number]);
   if (!layout.some((e) => e[0] === 'inn')) return null;
+  // 땅 개편 전(v1, 맵 14) 마을: 내 저장과 같은 규칙으로 좌표를 옮긴다
+  if ((s.v ?? 1) < 2) {
+    const k = bigMapShift(Number(s.land) || 1);
+    for (const e of layout) {
+      e[1] += k;
+      e[2] += k;
+    }
+  }
   return {
     id: 'u:' + r.user_id,
     uid: r.user_id,

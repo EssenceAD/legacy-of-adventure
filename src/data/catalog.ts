@@ -24,6 +24,12 @@ export interface BuildingDef {
   stars?: number;
   /** 레벨업: 더 큰 그림으로. 앞 꼭짓점은 그대로, 뒤로 커진다 */
   up?: { sprite: string; size: [number, number]; cost: number };
+  /** 땅 개편: 레벨마다 그림 단계 (from 레벨부터 이 그림·발판). up 은 첫 단계와 같다 */
+  stages?: { from: number; sprite: string; size: [number, number] }[];
+  /** 땅 개편: 그 레벨(인덱스 = 레벨-1)을 만들려면 필요한 땅 단계 */
+  needLand?: number[];
+  /** 땅 개편: 레벨별로 무엇이 바뀌는지 (인덱스 = 레벨-1) — 건물 창 「다음 레벨」 한 줄 */
+  levelNotes?: string[];
   /** 2단계: 레벨 비용 (Lv.2, Lv.3 … 순서). 길이 + 1 = 최대 레벨 */
   levels?: number[];
   /** 레벨마다 무엇이 좋아지는지 */
@@ -37,14 +43,20 @@ export const CATALOG = {
   inn: {
     name: '여관 본관', sprite: 'inn', size: [3, 3], cost: 0, act: 'sleep', unique: true, unlock: 1, roofable: true,
     up: { sprite: 'inn3', size: [4, 4], cost: CONFIG.upgrade.inn },
-    levels: [CONFIG.upgrade.inn, 1500], levelText: '방 +2 (손님·단골 자리)',
+    // 땅 개편: Lv.10까지 · Lv.5 inn5 · Lv.8 inn8 (뒤로 커진다) · 그 사이 레벨은 코드로 덧그리는 장식 (render.ts levelDeco)
+    stages: [{ from: 2, sprite: 'inn3', size: [4, 4] }, { from: 5, sprite: 'inn5', size: [5, 5] }, { from: 8, sprite: 'inn8', size: [5, 5] }],
+    levels: CONFIG.upgrade.innLevels, needLand: [1, 1, 2, 3, 3, 4, 4, 5, 5, 5], levelText: '방이 늘어요',
+    levelNotes: ['', '방 +2 · 더 큰 여관으로', '방 +2 · 문 옆에 등불', '방 +1 · 처마에 등불 줄', '방 +1 · 종탑과 별관이 생겨요', '방 +1 · 창가에 화분', '방 +1 · 굴뚝 연기가 하나 더', '방 +1 · 탑이 둘 선 큰 여관으로', '방 +1 · 문 앞에 석등', '방 +1 · 깃발과 금빛 간판'],
     desc: '손님이 묵는 곳. 레벨이 오르면 방이 늘어요',
   },
   cottage: { name: '객실 별채', sprite: 'cottage', size: [2, 2], cost: 300, act: 'sleep', unlock: 4, roofable: true, desc: '방 2칸이 늘어나요' },
   tavern: {
     name: '주점', sprite: 'tavern', size: [3, 3], cost: 400, act: 'drink', unlock: 3, roofable: true,
     up: { sprite: 'tavern2', size: [4, 4], cost: CONFIG.upgrade.tavern },
-    levels: [CONFIG.upgrade.tavern], levelText: '더 넓은 주점',
+    // 땅 개편: Lv.6까지 · Lv.4 tavern4 (전구 줄 테라스) · 레벨마다 주점 수입 +15% · Lv.4부터 단골 테이블(케미 ↑)
+    stages: [{ from: 2, sprite: 'tavern2', size: [4, 4] }, { from: 4, sprite: 'tavern4', size: [4, 4] }],
+    levels: CONFIG.upgrade.tavernLevels, levelText: '주점 수입 +15%',
+    levelNotes: ['', '수입 +15% · 더 넓은 주점', '수입 +15% · 테라스 등불', '수입 +15% · 전구 줄 테라스 · 단골 테이블 (케미 ↑)', '수입 +15% · 술통이 쌓여요', '수입 +15% · 깃발과 금빛 간판'],
     desc: '모험가들이 모여 떠들어요 · 케미 발생 ↑',
   },
   smith: { name: '대장간', sprite: 'smith', size: [3, 3], cost: 600, act: 'forge', unlock: 3, stars: 2, roofable: true, levels: CONFIG.smith.levelCosts.slice(1), levelText: '가방 +20칸 · 제작 등급 ↑', desc: '장비 강화 · 파밍한 재료로 제작' },
@@ -85,7 +97,7 @@ export type Kind = keyof typeof CATALOG;
 export const def = (k: Kind): BuildingDef => CATALOG[k];
 
 /** 밤에 창문 불이 켜지는 그림 */
-export const LIT_SPRITES = ['inn', 'inn3', 'tavern', 'tavern2', 'smith', 'cottage', 'bath', 'monument'];
+export const LIT_SPRITES = ['inn', 'inn3', 'inn5', 'inn8', 'tavern', 'tavern2', 'tavern4', 'smith', 'cottage', 'bath', 'monument'];
 
 /** 굴뚝 연기 자리 (그림 왼쪽 위 기준) */
 export const SMOKE: Record<string, [number, number][]> = {
@@ -93,6 +105,10 @@ export const SMOKE: Record<string, [number, number][]> = {
   inn3: [[47, 26], [100, 26]],
   tavern: [[67, 10]],
   tavern2: [[100, 8]],
+  // 땅 개편 새 그림
+  inn5: [[42, 18], [100, 38]],
+  inn8: [[84, 18], [150, 38]],
+  tavern4: [[118, 8]],
   smith: [[69, 12]],
   cottage: [],
   bath: [[30, 74]],
@@ -116,8 +132,9 @@ export const INSIDE_TEXT: Partial<Record<Act, string>> = {
 };
 
 /** 새 게임 시작 배치 (땅 1단계) */
+// 땅 개편: 맵 24 · 1단계 땅 [14,22). 옛 (6,4)·(5,8)에 +12 · 던전은 1단계 땅 밖 오른쪽 뒤 (맵 안에 들어가게)
 export const START_TOWN: [Kind, number, number][] = [
-  ['inn', 6, 4],
-  ['dungeon', 10, 1],
-  ['well', 5, 8],
+  ['inn', 18, 16],
+  ['dungeon', 21, 10],
+  ['well', 17, 20],
 ];

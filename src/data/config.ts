@@ -29,8 +29,8 @@ export interface HarmonyFx {
 
 export const CONFIG = {
   map: {
-    /** 맵 최대 크기 (타일) */
-    size: 14,
+    /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 (땅 22 + 앞쪽 입구 여유 2) */
+    size: 24,
     tileW: 32,
     tileH: 16,
   },
@@ -59,15 +59,17 @@ export const CONFIG = {
     /** 창이 마을 화면의 이 비율 이상을 덮으면 마을을 그리지 않는다 */
     coverRatio: 0.92,
   },
-  /** 땅 넓히기 5단계: 울타리 범위 [시작, 끝) 과 비용 */
+  // 땅 개편 (v0.10): 앞쪽(입구) 가장자리 to=22 는 단계가 바뀌어도 그대로, 뒤쪽(입구 반대)으로 커진다
+  //  단계 수 5 · 비용 · 열리는 것 · 평판 별 조건은 그대로. 옛 저장은 OLD_LAND_TO 기준으로 좌표를 옮긴다 (save.ts v7)
   land: [
-    { size: '6×6', from: 4, to: 10, cost: 0, opens: '여관 본관, 우물, 모닥불' },
-    { size: '8×8', from: 3, to: 11, cost: 300, opens: '나무 자리' },
-    // 핫픽스 8: 3단계를 뒤쪽(입구 반대편)으로 한 줄 넓힘 10×10 → 11×11 — 정문·건물 위치는 그대로, 옛 저장도 자동으로 넓어짐
-    { size: '11×11', from: 1, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
-    { size: '12×12', from: 1, to: 13, cost: 1600, opens: '객실 별채' },
-    { size: '14×14', from: 0, to: 14, cost: 3000, opens: '온천, 최대 크기' },
+    { size: '8×8', from: 14, to: 22, cost: 0, opens: '여관 본관, 우물, 모닥불' },
+    { size: '11×11', from: 11, to: 22, cost: 300, opens: '나무 자리' },
+    { size: '14×14', from: 8, to: 22, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
+    { size: '18×18', from: 4, to: 22, cost: 1600, opens: '객실 별채' },
+    { size: '22×22', from: 0, to: 22, cost: 3000, opens: '온천, 최대 크기' },
   ],
+  /** 땅 개편 전(맵 14) 단계별 앞쪽 가장자리 — 옛 저장 좌표 옮기기용 (dx = dy = 22 - 이 값) */
+  oldLandTo: [10, 11, 12, 13, 14],
   economy: {
     /** 시안은 2,400으로 시작. 실제 게임은 오프닝 뒤 이 금액으로 시작 */
     startGold: 1240,
@@ -168,6 +170,15 @@ export const CONFIG = {
   upgrade: {
     inn: 600,
     tavern: 500,
+    /** 땅 개편: 여관 본관 Lv.2~10 · 주점 Lv.2~6 비용 */
+    innLevels: [600, 1500, 3000, 4500, 6500, 9000, 12000, 16000, 21000],
+    tavernLevels: [500, 1500, 3000, 5000, 8000],
+    /** 여관 Lv.3까지는 방 +2, 그 뒤로는 +1 (단골이 너무 많으면 관리가 번거롭다) */
+    innRoomsFullUntil: 3,
+    /** 주점 레벨당 수입 · Lv.4부터 케미 확률 배수 */
+    tavernIncomePerLevel: 0.15,
+    tavernChemFrom: 4,
+    tavernChemMult: 1.3,
   },
   ui: {
     toastMs: 2200,
@@ -779,7 +790,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 6,
+    version: 7,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

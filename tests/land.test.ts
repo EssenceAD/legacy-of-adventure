@@ -41,8 +41,8 @@ beforeEach(() => {
 });
 
 describe('땅 단계와 장부 건설 임무', () => {
-  it('땅 3단계는 11×11 (핫픽스 8에서 한 줄 넓힘)', () => {
-    expect(CONFIG.land[2].to - CONFIG.land[2].from).toBe(11);
+  it('땅 개편: 단계 크기 8 · 11 · 14 · 18 · 22', () => {
+    expect(CONFIG.land.map((l) => l.to - l.from)).toEqual([8, 11, 14, 18, 22]);
   });
   it('빈 마을: 장부 순서대로 지으면 모든 건설 임무 건물이 그 시점 땅에 들어간다', () => {
     const st = steps();

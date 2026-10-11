@@ -24,7 +24,8 @@ export function repHero(): string | null {
 export function villageSnapshot() {
   const objs = world.home?.objs ?? world.objs;
   return {
-    v: 1,
+    // v2 = 땅 개편(맵 24) 좌표. v1(맵 14)은 보는 쪽(toNeighbor)에서 옮긴다
+    v: 2,
     land: world.home?.land ?? S.land,
     innName: S.innName,
     owner: me.profile?.nickname ?? '',
