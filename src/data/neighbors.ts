@@ -21,59 +21,69 @@ export interface Neighbor {
 }
 
 // 땅 개편 (맵 24): 땅 s단계 = [from, 22) — 1단계 14~21 · 2단계 11~21 · 3단계 8~21 · 4단계 4~21 · 5단계 0~21. 던전은 (21,10) 고정.
-//  빈 땅이 남지 않게 장식(나무·꽃·가로등·벤치)으로 채운다. 「달빛 쉼터」(5단계)는 22×22 쇼케이스 — 큰길·광장·별채 줄·온천 정원·공방 구역
+// TOWN T1: 「보고 따라 하고 싶은 마을」 — 달빛 쉼터(구역이 나뉜 쇼케이스) + 이웃 4곳은 꽃마을·시장 도시·숲속 은신처·온천 휴양지로 각기 다른 테마
 export const NEIGHBORS: Neighbor[] = [
   {
-    // 땅 3단계 (8~21): 아담한 시골 여관 — 여관·주점이 마주 보고, 텃밭과 훈련장
-    id: 'bear', name: '곰발바닥 여관', owner: '피핀아빠', land: 3, like: 128, grade: 2,
-    layout: [
-      ['inn', 12, 11, 2, 8], ['dungeon', 21, 10], ['tavern', 17, 13, 1, 8], ['garden', 9, 15], ['training', 16, 8],
-      ['well', 13, 17], ['fire', 15, 18], ['board', 19, 19], ['bench', 12, 17], ['flowerbed', 11, 19], ['flowerbed', 16, 20],
-      ['lamppost', 13, 19], ['lamppost', 15, 16], ['target', 20, 9],
-      ['tree', 8, 8], ['pine', 9, 8], ['tree', 8, 11], ['pine', 10, 12], ['tree', 20, 21], ['pine', 8, 21], ['tree', 9, 20],
-      ['pine', 20, 16], ['tree', 12, 8], ['tree', 19, 21], ['arbor', 10, 14],
-    ],
-  },
-  {
-    // 땅 5단계 (0~21): 보라 지붕의 큰 쉼터 — 쇼케이스
+    // 땅 5단계: 쇼케이스 — 큰길(x=11, 가로등 줄) → 중앙 광장(분수 + 벤치·꽃밭·가로등 원형) → 시장 거리(노점 줄) · 온천 정원(꽃밭·장미 아치·석등) · 공방 골목(대장간·훈련장·공방) · 별채 주택가(같은 별채 여섯 채 + 텃밭)
     id: 'moon', name: '달빛 쉼터', owner: '엘린느', land: 5, like: 902, grade: 4,
     layout: [
-      // 가운데: 여관 Lv.8 · 큰길(x=11) · 광장(분수·우물·벤치)
-      ['inn', 9, 5, 8, 265], ['dungeon', 21, 10], ['gate', 11, 20],
-      ['fountain', 13, 13], ['well', 9, 14], ['bench', 9, 13], ['bench', 15, 15], ['flowerbed', 13, 12], ['flowerbed', 9, 12],
-      ['lamppost', 10, 16], ['lamppost', 12, 16], ['lamppost', 10, 19], ['lamppost', 12, 19], ['fire', 13, 16], ['fire', 8, 16],
-      // 주점 Lv.6 (오른쪽 앞)
-      ['tavern', 15, 8, 6, 100], ['barrels', 19, 12], ['banner', 18, 7],
-      // 별채 줄 (왼쪽 뒤)
-      ['cottage', 1, 3, 1, 265], ['cottage', 4, 3, 1, 265], ['cottage', 1, 7, 1, 265], ['cottage', 4, 7, 1, 265],
-      ['flowerbed', 3, 2], ['flowerbed', 6, 2], ['lamppost', 3, 11], ['bench', 6, 11],
-      // 온천 정원 (오른쪽 뒤)
-      ['bath', 16, 1], ['arbor', 15, 1], ['flowerbed', 15, 4], ['flowerbed', 19, 4], ['statue', 20, 2], ['tree', 20, 0], ['tree', 14, 0],
-      // 공방 구역 (왼쪽 앞): 대장간 · 훈련장 · 과녁
-      ['smith', 1, 13], ['training', 4, 17], ['target', 8, 18], ['target', 8, 20], ['barrels', 1, 17],
-      // 시장 (오른쪽 앞): 노점 · 텃밭 · 게시판 · 기념비
-      ['stall', 19, 18, 1, null], ['garden', 15, 18], ['board', 14, 19], ['monument', 18, 15], ['trophy_boar', 20, 14],
-      ['pine', 0, 0], ['pine', 0, 21], ['tree', 3, 21], ['tree', 21, 21], ['pine', 0, 11], ['tree', 8, 0], ['pine', 11, 0],
+      ['inn', 9, 3, 8, 265], ['dungeon', 21, 10], ['gate', 11, 19], ['lamppost', 10, 10], ['lamppost', 10, 13], ['lamppost', 10, 16], ['lamppost', 12, 16], ['fountain', 15, 13],
+      ['bench', 14, 13], ['bench', 14, 14], ['bench', 17, 13], ['bench', 17, 14], ['flowerbed', 15, 12], ['flowerbed', 16, 12], ['flowerbed', 15, 15], ['flowerbed', 16, 15],
+      ['lamppost', 14, 12], ['lamppost', 17, 12], ['lamppost', 14, 15], ['lamppost', 17, 15], ['stall', 13, 18], ['stall', 15, 18], ['stall', 17, 18], ['barrels', 19, 18],
+      ['barrels', 19, 19], ['banner', 13, 17], ['board', 12, 17], ['bath', 17, 1], ['flowerbed', 16, 1], ['flowerbed', 16, 2], ['flowerbed', 16, 3], ['flowerbed', 20, 1],
+      ['flowerbed', 20, 2], ['flowerbed', 20, 3], ['lamppost', 16, 4], ['lamppost', 20, 4], ['statue', 18, 0], ['tavern', 15, 7, 6, 265], ['barrels', 19, 7], ['barrels', 19, 8],
+      ['banner', 19, 9], ['smith', 1, 12, 1, 265], ['training', 5, 16], ['target', 8, 16], ['target', 8, 18], ['barrels', 4, 12], ['barrels', 4, 13], ['alchemy', 1, 16, 1, 265],
+      ['fire', 4, 15], ['cottage', 1, 1, 1, 265], ['cottage', 4, 1, 1, 265], ['cottage', 7, 1, 1, 265], ['cottage', 1, 4, 1, 265], ['cottage', 4, 4, 1, 265], ['cottage', 7, 4, 1, 265], ['flowerbed', 3, 1],
+      ['flowerbed', 6, 1], ['flowerbed', 3, 5], ['flowerbed', 6, 5], ['lamppost', 3, 3], ['lamppost', 6, 3], ['garden', 1, 7], ['garden', 5, 7], ['well', 4, 8],
+      ['guild', 5, 11, 1, 265], ['postoffice', 8, 9, 1, 265], ['tower', 20, 5], ['stable', 19, 14, 1, 265], ['monument', 13, 20], ['pine', 0, 0], ['tree', 21, 0], ['pine', 0, 21],
+      ['tree', 21, 21], ['pine', 0, 10], ['tree', 21, 17], ['arbor', 17, 4], ['arbor', 19, 4], ['library', 12, 8, 1, 265], ['lamppost', 12, 13],
     ],
   },
   {
-    // 땅 4단계 (4~21): 드워프 장인 마을 — 대장간은 하나만
-    id: 'hammer', name: '망치와 맥주', owner: '두린7', land: 4, like: 341, grade: 3,
+    // 땅 4단계: 꽃마을 — 꽃밭과 가로등이 번갈아 늘어선 꽃길 · 장미 아치 대문 · 예배당 꽃 정원 · 분수 광장
+    id: 'petal', name: '꽃잎 언덕', owner: '로즈마리', land: 4, like: 512, grade: 3,
     layout: [
-      ['inn', 11, 8, 3, null], ['dungeon', 21, 10], ['smith', 5, 9, 1, 8], ['tavern', 15, 13, 3, 8], ['training', 5, 15],
-      ['cottage', 9, 4], ['cottage', 13, 4], ['fire', 10, 15], ['fire', 13, 17], ['board', 11, 19], ['well', 12, 14],
-      ['barrels', 9, 10], ['barrels', 16, 11], ['target', 9, 17], ['statue', 14, 19], ['lamppost', 12, 18], ['lamppost', 10, 13],
-      ['bench', 13, 14], ['flowerbed', 17, 18], ['banner', 8, 9],
-      ['pine', 4, 4], ['pine', 5, 4], ['pine', 4, 21], ['pine', 20, 21], ['pine', 18, 5], ['pine', 20, 8], ['tree', 4, 13], ['tree', 7, 21], ['pine', 19, 4],
+      ['inn', 11, 6, 4, 330], ['dungeon', 21, 10], ['flowerbed', 11, 11], ['flowerbed', 11, 13], ['flowerbed', 11, 15], ['flowerbed', 11, 17], ['flowerbed', 14, 11], ['flowerbed', 14, 13],
+      ['flowerbed', 14, 15], ['flowerbed', 14, 17], ['arbor', 11, 19], ['arbor', 14, 19], ['lamppost', 11, 12], ['lamppost', 14, 12], ['lamppost', 11, 16], ['lamppost', 14, 16],
+      ['fountain', 16, 13], ['flowerbed', 16, 12], ['flowerbed', 17, 12], ['flowerbed', 16, 15], ['flowerbed', 17, 15], ['bench', 15, 13], ['bench', 18, 14], ['chapel', 16, 6, 1, 330],
+      ['flowerbed', 15, 6], ['flowerbed', 19, 6], ['flowerbed', 15, 8], ['flowerbed', 19, 8], ['garden', 5, 5], ['cottage', 8, 5, 1, 330], ['cottage', 8, 8, 1, 330], ['flowerbed', 7, 8],
+      ['flowerbed', 10, 10], ['garden', 5, 9], ['tavern', 5, 15, 1, 330], ['bench', 8, 16], ['bench', 8, 17], ['well', 9, 13], ['statue', 19, 18], ['arbor', 5, 19],
+      ['flowerbed', 6, 19], ['flowerbed', 7, 19], ['tree', 4, 4], ['tree', 4, 13], ['tree', 4, 21], ['tree', 20, 4], ['tree', 21, 20], ['tree', 19, 21],
+      ['tree', 10, 4], ['tree', 15, 4], ['arbor', 16, 9], ['arbor', 18, 9],
     ],
   },
   {
-    // 땅 2단계 (11~21): 숲속 작은 오두막 — 여관 하나와 모닥불
-    id: 'dew', name: '이슬 오두막', owner: '하플링꼬마', land: 2, like: 37, grade: 1,
+    // 땅 5단계: 시장 도시 — 큰길 양쪽 노점 거리(깃발·가로등) · 앞쪽 가로 시장 · 길드 회관과 큰 주점
+    id: 'market', name: '금화 거리', owner: '상인조합장', land: 5, like: 688, grade: 4,
     layout: [
-      ['inn', 14, 12, 1, 100], ['dungeon', 21, 10], ['well', 13, 17], ['fire', 16, 18], ['bench', 15, 18], ['flowerbed', 12, 15],
-      ['flowerbed', 18, 15], ['lamppost', 17, 16], ['tree', 11, 11], ['pine', 12, 11], ['tree', 11, 20], ['pine', 20, 20], ['tree', 19, 12],
-      ['tree', 20, 11], ['flowerbed', 13, 13], ['pine', 11, 15], ['arbor', 17, 13], ['bench', 12, 18], ['tree', 20, 17], ['pine', 18, 20],
+      ['inn', 8, 2, 5, 20], ['dungeon', 21, 10], ['gate', 10, 20], ['stall', 7, 9], ['stall', 7, 12], ['stall', 7, 15], ['stall', 11, 9], ['stall', 11, 12],
+      ['stall', 11, 15], ['lamppost', 9, 11], ['lamppost', 9, 14], ['lamppost', 9, 17], ['banner', 13, 11], ['banner', 13, 14], ['banner', 6, 11], ['banner', 6, 14],
+      ['stall', 13, 18], ['stall', 15, 18], ['stall', 17, 18], ['barrels', 19, 18], ['barrels', 12, 17], ['board', 11, 18], ['guild', 14, 2, 1, 20], ['tavern', 14, 8, 6, 20],
+      ['barrels', 18, 9], ['barrels', 18, 10], ['postoffice', 18, 6, 1, 20], ['banner', 18, 8], ['smith', 1, 2, 1, 20], ['alchemy', 4, 2, 1, 20], ['cottage', 1, 6, 1, 20], ['cottage', 4, 6, 1, 20],
+      ['fountain', 3, 10], ['bench', 2, 10], ['bench', 5, 11], ['flowerbed', 3, 9], ['flowerbed', 4, 12], ['library', 1, 14, 1, 20], ['stable', 16, 13, 1, 20], ['monument', 2, 19],
+      ['well', 5, 17], ['lamppost', 13, 20], ['lamppost', 8, 20], ['tree', 0, 0], ['pine', 21, 0], ['tree', 0, 21], ['pine', 21, 21],
+    ],
+  },
+  {
+    // 땅 3단계: 숲속 은신처 — 울타리 안까지 들어온 숲 · 모닥불을 둘러싼 벤치 · 훈련장과 과녁
+    id: 'moss', name: '이끼 은신처', owner: '숲지기', land: 3, like: 214, grade: 2,
+    layout: [
+      ['inn', 13, 10, 3, 100], ['dungeon', 21, 10], ['fire', 12, 17], ['bench', 11, 16], ['bench', 13, 16], ['bench', 11, 18], ['bench', 13, 18], ['training', 17, 15],
+      ['target', 20, 16], ['target', 20, 18], ['cottage', 9, 9, 1, 100], ['well', 10, 13], ['lamppost', 15, 19], ['banner', 17, 13], ['pine', 8, 8], ['pine', 9, 8],
+      ['tree', 10, 8], ['pine', 11, 8], ['pine', 12, 8], ['tree', 15, 8], ['pine', 17, 8], ['pine', 19, 8], ['pine', 20, 8], ['tree', 18, 9],
+      ['pine', 21, 9], ['pine', 8, 11], ['tree', 8, 12], ['pine', 8, 14], ['pine', 8, 16], ['tree', 9, 16], ['pine', 21, 13], ['pine', 20, 20],
+      ['tree', 21, 21], ['pine', 17, 21], ['pine', 19, 19], ['tree', 12, 21], ['pine', 8, 18], ['cottage', 8, 19, 1, 100],
+    ],
+  },
+  {
+    // 땅 4단계: 온천 휴양지 — 좌우 대칭 온천 두 곳(장미 아치·석등·꽃밭) · 분수와 여신상 · 예배당
+    id: 'spa', name: '달무리 온천', owner: '온천냥', land: 4, like: 433, grade: 3,
+    layout: [
+      ['inn', 11, 4, 4, 200], ['dungeon', 21, 10], ['bath', 5, 7], ['arbor', 5, 6], ['arbor', 7, 6], ['lamppost', 4, 8], ['lamppost', 8, 8], ['flowerbed', 4, 10],
+      ['flowerbed', 8, 10], ['bath', 16, 7], ['arbor', 16, 6], ['arbor', 18, 6], ['lamppost', 15, 8], ['lamppost', 19, 8], ['flowerbed', 15, 10], ['flowerbed', 19, 10],
+      ['fountain', 9, 11], ['statue', 12, 11], ['chapel', 17, 12, 1, 200], ['tavern', 13, 15, 2, 200], ['cottage', 5, 13, 1, 200], ['cottage', 5, 16, 1, 200], ['cottage', 8, 17, 1, 200], ['flowerbed', 7, 13],
+      ['flowerbed', 7, 15], ['lamppost', 11, 13], ['lamppost', 11, 16], ['lamppost', 11, 19], ['bench', 18, 16], ['flowerbed', 18, 17], ['tree', 4, 4], ['tree', 21, 4],
+      ['tree', 4, 21], ['tree', 21, 21], ['tree', 9, 4], ['tree', 19, 4], ['bench', 5, 10], ['bench', 7, 10], ['bench', 16, 10], ['bench', 18, 10],
     ],
   },
 ];
