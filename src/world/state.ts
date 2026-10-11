@@ -371,6 +371,9 @@ export function freshProgress() {
       mail: [] as Mail[],
       mailNext: 1,
       welcome: false,
+      /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
+      slot5: false,
+      slot5Seen: false,
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {

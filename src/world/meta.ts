@@ -9,7 +9,7 @@ import { REGIONS, type RegionId } from '../data/items';
 import { LEGENDS } from '../data/legends';
 import { gainXp } from './adventurers';
 import { chaptersDone, feature, townGrade } from './guide';
-import { regionUnlocked } from './expeditions';
+import { regionUnlocked, slot5Ready } from './expeditions';
 import { stars, today } from './progress';
 import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
@@ -214,6 +214,21 @@ export function buyShop(id: string): string | null {
 ownerHooks.mail = (title, body, reward) => addMail({ from: 'prev', title, body, reward });
 
 /** 5단계 처음 켤 때 한 번: 운영자 선물 */
+/**
+ * 핫픽스 12 §3: 5번째 원정 자리 열기 — 결과 창·게시판·접속 때 확인.
+ *  접속 때 열리면(이미 폐광까지 간 저장) 모모 편지, 플레이 중에 열리면 모모가 바로 알려 준다.
+ */
+export function checkSlot5(login = false): boolean {
+  if (P.meta.slot5 || !slot5Ready()) return false;
+  P.meta.slot5 = true;
+  markDirty();
+  if (login) {
+    addMail({ from: 'system', title: '모모의 편지 · 원정 자리 하나 더!', body: '그동안 고생하셨어요 — 원정 자리 하나 더! 폐광까지 다녀온 사장님네 단골이라면 다섯 명도 거뜬해요.', reward: {} });
+    uiHooks.toast('모모 편지: 원정 5번째 자리가 열렸어요!');
+  } else uiHooks.talk([['post', '폐광까지 다녀오셨네요! 이제 원정에 다섯 명까지 데려갈 수 있어요~ 파티 창을 열어 봐요!']]);
+  return true;
+}
+
 export function welcomeMail() {
   if (P.meta.welcome) return;
   P.meta.welcome = true;

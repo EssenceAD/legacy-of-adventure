@@ -22,6 +22,8 @@ import { markDirty, P, type Actor } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
 import { upgradeBtn } from './guests';
+import { checkSlot5 } from '../world/meta';
+import { queueEvent } from '../world/events';
 import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
 import { iconSrc } from './kit';
 import { closeWin, openWin, toast } from './windows';
@@ -544,6 +546,7 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
 
 /** 한 판 끝: 보상 · 기록 → 결과 카드 HTML (전투 화면 · 접은 판 · 다시 켰을 때 정산 공통) */
 function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): string {
+  queueEvent(() => void checkSlot5(), 'slot5');
   P.hunt.folded = null;
   trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
   const bonus = gradeBonus(res.win, res.autoUsed, res.grade);

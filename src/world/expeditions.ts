@@ -131,10 +131,15 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   };
 }
 
+/** 핫픽스 12 §3: 원정 파티 최대 인원 (폐광까지 가면 5명) */
+export const partyMax = () => E.partyMax + (P.meta.slot5 ? 1 : 0);
+/** 5번째 자리 조건: 폐광 의뢰 3번 성공 또는 폐광 사냥터 1-10 돌파 */
+export const slot5Ready = () => (P.counters.regionWins.mine ?? 0) >= 3 || (P.hunt.best.mine ?? 0) >= CONFIG.hunt.stages;
+
 /** 출발: 의뢰는 목록에서 빠지고, 실제 걸어가는 연출은 actors.ts가 한다 */
 export function sendParty(q: Quest, members: Actor[]): Run | string {
   if (activeRuns().length >= maxParties()) return `동시에 ${maxParties()}파티까지 보낼 수 있어요 (게시판 레벨업)`;
-  if (members.length < partyMinFor(q) || members.length > E.partyMax) return `파티는 ${partyMinFor(q)}~${E.partyMax}명이에요`;
+  if (members.length < partyMinFor(q) || members.length > partyMax()) return `파티는 ${partyMinFor(q)}~${partyMax()}명이에요`;
   for (const m of members) {
     const why = canSend(m);
     if (why) return `${m.name}: ${why}`;
@@ -364,7 +369,7 @@ export function powerTips(members: Actor[]): Tip[] {
   const extra = homeActors()
     .filter((o) => !members.includes(o) && !canSend(o))
     .sort((p, q) => powerOf(q) - powerOf(p))[0];
-  if (extra && members.length < E.partyMax) tips.push({ text: `${extra.name}도 파티에 넣기 +${powerOf(extra)}`, gain: powerOf(extra) });
+  if (extra && members.length < partyMax()) tips.push({ text: `${extra.name}도 파티에 넣기 +${powerOf(extra)}`, gain: powerOf(extra) });
   // 5) 케미 짝 데려가기
   for (const m of members) {
     const mate = homeActors().find((o) => o !== m && !members.includes(o) && !canSend(o) && bondOf(m, o));

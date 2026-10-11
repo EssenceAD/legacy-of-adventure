@@ -48,7 +48,7 @@ import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
-import { dailyAttend, welcomeMail } from './world/meta';
+import { checkSlot5, dailyAttend, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
@@ -145,6 +145,7 @@ function update(dt: number) {
       skipDone();
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
+      checkSlot5(true);
       if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩

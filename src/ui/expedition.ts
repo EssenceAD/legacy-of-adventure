@@ -13,6 +13,7 @@ import { iconSrc } from './kit';
 import { departParty, returnParty } from '../world/actors';
 import {
   activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
+  partyMax,
 } from '../world/expeditions';
 import { equip, itemPower } from '../world/items';
 import { floatW } from '../world/fx';
@@ -21,6 +22,7 @@ import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
 import { upgradeBtn } from './guests';
+import { checkSlot5 } from '../world/meta';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
 
@@ -51,6 +53,7 @@ function questRow(q: Quest) {
 
 /** 의뢰 게시판 */
 export function openBoard() {
+  checkSlot5();
   if (S.visiting) return toast('이웃 마을에선 원정을 못 보내요');
   ensureQuests();
   // 핫픽스 11 §9-1: 돌아온 파티(보고서) 먼저 → 진행 중은 많이 간 순
@@ -133,7 +136,7 @@ function openParty(q: Quest, picked: number[] = []) {
   const pmin = partyMinFor(q);
   openWin(
     questName(q),
-    `<p class="sub">파티 ${pmin}~${E.partyMax}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
+    `${slot5Banner()}<p class="sub">파티 ${pmin}~${partyMax()}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
     <div class="plist">${rows || '<p class="note">단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요</p>'}</div>
     <div class="psum">${
       info
@@ -147,7 +150,7 @@ function openParty(q: Quest, picked: number[] = []) {
     (b) =>
       (b.onclick = () => {
         const id = +b.dataset.id!;
-        const next = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < E.partyMax ? [...picked, id] : picked;
+        const next = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < partyMax() ? [...picked, id] : picked;
         keepScroll(() => openParty(q, next));
       }),
   );
@@ -233,6 +236,17 @@ function partyRow(run: Run): string {
   return `<div class="repparty">${ms.map((a) => `<span><img src="${portrait(a)}" alt=""><small>${esc(a.name)}</small></span>`).join('')}</div>`;
 }
 
+/** 핫픽스 12 §3: 5번째 자리 — 처음 열렸을 땐 「열림!」, 아직이면 조건 안내 */
+function slot5Banner(): string {
+  if (P.meta.slot5) {
+    if (P.meta.slot5Seen) return '';
+    P.meta.slot5Seen = true;
+    markDirty();
+    return '<p class="cen good slot5">✨ 5번째 자리 열림!</p>';
+  }
+  return `<p class="note">폐광 의뢰 3번 성공 또는 폐광 사냥터 1-10 돌파 → 원정 5번째 자리 (지금 폐광 성공 ${Math.min(3, P.counters.regionWins.mine ?? 0)}/3)</p>`;
+}
+
 function showLoot(run: Run) {
   const res = run.result;
   if (!res || run.claimed) return;
@@ -251,6 +265,7 @@ function showLoot(run: Run) {
   $('#repOk').onclick = () => {
     claimRun(run);
     closeWin();
+    checkSlot5();
     if (run.quest.tutorial) guideEquip(run);
   };
 }
