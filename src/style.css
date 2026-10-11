@@ -522,7 +522,7 @@ img,canvas{image-rendering:pixelated}
 .tab.on{border-image-source:var(--ui-tab-on);color:var(--gold)}
 
 /* 바 = bar_frame (안쪽 높이 6px × --k) */
-:is(.bar i,.pbar i,#runbar i,.bhp,.php,.chem){border:0 solid transparent;border-image:var(--ui-bar-frame) 3 fill / calc(3px * var(--k)) / 0 stretch;background:none;box-shadow:none;padding:calc(1px * var(--k));height:calc(8px * var(--k))}
+:is(.bar i,.pbar i,#runbar i,.bhp,.php,#raid .chem){border:0 solid transparent;border-image:var(--ui-bar-frame) 3 fill / calc(3px * var(--k)) / 0 stretch;background:none;box-shadow:none;padding:calc(1px * var(--k));height:calc(8px * var(--k))}
 .bar i b,.pbar i b,#runbar u{height:100%}
 
 /* 아이템 칸 = tile_grade_* (×1, 테두리 4px) — 안의 아이콘은 16px 그림 ×2 */

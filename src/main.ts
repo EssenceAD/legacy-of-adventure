@@ -485,6 +485,7 @@ async function boot() {
       __event: forceSpectacle,
       // 핫픽스 9 확인용: 대화 · 이웃 목록 · 손님 모두 한마디
       __uiTalk: (lines: TalkLine[]) => talk(lines),
+      __say: say,
       __neighbors: NEIGHBORS,
       __sayAll: () => world.actors.filter((a) => !a.role && !a.hidden).forEach((a, i) => say(a, ['방 좋네~', '제가 지켜드릴게요', '오늘 던전 갈까?', '배고프다…', '이 마을 맘에 들어', '주인장 최고!'][i % 6])),
       __events: spectacles,
