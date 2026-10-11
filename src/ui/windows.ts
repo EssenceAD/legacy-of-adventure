@@ -6,7 +6,7 @@ import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
 import { S, type Building } from '../world/state';
-import { buildableKinds, landNeedFor, maxLevel, nextLevelCost } from '../world/town';
+import { buildableKinds, landNeedFor, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
@@ -394,18 +394,22 @@ export function openBuild() {
       const gate = GATED[k];
       const noGuide = !!gate && !feature(gate);
       const locked = d.unlock > S.land || noStar || noGuide || !!dl;
-      const poor = S.gold < d.cost;
+      // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ · 「두 번째 온천」
+      const cost = buildCost(k);
+      const nth = MULTI(k) ? 0 : countKind(k);
+      const poor = S.gold < cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
       const why = dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
-      const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(d.cost)} G</small>`;
-      return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
+      const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(cost)} G</small>`;
+      const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
+      return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
   // 건물 → 장식 (장식은 어울림 재료)
   const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
   openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
-  $$('.cat button').forEach(
+  $$('.cat button[data-k]').forEach(
     (b) =>
       (b.onclick = () => {
         const k = b.dataset.k as Kind;

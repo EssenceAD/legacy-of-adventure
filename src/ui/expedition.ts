@@ -56,6 +56,11 @@ function questRow(q: Quest) {
   return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small>${q.tag ? `<small class="qtag">📜 ${esc(q.tag.text)}</small>` : ''}<small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
 }
 
+// HOTFIX14 §6: 조건 카드의 [의뢰 게시판 가기] (도감·손님 창 어디서든)
+addEventListener('click', (e) => {
+  if ((e.target as HTMLElement)?.closest?.('[data-goboard]')) openBoard();
+});
+
 /** 의뢰 게시판 */
 export function openBoard() {
   checkSlot5();
@@ -70,7 +75,7 @@ export function openBoard() {
   const pity = REGIONS.filter((_, i) => regionUnlocked(i))
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)
     .join(' · ');
-  const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 3번 성공 또는 평판 ★${i + 1}</div>`)).join('');
+  const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 의뢰 3번 성공 · ${REGIONS[i - 1].name} 사냥 10 돌파 · 평판 ★${i + 1} 중 하나</div>`)).join('');
   const wk = weeklyTarget();
   const wd = wanderTarget();
   const raidCard = (t: RaidTarget, id: string) =>

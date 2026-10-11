@@ -11,12 +11,13 @@ import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed, sendAway } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, smithObj } from '../world/craft';
+import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
-import { track } from '../world/progress';
+import { heroCtx, track } from '../world/progress';
 import { speakerOf, talk } from './dialogue';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, pic, portrait, tabs } from './common';
 import { dustLine } from './smith';
@@ -126,7 +127,7 @@ export function showActor(a: Actor) {
     </div></div>
     <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b></span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
     ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
-    ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}` : ''}</p>` : ''}
+    ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
@@ -262,19 +263,12 @@ export function openBag() {
     ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
     <button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
-    <label class="tog"><input type="checkbox" id="autoS" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label>
-    <button class="bigbtn sm" id="salAll">안 끼운 일반 장비 모두 분해</button>`,
+    ${autoSalvageHtml('autoS')}
+    <button class="bigbtn sm" id="salAll">일괄 분해…</button>`,
   );
   $$('.bag .ic').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!)));
-  ($('#autoS') as HTMLInputElement).onchange = (e) => {
-    P.autoSalvage = (e.target as HTMLInputElement).checked;
-    markDirty();
-  };
-  $('#salAll').onclick = () => {
-    const r = salvageAllCommon();
-    toast(r.count ? `${r.count}개 분해 · ${DUST_NAME.n} +${r.dust}` : '분해할 일반 장비가 없어요');
-    openBag();
-  };
+  bindAutoSalvage('autoS');
+  $('#salAll').onclick = () => openBulkSalvage(openBag);
   $('#bagAuto').onclick = () => {
     autoAll();
     keepScroll(openBag);

@@ -1,10 +1,12 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
+import { bestOf } from './town';
+import { SLOTS } from '../data/items';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { BOSSES, bossById } from '../data/bosses';
 import { josa } from '../data/josa';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
-import { addToBag, makeItem, rollGrade, TEST } from './items';
+import { addToBag, itemPower, makeItem, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
 import { enhanceBonus, ownerGain, stat } from './owner';
@@ -12,7 +14,7 @@ import { bfx, hfx } from './harmony';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
-export const smithObj = () => homeObjs().find((o) => o.kind === 'smith' && o.build === undefined);
+export const smithObj = () => bestOf('smith', homeObjs(), true);
 export const smithLvl = () => smithObj()?.lvl ?? 0;
 
 // ───────── 분해 ─────────
@@ -33,16 +35,50 @@ export function salvage(it: Item): number {
   return n;
 }
 
-/** 안 끼고 있는 일반 장비를 전부 분해 */
+/** 안 끼고 있는 일반 장비를 전부 분해 (예전 버튼과 같은 결과 — 강화·세트도 포함, 남기기 없음) */
 export function salvageAllCommon(): { count: number; dust: number } {
+  const r = salvageBulk(['n'], { upgraded: true, keepBest: false });
+  return { count: r.count, dust: r.dust.n ?? 0 };
+}
+
+// ───────── HOTFIX14 §2: 등급별 일괄 분해 ─────────
+export interface BulkOpts {
+  /** 강화 +1 이상 · 세트 장비도 포함 (기본 끔) */
+  upgraded?: boolean;
+  /** 부위(무기·갑옷·장신구)마다 가방에서 전투력 가장 높은 것 하나는 남김 (기본 켬) */
+  keepBest?: boolean;
+}
+/** 분해 대상 (끼운 것 · 잠금은 늘 빠짐) */
+export function bulkTargets(grades: Grade[], o: BulkOpts = {}): Item[] {
+  const keep = new Set<Item>();
+  if (o.keepBest ?? true)
+    for (const s of SLOTS) {
+      const best = P.bag.filter((it) => it.slot === s && it.owner == null).sort((a, b) => itemPower(b) - itemPower(a))[0];
+      if (best) keep.add(best);
+    }
+  return P.bag.filter((it) => grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
+}
+/** 미리 보기: 등급별 개수 · 얻을 가루 */
+export function bulkPreview(grades: Grade[], o: BulkOpts = {}): Record<Grade, { n: number; dust: number }> {
+  const out = {} as Record<Grade, { n: number; dust: number }>;
+  for (const g of ['n', 'r', 'e', 'l', 'a'] as Grade[]) out[g] = { n: 0, dust: 0 };
+  for (const it of bulkTargets(['n', 'r', 'e', 'l', 'a'], o)) {
+    out[it.grade].n++;
+    out[it.grade].dust += SM.salvage[it.grade];
+  }
+  void grades;
+  return out;
+}
+export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number; dust: Partial<Record<Grade, number>> } {
+  const dust: Partial<Record<Grade, number>> = {};
   let count = 0;
-  let d = 0;
-  for (const it of [...P.bag]) {
-    if (it.grade !== 'n' || it.owner != null || it.locked) continue;
-    d += salvage(it);
+  for (const it of bulkTargets(grades, o)) {
+    const d = salvage(it);
+    if (!d) continue;
+    dust[it.grade] = (dust[it.grade] ?? 0) + d;
     count++;
   }
-  return { count, dust: d };
+  return { count, dust };
 }
 
 // ───────── 강화 ─────────

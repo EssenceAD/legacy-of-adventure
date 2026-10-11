@@ -1225,3 +1225,17 @@ p.qtag.ok{color:#8fe08f}
 /* 코르크: 잠긴 지역 · 전설 천장 줄은 작은 어두운 명패 */
 .skin-cork #winB :is(.qlock,.pity){background:rgba(28,16,24,.78);padding:4px 6px;box-shadow:0 0 0 1px #1c1018;color:#e8e0f0;text-shadow:none}
 .skin-cork #winB .pity b{color:#ffd36b}
+/* HOTFIX14 §4: 위쪽 HUD 줄의 빈 곳은 클릭을 막지 않는다 (별똥별·건물 클릭이 캔버스까지) */
+.top{pointer-events:none}
+.top>*:not(.sp){pointer-events:auto}
+/* HOTFIX14 §2: 일괄 분해 창 */
+.bulk{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.bulkg{display:flex;gap:6px;align-items:center}
+.bulkg span{margin-left:auto;font-size:var(--f-small)}
+.bulkg.zero{opacity:.45}
+
+/* HOTFIX14 §3: 새 지역 열림 배너 · 잠긴 지역 탭 */
+.newreg{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px auto;padding:8px 12px;background:linear-gradient(#3a2a6a,#241a48);box-shadow:0 0 0 2px #ffd36b,0 0 12px rgba(255,211,107,.5)}
+.newreg span{color:#ffd36b;font-weight:700}
+.newreg b{font-size:var(--f-big);color:#fff3d6}
+.tab.locked{opacity:.6}

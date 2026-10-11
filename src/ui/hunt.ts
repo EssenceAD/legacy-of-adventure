@@ -55,7 +55,7 @@ export function openHunt(region?: RegionId) {
   // 전투 2차: 5지역 × 10스테이지 모두 새 전투
   const tabs = REGIONS.map((r, i) => {
     const open = huntRegionOpen(i);
-    return `<button class="tab ${r.id === curRegion ? 'on' : ''}" data-r="${r.id}" ${open ? '' : 'disabled'}>${open ? r.name : `🔒 ${r.name}`}</button>`;
+    return `<button class="tab ${r.id === curRegion ? 'on' : ''} ${open ? '' : 'locked'}" data-r="${r.id}">${open ? r.name : `🔒 ${r.name}`}</button>`;
   }).join('');
   const b = best(curRegion);
   const cells = Array.from({ length: H.stages }, (_, i) => {
@@ -77,7 +77,15 @@ export function openHunt(region?: RegionId) {
     <p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
   );
-  $$('[data-r]').forEach((el) => (el.onclick = () => openHunt(el.dataset.r as RegionId)));
+  $$('[data-r]').forEach(
+    (el) =>
+      (el.onclick = () => {
+        // HOTFIX14 §3: 잠긴 지역은 무엇을 깨면 열리는지 (예전엔 disabled 라 눌러도 아무 반응이 없었다)
+        const i = regionIdx(el.dataset.r as RegionId);
+        if (!huntRegionOpen(i)) return toast(i ? `${REGIONS[i - 1].name} ${H.stages}(보스)을 깨면 열려요` : '사냥터는 아직 잠겨 있어요');
+        openHunt(el.dataset.r as RegionId);
+      }),
+  );
   $$('[data-s]').forEach((el) => (el.onclick = () => openHuntPrep(curRegion, +el.dataset.s!)));
   const st = document.getElementById('hStop');
   if (st)
@@ -575,6 +583,14 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): str
   const next = s + 1;
   const canNext = res.win && next <= H.stages && stageOpen(r, next);
   // 핫픽스 10 (11-4): 처음 깼을 때 한 번 — 모모가 「맡겨 두기」를 알려 준다 (계정당 1번)
+  // HOTFIX14 §3: 지역 보스(x-10)를 처음 깨면 다음 지역이 열린다 → 결과 화면에 크게
+  const ri = regionIdx(r);
+  const newRegion = res.win && !!out.first && s === H.stages && ri + 1 < REGIONS.length ? REGIONS[ri + 1] : null;
+  if (newRegion) trackEv('region_open', { region: newRegion.id });
+  // 사냥 창이 뒤에 열려 있었으면 끝난 뒤 다시 그린다 (탭·스테이지 칸이 🔒 그대로 남지 않게)
+  queueEvent(() => {
+    if (/^사냥터/.test(document.getElementById('winT')?.textContent ?? '') && document.getElementById('win')?.classList.contains('on')) openHunt(r);
+  }, 'huntRedraw');
   const hint = res.win && !!out.first && !P.hunt.autoHint;
   if (hint) P.hunt.autoHint = true;
   const gradeLine = res.win
@@ -582,7 +598,7 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): str
     : '';
   return `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
       <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
-      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${lootHtml(r, out)}
+      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${lootHtml(r, out)}
       <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
       ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">이 스테이지 자동 사냥</button></div>` : ''}
       <div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
@@ -592,6 +608,11 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): str
 function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], close: () => void) {
   const on = (id: string, f: () => void) => card.querySelectorAll<HTMLElement>('#' + id).forEach((b) => (b.onclick = f));
   on('cHome', () => close());
+  on('cGoReg', () => {
+    const to = card.querySelector<HTMLElement>('#cGoReg')?.dataset.reg as RegionId;
+    close();
+    openHunt(to);
+  });
   on('cKeep', () => {
     const err = setAuto(r, s, ms);
     if (err) return toast(err);

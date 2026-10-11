@@ -20,6 +20,7 @@ export interface SavedBuilding {
   fromProp?: boolean;
   /** CONSTRUCTION_SPEC: 공사 중 (끝 시각은 현실 시간 — 앱을 꺼도 흐른다) */
   con?: import('../world/construct').Con;
+  paid?: number;
 }
 
 /** 저장되는 손님 필드 (그림·이동 상태는 빼고) */
@@ -56,7 +57,7 @@ export function snapshot(): SaveData {
     version: CONFIG.save.version,
     savedAt: Date.now(),
     land: S.visiting && world.home ? world.home.land : S.land,
-    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, flip: !!o.flip, ...(o.plots ? { plots: o.plots } : {}), ...(o.builtAt ? { builtAt: o.builtAt } : {}), ...(o.fromProp ? { fromProp: true } : {}), ...(o.con ? { con: { ...o.con } } : {}) })),
+    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, flip: !!o.flip, ...(o.plots ? { plots: o.plots } : {}), ...(o.builtAt ? { builtAt: o.builtAt } : {}), ...(o.fromProp ? { fromProp: true } : {}), ...(o.paid ? { paid: o.paid } : {}), ...(o.con ? { con: { ...o.con } } : {}) })),
     gold: S.gold,
     day: S.day,
     clock: S.clock,
@@ -207,7 +208,7 @@ function validate(d: any): SaveData | null {
     .map((b: any) => ({
       kind: b.kind, tx: b.tx, ty: b.ty, lvl: Math.max(1, num(b.lvl, 1)), hue: typeof b.hue === 'number' ? b.hue : null, flip: b.flip === true,
       ...(typeof b.builtAt === 'number' ? { builtAt: b.builtAt } : {}), ...(b.fromProp === true ? { fromProp: true } : {}),
-      ...(validCon(b.con) ? { con: b.con } : {}),
+      ...(validCon(b.con) ? { con: b.con } : {}), ...(typeof b.paid === 'number' ? { paid: b.paid } : {}),
       ...(Array.isArray(b.plots) ? { plots: b.plots.map((p: any) => ({ crop: typeof p?.crop === 'string' ? p.crop : null, at: num(p?.at, 0) })) } : {}),
     }));
   if (!buildings.some((b) => b.kind === 'inn')) return null;

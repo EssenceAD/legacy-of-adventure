@@ -1,4 +1,5 @@
 // 장비: 만들기(등급·랜덤 옵션·세트) · 천장 · 가방 · 장착 · 옵션 합 · 아이콘
+import { bestOf } from './town';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
@@ -88,7 +89,7 @@ export function gearStat(a: Pick<Actor, 'kind'>, it: Item, k: StatKey): number {
 // ───────── 가방 ─────────
 
 export const bagSize = () => {
-  const smith = world.objs.find((o) => o.kind === 'smith');
+  const smith = bestOf('smith');
   return I.bagBase + (smith ? (smith.lvl - 1) * I.bagPerSmithLevel : 0);
 };
 
@@ -97,8 +98,10 @@ export function addToBag(it: Item): 'ok' | 'salvaged' | 'full' {
   it.isNew = dexAddItem(it);
   const inBag = P.bag.filter((x) => !x.owner).length;
   if (inBag >= bagSize()) {
-    if (P.autoSalvage && it.grade === 'n') {
-      P.dust.n += CONFIG.smith.salvage.n;
+    // HOTFIX14 §2: 자동 분해 등급 (옛 저장의 켬 = 일반)
+    const lv = P.salvage?.auto || (P.autoSalvage ? 'n' : '');
+    if (!it.locked && ((lv === 'n' && it.grade === 'n') || (lv === 'r' && (it.grade === 'n' || it.grade === 'r')))) {
+      P.dust[it.grade] += CONFIG.smith.salvage[it.grade];
       return 'salvaged';
     }
     // 가득 차도 버리지는 않는다 (넘친 칸은 빨갛게 보여 준다)

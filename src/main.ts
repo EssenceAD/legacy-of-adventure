@@ -18,7 +18,7 @@ import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pumpEvents } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
-import { buildingAt, renderFrame } from './world/render';
+import { buildingAt, renderFrame, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { doorOf, placing } from './world/town';
@@ -36,7 +36,7 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
-import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
+import { _fakeNewer, APP_VERSION, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
 import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
@@ -50,7 +50,7 @@ import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
-import { checkSlot5, dailyAttend, welcomeMail } from './world/meta';
+import { checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
@@ -148,6 +148,12 @@ function update(dt: number) {
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
       checkSlot5(true);
+      // HOTFIX14 §5: 업데이트 선물 (원래 하던 플레이어만 — 장부를 하나라도 받았거나 2일차 이상)
+      //  지금 버전 이하에서 가장 새 선물 (그 버전을 건너뛰고 올라와도 받게 · 선물 버전으로 한 번만)
+      void loadPatchNotes().then((n) => {
+        const g = n.find((x) => x.gift && verLE(x.version, APP_VERSION));
+        if (g) updateGift(g.version, g.gift, P.guide.claimed.length > 0 || S.day > 1);
+      });
       settleOfflineCons();
       if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }
@@ -225,6 +231,13 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
+/** 버전 a ≤ b (0.11.3-beta 꼴) */
+const verLE = (a: string, b: string) => {
+  const p = (v: string) => v.replace(/-.*/, '').split('.').map(Number);
+  const [x, y] = [p(a), p(b)];
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return true;
+};
 let conAcc = 0;
 function tick(dt: number) {
   // 핫픽스 10 §13: 접어 둔 사냥은 마을 시간대로 마저 진행
@@ -322,6 +335,16 @@ function pinchDist() {
 
 function bindInput() {
   cv.addEventListener('pointerdown', (e) => {
+    // HOTFIX14 §4: 운명의 별은 누르는 순간에 판정 (떼는 사이 별이 지나가거나 드래그로 바뀌지 않게)
+    if (!placing.pl && touches.size === 0) {
+      const [mx, my] = toLogical(cv, e.clientX, e.clientY);
+      if (starHit(mx, my)) {
+        catchStarAt(e);
+        drag = null;
+        moved = true;
+        return;
+      }
+    }
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.size === 2) {
       // 두 손가락: 드래그·탭 대신 핀치
@@ -375,6 +398,16 @@ function bindInput() {
   cv.addEventListener('pointercancel', end);
 }
 
+/** 별 잡기: 글씨는 누른 자리(타일)에 — 예전엔 고정 타일 (7,5)라 넓어진 맵에선 숲 속에 떴다 */
+function catchStarAt(e: PointerEvent) {
+  const msg = catchStar();
+  if (!msg) return;
+  toast(msg);
+  const [fx, fy] = toTile(cv, e.clientX, e.clientY);
+  floatW(fx, fy, 30, '★ 운명의 별!', 'big');
+  trackEv('star_catch', {});
+}
+
 function tap(e: PointerEvent) {
   if (!S.started || isTalking()) return;
   if (placing.pl) {
@@ -385,15 +418,8 @@ function tap(e: PointerEvent) {
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
   // 땅 개편: 땅 넓히기 팻말
   if (!S.visiting && signHit(mx, my)) return openLand();
-  // 운명의 별 (밤하늘 별똥별)
-  if (starHit(mx, my)) {
-    const msg = catchStar();
-    if (msg) {
-      toast(msg);
-      floatW(7, 5, 60, '★ 운명의 별!', 'big');
-    }
-    return;
-  }
+  // 운명의 별 (밤하늘 별똥별) — 보통은 pointerdown 에서 이미 잡는다
+  if (starHit(mx, my)) return catchStarAt(e);
   // 베타: 구경거리 사건 (이모트 · 사건 사람)
   if (!S.visiting && tapSpectacle(mx, my)) return;
   // 캐릭터 먼저 (화면 거리)
@@ -698,6 +724,7 @@ async function boot() {
         r.openRaidPrep(w.weeklyTarget());
       },
       __power: powerOf,
+      __star: () => { const s = starInfo(); const r = cv.getBoundingClientRect(); return { ...s, cx: r.left + s.x * view.SC, cy: r.top + s.y * view.SC }; },
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);
       },

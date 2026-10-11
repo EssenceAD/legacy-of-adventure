@@ -31,6 +31,8 @@ export interface Building {
   /** 핫픽스 10: 지은 시각(ms) — 5분 안 철거는 전액 환불 · 마을 등급 장식을 옮겨 놓은 것(무료, 환불 없음) */
   builtAt?: number;
   fromProp?: boolean;
+  /** HOTFIX14 §1: 두 번째 채부터 실제로 낸 건설비 (기본값과 다를 때만) */
+  paid?: number;
 }
 
 export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';
@@ -350,6 +352,8 @@ export function freshProgress() {
     /** 지난 7일(게임 날) 수입 */
     week: [] as { day: number; gold: number }[],
     autoSalvage: false,
+    /** HOTFIX14 §2: 일괄 분해 마지막 선택 · 자동 분해 등급(끔 / 일반 / 희귀 이하) */
+    salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, auto: '' as '' | 'n' | 'r' },
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
     /** 핫픽스 10 §15: 단골 자리가 새로 생긴 만큼 「빠른 제안」 (받으면 하나 줄어든다) · 옛 저장 구제 1번 · 모모 안내 횟수 */
@@ -390,8 +394,14 @@ export function freshProgress() {
       /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
       slot5: false,
       slot5Seen: false,
-      /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 */
+      /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 · HOTFIX14 §5 선물로 받은 추가 횟수 */
       cheerDay: '',
+      cheerBonus: 0,
+      /** HOTFIX14 §5: 업데이트 선물을 받은 버전 · 선물 장식(무료로 놓기) */
+      giftVer: '',
+      /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
+      sorryDupe: false,
+      giftDeco: {} as Record<string, number>,
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {
@@ -461,7 +471,9 @@ export interface Mail {
   from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
   title: string;
   body: string;
-  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string };
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string };
+  /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
+  ver?: string;
   at: number;
   claimed: boolean;
 }

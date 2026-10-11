@@ -1,4 +1,5 @@
 // 성장 지표: 평판(★) · 도감(손님·아이템·케미·영웅) · 오늘의 목표 · 영웅 조건
+import { bestOf } from './town';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals';
@@ -161,7 +162,7 @@ export function heroCtx(): HeroCtx {
   const objs = world.home?.objs ?? world.objs;
   const regulars = (world.home?.actors ?? world.actors).filter((a) => (a.status === 'regular' || a.status === 'hero') && !a.role);
   const bonds = Object.values(P.bonds);
-  const smith = objs.find((o) => o.kind === 'smith');
+  const smith = bestOf('smith', objs);
   return {
     night: S.night,
     land: world.home?.land ?? S.land,

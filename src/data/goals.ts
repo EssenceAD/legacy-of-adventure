@@ -21,8 +21,8 @@ export interface GoalTemplate {
 export type GoalGo = 'board' | 'tavern' | 'smith' | 'garden' | 'training' | 'guests' | 'build' | 'inn' | 'village';
 
 export const GOAL_TEMPLATES: GoalTemplate[] = [
-  { id: 'send', event: 'expeditionSent', text: (n) => `원정 ${n}번 보내기`, min: 2, max: 4, reward: { gold: 150, dust: 20 }, go: 'board' },
-  { id: 'win', event: 'expeditionWin', text: (n) => `원정 ${n}번 성공하기`, min: 1, max: 3, reward: { gold: 200 }, go: 'board' },
+  { id: 'send', event: 'expeditionSent', text: (n) => `의뢰 ${n}번 보내기`, min: 2, max: 4, reward: { gold: 150, dust: 20 }, go: 'board' },
+  { id: 'win', event: 'expeditionWin', text: (n) => `의뢰 ${n}번 성공하기`, min: 1, max: 3, reward: { gold: 200 }, go: 'board' },
   { id: 'meal', event: 'meal', text: (n) => `주점에서 손님 ${n}명 식사`, min: 4, max: 8, reward: { gold: 120 }, needs: 'tavern', go: 'tavern' },
   { id: 'chem', event: 'chem', text: (n) => `케미 ${n}번 보기`, min: 1, max: 2, reward: { gold: 150 }, needs: 'regulars2', go: 'guests' },
   { id: 'salvage', event: 'salvage', text: (n) => `장비 ${n}개 분해하기`, min: 2, max: 5, reward: { gold: 80, dust: 40 }, needs: 'smith', go: 'smith' },

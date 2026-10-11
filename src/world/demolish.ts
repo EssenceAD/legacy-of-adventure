@@ -21,7 +21,7 @@ export const isNoRemove = (o: Building) => B().noRemove.includes(o.kind);
 export function spentOn(o: Building): number {
   const d = def(o.kind);
   const lv = d.levels ?? (d.up ? [d.up.cost] : []);
-  return d.cost + lv.slice(0, Math.max(0, o.lvl - 1)).reduce((s, c) => s + c, 0);
+  return (o.paid ?? d.cost) + lv.slice(0, Math.max(0, o.lvl - 1)).reduce((s, c) => s + c, 0);
 }
 /** 돌려받는 금화 */
 export function refundOf(o: Building, now = Date.now()): { gold: number; full: boolean } {

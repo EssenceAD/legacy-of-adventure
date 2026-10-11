@@ -19,7 +19,7 @@ import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
-import { addObj, astar, blocksDoor, canPlace, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
+import { addObj, astar, blocksDoor, buildCost, canPlace, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
@@ -30,7 +30,10 @@ import { refreshNoticeDot } from './ui/notice';
 import { closeWin, isWinOpen, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
 import { track as trackEv } from './net/telemetry';
-import { refundOf, removeBuilding } from './world/demolish';
+import { refundOf, removeBuilding, spentOn } from './world/demolish';
+import { addMail } from './world/meta';
+declare const __APP_VERSION__: string;
+const APP_VER = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -226,7 +229,7 @@ function applySave(d: SaveData) {
   sanitizeAlbum();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
-    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}), ...conExtra(b) } })),
+    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}), ...(b.paid ? { paid: b.paid } : {}), ...conExtra(b) } })),
     d.land,
   );
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
@@ -236,6 +239,10 @@ function applySave(d: SaveData) {
     for (const o of world.objs) if (n > 0 && o.kind === k && !o.fromProp && !o.builtAt) (o.fromProp = true), n--;
   }
   if (import.meta.env.DEV && (fix.moved || fix.dropped)) console.warn('저장 배치 바로잡음', fix);
+  // HOTFIX14 §1: 정리된 건물은 전액 환불 (건설비 + 낸 레벨업 비용 + 진행 중 업그레이드 공사비) + 사과 금화 · 운영에서도 기록
+  if (fix.moved || fix.dropped) trackEv('layout_fix', { moved: fix.moved, dropped: fix.dropped, kinds: fix.removed.map((r) => `${r.e.kind}:${r.e.lvl}:${r.why}`).slice(0, 12), ver: APP_VER });
+  if (fix.removed.length) refundRemoved(fix.removed.map((r) => r.e));
+  sorryForDupes();
   rebuildPaths();
   world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
   // 장비 주인 표시를 손님 쪽 기록에 맞춘다
@@ -313,6 +320,39 @@ export function expandLand(l: number) {
 
 // ───────── 건설 ─────────
 
+/** HOTFIX14 §5: 같은 건물 2채 이상이 저장에 있는 유저 — 예전 버전에서 하나를 잃었을 수 있다 → 사과 금화 (한 번) */
+function sorryForDupes() {
+  if (P.meta.sorryDupe) return;
+  const kinds = [...new Set(world.objs.map((o) => o.kind))].filter((k) => !MULTI(k) && !SINGLE(k) && world.objs.filter((o) => o.kind === k).length >= 2);
+  const named = CONFIG.gifts.sorryInns.includes(S.innName);
+  if (!kinds.length && !named) return;
+  P.meta.sorryDupe = true;
+  addMail({
+    from: 'system',
+    title: '모모의 편지 · 사라진 건물 미안해요',
+    body: `같은 건물${kinds.length ? `(${kinds.map((k) => def(k).name).join('·')})` : ''}을 두 채 지으셨죠? 예전 버전에서는 다시 열 때 하나가 사라지는 일이 있었어요. 이제는 여러 채 그대로 남아요! 불편을 드려서 미안해요 — 작은 사과를 담았어요.`,
+    reward: { gold: CONFIG.gifts.sorryGold },
+  });
+  trackEv('sorry_dupe', { kinds: kinds.join(',') });
+}
+
+/** HOTFIX14 §1: 불러올 때 정말 정리된 건물(놓을 자리 없음 · 여관 본관/던전 중복) — 전액 환불 편지 (+ 사과 금화 1,000) */
+function refundRemoved(list: { kind: Kind; lvl: number; extra?: Partial<Building> }[]) {
+  let gold = 0;
+  for (const e of list) {
+    if (e.extra?.fromProp) continue;
+    gold += spentOn({ kind: e.kind, lvl: e.lvl, paid: e.extra?.paid } as Building) + (e.extra?.con?.kind === 'up' ? e.extra.con.cost : 0);
+  }
+  const names = [...new Set(list.map((e) => def(e.kind).name))].join('·');
+  addMail({
+    from: 'system',
+    title: '모모의 편지 · 건물 정리 환불',
+    body: `놓을 자리가 없던 건물(${names})을 정리하고 ${fmt(gold)}골드 돌려드렸어요. 불편을 드려서 미안해요 — 사과의 뜻으로 1,000골드를 더 넣었어요!`,
+    reward: { gold: gold + CONFIG.gifts.sorryGold },
+  });
+  queueEvent(() => toast('우편함에 모모 편지가 왔어요 · 건물 정리 환불'), 'layoutRefund');
+}
+
 /** CONSTRUCTION_SPEC §6: 저장된 공사 → 건물 칸 (새 짓기는 아직 못 쓰는 상태, 커지는 업그레이드는 새 발판) */
 function conExtra(b: { kind: Kind; con?: Con }): Partial<Building> {
   const c = b.con;
@@ -325,9 +365,15 @@ function conExtra(b: { kind: Kind; con?: Con }): Partial<Building> {
 export function placeBuilding(pl: Placement): boolean {
   const d = def(pl.kind);
   // 베타: 마을 등급 장식을 마을 안으로 옮기면 무료 (그 자리 장식은 사라진다)
-  const cost = pl.prop ? 0 : d.cost;
+  // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ (CONFIG.town.copyCost)
+  const cost = pl.prop ? 0 : buildCost(pl.kind);
   if (S.gold < cost) {
     toast('금화가 모자라요');
+    return false;
+  }
+  // HOTFIX14 §1: 여관 본관·던전만 한 채
+  if (!pl.prop && SINGLE(pl.kind) && world.objs.some((o) => o.kind === pl.kind)) {
+    toast(`${d.name}은(는) 마을에 한 채만 지을 수 있어요`);
     return false;
   }
   // CONSTRUCTION_SPEC §3: 동시 공사 수 (1칸 장식은 세지 않음)
@@ -341,7 +387,10 @@ export function placeBuilding(pl: Placement): boolean {
   // 땅 개편 §4: 첫 건설 초록 안내는 한 번
   P.buildTipSeen = true;
   landHint.firstBuild = false;
-  const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
+  // HOTFIX14 §5: 선물 장식은 하나 쓴다 (환불 없음)
+  const giftDeco = !pl.prop && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0 && d.cost === 0;
+  if (giftDeco) P.meta.giftDeco[pl.kind]--;
+  const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(cost !== d.cost ? { paid: cost } : {}), ...(pl.prop || giftDeco ? { fromProp: true } : {}) });
   startNew(o);
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
