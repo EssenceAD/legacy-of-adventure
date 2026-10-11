@@ -4,19 +4,20 @@ import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/cl
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
-import { sx } from '../engine/iso';
+import { sx, sy } from '../engine/iso';
 import { blankActor, gainXp, makeAdventurer, makeHero } from './adventurers';
 import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
+import { orderPair } from '../data/chem';
 import { absHours, hourNow, onNewDay } from './clock';
 import { queueEvent } from './events';
 import { dueRuns, resolveRun } from './expeditions';
-import { bldSay, floatW, puffAt, say } from './fx';
+import { bldSay, floatW, puff, puffAt, say } from './fx';
 import { unequip } from './items';
 import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
 import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
-import { astar, capacity, doorOf, entrance, findKind, landBounds, walkable } from './town';
+import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, layoutHooks, nearestWalkable, walkable } from './town';
 import { bfx, hfx, incMult } from './harmony';
 import { dailyAdd } from './daily';
 
@@ -145,6 +146,11 @@ function ownerChoose(a: Actor) {
 }
 
 function goTo(a: Actor, tx: number, ty: number, then: () => void) {
+  // 핫픽스 11 §9-2: 목적지가 건물 발판 칸이면(「손님 옆」「모닥불 옆」이 가로등 칸인 경우 등) 가장 가까운 빈 칸으로
+  if (blockedAt(tx, ty)) {
+    const n = nearestWalkable(tx, ty);
+    if (n) [tx, ty] = n;
+  }
   const p = astar(a.x, a.y, tx, ty);
   if (!p) {
     a.st = 'idle';
@@ -335,7 +341,7 @@ function goInside(a: Actor, o: Building) {
   a.hidden = true;
   o.inside.push(a);
   a.t = act === 'sleep' ? (S.night ? A.stay.sleepNight : A.stay.sleepDay) : A.stay.otherMin + Math.random() * (A.stay.otherMax - A.stay.otherMin);
-  puffAt(o, '#efe2c6', 3);
+  puffAt(o, '#efe2c6', 3, false);
   if (act && act !== 'sleep' && LINES[act]) bldSay(o, pick(LINES[act]));
   fillNeeds(a, act);
   // 손님 접대 (전설 인연 활동): 기사·도적 손님이 건물을 쓸 때
@@ -429,7 +435,8 @@ function chem(a: Actor): boolean {
   );
   if (!o) return false;
   const pair = pairOf(a, o)!;
-  const [f, s] = [a, o];
+  // 핫픽스 11 §10: 대사 첫 줄은 그 역할 쪽이 (엘프가 「엘프는 맥주 맛을 몰라」 하지 않게)
+  const [f, s] = orderPair(pair, a, o);
   f.dir = sx(s.x, s.y) > sx(f.x, f.y) ? 1 : -1;
   s.dir = f.dir === 1 ? -1 : 1;
   f.back = s.back = false;
@@ -456,9 +463,11 @@ function chem(a: Actor): boolean {
 }
 
 /** 친밀도 단계가 오르면 짧은 대화 이벤트 */
-export function queueChemTalk(f: Actor, s: Actor, lv: number) {
-  const pair = pairOf(f, s);
+export function queueChemTalk(a: Actor, b: Actor, lv: number) {
+  const pair = pairOf(a, b);
   if (!pair) return;
+  // 핫픽스 11 §10: 들어온 순서가 아니라 대사 역할 순서로
+  const [f, s] = orderPair(pair, a, b);
   const t = pair.talks[lv - 2];
   if (!t) return;
   queueEvent(() =>
@@ -706,6 +715,34 @@ function earlyRegular() {
     }
   }
 }
+
+// ───────── 핫픽스 11 §9-2: 건물 배치가 바뀐 뒤 — 발판 위 손님 밀어내기 · 걷는 길 다시 ─────────
+export function afterLayoutChange() {
+  for (const a of world.actors) {
+    if (a.hidden || a.door || a.runId != null || a.party) continue;
+    const tx = Math.round(a.x);
+    const ty = Math.round(a.y);
+    // 1) 새 발판 안에 서 있으면 가장 가까운 빈 길 칸으로 살짝
+    if (blockedAt(tx, ty)) {
+      const s = nearestWalkable(tx, ty);
+      if (s) {
+        [a.x, a.y] = s;
+        a.pop = 0.3;
+        puff(sx(s[0], s[1]), sy(s[0], s[1]) - 4, '#efe2c6', 0, -6, 0.4, 2);
+      }
+    }
+    // 2) 걷는 중이면 남은 길이 막힌 칸을 지나는지 → 목적지 그대로 다시 찾기 (없으면 멈추고 다시 고르기)
+    if (a.st === 'walk' && a.path?.length) {
+      const goal = a.path[a.path.length - 1];
+      if (a.path.slice(0, -1).some(([x, y]) => blockedAt(x, y)) || blockedAt(tx, ty)) {
+        const p = astar(a.x, a.y, goal[0], goal[1]);
+        if (p) a.path = p;
+        else Object.assign(a, { path: null, st: 'idle', then: null, t: 0.3 });
+      }
+    }
+  }
+}
+layoutHooks.after = afterLayoutChange;
 
 // ───────── 핫픽스 10 §15: 자리가 새로 생기면 빠른 제안 (규칙은 earlyRegular와 같은 방식) ─────────
 let lastCap = -1;

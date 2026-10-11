@@ -255,6 +255,34 @@ export function rebuildPaths() {
   const pe = astar(ex, ey, hub[0], hub[1]);
   if (pe) for (const [x, y] of pe) if (!grid[y][x] || grid[y][x]!.kind === 'gate') pathT.add(y * N + x);
   pathT.add(hub[1] * N + hub[0]);
+  layoutHooks.after();
+}
+
+/** 핫픽스 11 §9-2: 건물 배치가 바뀐 뒤(짓기·레벨업·옮기기·철거) — actors가 채운다 (발판 위 손님 밀어내기 · 남은 길 다시) */
+export const layoutHooks = { after: () => {} };
+/** 건물 발판이 막고 있는 칸인가 (안으로 들어가 활동하는 훈련장·텃밭·정문은 빼고) */
+export function blockedAt(x: number, y: number): boolean {
+  if (!inMap(x, y)) return false;
+  const o = grid[y]?.[x];
+  return !!o && o.kind !== 'training' && o.kind !== 'garden' && o.kind !== 'gate';
+}
+/** 가장 가까운 걸을 수 있는 칸 (반경 6칸 안) */
+export function nearestWalkable(x: number, y: number): [number, number] | null {
+  for (let r = 1; r <= 6; r++) {
+    let best: [number, number] | null = null;
+    let bd = Infinity;
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!walkable(nx, ny)) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bd) [bd, best] = [d, [nx, ny]];
+      }
+    if (best) return best;
+  }
+  return null;
 }
 
 /** 마을 입구: 울타리 앞쪽(화면 아래) 가장자리에서 여관 문과 같은 줄의 빈 칸 */
