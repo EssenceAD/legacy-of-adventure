@@ -7,6 +7,8 @@ import { IMG } from '../engine/assets';
 import { sx, sy, TH, TW } from '../engine/iso';
 import { frameAt, flipOf, whiteOf, type MonSheet } from './mon';
 import { GRADE_COLOR, quarterOf, screenDx, type Field, type Unit } from './field';
+import { deepen, placeProps, PROP_IMG, themeOf, type GroundPal, type Theme } from './theme';
+import { saverOn } from '../engine/fps';
 
 const C = CONFIG.combat;
 export const sheets: Partial<Record<string, MonSheet>> = {};
@@ -70,9 +72,7 @@ export const labelsOut: { x: number; y: number; text: string; col: string }[] = 
 
 // ───────── 지역 바닥 (마을 타일과 같은 32×16 쿼터뷰 · 숲: 풀과 흙) ─────────
 
-const PAL: Record<string, { a: string; b: string; c: string; dirt: string; dirtD: string; edge: string; void: string }> = {
-  forest: { a: '#5f9a3c', b: '#6fae45', c: '#4f8a34', dirt: '#a07a4a', dirtD: '#7a5a34', edge: '#3e6a2c', void: '#1e3420' },
-};
+// HUNT_WORLD_SPEC §1: 팔레트·무늬·소품·입자·빛은 지역 테마(theme.ts)에서
 let ground: HTMLCanvasElement | null = null;
 let groundKey = '';
 const hash = (x: number, y: number) => {
@@ -104,9 +104,11 @@ function tile(ctx: CanvasRenderingContext2D, X: number, Y: number, fill: (px: nu
     }
   }
 }
-function buildGround(region: string): HTMLCanvasElement {
+function buildGround(region: string, deep: boolean): HTMLCanvasElement {
   const N = C.field;
-  const P = PAL[region] ?? PAL.forest;
+  const T = themeOf(region);
+  // 보스 「깊은 곳」: 같은 무늬를 어둡게
+  const P = deep ? (Object.fromEntries(Object.entries(T.pal).map(([k, v]) => [k, k === 'rune' ? v : deepen(v, 0.32)])) as unknown as GroundPal) : T.pal;
   const pad = 3;
   const W = (N + pad * 2) * TW;
   const H = (N + pad * 2) * TH + 40;
@@ -134,21 +136,24 @@ function buildGround(region: string): HTMLCanvasElement {
         const n = fbm(wx * 0.55, wy * 0.55);
         // 가장자리: 노이즈로 들쭉날쭉하게 풀숲 → 어둠
         const edge = Math.min(wx, wy, N - wx, N - wy) + (n - 0.5) * 1.2;
-        if (edge < -0.6) return h < 0.35 ? P.edge : P.void;
-        if (edge < 0) return h < 0.7 ? P.edge : P.c;
-        // 흙: 굽은 오솔길(가장자리가 흔들림) + 노이즈 맨땅 얼룩
-        const pathD = Math.abs(wy - (N / 2 + Math.sin(wx * 0.7) * 1.6)) + (fbm(wx * 1.3 + 40, wy * 1.3) - 0.5) * 0.9;
-        const dirt = pathD < 0.6 || n > 0.74;
-        if (dirt) return h < 0.12 ? P.dirtD : (pathD > 0.45 && pathD < 0.6) || h < 0.2 ? P.c : P.dirt;
-        // 풀: 큰 얼룩(밝은/어두운) + 잔점
-        const g = fbm(wx * 0.9 + 9, wy * 0.9 + 3);
-        if (g < 0.36) return h < 0.3 ? P.a : P.c;
-        if (g > 0.62) return h < 0.25 ? P.a : P.b;
-        return h < 0.08 ? P.c : h < 0.16 ? P.b : P.a;
+        if (edge < 0) return T.outside(edge, wx, wy, h, P);
+        // 보스 무대: 가운데 원형 문양 (두 겹 고리 + 여덟 점)
+        if (deep) {
+          const d = Math.hypot(wx - N / 2, wy - N / 2);
+          const a = Math.atan2(wy - N / 2, wx - N / 2);
+          if (Math.abs(d - 2.6) < 0.09 || (Math.abs(d - 2.2) < 0.06 && h < 0.7)) return P.rune;
+          if (Math.abs(d - 2.4) < 0.16 && Math.abs(fr8(a)) < 0.06) return P.rune;
+        }
+        return T.floor(wx, wy, h, n, N, P, fbm);
       });
     }
   return c;
 }
+/** 문양 점: 각도를 여덟으로 나눈 나머지 (-0.5~0.5) */
+const fr8 = (a: number) => {
+  const v = (a / (Math.PI * 2)) * 8;
+  return v - Math.round(v);
+};
 
 // ───────── 도트 숫자 (3×5) ─────────
 
@@ -188,9 +193,13 @@ export function digits(ctx: CanvasRenderingContext2D, text: string, x: number, y
 let camX = 0;
 let camY = 0;
 export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: number) {
-  if (groundKey !== f.region) {
-    ground = buildGround(f.region);
-    groundKey = f.region;
+  const deep = f.stage >= 10;
+  const T = themeOf(f.region);
+  const gk = `${f.region}|${deep ? 1 : 0}|${f.stage}`;
+  if (groundKey !== gk) {
+    if (groundKey.split('|').slice(0, 2).join('|') !== gk.split('|').slice(0, 2).join('|')) ground = buildGround(f.region, deep);
+    groundKey = gk;
+    edgeProps = placeProps(f.region, f.stage, C.field);
   }
   const N = C.field;
   // 카메라: 주인공을 따라 (정수 px) + 흔들림
@@ -215,7 +224,7 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     oy += Math.round((Math.random() * 2 - 1) * a);
   }
   const W = (x: number, y: number): [number, number] => [ox + Math.round(sx(x, y)), oy + Math.round(sy(x, y))];
-  ctx.fillStyle = (PAL[f.region] ?? PAL.forest).void;
+  ctx.fillStyle = deep ? deepen(T.pal.void, 0.32) : T.pal.void;
   ctx.fillRect(0, 0, LW, LH);
   if (ground) ctx.drawImage(ground, ox - ground.width / 2, oy - 20 - 3 * TH - TH / 2 + TH / 2);
 
@@ -275,11 +284,11 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
         const [X, Y] = W(pr.x, pr.y);
         if (pr.kind === 'rock') {
           dotShadow(ctx, X, Y + 1, 7, 3);
-          ctx.fillStyle = '#8a8f9a';
+          ctx.fillStyle = T.rock[0];
           ctx.fillRect(X - 6, Y - 6, 12, 7);
-          ctx.fillStyle = '#b8bec8';
+          ctx.fillStyle = T.rock[1];
           ctx.fillRect(X - 5, Y - 7, 7, 3);
-          ctx.fillStyle = '#5a5e6a';
+          ctx.fillStyle = T.rock[2];
           ctx.fillRect(X - 6, Y, 12, 1);
         } else {
           const im = IMG[pr.kind];
@@ -288,8 +297,23 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
       },
     });
   }
-  // 필드 가장자리 숲 (뒤쪽)
-  for (let i = -1; i <= N; i += 2) {
+  // HUNT_WORLD §1: 둘레 소품 (필드 밖 · 판정 없음) + 빛나는 소품은 은은한 빛
+  for (const pr of edgeProps) {
+    const im = PROP_IMG[pr.k];
+    if (!im) continue;
+    things.push({
+      d: pr.x + pr.y,
+      draw: () => {
+        const [X, Y] = W(pr.x, pr.y);
+        const gl = T.glow[pr.k];
+        if (gl && !saverOn()) glowAt(ctx, X, Y - im.height / 2, Math.max(im.width, im.height) * 0.9, gl, 0.22 + Math.sin(performance.now() / 600 + pr.x) * 0.05);
+        dotShadow(ctx, X, Y + 1, Math.round(im.width / 3), 2);
+        ctx.drawImage(im, X - Math.round(im.width / 2), Y - im.height + 3);
+      },
+    });
+  }
+  // 필드 가장자리 숲 (뒤쪽 · 숲 동굴만)
+  for (let i = -1; i <= N && T.trees; i += 2) {
     // 핫픽스 7: 한 칸 더 바깥 (위쪽 나무가 반쯤 화면 밖으로)
     for (const [px, py] of [[i, -2.5], [-2.5, i]] as [number, number][])
       things.push({
@@ -389,6 +413,9 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     ctx.fillStyle = col;
     ctx.fillRect(X - (pj.kind === 'fire' ? 2 : 1), Y - 13, pj.kind === 'fire' ? 4 : 2, pj.kind === 'fire' ? 4 : 2);
   }
+
+  // HUNT_WORLD §1: 공기 입자 · 빛 (지역 테마)
+  atmos(ctx, f, T, deep, LW, LH, W);
 
   // 피해 숫자: 위로 튀어 오르며 0.6초 — 핫픽스 7: 큰 화면(기기 픽셀)에 절반 크기로 그린다 (ui.ts)
   numsOut.length = 0;
@@ -617,3 +644,162 @@ export function drawVignette(ctx: CanvasRenderingContext2D, f: Field, LW: number
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, LW, LH);
 }
+
+// ───────── HUNT_WORLD §1: 둘레 소품 · 공기 입자 · 빛 ─────────
+
+let edgeProps: { x: number; y: number; k: string }[] = [];
+/** 은은한 빛 (가운데 밝고 바깥으로 사라짐) */
+function glowAt(ctx: CanvasRenderingContext2D, X: number, Y: number, r: number, rgb: string, a: number) {
+  const g = ctx.createRadialGradient(X, Y, 0, X, Y, r);
+  g.addColorStop(0, `rgba(${rgb},${a})`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(Math.round(X - r), Math.round(Y - r), Math.ceil(r * 2), Math.ceil(r * 2));
+}
+interface Mote {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  t: number;
+  life: number;
+  c: string;
+  s: number;
+}
+const motes: Mote[] = [];
+let moteRegion = '';
+let lastT = 0;
+/** 화면당 입자 수 (명세: 30개 안쪽) */
+const MOTES = 24;
+function spawnMote(p: Theme['particle'], LW: number, LH: number, anywhere: boolean): Mote {
+  const R = Math.random;
+  const x = R() * LW;
+  const y = anywhere ? R() * LH : p === 'spore' || p === 'star' ? LH + 4 : p === 'dust' ? R() * LH : -4;
+  switch (p) {
+    case 'leaf':
+      // 나뭇잎 팔랑 · 가끔 반딧불
+      return R() < 0.35
+        ? { x, y: anywhere ? y : R() * LH, vx: (R() - 0.5) * 6, vy: (R() - 0.5) * 6, t: 0, life: 3 + R() * 3, c: '#e8ff8a', s: 1 }
+        : { x, y, vx: 6 + R() * 6, vy: 10 + R() * 8, t: 0, life: 8 + R() * 6, c: R() < 0.5 ? '#7cc04e' : '#c8a040', s: 2 };
+    case 'spore':
+      return { x, y, vx: (R() - 0.5) * 4, vy: -(4 + R() * 6), t: 0, life: 8 + R() * 6, c: R() < 0.5 ? '#c890ff' : '#6ae0d0', s: 1 };
+    case 'dust':
+      return { x, y, vx: 2 + R() * 3, vy: (R() - 0.5) * 2, t: 0, life: 6 + R() * 6, c: '#a8a096', s: 1 };
+    case 'snow':
+      return { x, y, vx: -3 + R() * 4, vy: 10 + R() * 10, t: 0, life: 10 + R() * 6, c: R() < 0.7 ? '#ffffff' : '#cfe8ff', s: R() < 0.3 ? 2 : 1 };
+    case 'star':
+      return { x, y, vx: (R() - 0.5) * 3, vy: -(6 + R() * 8), t: 0, life: 8 + R() * 6, c: R() < 0.6 ? '#ffd36b' : '#fff3c0', s: 1 };
+  }
+}
+function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean, LW: number, LH: number, W: (x: number, y: number) => [number, number]) {
+  const now = performance.now();
+  const dt = Math.min(0.1, Math.max(0, (now - lastT) / 1000));
+  lastT = now;
+  const low = saverOn();
+  // ── 빛 (입자 아래) ──
+  const [MX, MY] = W(f.me.x, f.me.y);
+  if (T.light === 'sun' && !deep) {
+    // 초록빛 햇살 줄기: 비스듬한 띠 3개가 천천히 흔들림
+    ctx.fillStyle = 'rgba(220,255,160,0.07)';
+    for (let i = 0; i < 3; i++) {
+      const x0 = ((i * 0.37 + 0.12) * LW + Math.sin(now / 4000 + i) * 8) | 0;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0);
+      ctx.lineTo(x0 + 18, 0);
+      ctx.lineTo(x0 + 18 + LH * 0.45, LH);
+      ctx.lineTo(x0 + LH * 0.45, LH);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (T.light === 'fog') {
+    // 탁한 보라 안개: 화면 전체 + 낮게 흐르는 띠
+    ctx.fillStyle = 'rgba(90,50,120,0.12)';
+    ctx.fillRect(0, 0, LW, LH);
+    if (!low)
+      for (let i = 0; i < 3; i++) {
+        const y = ((i * 0.33 + 0.2) * LH) | 0;
+        const x = (((now / 90 + i * 70) % (LW + 120)) - 60) | 0;
+        glowAt(ctx, x, y, 60, '150,100,180', 0.12);
+      }
+  } else if (T.light === 'lamp') {
+    // 등불 주변만 밝은 어둠: 어둠 판에 주인공·등불 자리만 뚫는다
+    const cv = (darkCv ??= document.createElement('canvas'));
+    if (cv.width !== LW || cv.height !== LH) (cv.width = LW), (cv.height = LH);
+    const x = cv.getContext('2d')!;
+    x.globalCompositeOperation = 'source-over';
+    x.clearRect(0, 0, LW, LH);
+    x.fillStyle = `rgba(4,2,8,${deep ? 0.66 : 0.52})`;
+    x.fillRect(0, 0, LW, LH);
+    x.globalCompositeOperation = 'destination-out';
+    const hole = (X: number, Y: number, r: number) => {
+      const g = x.createRadialGradient(X, Y, 0, X, Y, r);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(0.6, 'rgba(0,0,0,0.75)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g;
+      x.fillRect(X - r, Y - r, r * 2, r * 2);
+    };
+    hole(MX, MY - 12, 78 + Math.sin(now / 300) * 2);
+    for (const pr of edgeProps) if (pr.k === 'mine_beam') {
+      const [X, Y] = W(pr.x, pr.y);
+      hole(X, Y - 30, 44);
+    }
+    ctx.drawImage(cv, 0, 0);
+    for (const pr of edgeProps) if (pr.k === 'mine_beam') {
+      const [X, Y] = W(pr.x, pr.y);
+      glowAt(ctx, X, Y - 30, 30, '255,190,90', 0.18);
+    }
+  } else if (T.light === 'cold') {
+    ctx.fillStyle = 'rgba(110,170,240,0.09)';
+    ctx.fillRect(0, 0, LW, LH);
+  } else if (T.light === 'rise') {
+    // 바닥 균열에서 올라오는 금빛
+    const g = ctx.createLinearGradient(0, LH, 0, LH * 0.4);
+    g.addColorStop(0, `rgba(255,200,90,${deep ? 0.16 : 0.11})`);
+    g.addColorStop(1, 'rgba(255,200,90,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, (LH * 0.4) | 0, LW, Math.ceil(LH * 0.6));
+  }
+  // 깊은 곳: 가장자리를 더 어둡게
+  if (deep) {
+    const g = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.3, LW / 2, LH / 2, Math.max(LW, LH) * 0.7);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+  // ── 공기 입자 (저사양이면 끔) ──
+  if (low) return;
+  if (moteRegion !== f.region) {
+    moteRegion = f.region;
+    motes.length = 0;
+    for (let i = 0; i < MOTES; i++) motes.push(spawnMote(T.particle, LW, LH, true));
+  }
+  for (let i = 0; i < motes.length; i++) {
+    const m = motes[i];
+    m.t += dt;
+    const sway = T.particle === 'leaf' && m.s === 2 ? Math.sin(m.t * 3 + i) * 8 : T.particle === 'snow' ? Math.sin(m.t * 2 + i) * 4 : 0;
+    m.x += (m.vx + sway) * dt;
+    m.y += m.vy * dt;
+    if (m.t > m.life || m.x < -8 || m.x > LW + 8 || m.y < -8 || m.y > LH + 8) {
+      motes[i] = spawnMote(T.particle, LW, LH, false);
+      continue;
+    }
+    // 반딧불·별 가루는 깜빡
+    const blink = (T.particle === 'leaf' && m.s === 1) || T.particle === 'star' ? Math.sin(m.t * 5 + i) > -0.3 : true;
+    if (!blink) continue;
+    ctx.fillStyle = m.c;
+    ctx.fillRect(Math.round(m.x), Math.round(m.y), m.s, m.s);
+  }
+  // 얼음 협곡: 숨결 김 (주인공 머리 옆 하얀 점 몇 개)
+  if (T.light === 'cold') {
+    const ph = (now / 1600) % 1;
+    if (ph < 0.5) {
+      ctx.fillStyle = `rgba(255,255,255,${0.6 * (1 - ph * 2)})`;
+      const k = Math.round(ph * 10);
+      ctx.fillRect(MX + 4 + k, MY - 22 - (k >> 1), 2, 1);
+      ctx.fillRect(MX + 6 + k, MY - 23 - (k >> 1), 1, 1);
+    }
+  }
+}
+let darkCv: HTMLCanvasElement | null = null;

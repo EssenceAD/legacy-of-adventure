@@ -12,6 +12,7 @@ import { ACTION_NAME, actionOf, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor
 import { getPref, setPref } from '../save/save';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, drawVignette, labelsOut, loadFx, numsOut, sheets } from './draw';
+import { loadHuntProps } from './theme';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
@@ -132,7 +133,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     ids.add(opts.raid.look.id);
     ids.add(opts.raid.look.minion);
   }
-  await Promise.all([...[...ids].filter((id) => !id.startsWith('old_')).map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx()]);
+  await Promise.all([...[...ids].filter((id) => !id.startsWith('old_')).map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx(), loadHuntProps()]);
   // 심연의 눈: 옛 그림 한 장으로 (모든 동작이 같은 그림 · 오른쪽을 보게 뒤집음)
   if (ids.has('old_eye') && !sheets.old_eye && BOSS_IMG.eye) {
     const im = BOSS_IMG.eye;

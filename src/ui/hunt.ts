@@ -1,5 +1,6 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
 import { battleMusic } from './sound';
+import { themeOf } from '../combat/theme';
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
@@ -55,7 +56,7 @@ export function openHunt(region?: RegionId) {
   // 전투 2차: 5지역 × 10스테이지 모두 새 전투
   const tabs = REGIONS.map((r, i) => {
     const open = huntRegionOpen(i);
-    return `<button class="tab ${r.id === curRegion ? 'on' : ''} ${open ? '' : 'locked'}" data-r="${r.id}">${open ? r.name : `🔒 ${r.name}`}</button>`;
+    return `<button class="tab ${r.id === curRegion ? 'on' : ''} ${open ? '' : 'locked'}" data-r="${r.id}" style="--rc:${themeOf(r.id).band}">${open ? r.name : `🔒 ${r.name}`}</button>`;
   }).join('');
   const b = best(curRegion);
   const cells = Array.from({ length: H.stages }, (_, i) => {
@@ -72,7 +73,7 @@ export function openHunt(region?: RegionId) {
     '사냥터',
     `<div class="tabs">${tabs}</div>
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
-    <div class="hmap">${cells}</div>
+    <div class="hmap" style="--rc:${themeOf(curRegion).band}">${cells}</div>
     <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
     <p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
