@@ -2,7 +2,6 @@
 //  도감 10/25/50/75/100% · 케미 단계 · 영웅 ★ 때 큰 카드
 import { CONFIG } from '../data/config';
 import { HEROES } from '../data/heroes';
-import { CHEM_PAIRS } from '../data/chem';
 import { powerOf } from './adventurers';
 import { dexBonus, heroStarBonus } from './progress';
 import { codexPct } from '../net/sync';
@@ -50,12 +49,7 @@ export function tickPower(dt: number) {
     const why = (Object.keys(c) as (keyof typeof c)[]).filter((k) => c[k] > (pw.comps[k] ?? 0)).map((k) => REASON[k]);
     powerHooks.up(pw.shown, now, why.slice(0, 2).join(' · ') || '성장');
   }
-  // 큰 카드: 케미 단계 · 영웅 ★
-  if (c.chem > (pw.comps.chem ?? c.chem)) {
-    const top = Object.values(P.bonds).sort((a, b) => b.lv - a.lv)[0];
-    const pair = CHEM_PAIRS.find((p) => p.id === top?.pair);
-    powerHooks.card(`케미 「${pair?.name ?? '???'}」 ${top?.lv ?? 1}단계`, `같이 원정 가면 전투력 +${Math.round((top?.lv ?? 1) * CONFIG.chem.partyBonusPerLevel * 100)}%`);
-  }
+  // 큰 카드: 영웅 ★ (핫픽스 12 §6: 케미 단계는 띠 대신 대화·소식으로)
   if (c.stars > (pw.comps.stars ?? c.stars)) {
     const h = HEROES.find((x) => P.dex.heroes[x.id]?.recruited && P.dex.heroes[x.id].stars > 1);
     powerHooks.card(`${h?.name ?? '영웅'} ★ 상승`, `전 영웅 전투력 +${Math.round(CONFIG.dex.heroStarPct * 100)}%`);

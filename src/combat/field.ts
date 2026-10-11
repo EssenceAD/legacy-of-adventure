@@ -8,7 +8,8 @@ import { framesFor, type CharFrames } from '../engine/sprites';
 import { TH, TW } from '../engine/iso';
 import { sfx } from '../audio/sfx';
 import { recPower } from '../world/hunt';
-import { pairOf } from '../world/chem';
+import { bondOf, pairOf } from '../world/chem';
+import { ultName5 } from '../world/chemNews';
 import { addToBag, makeItem, rollGrade } from '../world/items';
 import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
@@ -189,6 +190,8 @@ export interface Field {
   /** 필살기 컷인 (0.5초 멈춤) */
   ult: number;
   ultName: string;
+  /** 핫픽스 12 §6: 5단계 짝 전용 합동 오의인가 */
+  ult5?: boolean;
   hitsTaken: number;
   autoUsed: boolean;
   auto: boolean;
@@ -724,7 +727,18 @@ export function ultimate(f: Field) {
   f.ult = 0.5;
   const live = f.allies.filter((a) => !a.dead);
   let name = '합동기';
+  f.ult5 = false;
   for (const a of live) for (const b of live) if (a !== b && a.actor && b.actor && pairOf(a.actor, b.actor)) name = `${pairOf(a.actor, b.actor)!.name} · 합동기`;
+  // 핫픽스 12 §6: 친밀도 5단계 짝이 같이 있으면 그 짝 전용 「합동 오의」 (+20%)
+  for (const a of live)
+    for (const b of live)
+      if (a !== b && a.actor && b.actor && bondOf(a.actor, b.actor)?.lv === 5) {
+        const p = pairOf(a.actor, b.actor);
+        if (p) {
+          name = ultName5(p);
+          f.ult5 = true;
+        }
+      }
   f.ultName = name;
   sfx('skill');
 }
@@ -733,7 +747,7 @@ function ultHit(f: Field) {
   shake(f, C.shake.boss);
   for (const m of mobsAlive(f)) {
     f.fx.push({ kind: 'boom', x: m.x, y: m.y, t: 0, dur: 0.4, r: 0.8 });
-    hurtMob(f, m, (sum / 3) * C.dmgK * C.ultMult, f.me, { crit: true, knock: 2, silent: true });
+    hurtMob(f, m, (sum / 3) * C.dmgK * C.ultMult * (f.ult5 ? 1.2 : 1), f.me, { crit: true, knock: 2, silent: true });
   }
   sfx('crit');
 }

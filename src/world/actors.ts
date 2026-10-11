@@ -8,6 +8,7 @@ import { sx, sy } from '../engine/iso';
 import { blankActor, gainXp, makeAdventurer, makeHero } from './adventurers';
 import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
 import { orderPair } from '../data/chem';
+import { chemTalk, notifyChem } from './chemNews';
 import { absHours, hourNow, onNewDay } from './clock';
 import { queueEvent } from './events';
 import { dueRuns, resolveRun } from './expeditions';
@@ -462,26 +463,15 @@ function chem(a: Actor): boolean {
   track('chem');
   markDirty();
   later(1.9, () => floatW((f.x + s.x) / 2, (f.y + s.y) / 2, 34, g?.discovered ? '새 케미 발견!' : '♥ 케미 +1', g?.discovered ? 'heart big' : 'heart'));
-  if (g?.discovered) uiHooks.toast(`새 케미 발견! 「${pair.name}」 — ${f.name} & ${s.name}`);
-  if (g?.levelUp) queueChemTalk(f, s, g.levelUp);
+  // 핫픽스 12 §6: 마을 만남은 조용히 — ♥ 말풍선만, 대화창 대신 「케미 소식」
+  if (g) notifyChem(g, 'town');
   return true;
 }
 
 /** 친밀도 단계가 오르면 짧은 대화 이벤트 */
 export function queueChemTalk(a: Actor, b: Actor, lv: number) {
-  const pair = pairOf(a, b);
-  if (!pair) return;
-  // 핫픽스 11 §10: 들어온 순서가 아니라 대사 역할 순서로
-  const [f, s] = orderPair(pair, a, b);
-  const t = pair.talks[lv - 2];
-  if (!t) return;
-  queueEvent(() =>
-    uiHooks.talk([
-      ['narr', `「${pair.name}」 ${f.name} & ${s.name} — 친밀도 ${lv}단계!`],
-      ['@' + f.id, t[0]],
-      ['@' + s.id, t[1]],
-    ]),
-  );
+  // 핫픽스 11 §10: 대사 역할 순서는 chemTalk가 맞춘다 (핫픽스 12 §6: 알림 규칙은 notifyChem)
+  if (pairOf(a, b)) chemTalk(a, b, lv);
 }
 
 let chemWait = 0;
@@ -904,8 +894,8 @@ function updRuns(dt: number) {
   for (const r of dueRuns()) {
     const bonds: BondGain[] = [];
     resolveRun(r, bonds);
-    for (const g of bonds) if (g.levelUp) queueChemTalk(g.a, g.b, g.levelUp);
-    if (bonds.some((g) => g.discovered)) uiHooks.toast('원정에서 새 케미 발견!');
+    // 핫픽스 12 §6: 같이 다녀온 짝 — 3·5단계·처음 발견만 대화창 (하루 3번), 나머지는 소식 + 결과 창 한 줄
+    for (const g of bonds) notifyChem(g, 'party');
     returnParty(r);
     markDirty();
   }

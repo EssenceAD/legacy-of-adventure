@@ -1139,3 +1139,14 @@ i.fit.no{color:#8a8fa8;opacity:.75}
 .irow small i.fit{display:inline;margin-left:6px}
 .ic b.lk{position:absolute;right:-4px;top:-6px;font-size:10px;line-height:1;filter:drop-shadow(1px 1px 0 #000)}
 .equp{display:block;margin:8px auto}
+/* 핫픽스 12 §6: 케미 — 파티 창 ♥ 줄 · 케미 소식 · 5단계 보상 */
+.cpairs{display:flex;flex-direction:column;gap:3px;margin:6px 0}
+.cpair{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--f-small)}
+.cpair i{font-style:normal;color:#ff7a9a;letter-spacing:-1px}
+.cpair small{color:#ffb3c4;margin-left:auto}
+.chemnews>div{display:flex;justify-content:space-between;gap:8px;padding:5px 2px;border-bottom:1px dashed #3a3f5c;font-size:var(--f-small)}
+.chemnews>div.new{color:#ffd0dc}
+.chemnews small{color:#8a8fa8;flex:none}
+.tab i.tdot{display:inline-block;width:7px;height:7px;background:var(--red);vertical-align:top;margin-left:2px}
+.chemrow small.r5{display:block;color:#b39ad8;opacity:.8}
+.chemrow small.r5.got{color:#ffd36b;opacity:1}

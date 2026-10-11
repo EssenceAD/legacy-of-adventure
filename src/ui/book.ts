@@ -14,7 +14,8 @@ import { LEGENDS } from '../data/legends';
 import { HARMONIES } from '../data/harmony';
 import { hintLv, hintText, partsText } from '../world/harmony';
 import { PORTRAITS } from '../engine/assets';
-import { $$, bindTabs, claimOrder, fmt, keepScroll, pct, tabs } from './common';
+import { $$, bindTabs, claimOrder, esc, fmt, keepScroll, pct, tabs } from './common';
+import { CHEM_TALKS_PER_DAY, chemUnread, readChemNews, title5, ultName5 } from '../world/chemNews';
 import { openWin, toast } from './windows';
 import { openPlace, type Place } from './nav';
 
@@ -67,7 +68,8 @@ export function openDex(tab = dTab) {
       const found = P.dex.chem.includes(p.id);
       const best = Math.max(0, ...Object.values(P.bonds).filter((b) => b.pair === p.id).map((b) => b.lv));
       const name = found || p.open ? p.name : '???';
-      return `<div class="chemrow ${found ? 'on' : ''}"><b>${name}</b><small>${found ? `${p.hint} · 최고 ${'♥'.repeat(best)}` : p.open ? p.hint : '마을이나 원정에서 우연히 발견돼요'}</small></div>`;
+      const got5 = P.chem5.includes(p.id);
+      return `<div class="chemrow ${found ? 'on' : ''}"><b>${name}</b><small>${found ? `${p.hint} · 최고 ${'♥'.repeat(best)}` : p.open ? p.hint : '마을이나 원정에서 우연히 발견돼요'}</small>${found || p.open ? `<small class="r5 ${got5 ? 'got' : ''}">5단계 보상: 합동 오의 「${esc(ultName5(p))}」 · 칭호 「${esc(title5(p))}」${got5 ? ' ✓' : ''}</small>` : ''}</div>`;
     }).join('');
     body = `<p class="sub">케미 ${P.dex.chem.length}/${CHEM_PAIRS.length} 발견 · 같이 원정 가면 친밀도 단계 × ${pct(CONFIG.chem.partyBonusPerLevel)}</p><div class="chems">${rows}</div>`;
   } else if (tab === 4) {
@@ -195,6 +197,14 @@ export function openLedger(tab = lTab) {
     body = `<p class="sub">${S.day}일차 · 오늘의 수입</p>${rows
       .map(([n, v, c]) => `<div class="bar"><span>${n}</span><i><b style="width:${Math.round((v / max) * 100)}%;background:${c}"></b></i><em>${fmt(v)}</em></div>`)
       .join('')}<p class="ledger-total">합계 ${fmt(total)} G</p><p class="note">아침 6시가 되면 새 장부가 시작돼요</p>`;
+  } else if (tab === 2) {
+    // 핫픽스 12 §6: 대화창 대신 모아 둔 케미 소식
+    const list = P.chemNews.list;
+    const unread = P.chemNews.unread;
+    body = `<p class="sub">마을에서 만나 오른 친밀도와 하루 ${CHEM_TALKS_PER_DAY}번을 넘긴 케미 이야기가 여기 모여요 · 설정에서 「케미 알림」을 바꿀 수 있어요</p>${
+      list.length ? `<div class="chemnews">${list.map((n, i) => `<div class="${i < unread ? 'new' : ''}">${esc(n.text)}<small>${ago(n.t)}</small></div>`).join('')}</div>` : '<p class="note">아직 소식이 없어요</p>'
+    }`;
+    readChemNews();
   } else {
     const days = P.week.slice(-7);
     const max = Math.max(1, ...days.map((d) => d.gold));
@@ -205,6 +215,12 @@ export function openLedger(tab = lTab) {
           .join('')}<p class="ledger-total">이번 주 합계 ${fmt(total)} G · 하루 평균 ${fmt(total / days.length)} G</p>`
       : '<p class="note">하루가 지나면 이번 주 장부가 쌓여요</p>';
   }
-  openWin('장부', `${tabs(['오늘', '이번 주'], tab, 'lT')}${body}`);
+  openWin('장부', `${tabs(['오늘', '이번 주', `케미 소식${tab !== 2 && chemUnread() ? ' <i class="tdot"></i>' : ''}`], tab, 'lT')}${body}`);
   bindTabs('lT', openLedger);
+}
+
+/** 핫픽스 12 §6: 「3분 전」 */
+function ago(t: number): string {
+  const m = Math.floor((Date.now() - t) / 60000);
+  return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
 }

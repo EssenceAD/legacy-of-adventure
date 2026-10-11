@@ -23,6 +23,8 @@ import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
 import { upgradeBtn } from './guests';
 import { checkSlot5 } from '../world/meta';
+import { bondOf } from '../world/chem';
+import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
 
@@ -143,6 +145,7 @@ function openParty(q: Quest, picked: number[] = []) {
         ? `파티 전투력 <b class="${short ? 'bad' : 'good'}">${fmt(info.power)}</b> / ${fmt(q.power)}${info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''}<br>성공률 <b>${q.tutorial ? '100%' : pct(info.success)}</b> · 걸리는 시간 ${durText(info.minutes)}`
         : '함께 갈 손님을 골라요'
     }</div>
+    ${chemLine(sel)}
     ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
     <button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
   );
@@ -236,6 +239,19 @@ function partyRow(run: Run): string {
   return `<div class="repparty">${ms.map((a) => `<span><img src="${portrait(a)}" alt=""><small>${esc(a.name)}</small></span>`).join('')}</div>`;
 }
 
+/** 핫픽스 12 §6: 파티에 같이 들어간 케미 짝 — ♥ 줄과 배율을 바로 보여 준다 (사냥 준비 창도 씀) */
+export function chemLine(sel: Actor[]): string {
+  const rows: string[] = [];
+  for (let i = 0; i < sel.length; i++)
+    for (let j = i + 1; j < sel.length; j++) {
+      const bd = bondOf(sel[i], sel[j]);
+      const p = bd && pairById(bd.pair);
+      if (!bd || !p || !P.dex.chem.includes(p.id)) continue;
+      rows.push(`<div class="cpair"><span>${esc(sel[i].name)}</span><i>${'♥'.repeat(bd.lv)}</i><span>${esc(sel[j].name)}</span><small>「${esc(p.name)}」 케미 ×${(1 + bd.lv * CONFIG.chem.partyBonusPerLevel).toFixed(2)}</small></div>`);
+    }
+  return rows.length ? `<div class="cpairs">${rows.join('')}</div>` : '';
+}
+
 /** 핫픽스 12 §3: 5번째 자리 — 처음 열렸을 땐 「열림!」, 아직이면 조건 안내 */
 function slot5Banner(): string {
   if (P.meta.slot5) {
@@ -260,6 +276,7 @@ function showLoot(run: Run) {
     ${run.quest.tutorial ? '' : upgradeBtn(res.items, run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[])}
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
     ${res.newChem.length ? `<p class="sub heart">새 케미 발견! ${res.newChem.map(esc).join(', ')}</p>` : ''}
+    ${res.chemUps?.length ? `<p class="sub heart">${res.chemUps.map(esc).join(' · ')}</p>` : ''}
     <button class="bigbtn" id="repOk">받기</button>`,
   );
   $('#repOk').onclick = () => {

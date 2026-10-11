@@ -207,6 +207,8 @@ export interface RunResult {
   report: [string, string, string?][];
   levelUps: string[];
   newChem: string[];
+  /** 핫픽스 12 §6: 결과 창 한 줄 「♥ 수호의 맹세 4단계」 */
+  chemUps?: string[];
 }
 
 export type IncomeKind = 'sleep' | 'drink' | 'forge' | 'bath' | 'dungeon' | 'stall';
@@ -320,6 +322,9 @@ export function freshProgress() {
     bossMats: {} as Record<string, number>,
     trophies: [] as string[],
     titles: [] as string[],
+    /** 핫픽스 12 §6: 케미 소식(대화창 대신 모아 두기) · 오늘 띄운 케미 대화 수 · 5단계를 찍은 짝 */
+    chemNews: { list: [] as { t: number; text: string }[], unread: 0, day: '', shown: 0 },
+    chem5: [] as string[],
     /** 전설 영웅: 소문 → 인연 게이지 → 방문 → 영입 */
     legends: {} as Record<string, LegendState>,
     /** 마지막으로 밤 방문 판정을 한 실제 날짜, 운명의 별을 잡은 실제 날짜, 새벽 접속을 센 날짜 */

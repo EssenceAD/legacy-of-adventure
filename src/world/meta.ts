@@ -13,6 +13,7 @@ import { regionUnlocked, slot5Ready } from './expeditions';
 import { stars, today } from './progress';
 import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
+import { chem5Titles, title5 } from './chemNews';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -85,6 +86,7 @@ export function titlesOwned(): { t: string; from: string }[] {
   for (const s of HERO_SETS) if (s.members.every((m) => P.dex.heroes[m]?.recruited)) out.push({ t: s.title, from: `영웅 세트 「${s.name}」` });
   if (P.legacy.album.length) out.push({ t: '이야기를 끝맺은 자', from: '엔딩 1개 이상' });
   if (P.guide.claimed.length >= 40) out.push({ t: '버나드의 후계자', from: '장부 7장' });
+  for (const p of chem5Titles()) out.push({ t: title5(p), from: `케미 「${p.name}」 5단계` });
   const seen = new Set<string>();
   return out.filter((x) => (seen.has(x.t) ? false : (seen.add(x.t), true)));
 }

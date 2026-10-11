@@ -243,7 +243,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
       bondGains.push(g);
       if (g.discovered) newChem.push(g.pair.name);
     }
-  const result: RunResult = { win, gold, xp, mats, items, report: [...buildReport(members, q.region, win, items), ...extra], levelUps, newChem };
+  const chemUps = bondGains.filter((g) => g.levelUp).map((g) => `♥ ${g.pair.name} ${g.levelUp}단계`);
+  const result: RunResult = { win, gold, xp, mats, items, report: [...buildReport(members, q.region, win, items), ...extra], levelUps, newChem, chemUps };
   run.result = result;
   return result;
 }

@@ -31,6 +31,8 @@ import { screen, setFontStep } from './screen';
 import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
+import { setPref } from '../save/save';
+import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysFor, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
 const has = (k: string) => (world.home?.objs ?? world.objs).some((o) => o.kind === k && o.build === undefined);
@@ -55,7 +57,7 @@ function groups(): [string, Item[]][] {
       { icon: 'm_bag', name: '가방', open: () => openBag() },
       { icon: 'm_smith', name: '대장간', open: () => openPlace('smith'), lock: gate('smith') ?? (has('smith') ? null : '대장간을 지으면') },
       { icon: 'm_garden', name: '텃밭', open: () => openPlace('garden'), lock: gate('garden') ?? (has('garden') ? null : '텃밭을 지으면') },
-      { icon: 'm_dex', name: '수입 장부', open: () => openLedger() },
+      { icon: 'm_dex', name: '수입 장부', open: () => openLedger(chemUnread() ? 2 : undefined), dot: chemUnread() > 0 },
     ]],
     ['모험', [
       { icon: 'm_quest', name: '임무(장부)', open: () => openGuideList() },
@@ -304,7 +306,7 @@ export function openSettings() {
   openWin(
     '설정',
     `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p></div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
+    <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
@@ -327,6 +329,12 @@ export function openSettings() {
   $('#mLetter').onclick = () => openReport();
   $('#mKeys').onclick = () => openKeys();
   bindSoundSettings();
+  ($('#mChem') as HTMLSelectElement).onchange = (e) => {
+    const v = (e.target as HTMLSelectElement).value;
+    setPref('chemNotice', v);
+    trackEv('chem_notice', { mode: v });
+    toast(`케미 알림: ${CHEM_NOTICE_NAME[v as ChemNotice]}`);
+  };
   ($('#mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
   ($('#mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
   $('#mHints').onclick = () => {
