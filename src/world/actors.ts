@@ -1,5 +1,6 @@
 // 손님 상태기계: 욕구(체력·배고픔·기분)를 채우러 다닌다 · 입구로 도착/떠남 · 단골 제안 · 영웅 · 케미 · 원정 파티 걷기
 import { def, INSIDE_TEXT, type Act } from '../data/catalog';
+import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
 import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
@@ -675,6 +676,8 @@ function heroArrive(id: string) {
       ['narr', `방랑자의 서 — 「${h.title}」 ${h.name}${josa(h.name, "가")} 나타났다!`],
       ...h.intro.map((t) => ['hero_' + h.id, t, undefined, h.name] as [string, string, undefined, string]),
       ['hero_' + h.id, `부탁: ${h.request.text}`, undefined, h.name],
+      // STORY_V1: 2회차부터 오스윈의 기억 대사
+      ...(id === 'oswin' ? storyLines(cycleLines('oswinArrive') ?? []).map((x) => x.line) : []),
     ]),
   );
 }

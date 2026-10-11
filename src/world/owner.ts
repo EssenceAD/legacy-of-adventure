@@ -1,5 +1,6 @@
 // 4단계: 여관 주인(나) · 인연(호감도) · 방랑의 불씨 · 엔딩 · 유산
 import { sfx } from '../audio/sfx';
+import { grantLegacy } from './story';
 // 주인 능력치는 전투력에 「주인 보너스 최대 +15%」로만 들어가고, 인연 단계는 그 영웅 전투력 +2%/단계.
 // 다른 world 모듈이 import해도 꼬이지 않게: state · data · events · clock · progress만 쓴다. 창은 ownerHooks로.
 import { BONDS, bondById, GIFTS, REPLY, STAGE_NAMES, type BondDef, type GiftKey, type ReplyStyle } from '../data/bonds';
@@ -560,6 +561,8 @@ export function finishEnding(kind: 'go' | 'solo' | 'stay', partner: string | nul
     ids.push('adv_' + partner);
   }
   if (!ids.length) return;
+  // STORY_V1 §5: 엔딩마다 유산 포인트(처음 보는 엔딩은 더) · 기억 조각 하나
+  grantLegacy(ids, ids.filter((id) => !P.legacy.album.includes(id)));
   for (const id of ids) {
     if (!P.legacy.seen.includes(id)) P.legacy.seen.push(id);
     if (!P.legacy.album.includes(id)) P.legacy.album.push(id);

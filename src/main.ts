@@ -1,5 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { initStoryUI, playStory, tapYuan } from './ui/story';
+import { cycleLines } from './world/story';
 import { ripeCount } from './world/craft';
 import { initFacilitiesUI } from './ui/facilities';
 import { CONFIG } from './data/config';
@@ -422,6 +424,9 @@ function catchStarAt(e: PointerEvent) {
   const [fx, fy] = toTile(cv, e.clientX, e.clientY);
   floatW(fx, fy, 30, '★ 운명의 별!', 'big');
   trackEv('star_catch', {});
+  // STORY_V1: 2회차부터 첫 별에 모모의 기억 대사
+  const cy = cycleLines('firstStar');
+  if (cy) playStory(cy);
 }
 
 function tap(e: PointerEvent) {
@@ -455,6 +460,8 @@ function tap(e: PointerEvent) {
       if (S.visiting) return;
       openReport();
     } else if (best.role === 'owner') openOwner();
+    // STORY_V1: 후계자 유안 — 말을 걸면 엔딩
+    else if (best.role === 'yuan') tapYuan();
     else showActor(best);
     return;
   }
@@ -562,6 +569,8 @@ async function boot() {
   initDialogue();
   initHud();
   initOwnerUi();
+  // STORY_V1: 막 · 갈림길 · 엔딩
+  initStoryUI();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu(), eval: () => openEval() });

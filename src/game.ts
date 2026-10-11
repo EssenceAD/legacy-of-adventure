@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { initStory } from './world/story';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
@@ -138,6 +139,8 @@ export function newGame() {
     // 1일차 06:00부터
     S.day = 1;
     S.clock = 0;
+    // STORY_V1: 1막부터
+    initStory(true);
     settleNight();
     S.nightT = 1;
     P.lastSeen = Date.now();
@@ -183,6 +186,8 @@ export function continueGame() {
   hideTitle();
   resetScene();
   applySave(save);
+  // STORY_V1: 옛 저장은 진행도로 막 추정 · 유산 포인트·기억 채우기
+  initStory(false);
   S.started = true;
   S.nightT = S.night ? 1 : 0;
   resetCamera();

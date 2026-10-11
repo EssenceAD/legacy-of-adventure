@@ -67,7 +67,7 @@ export interface Actor {
   /** 애니메이션 위상 (모두 같은 박자로 움직이지 않게) */
   ph: number;
   /** npc = 우체부 모모, keeper = 오프닝의 노주인, owner = 여관 주인(나) */
-  role?: 'npc' | 'keeper' | 'owner';
+  role?: 'npc' | 'keeper' | 'owner' | 'yuan';
   path: [number, number][] | null;
   then?: (() => void) | null;
   lvl: number;

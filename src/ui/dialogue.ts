@@ -26,6 +26,9 @@ interface Talk {
   duo?: string;
   /** 인연 단계가 오르는 긴 대화 — 이때만 곡 15 */
   bondUp?: boolean;
+  /** STORY_V1: 줄마다 연출(fx) · 이 시각(ms)까지 다음 줄로 못 넘김(wait) */
+  onLine?: (i: number) => void;
+  hold?: number;
 }
 
 /** 나(주인)의 초상화 · 이름. 'me'는 늘 나, 오프닝의 'hero'도 주인이 있으면 나 */
@@ -55,6 +58,19 @@ export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
   $('#dlg').hidden = false;
   $('#view').classList.add('talking');
   showLine();
+}
+
+/** STORY_V1: 막 컷 · 엔딩 컷 — 줄이 뜰 때마다 onLine(줄 번호) (연출 · 기다림) */
+export function talkStory(lines: Line[], onLine: (i: number) => void, done?: () => void) {
+  talk(lines, done);
+  if (DQ) {
+    DQ.onLine = onLine;
+    onLine(0);
+  }
+}
+/** 지금 줄을 ms 동안 못 넘기게 (대사의 wait) */
+export function holdLine(ms: number) {
+  if (DQ) DQ.hold = Date.now() + ms;
 }
 
 /** 인연 이벤트: 나(왼쪽)와 그 사람(오른쪽) 초상화가 마주본다 */
@@ -181,13 +197,14 @@ export function nextLine() {
     else askChoice();
     return;
   }
-  if (DQ.wait) return;
+  if (DQ.wait || Date.now() < (DQ.hold ?? 0)) return;
   DQ.i++;
   if (DQ.i >= DQ.lines.length) {
     endTalk();
     return;
   }
   showLine();
+  DQ?.onLine?.(DQ.i);
 }
 
 /** 건너뛰기 — 이름을 아직 안 지었으면 이름 짓기 줄로 */

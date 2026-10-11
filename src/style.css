@@ -1199,3 +1199,30 @@ p.qtag.ok{color:#8fe08f}
 .huntw .tab[data-r]::after{content:'';position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:var(--rc);pointer-events:none}
 .huntw .tab[data-r].locked::after{opacity:.35}
 .huntw .hmap .hst::before{content:'';position:absolute;left:4px;top:5px;bottom:5px;width:3px;background:var(--rc);pointer-events:none}
+
+/* STORY_V1: 컷 연출 (밤 · 새벽 · 계절 · 장부 · 사진) */
+#storyFx{position:absolute;inset:0;z-index:40;pointer-events:none;transition:background-color 1.2s}
+#storyFx.night{background:rgba(10,14,48,.5)}
+#storyFx.dawn{background:rgba(255,170,110,.2);animation:sdawn 3s ease forwards}
+@keyframes sdawn{from{background:rgba(40,30,80,.45)}to{background:rgba(255,190,120,.12)}}
+#storyFx .sea{position:absolute;inset:0;mix-blend-mode:soft-light;animation:sseason 4.8s steps(1) forwards}
+@keyframes sseason{0%{background:rgba(255,150,190,.55)}25%{background:rgba(80,220,90,.55)}50%{background:rgba(240,130,40,.6)}75%{background:rgba(220,240,255,.85)}100%{background:transparent}}
+#storyFx.ledger .ledg{position:absolute;left:50%;top:34%;width:96px;height:96px;margin-left:-48px;image-rendering:pixelated;animation:sledg 2.4s ease forwards}
+@keyframes sledg{0%{transform:scale(.3);opacity:0}25%{transform:scale(1);opacity:1}80%{opacity:1}100%{opacity:0}}
+#storyFx.flash{animation:sflash .6s ease}
+@keyframes sflash{0%{background:rgba(255,255,255,.9)}100%{background:transparent}}
+/* 모모의 편지 · 갈림길 · 엔딩 카드 · 시작 선물 */
+.sletter{display:flex;flex-direction:column;gap:8px;line-height:1.55}
+.sletter .ask{color:#ffd36b;font-weight:700}
+.sroute.lock{opacity:.6}
+.sroute small.good{color:#8fe08f}
+.stp.done b{color:#8fe08f}
+.stp.lock{opacity:.55}
+.sendc{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;margin-bottom:8px}
+.sendc small{color:#e2aa4e}.sendc b{font-size:var(--f-big,18px);color:var(--cream)}.sendc p{line-height:1.5}
+.sthumb{width:100%;max-width:240px;image-rendering:auto;box-shadow:0 0 0 2px #1c1018,0 0 0 4px #e2aa4e;margin-bottom:6px}
+.ecard .sthumb{max-width:120px;box-shadow:0 0 0 1px #1c1018}
+.sgifts{display:flex;flex-direction:column;gap:4px}
+.sgift{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:6px 8px}
+.sgift.on{box-shadow:inset 3px 0 0 #ffd36b}
+.sgift small{opacity:.85}

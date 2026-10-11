@@ -2,6 +2,8 @@
 // 카드를 누르면: 다 했으면 받기(버나드 한마디 → 다음 임무), 아니면 그곳을 열고 손가락이 버튼을 가리킨다.
 // 1~3장은 창이 없을 때 손가락이 저절로 다음 버튼을 가리킨다.
 import { CHAPTERS, GRADE_NAMES } from '../data/guide';
+import { playStory, storyCard, storyWaitNote } from './story';
+import { cycleLines } from '../world/story';
 import { clock, conLeft } from '../world/construct';
 import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, rewardText, skipDone , guideCtx } from '../world/guide';
 import { P, S, uiHooks, type TalkLine } from '../world/state';
@@ -85,13 +87,20 @@ function playCut(then: () => void) {
   if (!m || P.guide.cut >= m.ch) return then();
   P.guide.cut = m.ch;
   const c = chapterOf(m.ch);
-  talk([['narr', `버나드의 장부 · ${c.no}장 「${c.name}」`], ...c.cut.map((t) => ['keeper', t, undefined, '노주인 버나드'] as TalkLine)], then);
+  const cut = () => talk([['narr', `버나드의 장부 · ${c.no}장 「${c.name}」`], ...c.cut.map((t) => ['keeper', t, undefined, '노주인 버나드'] as TalkLine)], then);
+  // STORY_V1: 2회차부터 둘째 장을 펼칠 때 버나드의 기억 대사
+  const cy = c.no === 2 ? cycleLines('chapter2') : null;
+  if (cy) return playStory(cy, cut);
+  cut();
 }
 
 function onCard() {
   if (isTalking()) return;
   const m = currentMission();
   if (!m) {
+    // STORY_V1: 모모의 편지 · 갈림길 장이 먼저
+    const sc = storyCard();
+    if (sc) return sc.go();
     const g = growthGoal();
     if (g) openPlace(g.place);
     return;
@@ -174,11 +183,21 @@ export function syncGuide(force = false) {
   const m = currentMission();
   // 장부를 다 마쳤으면 성장 목표 카드
   if (!m && S.started && !S.visiting && !document.querySelector('.battle, .cbt')) {
+    // STORY_V1: 장부 「갈림길」 장 (편지 · 은퇴 목표)
+    const sc = storyCard();
+    if (sc) {
+      card.hidden = false;
+      card.classList.toggle('done', sc.done);
+      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>${esc(sc.label)}</small><b>${esc(sc.title)}</b><em>${esc(sc.em)}</em></span>`;
+      if (card.innerHTML !== html) card.innerHTML = html;
+      hideHand();
+      return;
+    }
     const g = growthGoal();
     if (g) {
       card.hidden = false;
       card.classList.remove('done');
-      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>성장 목표</small><b>${esc(g.title)}</b><em>${conLine(g.kind) ?? `${Math.min(g.cur(), g.need)}/${g.need}`}</em></span>`;
+      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>성장 목표${storyWaitNote()}</small><b>${esc(g.title)}</b><em>${conLine(g.kind) ?? `${Math.min(g.cur(), g.need)}/${g.need}`}</em></span>`;
       if (card.innerHTML !== html) card.innerHTML = html;
       hideHand();
       return;
@@ -202,7 +221,7 @@ export function syncGuide(force = false) {
   const inCh = ch.missions.findIndex((x) => x.id === m.id) + 1;
   // 핫픽스 8: 건설 임무인데 지금 땅에 놓을 자리가 없으면 알려 준다 (누르면 건설 → 자리 정리 도우미)
   const cramped = !pr.done && m.build && !findKind(m.build) && !hasSpot(m.build);
-  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : cramped ? '자리 부족 · 눌러서 정리' : `${m.note ? m.note(guideCtx()) : `${pr.cur}/${pr.need}`}${waitNote(m.place)}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
+  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}${storyWaitNote()}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : cramped ? '자리 부족 · 눌러서 정리' : `${m.note ? m.note(guideCtx()) : `${pr.cur}/${pr.need}`}${waitNote(m.place)}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
   // 손가락: 1~3장은 창·대화가 없을 때 저절로, 그 뒤엔 카드를 눌렀을 때만
   const auto = m.ch <= 3 && !pr.done && !isWinOpen() && !isTalking();
   const sel = Date.now() < handUntil ? handTarget : auto ? PLACE_BTN[m.place] ?? null : pr.done ? '#mission' : null;

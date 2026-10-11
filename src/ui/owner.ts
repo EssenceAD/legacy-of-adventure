@@ -1,5 +1,8 @@
 // 4단계 화면: 「당신은 누구였나요?」(주인 만들기·출신 컷) · 주인 정보창(6각형·달력) · 인연 목록 · 선물 · 엔딩 앨범 · 엔딩 카드
 import { BONDS, bondById, GIFT_KEYS, GIFTS, type BondDef, type GiftKey } from '../data/bonds';
+import { backupCycle, bindMemoryRow, bindStoryAlbum, giftsHtml, newInn, playCycleOpening, storyAlbumHtml, storyUi } from './story';
+import { lastGrant, rememberFav, startCycle, storyLines } from '../world/story';
+import { MEMORIES } from '../data/story/v1';
 import { musicFlags } from './sound';
 import type { ClassDef } from '../data/classes';
 import { CONFIG } from '../data/config';
@@ -61,6 +64,8 @@ export function openCreate(mode: 'new' | 'existing' | 'legacy', done: () => void
   let job: Job = 'knight';
   let origin: string = mode === 'legacy' ? 'disciple' : 'knight';
   let name = '';
+  // STORY_V1 §5: 유산 시작 선물 (포인트로 고르기)
+  const gifts = new Set<string>();
   const draw = () => {
     const prev = P.legacy.prev;
     const jobCards = JOBS.map((j) => {
@@ -83,6 +88,7 @@ export function openCreate(mode: 'new' | 'existing' | 'legacy', done: () => void
       <div class="crow"><span>이름</span><input id="cName" maxlength="${CONFIG.owner.nameMax}" placeholder="${CONFIG.owner.nameMin}~${CONFIG.owner.nameMax}자" value="${esc(name)}" autocomplete="off"></div>
       <div class="crow col"><span>모험가 시절 직업</span><div class="jobs">${jobCards}</div></div>
       ${legacyRow}
+      ${mode === 'legacy' ? giftsHtml(gifts) : ''}
       <div class="cinfo"><img src="${PORTRAITS[mcPortrait(job, gender)]}" alt=""><div><b>${esc(info.title[gender === 'm' ? 0 : 1])}</b><p>${esc(info.past)}</p><small>시작 보너스: ${esc(info.perkText)}${linkedNames ? `<br>연결된 영웅: ${esc(linkedNames)} (소문 조건 70% · 인연 1.3배)` : ''}</small></div></div>
       <button class="bigbtn" id="cOk">이 사람으로 시작</button>`,
       'create',
@@ -100,18 +106,34 @@ export function openCreate(mode: 'new' | 'existing' | 'legacy', done: () => void
         }),
     );
     $$('[data-o]').forEach((b) => (b.onclick = () => ((origin = b.dataset.o!), draw())));
+    $$('[data-gift]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          const g = b.dataset.gift!;
+          if (gifts.has(g)) gifts.delete(g);
+          else gifts.add(g);
+          draw();
+        }),
+    );
+    bindMemoryRow();
     $('#cOk').onclick = () => {
       const err = nameError(name);
       if (err) return toast(err);
       const og2 = ORIGINS.find((o) => o.job === job)!;
       const key = mode === 'legacy' ? origin : og2.key;
-      if (mode === 'legacy') inheritLegacy(name, gender, job, key);
-      else createOwner(name, gender, job, key);
+      let got: string[] = [];
+      if (mode === 'legacy') {
+        // STORY_V1 §5: 새 여관 열기 — 회차 저장 백업 · 가장 친했던 단골 기억 → 유산 잇기 → 이번 회차 이야기 처음부터 + 선물
+        backupCycle();
+        rememberFav();
+        inheritLegacy(name, gender, job, key);
+        got = startCycle([...gifts]);
+      } else createOwner(name, gender, job, key);
       setWinLock(false);
       closeWin();
       refreshOwner();
       syncOwnerButton();
-      playCut(done);
+      playCut(mode === 'legacy' ? () => playCycleOpening(got, done) : done);
     };
   };
   draw();
@@ -186,7 +208,7 @@ export function openOwner() {
       ${linked ? `<div>연결된 영웅<b>${esc(linked)}</b></div>` : ''}</div>
     <p class="note ember">${esc(emberText())}${o.ended ? ` · 「${esc(endingById(o.ended)?.title ?? '')}」 뒤로 계속 운영 중` : ''}</p>
     <div class="menu grid"><button id="oTies">인연 (${tied}/${BONDS.length})</button><button id="oGift">선물 가게</button><button id="oAlbum">엔딩 앨범 ${albumCount()}</button><button id="oStat">능력치 설명</button></div>
-    ${o.ended ? '<button class="bigbtn" id="oLegacy">유산을 잇는다 (다음 세대)</button>' : ''}`,
+    ${o.ended ? '<button class="bigbtn" id="oLegacy">새 여관 열기 · 유산을 잇는다</button>' : ''}`,
     'owner',
   );
   $('#oTies').onclick = () => openTies();
@@ -202,13 +224,11 @@ export function openOwner() {
     $('#oBack').onclick = () => openOwner();
   };
   const lg = document.getElementById('oLegacy');
-  if (lg) lg.onclick = () => confirmLegacy();
+  if (lg) lg.onclick = () => newInn();
 }
 
-function confirmLegacy() {
-  if (!confirm('새 주인을 만들어요. 마을·건물·영웅·도감·트로피는 그대로, 주인 능력치·인연·불씨·달력은 처음부터예요. 계속할까요?')) return;
-  openCreate('legacy', () => toast(`${P.owner!.name}${josa(P.owner!.name, '가')} ${S.innName || '여관'}의 새 주인이 되었어요`));
-}
+/** STORY_V1: 「새 여관 열기」 확인 뒤 유산 화면 */
+storyUi.legacyCreate = () => openCreate('legacy', () => toast(`${P.owner!.name}${josa(P.owner!.name, '가')} ${S.innName || '여관'}의 새 주인이 되었어요 · ${P.legacy.gen}회차`));
 
 // ═════════════ 인연 목록 ═════════════
 
@@ -317,7 +337,7 @@ export function openAlbum() {
   const groups: [string, EndingDef['type']][] = [['모험 엔딩', 'adventure'], ['여관 엔딩', 'inn'], ['진짜 엔딩', 'true'], ['특별', 'solo']];
   openWin(
     `엔딩 앨범 ${albumCount()}`,
-    `<p class="sub">지금까지 본 엔딩 전부 (새 여관을 열어도 남아요) · 유산 보너스는 이 마을에서 본 엔딩만큼 쌓여요 (지금 ${P.legacy.seen.length}개)</p>
+    `<p class="sub">지금까지 본 엔딩 전부 (새 여관을 열어도 남아요) · 유산 보너스는 이 마을에서 본 엔딩만큼 쌓여요 (지금 ${P.legacy.seen.length}개) · 유산 포인트 ${P.legacy.pts}</p>
     ${groups
       .map(
         ([g, ty]) =>
@@ -330,10 +350,12 @@ export function openAlbum() {
             .join('')}</div>`,
       )
       .join('')}
+    ${storyAlbumHtml()}
     <button class="bigbtn ghost" id="aBack">주인 정보</button>`,
     'albumw',
   );
   $$('[data-e]').forEach((b) => (b.onclick = () => replayEnding(b.dataset.e!)));
+  bindStoryAlbum(openAlbum);
   $('#aBack').onclick = () => openOwner();
 }
 
@@ -379,13 +401,17 @@ function playEnding(ids: string[], partner: string | null, rel: 'lover' | 'comra
   musicFlags.ending = main.type === 'inn' ? 'ending_inn' : 'ending_adv';
   const extra = ids.slice(1).map((i) => endingById(i)!);
   const lines: TalkLine[] = [...epilogue(main, main.type === 'adventure' ? rel : undefined), ...extra.flatMap((e) => epilogue(e, rel))];
+  // STORY_V1 §5: 엔딩을 볼 때마다 기억 조각 하나 · 유산 포인트
+  const g = lastGrant;
+  const mem = g.mem >= 0 ? MEMORIES[g.mem] : null;
+  if (mem) lines.push(['narr', `기억 조각을 얻었다 — ${mem.title}`], ...storyLines(mem.lines).map((x) => x.line));
   const p = partner ? bondById(partner) : null;
   const show = () => {
     openWin(
       '엔딩',
       `${[main, ...extra].map((e) => cardHtml(e, true)).join('')}
       <p class="sub">엔딩 앨범에 기록되었어요 (${albumCount()})</p>
-      <p class="note">유산 보너스: ${[main, ...extra].map((e) => esc(bonusText(e))).join(' · ')}</p>
+      <p class="note">유산 보너스: ${[main, ...extra].map((e) => esc(bonusText(e))).join(' · ')} · 유산 포인트 +${g.pts} (모은 포인트 ${P.legacy.pts})</p>
       <div class="btnrow"><button class="bigbtn" id="eNext">유산을 잇는다</button><button class="bigbtn ghost" id="eStay">계속 운영한다</button></div>
       <p class="note">유산을 이으면 마을·영웅·도감은 그대로, 새 주인으로 처음부터. 계속 운영해도 나중에 주인 정보에서 이을 수 있어요.</p>`,
       'endw',
