@@ -28,9 +28,11 @@ await p.waitForFunction(() => !!window.__S, null, { timeout: 20000 });
 await W(1500);
 await p.locator('#tCont').click();
 await W(3000);
-for (let i = 0; i < 12; i++) {
-  await p.evaluate(() => { if (!document.querySelector('#dlg').hidden) document.querySelector('#dlg').click(); else if (document.querySelector('#win').classList.contains('on')) document.querySelector('#winX').click(); });
-  await W(200);
+// 처음 뜨는 대화·창(업데이트 선물·이야기 등)이 다 닫힐 때까지 (조용한 상태 3번 연속)
+for (let i = 0, calm = 0; i < 80 && calm < 3; i++) {
+  const busy = await p.evaluate(() => { if (!document.querySelector('#dlg').hidden) return document.querySelector('#dlg').click(), true; if (document.querySelector('#win').classList.contains('on')) return document.querySelector('#winX').click(), true; return false; });
+  calm = busy ? 0 : calm + 1;
+  await W(busy ? 200 : 700);
 }
 const nl0 = await p.evaluate(() => window.__S.nightT);
 // 메뉴 → 사진 찍기
