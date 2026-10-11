@@ -1,5 +1,6 @@
 // 몬스터 그림: public/assets/mon/{id}/sheet.png + meta.json (프레임 크기 · 애니메이션별 줄과 프레임 수 · 바닥 기준점)
 //  1차는 코드로 그린 임시 도트(tools/mon_gen.html), 2차에 유료 도트로 그림만 갈아 끼운다. 그림은 오른쪽을 본다.
+import { av } from '../engine/ver';
 export interface MonAnim {
   row: number;
   frames: number;
@@ -91,5 +92,6 @@ export function flipOf(c: HTMLCanvasElement): HTMLCanvasElement {
     FLIPPED.set(c, f);
   }
   return f;
-}import { av } from '../engine/ver';
+}
+
 

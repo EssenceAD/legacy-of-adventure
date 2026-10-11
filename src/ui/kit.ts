@@ -2,10 +2,14 @@
 // 「깨지지 않게」: 그림은 늘 정수 배율(×1·×2)로만 키우고 pixelated, 9-slice는 border-image(그림 픽셀 × --k)로 늘린다.
 // CSS의 url()은 빌드 경로(base './')에서 깨지므로, 그림 주소는 여기서 CSS 변수(--ui-*)로 넣는다 (문서 기준 절대 주소).
 
+import { av } from '../engine/ver';
+
 export const UI = [
   'panel', 'titlebar', 'btn', 'btn_pressed', 'btn_disabled', 'btn_primary',
   'tile', 'tile_pressed', 'tile_selected', 'tile_locked', 'tile_grade_n', 'tile_grade_r', 'tile_grade_e', 'tile_grade_l', 'tile_grade_a',
   'tab_on', 'tab_off', 'bar_frame', 'bar_fill_hp', 'bar_fill_xp', 'bar_fill_mp', 'bar_fill_bond', 'bar_fill_grn',
+  // UI_SKIN: 창 재질 (양피지·나무·코르크·돌) · 의뢰서 카드·압정 · 제목 리본 · 책갈피 탭 · 재질 버튼
+  'panel_parchment', 'panel_wood', 'panel_cork', 'panel_stone', 'note_card', 'pin_red', 'title_ribbon', 'tab_bookmark_on', 'tab_bookmark_off', 'btn_gold', 'btn_wood', 'btn_iron',
   'dialog', 'nameplate', 'lock', 'dot_new', 'close', 'arrow_r', 'star', 'star_empty', 'coin', 'heart', 'hand_0', 'hand_1',
 ] as const;
 
@@ -54,5 +58,6 @@ export function initKit() {
   addEventListener('resize', applyScale);
   // 그림을 미리 받아 둔다 (창이 처음 열릴 때 테두리가 늦게 뜨지 않게)
   for (const k of UI) new Image().src = uiSrc(k);
-}import { av } from '../engine/ver';
+}
+
 

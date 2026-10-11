@@ -20,6 +20,8 @@ import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
 import { startMove, startPlace } from './hud';
+import { skinClass, skinFor } from './skin';
+import { iconSrc } from './kit';
 import { cheerCon, cheerReady, clock, conLeft, conProgress } from '../world/construct';
 import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolish';
 
@@ -92,6 +94,11 @@ function dropHist(n: number) {
 }
 function showHead(title: string) {
   $('#winT').textContent = title;
+  // UI_SKIN §3: 제목 왼쪽 도트 아이콘 (제목 글자와 따로 — 창 쌓기는 제목 글자로 비교한다)
+  const ic = skinFor(title).icon;
+  const im = $('#winIc') as HTMLImageElement;
+  im.hidden = !ic;
+  if (ic) im.src = iconSrc(ic);
   const hp = helpHook.page(title);
   const hb = $('#winHelp');
   hb.hidden = !hp;
@@ -119,9 +126,30 @@ export function openWin(title: string, html: string, cls = '') {
   $('#winB').innerHTML = html;
   $('#winB').scrollTop = 0;
   splitFoot();
-  $('#win').className = 'win px on ' + cls;
+  $('#win').className = 'win px on ' + skinClass(title, cls);
+  paperBoxes();
   showHead(title);
   setOpen(true);
+}
+
+/** UI_SKIN §2: 양피지 창 안의 어두운 상자(남색 카드 등)를 종이 칸으로 — 어두운 글씨가 어두운 바탕에 앉지 않게 */
+export function paperBoxes() {
+  if (!$('#win').classList.contains('skin-parchment')) return;
+  for (const el of $('#winB').querySelectorAll<HTMLElement>('*')) {
+    if (el.matches('button, button *, .ic, .ic *, img, canvas, i, .bar i, .bar b, .cbar, .cbar *, .dexrow i')) continue;
+    const cs = getComputedStyle(el);
+    // 남색 9-slice 판(border-image)도 어두운 상자
+    if (cs.borderImageSource && cs.borderImageSource !== 'none' && !/parchment|note_card|bookmark|btn_/.test(cs.borderImageSource)) {
+      el.classList.add('pbox');
+      continue;
+    }
+    const m = cs.backgroundColor.match(/[\d.]+/g);
+    if (!m) continue;
+    const [r, g, b, a = '1'] = m;
+    if (+a < 0.5) continue;
+    const L = (0.2126 * +r + 0.7152 * +g + 0.0722 * +b) / 255;
+    if (L < 0.45) el.classList.add('pbox');
+  }
 }
 
 /** 핫픽스 8 (2-6): 창 = 머리 · 몸(스크롤) · 발(버튼). 몸의 맨 끝 버튼 줄(또는 .wfoot)을 발로 옮겨 늘 화면 안 아래에 보이게 */
@@ -219,6 +247,8 @@ export function initWindows() {
     userClose();
   };
   $('#winX').onclick = userClose;
+  // UI_SKIN: 창 안 내용이 나중에 바뀌어도(탭·선택) 양피지의 어두운 상자를 종이 칸으로
+  new MutationObserver(() => paperBoxes()).observe($('#winB'), { childList: true, subtree: true });
   $('#winBack').onclick = () => winBack();
   // PC: Esc 한 단계씩
   addEventListener('keydown', (e) => {
@@ -484,6 +514,7 @@ export function showObj(o: Building) {
   openWin(
     d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
     `<p class="sub">${d.desc}</p>${S.visiting ? '' : objExtra.html(o)}${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
+    'skin-wood',
   );
   $$('.roofs button').forEach(
     (b) =>
