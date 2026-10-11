@@ -12,6 +12,7 @@ import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
+import { noteAutoUsed } from '../world/hunt';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
 
@@ -72,6 +73,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
   F = makeField(region, stage, members, auto, opts);
+  if (auto && F.mode === 'hunt') noteAutoUsed();
   onEnd = done;
   root = document.createElement('div');
   // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
@@ -466,7 +468,10 @@ function bindInput() {
   press('#cbUlt', () => ultimate(F!));
   press('#cbAuto', () => {
     F!.auto = !F!.auto;
-    if (F!.auto) F!.autoUsed = true;
+    if (F!.auto) {
+      F!.autoUsed = true;
+      if (F!.mode === 'hunt') noteAutoUsed();
+    }
   });
   $('#cbQuit').onclick = () => {
     if (!F || F.done) return;

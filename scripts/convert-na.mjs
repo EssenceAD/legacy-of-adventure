@@ -91,11 +91,42 @@ const FX = [
   ['smokering', 'Smoke/SmokeCircular/SpriteSheet.png', 40, 14],
   ['spark', 'Magic/Spark/SpriteSheet.png', 27, 35],
   ['circle', 'Magic/Circle/SpriteSheetWhite.png', 32, 32],
+  // 핫픽스 8 (2-7): 직업별 기본 공격·스킬 이펙트
+  ['cut', 'Attack/Cut/SpriteSheet.png', 32, 32],
+  ['cutdouble', 'Attack/CutDouble/SpriteSheet.png', 32, 32],
+  ['cutx', 'Attack/CutX/SpriteSheet.png', 32, 32],
+  ['slashcurved', 'Attack/SlashCurved/SpriteSheet.png', 32, 32],
+  ['circslash', 'Attack/CircularSlash/SpriteSheet.png', 32, 32],
+  ['rockspike', 'Elemental/RockSpike/SpriteSheet.png', 45, 48],
+  ['explosion', 'Elemental/Explosion/SpriteSheet.png', 40, 40],
+  ['holy', 'Elemental/Thunder/SpriteSheet.png', 32, 28, 'gold'],
+  ['plant', 'Elemental/Plant/SpriteSheet.png', 24, 28],
+  ['shield', 'Magic/Shield/SpriteSheetBlue.png', 24, 26],
+  ['circlegold', 'Magic/Circle/SpriteSheetWhite.png', 32, 32, 'gold'],
+  ['circlered', 'Magic/Circle/SpriteSheetWhite.png', 32, 32, 'red'],
+  ['p_energy', 'Projectile/EnergyBall.png', 16, 16],
+  ['p_fire', 'Projectile/Fireball.png', 16, 16],
+  ['p_arrow', 'Projectile/Arrow.png', 13, 5],
+  ['p_kunai', 'Projectile/Kunai.png', 14, 5],
 ];
+/** 밝기를 유지한 채 한 색 계열로 (빛기둥은 금색 · 도발 원은 붉게) */
+const TINT = { gold: [[90, 50, 10], [230, 160, 40], [255, 236, 150]], red: [[90, 20, 20], [220, 60, 50], [255, 170, 150]] };
+function tint(im, k) {
+  const [d, m, l] = TINT[k];
+  for (let i = 0; i < im.data.length; i += 4) {
+    if (!im.data[i + 3]) continue;
+    const y = (im.data[i] * 0.3 + im.data[i + 1] * 0.59 + im.data[i + 2] * 0.11) / 255;
+    const c = y < 0.45 ? d : y < 0.8 ? m : l;
+    im.data[i] = c[0];
+    im.data[i + 1] = c[1];
+    im.data[i + 2] = c[2];
+  }
+}
 fs.mkdirSync(OUT_FX, { recursive: true });
 const fxMeta = {};
-for (const [id, file, fw, fh] of FX) {
+for (const [id, file, fw, fh, tn] of FX) {
   const im = read(path.join(RAW, 'FX', file));
+  if (tn) tint(im, tn);
   // 알파 0/255로 정리
   for (let i = 3; i < im.data.length; i += 4) im.data[i] = im.data[i] >= 96 ? 255 : 0;
   fs.writeFileSync(path.join(OUT_FX, id + '.png'), PNG.sync.write(im));

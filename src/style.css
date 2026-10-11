@@ -1030,3 +1030,16 @@ html:not([data-size="phone"]) .cbloot{bottom:calc(env(safe-area-inset-bottom,0px
 html:not([data-size="phone"]) .logo .ko .ko2{font-size:46px;line-height:52px}
 .logo .wave{background:none;color:#bfe4ff;-webkit-text-fill-color:#bfe4ff;margin-left:2px}
 .tlogo .wave{background:none;color:#bfe4ff;-webkit-text-fill-color:#bfe4ff}
+/* ── 핫픽스 8 (2-6): 창 = 머리 · 몸(스크롤) · 발(버튼 고정) · 최대 높이 = 화면 − 안전영역 − 여백 · 타이틀 위 창 ── */
+.win{max-height:min(88%,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 48px))}
+.win .hd{flex:none}
+#winB{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#winF{flex:none;display:flex;flex-direction:column;gap:6px;padding:8px 10px 10px;border-top:2px solid var(--navy2)}
+#winF[hidden]{display:none}
+#winF > .bigbtn{width:100%;margin:0}
+#winF .btnrow,#winF .raidgo{margin:0}
+html[data-size="wide"] .win{max-height:none}
+/* 타이틀 화면에서 연 창(패치노트·편지·계정·설정): 타이틀 UI 전부보다 위 · 뒤는 60% 어둡게 · 타이틀 버튼은 못 누름 */
+#view:has(#title:not([hidden]):not(.out)) #scrim{z-index:31}
+#view:has(#title:not([hidden]):not(.out)) #win{z-index:32}
+body.winopen #title :is(.tbtns,.ver,#tSpk){pointer-events:none}

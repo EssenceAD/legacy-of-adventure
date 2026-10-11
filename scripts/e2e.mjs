@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 const PORT = 4183;
 const URL = `http://localhost:${PORT}/`;
 const OUT = 'screenshots/v0.9';
-const which = process.argv[2] ?? 'both';
+const which = process.argv[2] ?? 'all';
 fs.mkdirSync(OUT, { recursive: true });
 const vite = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', shell: process.platform === 'win32' });
 const stop = () => {
@@ -31,7 +31,14 @@ for (let i = 0; i < 60; i++) {
 
 async function run(size) {
   const b = await chromium.launch({ channel: 'chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
-  const opt = size === 'pc' ? { viewport: { width: 1280, height: 800 } } : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true };
+  // 핫픽스 8 (2-6): 기기 크기 — iPhone SE · iPhone 14 · 홈 화면 앱(안전영역 위 47 · 아래 34px만큼 쓸 수 있는 높이가 줄어든 것으로 흉내) · PC
+  const DEV = {
+    se: { viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    app: { viewport: { width: 390, height: 844 - 47 - 34 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    pc: { viewport: { width: 1280, height: 800 } },
+  };
+  const opt = DEV[size];
   const ctx = await b.newContext(opt);
   // 처음 실행 · 소리 끔 (점검 속도) · 플레이 기록 끔 (점검이 서버 기록에 섞이지 않게)
   await ctx.addInitScript(() => {
@@ -57,15 +64,47 @@ async function run(size) {
   const shot = (n) => p.screenshot({ path: `${OUT}/${size}_${n}.png` });
   const q = (sel) => p.$(sel);
   const vis = (sel) => p.evaluate((s) => { const e = document.querySelector(s); return !!e && !e.hidden && e.getClientRects().length > 0; }, sel);
+  // 핫픽스 8: JS로 강제 클릭하지 않는다 — 진짜 마우스/터치로 눌러서, 가려지거나 화면 밖이면 실패로 센다
   const click = async (sel, ms = 700) => {
-    const ok = await p.evaluate((s) => { const e = document.querySelector(s); if (!e || e.disabled) return false; e.click(); return true; }, sel);
-    if (ok) await W(ms);
-    return ok;
+    try {
+      const l = p.locator(sel).first();
+      if (!(await l.count()) || (await l.isDisabled().catch(() => true))) return false;
+      await l.click({ timeout: 2000 });
+      await W(ms);
+      return true;
+    } catch {
+      return false;
+    }
   };
   const clickText = async (sel, text, ms = 700) => {
-    const ok = await p.evaluate(([s, t]) => { const e = [...document.querySelectorAll(s)].find((x) => x.textContent.includes(t) && !x.disabled); if (!e) return false; e.click(); return true; }, [sel, text]);
-    if (ok) await W(ms);
-    return ok;
+    try {
+      const l = p.locator(sel, { hasText: text }).filter({ hasNot: p.locator('[disabled]') }).first();
+      if (!(await l.count()) || (await l.isDisabled().catch(() => true))) return false;
+      await l.click({ timeout: 2000 });
+      await W(ms);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  /** 버튼 가운데를 찍었을 때 그 버튼이 나오나 (화면 안 · 다른 것에 안 가림) */
+  const reachable = (sel) =>
+    p.evaluate((s) => {
+      const e = document.querySelector(s);
+      if (!e || e.hidden) return 'none';
+      const r = e.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return 'none';
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (cy < 0 || cy > innerHeight || cx < 0 || cx > innerWidth || r.bottom > innerHeight + 1) return `화면 밖(아래 ${Math.round(r.bottom - innerHeight)}px)`;
+      const hit = document.elementFromPoint(cx, cy);
+      return hit && (hit === e || e.contains(hit)) ? 'ok' : `가림(${hit?.id || hit?.className || hit?.tagName})`;
+    }, sel);
+  const ui = [];
+  const expectReach = async (sel, where) => {
+    const r = await reachable(sel);
+    if (r !== 'ok') ui.push(`${where}: ${sel} ${r}`);
+    return r;
   };
   const winOn = () => p.evaluate(() => document.querySelector('#win').classList.contains('on'));
   const mission = () => p.evaluate(() => { const m = document.querySelector('#mission'); return m && !m.hidden ? m.innerText.replace(/\n/g, ' ') : ''; });
@@ -89,12 +128,31 @@ async function run(size) {
   await p.goto(URL, { waitUntil: 'networkidle' });
   await W(2000);
   await shot('01_title');
+  // 타이틀 위 창: 패치노트 — 창이 타이틀 UI보다 위, 타이틀 버튼은 가려져 못 누름
+  if (await click('#tVer', 900)) {
+    await shot('01b_title_patchnotes');
+    await expectReach('#winX', '타이틀·패치노트');
+    for (const tb of ['#tStart', '#tCont', '#tTeaser', '#tLetter']) if ((await reachable(tb)) === 'ok') ui.push(`타이틀·패치노트: ${tb}가 창 위로 눌림`);
+    await click('#winX', 500);
+  } else ui.push('타이틀: 패치노트 버튼을 못 누름');
+  // 타이틀 위 창: 모모에게 편지(손님 → 로그인 안내 창)
+  if (await click('#tLetter', 600)) {
+    await talk();
+    if (await winOn()) {
+      await shot('01c_title_letter');
+      await expectReach('#repLogin', '타이틀·편지');
+      for (const tb of ['#tStart', '#tCont']) if ((await reachable(tb)) === 'ok') ui.push(`타이틀·편지: ${tb}가 창 위로 눌림`);
+      await click('#winX', 500);
+    }
+  }
   await click('#tStart', 1200);
   await click('[data-j=warrior]', 600);
   await p.fill('#cName', '루비');
   await W(300);
   await shot('02_owner');
-  await click('#cOk', 600);
+  // 주인공 만들기: 「이 사람으로 시작」이 화면 안에 보이고 눌려야 한다 (핫픽스 8 — 아이폰에서 잘림)
+  await expectReach('#cOk', '주인공 만들기');
+  if (!(await click('#cOk', 600))) ui.push('주인공 만들기: 이 사람으로 시작을 못 누름');
   await talk();
   L('새 게임 시작');
   // ── 장부 1장 (임무 카드만 보고) ──
@@ -201,7 +259,8 @@ async function run(size) {
   L('사냥 1-1: ' + (huntRes || '못 함'));
   await shot('07_village');
   // ── 메뉴 모든 칸: ✕ · ← · Esc 돌아가며 ──
-  const tiles = await p.evaluate(() => (document.querySelector('#bMenu').click(), [...document.querySelectorAll('.mtile')].map((t) => t.querySelector('span').textContent)));
+  await click('#bMenu', 600);
+  const tiles = await p.evaluate(() => [...document.querySelectorAll('.mtile')].map((t) => t.querySelector('span').textContent));
   await click('#winX', 300);
   const menuLog = [];
   for (const [i, name] of tiles.entries()) {
@@ -211,6 +270,11 @@ async function run(size) {
     await talk();
     const title = await p.evaluate(() => (document.querySelector('#win').classList.contains('on') ? document.querySelector('#winT').textContent : ''));
     const back = await vis('#winBack');
+    // 열린 창마다: ✕와 발(버튼 줄)의 첫 버튼이 화면 안에 보이고 눌리는가
+    if (title) {
+      await expectReach('#winX', name);
+      if (await p.evaluate(() => !!document.querySelector('#winF button:not([disabled])'))) await expectReach('#winF button:not([disabled])', name);
+    }
     if (i < 6) await shot(`m_${String(i).padStart(2, '0')}`);
     const how = ['x', 'back', 'esc'][i % 3];
     if (how === 'x') await click('#winX', 400);
@@ -228,15 +292,15 @@ async function run(size) {
     if (!closed) await click('#winX', 300);
   }
   await b.close();
-  return { size, log, huntRes, menu: menuLog, errs, bad };
+  return { size, log, huntRes, menu: menuLog, ui, errs, bad };
 }
 
 let code = 0;
 try {
-  for (const s of which === 'both' ? ['phone', 'pc'] : [which]) {
+  for (const s of which === 'all' ? ['se', 'phone', 'app', 'pc'] : which === 'both' ? ['phone', 'pc'] : [which]) {
     const r = await run(s);
     console.log(JSON.stringify(r, null, 1));
-    if (r.errs.length || r.bad.length) code = 1;
+    if (r.errs.length || r.bad.length || r.ui.length || !r.huntRes) code = 1;
   }
 } catch (e) {
   console.error('✗ 점검 실패:', e.message);

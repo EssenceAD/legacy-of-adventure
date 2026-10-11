@@ -33,6 +33,8 @@ export const helpHook = { page: (_title: string): string | null => null, open: (
 interface WinState {
   title: string;
   cls: string;
+  /** 발(버튼 줄) — 핫픽스 8 2-6 */
+  foot: Node[];
   /** 창 내용 그대로 (버튼에 단 동작까지 살아 있게 노드째 보관) */
   nodes: Node[];
 }
@@ -75,15 +77,38 @@ export function openWin(title: string, html: string, cls = '') {
     pushHist();
   } else if ($('#winT').textContent !== title && !winLocked) {
     // 다른 창으로 들어간다: 지금 창을 쌓아 둔다 (같은 제목이면 다시 그리기일 뿐)
-    stack.push({ title: $('#winT').textContent ?? '', cls: $('#win').className.replace(/\bon\b/, '').trim(), nodes: [...$('#winB').childNodes] });
+    stack.push({ title: $('#winT').textContent ?? '', cls: $('#win').className.replace(/\bon\b/, '').trim(), nodes: [...$('#winB').childNodes], foot: [...$('#winF').childNodes] });
     if (stack.length > 8) stack.shift();
     pushHist();
   }
   if ($('#winT').textContent !== title || !was) trackEv('screen_open', { name: title.slice(0, 30) });
   $('#winB').innerHTML = html;
+  $('#winB').scrollTop = 0;
+  splitFoot();
   $('#win').className = 'win px on ' + cls;
   showHead(title);
   setOpen(true);
+}
+
+/** 핫픽스 8 (2-6): 창 = 머리 · 몸(스크롤) · 발(버튼). 몸의 맨 끝 버튼 줄(또는 .wfoot)을 발로 옮겨 늘 화면 안 아래에 보이게 */
+const FOOT = '.wfoot, .bigbtn, .btnrow, .raidgo';
+function splitFoot() {
+  const body = $('#winB');
+  const foot = $('#winF');
+  foot.replaceChildren();
+  const explicit = body.querySelector<HTMLElement>(':scope > .wfoot');
+  const last = explicit ?? (body.lastElementChild as HTMLElement | null);
+  if (last && last.matches(FOOT)) {
+    // 버튼 줄 바로 앞의 짧은 안내(note)는 몸에 남긴다 · 맨 끝 버튼들이 연달아 있으면 같이
+    const take: HTMLElement[] = [last];
+    let prev = last.previousElementSibling as HTMLElement | null;
+    while (!explicit && prev && prev.matches('.bigbtn')) {
+      take.unshift(prev);
+      prev = prev.previousElementSibling as HTMLElement | null;
+    }
+    foot.append(...take);
+  }
+  foot.hidden = !foot.childElementCount;
 }
 
 /** ← 뒤로: 직전 창으로 (없으면 닫기) */
@@ -94,6 +119,8 @@ export function winBack(fromPop = false) {
   if (!fromPop) dropHist(1);
   sfx('close');
   $('#winB').replaceChildren(...s.nodes);
+  $('#winF').replaceChildren(...s.foot);
+  $('#winF').hidden = !s.foot.length;
   $('#win').className = s.cls + ' on';
   showHead(s.title);
 }

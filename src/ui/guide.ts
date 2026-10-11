@@ -109,6 +109,11 @@ function onCard() {
     });
     return;
   }
+  // 핫픽스 8 (2-10): 「자동 사냥 켜 보기」는 깬 스테이지의 사냥 준비 창을 열고 「자동 사냥 켜기」를 가리킨다
+  if (m.id === 'c2_auto' && guideHooks.autoHuntPrep()) {
+    point('#hRepeat', 3200);
+    return;
+  }
   // 가기 + 손가락
   openPlace(m.place);
   point(PLACE_BTN[m.place] ?? null, 2600);

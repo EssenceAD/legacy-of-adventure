@@ -14,7 +14,7 @@ import { P as Paint } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance, powerOf } from '../world/adventurers';
 import { powerTips } from '../world/expeditions';
-import { featureChapter } from '../world/guide';
+import { featureChapter, guideHooks } from '../world/guide';
 import {
   best, clearStage, failStage, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, stageOpen, stopAuto, sweepStage, type HuntReward,
 } from '../world/hunt';
@@ -32,6 +32,14 @@ let picked: number[] = [];
 let manualPick = false;
 
 // ───────── 스테이지 지도 ─────────
+
+/** 장부 「자동 사냥 켜 보기」: 깬 가장 높은 숲 스테이지 준비 창 */
+guideHooks.autoHuntPrep = () => {
+  const s = best('forest');
+  if (!s) return false;
+  openHuntPrep('forest', s);
+  return true;
+};
 
 export function openHunt(region?: RegionId) {
   if (!huntRegionOpen(0)) return toast(`사냥터는 장부 ${featureChapter('hunt')}장을 마치면 열려요`);

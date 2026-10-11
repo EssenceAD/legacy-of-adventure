@@ -85,6 +85,8 @@ export function featureChapter(f: string): number {
 export const guideHooks = {
   chapterDone: (_no: number) => {},
   gradeUp: (_g: number) => {},
+  /** 핫픽스 8: 「자동 사냥 켜 보기」 카드 → 사냥 준비 창 (ui/hunt가 채운다) */
+  autoHuntPrep: (): boolean => false,
 };
 
 function grant(m: Mission) {

@@ -135,14 +135,19 @@ export function failStage(r: RegionId, s: number, members: Actor[]): HuntReward 
 
 // ───────── 자동 사냥 ─────────
 
+/** 핫픽스 8 (2-10): 「자동 사냥 켜 보기」 — 사냥터의 자동 사냥 켜기 · 전투 중 AUTO 버튼(· 오토 전투로 시작) 어느 쪽이든 센다 */
+export function noteAutoUsed() {
+  P.counters.huntAutoUsed++;
+  markDirty();
+}
+
 export function setAuto(r: RegionId, s: number, members: Actor[]): string | null {
   if (s > best(r)) return '깬 스테이지만 자동 사냥할 수 있어요';
   if (!members.length) return '파티를 골라요';
   if (partyPower(members) < recPower(r, s) * H.autoRatio) return `전투력이 부족해요 (추천 ${recPower(r, s)})`;
   P.hunt.auto = { region: r, stage: s, members: members.map((m) => m.id) };
   P.hunt.idleAt = Date.now();
-  P.counters.huntAutoUsed++;
-  markDirty();
+  noteAutoUsed();
   return null;
 }
 export function stopAuto() {
