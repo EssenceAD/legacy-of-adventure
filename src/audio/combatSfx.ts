@@ -81,7 +81,7 @@ function bell(at: number, dur: number, vol: number, f: number, r = 3.5, depth = 
   o.stop(at + dur + 0.02);
 }
 
-export const COMBAT_SYNTH = new Set(['hit', 'crit', 'block', 'perfect', 'skill', 'skill_knight', 'skill_warrior', 'skill_rogue', 'skill_mage', 'skill_priest', 'skill_hunter']);
+export const COMBAT_SYNTH = new Set(['demolish', 'hit', 'crit', 'block', 'perfect', 'skill', 'skill_knight', 'skill_warrior', 'skill_rogue', 'skill_mage', 'skill_priest', 'skill_hunter']);
 
 /** 합성 전투음 한 번 · 너무 많으면(동시 6개) 건너뜀 */
 export function combatSynth(name: string, vol = 1): boolean {
@@ -118,6 +118,12 @@ export function combatSynth(name: string, vol = 1): boolean {
       bell(t, 0.5, 0.25 * v, 2400 * p, 3.5, 0.8);
       [0, 1, 2].forEach((i) => bell(t + 0.08 + i * 0.06, 0.18, 0.1 * v, 2400 * p * Math.pow(1.26, i + 1), 2, 0.5));
       dur = 0.55;
+      break;
+    case 'demolish':
+      // 핫픽스 10 철거 「털썩」: 낮은 쿵 + 흙 무너지는 노이즈
+      osc(t, 0.3, 0.6 * v, 'sine', 90 * p, 45 * p);
+      noise(t + 0.02, 0.35, 0.4 * v, 'lowpass', 900 * p, 200 * p, 0.7);
+      dur = 0.4;
       break;
     case 'skill_knight':
       // 낮은 쿵 + 방패 탱

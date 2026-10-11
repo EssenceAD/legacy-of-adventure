@@ -184,6 +184,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tog{display:flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer}
 .bigbtn.sm{padding:5px 8px;margin-top:6px}.bigbtn.red{background:#8a2a30}.bigbtn.ghost{background:var(--navy2)}
 .btnrow{display:flex;flex-wrap:wrap;gap:6px}
+#winB #rmB{color:#ff7a70;min-height:40px}.note.rmno{color:#8a8a8a}
+.rmconf{padding:4px 2px}.rmq{font-weight:700;text-align:center;margin:6px 0}.rmgold{text-align:center;margin:8px 0 0}.rmwarn{color:#ffb070;margin:6px 0 0}
+.rmrow .bigbtn{flex:1 1 0;min-height:44px}
+#winF #rmOk{color:#ffb0a8}#winF #rmOk:not([disabled]){color:#fff;background:#a8323a!important;border-image-source:none!important;border:0;box-shadow:0 0 0 2px var(--ink),inset 0 -3px 0 #6e1c22}
 .tabs{margin-bottom:8px}
 /* 원정 */
 .runs,.quests{display:flex;flex-direction:column;gap:6px}

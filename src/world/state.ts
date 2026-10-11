@@ -26,6 +26,9 @@ export interface Building {
   plots?: { crop: string | null; at: number }[];
   /** 좌우 반전 (문이 오른쪽 면으로). 그림 키는 sprite~f */
   flip?: boolean;
+  /** 핫픽스 10: 지은 시각(ms) — 5분 안 철거는 전액 환불 · 마을 등급 장식을 옮겨 놓은 것(무료, 환불 없음) */
+  builtAt?: number;
+  fromProp?: boolean;
 }
 
 export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';

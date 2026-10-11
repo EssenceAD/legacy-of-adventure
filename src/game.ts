@@ -25,6 +25,7 @@ import { refreshNoticeDot } from './ui/notice';
 import { closeWin, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
 import { track as trackEv } from './net/telemetry';
+import { refundOf, removeBuilding } from './world/demolish';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -195,9 +196,15 @@ function applySave(d: SaveData) {
   sanitizeAlbum();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
-    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: b.plots ? { plots: b.plots } : {} })),
+    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}) } })),
     d.land,
   );
+  // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
+  const movedKinds = P.harmony.moved.map((k) => k.split('@')[0]);
+  for (const k of new Set(movedKinds)) {
+    let n = movedKinds.filter((x) => x === k).length - world.objs.filter((o) => o.kind === k && o.fromProp).length;
+    for (const o of world.objs) if (n > 0 && o.kind === k && !o.fromProp && !o.builtAt) (o.fromProp = true), n--;
+  }
   if (import.meta.env.DEV && (fix.moved || fix.dropped)) console.warn('저장 배치 바로잡음', fix);
   rebuildPaths();
   world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
@@ -278,7 +285,7 @@ export function placeBuilding(pl: Placement): boolean {
   }
   S.gold -= cost;
   if (pl.prop) P.harmony.moved.push(pl.prop);
-  const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip });
+  const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
   sfx('build');
@@ -309,6 +316,24 @@ export function upgrade(o: Building) {
   puffAt(o, '#fff3b0', 20);
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 70, `${def(o.kind).name} Lv.${o.lvl}!`, 'big');
   markDirty();
+}
+
+/** 핫픽스 10: 철거 — 손님 꺼내기 · 길 다시 · 환불 · 먼지 · 「털썩」 · 기록 */
+export function demolish(o: Building): boolean {
+  const { gold } = refundOf(o);
+  const ageSec = o.builtAt ? Math.round((Date.now() - o.builtAt) / 1000) : -1;
+  const { kind, lvl } = o;
+  // 먼지·글자는 지우기 전에 자리 잡기
+  puffAt(o, '#c9bfa8', 20);
+  const cx = o.tx + o.fw / 2;
+  const cy = o.ty + o.fh / 2;
+  if (!removeBuilding(o, !!S.visiting)) return false;
+  S.gold += gold;
+  floatW(cx, cy, 40, `철거 완료 +💰${fmt(gold)}`, 'big');
+  sfx('demolish');
+  trackEv('demolish', { kind, lvl, refund: gold, ageSec });
+  syncHud();
+  return true;
 }
 
 /** 지은 건물 옮기기·방향 바꾸기 (무료). 안에 있던 손님은 새 문 앞으로 나온다 */

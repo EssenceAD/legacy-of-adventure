@@ -20,6 +20,7 @@ import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
 import { startMove, startPlace } from './hud';
+import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolish';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -235,6 +236,60 @@ export function appendMoveButton(o: Building) {
     startMove(o);
   };
   $('#winB').appendChild(b);
+  appendRemoveButton(o);
+}
+
+/** 핫픽스 10: 옮기기 바로 아래 「철거하기」 (여관 본관 같은 필수 건물은 회색 안내만) */
+function appendRemoveButton(o: Building) {
+  if (isNoRemove(o)) {
+    const n = document.createElement('p');
+    n.className = 'note rmno';
+    n.textContent = '이 건물은 철거할 수 없어요';
+    $('#winB').appendChild(n);
+    return;
+  }
+  if (!canRemove(o, !!S.visiting)) return;
+  const b = document.createElement('button');
+  b.className = 'bigbtn sm ghost rmbtn';
+  b.id = 'rmB';
+  b.textContent = '철거하기';
+  b.onclick = () => openRemoveConfirm(o);
+  $('#winB').appendChild(b);
+}
+
+/** 받침 있으면 「을」 */
+const eul = (s: string) => {
+  const c = s.charCodeAt(s.length - 1);
+  if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28 ? '을' : '를';
+  return /[0-9]$/.test(s) ? ('013678'.includes(s.slice(-1)) ? '을' : '를') : '을(를)';
+};
+
+/** 철거 확인 (창 쌓기: ← 뒤로 = 그만두기) · 철거 버튼은 0.5초 뒤에 눌린다 */
+function openRemoveConfirm(o: Building) {
+  const name = `${def(o.kind).name} Lv.${o.lvl}`;
+  const r = refundOf(o);
+  const fx = removeEffects(o);
+  const warn: string[] = [];
+  if (fx.guests) warn.push(`안에 손님 ${fx.guests}명이 있어요. 문 밖으로 나와요.`);
+  if (fx.harmonies.length) warn.push(`어울림이 깨져요: ${fx.harmonies.map(esc).join(', ')} (발견 기록은 남아요)`);
+  if (o.kind === 'cottage') warn.push(fx.overflow ? `묵는 손님 ${fx.overflow}명은 방이 모자라 지나가는 손님이 돼요.` : '묵던 손님은 다른 빈 방으로 옮겨요.');
+  const refund = o.fromProp
+    ? `<p class="rmgold">돌려받는 금화: 💰 0</p><p class="note">마을 등급 장식이라 금화는 없고, 원래 자리로 돌아가진 않아요</p>`
+    : `<p class="rmgold">돌려받는 금화: 💰 ${fmt(r.gold)}</p><p class="note">${r.full ? '방금(5분 안) 지은 건물이라 전액 돌려받아요' : '지은 값 + 올린 값의 50%'}</p>`;
+  openWin(
+    '철거',
+    `<div class="rmconf"><p class="rmq">${esc(name)} ${eul(name)} 철거할까요?</p>${refund}${warn.map((w) => `<p class="rmwarn">⚠ ${w}</p>`).join('')}</div>` +
+      `<div class="btnrow rmrow"><button id="rmNo" class="bigbtn">그만두기</button><button id="rmOk" class="bigbtn red" disabled>철거하기</button></div>`,
+  );
+  const ok = $('#rmOk') as HTMLButtonElement;
+  setTimeout(() => (ok.disabled = false), 500);
+  $('#rmNo').onclick = () => winBack();
+  ok.onclick = () => {
+    if (ok.disabled) return;
+    ok.disabled = true;
+    closeWin();
+    game.demolish(o);
+  };
 }
 
 /** 그림을 썸네일 칸 크기에 맞춰 정수 배율로(도트가 뭉개지지 않게) 미리 그려 둔다 */

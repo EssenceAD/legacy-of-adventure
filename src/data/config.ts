@@ -69,6 +69,10 @@ export const CONFIG = {
   build: {
     /** 비계+먼지 시간 (초) */
     constructSeconds: 2.2,
+    /** 핫픽스 10 철거: 없으면 게임이 깨지는 건물 · 환불 비율 · 이 시간(초) 안이면 전액 */
+    noRemove: ['inn'] as string[],
+    refundRate: 0.5,
+    fullRefundSec: 300,
   },
   dayNight: {
     /** 낮↔밤 자동 전환 간격 (초) */
