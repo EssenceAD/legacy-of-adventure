@@ -78,7 +78,7 @@ export function evalParts(theme = P.evaluation.theme): EvalPart[] {
       ];
     case 'adventure':
       return [
-        part('wins', '원정 성공', delta('wins', wins()), a.wins),
+        part('wins', '의뢰 성공', delta('wins', wins()), a.wins),
         part('huntBest', '사냥 최고 스테이지', Object.values(P.hunt.best).reduce((s, v) => s + v, 0), a.huntBest),
         part('trains', '훈련', delta('trains', C().trains), a.trains),
         part('raids', '토벌 도전', delta('raids', C().raidTries ?? 0), a.raids),

@@ -156,7 +156,7 @@ export function openGoals() {
   openWin(
     '오늘의 목표',
     `<p class="sub">평판 <b class="g">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</b> (${fmt(P.rep)}점${repToNext() ? ` · 다음 별까지 ${repToNext()}` : ''})</p>
-    <p class="note">평판은 원정 성공·단골·도감 보상으로 올라요 · 땅 넓히기에 필요해요</p>
+    <p class="note">평판은 의뢰 성공·단골·도감 보상으로 올라요 · 땅 넓히기에 필요해요</p>
     ${ready.length >= 2 ? `<button class="bigbtn sm claimall" id="gAll">모두 받기 (${ready.length})</button>` : ''}<div class="goals">${rows}</div><p class="note">목표는 매일 새로 바뀌어요</p>`,
   );
   const ga = document.getElementById('gAll');

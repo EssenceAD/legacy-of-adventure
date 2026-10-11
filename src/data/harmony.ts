@@ -27,7 +27,7 @@ export const HARMONIES: HarmonyDef[] = [
   { id: 5, name: '여신의 가호', parts: [{ k: K('inn') }, { k: K('statue') }], text: '숙박 수입 +15% · 매일 평판 +1', open: true, hint: '' },
   { id: 6, name: '장미 정원', parts: [{ k: K('garden') }, { k: K('arbor') }], text: '수확량 +1 · 주변 기분 +5', open: true, hint: '' },
   { id: 7, name: '술통 창고', parts: [{ k: K('tavern') }, { k: K('barrels') }], text: '주점 수입 +15% · 술 취한 손님 사건 ↑', hint: '술 냄새와 나무 냄새가 어울릴지도…' },
-  { id: 8, name: '명사수의 마당', parts: [{ k: K('training') }, { k: K('target') }], text: '훈련 경험치 +15% · 원정 성공률 +3%p', hint: '화살이 꽂히는 소리가 훈련장에서 들리면…' },
+  { id: 8, name: '명사수의 마당', parts: [{ k: K('training') }, { k: K('target') }], text: '훈련 경험치 +15% · 의뢰 성공률 +3%p', hint: '화살이 꽂히는 소리가 훈련장에서 들리면…' },
   { id: 9, name: '밤거리', parts: [{ k: K('stall') }, { k: K('lamppost') }], text: '밤(20~04시) 노점 수입 +30%', hint: '해가 져도 장사가 끝나지 않는 곳이 있다면…' },
   { id: 10, name: '광장', parts: [{ k: K('fountain') }, { k: K('bench') }, { k: K('flowerbed') }], text: '매일 평판 +2 · 풍경 점수 +15 (전역)', hint: '물소리 곁에 앉아 꽃을 보는 사람들…' },
   { id: 11, name: '모험가의 문', parts: [{ k: K('gate') }, { k: K('board') }], text: '원정 시간 −10% (전역)', hint: '마을에 들어서자마자 의뢰를 고를 수 있다면…' },
