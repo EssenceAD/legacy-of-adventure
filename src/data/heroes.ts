@@ -51,7 +51,7 @@ export const HEROES: HeroDef[] = [
   {
     id: 'kael', name: '카엘', title: '붉은 단풍의 검사', hint: '따뜻한 물과 붉은 단풍을 좋아하는 검사', kind: 'knight', race: 'human', hair: '#b03a2a',
     appear: (c) => c.hasBath && c.roofCount(8) >= 2 && c.night,
-    request: { text: '숲 동굴 원정을 3번 성공시켜 줘', done: (c) => c.regionWins('forest') >= 3 },
+    request: { text: '숲 동굴 의뢰를 3번 성공시켜 줘', done: (c) => c.regionWins('forest') >= 3 },
     skill: { name: '단풍 베기', k: 'atkPct', v: 12 }, bonus: 0.02,
     intro: ['단풍 지붕 아래 온천이라… 오래 찾아 헤맨 풍경이군.', '하룻밤 묵어 가도 되겠나? 대신 부탁이 하나 있네.'],
   },
@@ -100,14 +100,14 @@ export const HEROES: HeroDef[] = [
   {
     id: 'harald', name: '하랄드', title: '술고래', hint: '주점의 단골', kind: 'dwarf', race: 'human', hair: '#7a4a2c',
     appear: (c) => c.tavernMeals >= 100,
-    request: { text: '폐광 원정을 5번 성공시켜 줘', done: (c) => c.regionWins('mine') >= 5 },
+    request: { text: '폐광 의뢰를 5번 성공시켜 줘', done: (c) => c.regionWins('mine') >= 5 },
     skill: { name: '취권', k: 'atkPct', v: 8 }, bonus: 0.01,
     intro: ['백 그릇째인가? 이 주점 스튜, 소문이 자자하더군!', '한 잔 사면 내 도끼를 빌려주지. 대신 일 하나 하자고.'],
   },
   {
     id: 'nova', name: '노바', title: '별 보는 학자', hint: '맑은 밤하늘을 좋아한다', kind: 'cleric', race: 'human', hair: '#3a2a3a',
     appear: (c) => c.night && c.land >= 5 && c.fires >= 2,
-    request: { text: '얼음 협곡 원정을 1번 성공시켜 줘', done: (c) => c.regionWins('ice') >= 1 },
+    request: { text: '얼음 협곡 의뢰를 1번 성공시켜 줘', done: (c) => c.regionWins('ice') >= 1 },
     skill: { name: '별자리 읽기', k: 'timeCut', v: 15 }, bonus: 0.02,
     intro: ['넓은 하늘, 두 개의 모닥불… 별 보기 딱 좋은 마을이네요.', '협곡 너머 별의 기록을 찾고 있어요. 도와주실래요?'],
   },

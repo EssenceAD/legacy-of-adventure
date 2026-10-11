@@ -70,7 +70,7 @@ export function openBoard() {
   const pity = REGIONS.filter((_, i) => regionUnlocked(i))
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)
     .join(' · ');
-  const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 3번 성공 또는 평판 ★${i + 1}</div>`)).join('');
+  const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 의뢰 3번 성공 · ${REGIONS[i - 1].name} 사냥 10 돌파 · 평판 ★${i + 1} 중 하나</div>`)).join('');
   const wk = weeklyTarget();
   const wd = wanderTarget();
   const raidCard = (t: RaidTarget, id: string) =>

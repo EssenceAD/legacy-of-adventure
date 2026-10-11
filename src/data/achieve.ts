@@ -21,12 +21,12 @@ const A = (id: string, name: string, desc: string, stat: AchStat, need: number, 
 
 export const ACHIEVEMENTS: AchDef[] = [
   // 원정 (6)
-  A('exp1', '첫 원정', '원정을 처음 보내요', 'expeditions', 1, { gold: 100 }),
-  A('exp10', '게시판 단골', '원정 10번 보내기', 'expeditions', 10, { gold: 300 }),
-  A('exp100', '의뢰 중개인', '원정 100번 보내기', 'expeditions', 100, { gold: 1500, title: '의뢰 중개인' }),
-  A('exp500', '원정의 달인', '원정 500번 보내기', 'expeditions', 500, { gold: 5000, dust: 300 }, true),
-  A('win10', '돌아온 영웅들', '원정 10번 성공', 'wins', 10, { gold: 300 }),
-  A('win100', '백전백승', '원정 100번 성공', 'wins', 100, { gold: 2000, title: '백전의 여관' }),
+  A('exp1', '첫 원정', '의뢰를 처음 보내요', 'expeditions', 1, { gold: 100 }),
+  A('exp10', '게시판 단골', '의뢰 10번 보내기', 'expeditions', 10, { gold: 300 }),
+  A('exp100', '의뢰 중개인', '의뢰 100번 보내기', 'expeditions', 100, { gold: 1500, title: '의뢰 중개인' }),
+  A('exp500', '원정의 달인', '의뢰 500번 보내기', 'expeditions', 500, { gold: 5000, dust: 300 }, true),
+  A('win10', '돌아온 영웅들', '의뢰 10번 성공', 'wins', 10, { gold: 300 }),
+  A('win100', '백전백승', '의뢰 100번 성공', 'wins', 100, { gold: 2000, title: '백전의 여관' }),
   // 사냥 (7)
   A('hunt1', '첫 사냥', '사냥 스테이지를 처음 돌파', 'huntBest', 1, { gold: 100 }),
   A('hunt10', '숲의 사냥꾼', '사냥 10스테이지 돌파 (지역 합)', 'huntBest', 10, { gold: 500, dust: 50 }),
