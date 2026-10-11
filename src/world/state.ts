@@ -189,6 +189,8 @@ export interface Quest {
   gold: [number, number];
   /** 핫픽스 12 §2-4: 조건 태그 (맞으면 보상 +30%, 안 맞아도 보낼 수 있음) */
   tag?: QuestTag;
+  /** BUILDINGS_SPEC: 길드 특별 의뢰 (이기면 보스 재료) */
+  guild?: boolean;
 }
 
 export interface QuestTag {
@@ -259,6 +261,10 @@ export function freshProgress() {
     mats: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
     /** 텃밭 수확물 (주점 식사 품질) */
     pantry: 0,
+    /** BUILDINGS_SPEC §3: 수확물 창고 (작물별 개수) · 물약 칸 · 켜진 물약 */
+    crops: {} as Record<string, number>,
+    potions: {} as Record<string, number>,
+    buff: null as null | { id: string; until: number },
     quests: { day: '', list: [] as Quest[], refreshUsed: 0, nextId: 1 },
     runs: [] as Run[],
     nextRunId: 1,
@@ -303,6 +309,8 @@ export function freshProgress() {
       shopBuys: 0,
       /** 베타: 구경거리 사건 해결 */
       eventsSolved: 0,
+      /** BUILDINGS_SPEC §1: 공사 톡톡 누른 수 */
+      taps: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {

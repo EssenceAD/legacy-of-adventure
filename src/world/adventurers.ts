@@ -1,5 +1,6 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
 import { sfx } from '../audio/sfx';
+import { libraryXp } from './facilities';
 import {
   CLASS_RACES, CLASS_STATS, CLASS_WEAPON, CLASSES, FACE_POOL, GUEST_KINDS, HAIR_COLORS, RACE_NAMES, RARITY_INFO,
   type ClassDef, type ClassKey, type Face, type GuestKind, type Race, type Rarity,
@@ -112,7 +113,7 @@ export const xpToNext = (lvl: number) => 40 + lvl * 25;
 /** 경험치를 주고 레벨이 오르면 true */
 export function gainXp(a: Actor, n: number): boolean {
   if (a.lvl >= G.maxLevel) return false;
-  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100) * xpMult());
+  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100) * xpMult() * (1 + libraryXp()));
   let up = false;
   while (a.lvl < G.maxLevel && a.xp >= xpToNext(a.lvl)) {
     a.xp -= xpToNext(a.lvl);

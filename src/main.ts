@@ -1,5 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { ripeCount } from './world/craft';
+import { initFacilitiesUI } from './ui/facilities';
 import { CONFIG } from './data/config';
 import { alphaAt, AssetError, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
@@ -254,6 +256,19 @@ function tick(dt: number) {
   if (conAcc > 0.5 && S.started) {
     conAcc = 0;
     tickCons();
+    // BUILDINGS_SPEC §3: 하단 「마을」에 수확할 수 있는 수
+    const rc = S.visiting ? 0 : ripeCount();
+    const vb = document.getElementById('bVillage');
+    if (vb) {
+      let bd = vb.querySelector<HTMLElement>('.rbadge');
+      if (!bd) {
+        bd = document.createElement('i');
+        bd.className = 'rbadge';
+        vb.appendChild(bd);
+      }
+      bd.hidden = !rc;
+      bd.textContent = String(rc);
+    }
   }
   tickSound(dt);
   const t0 = performance.now();
@@ -552,6 +567,8 @@ async function boot() {
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu(), eval: () => openEval() });
   initMenu();
   initHarmonyUI();
+  // BUILDINGS_SPEC: 새 기능 건물 효과 줄 · 연금술 공방 (어울림 줄 다음에 덧붙인다)
+  initFacilitiesUI();
   initEvalUI();
   initPowerUI();
   initSound();

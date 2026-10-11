@@ -538,7 +538,7 @@ function conPanel(o: Building): string {
   const c = o.con!;
   const what = c.kind === 'up' ? `Lv.${c.to} 공사 중` : '짓는 중';
   return `<div class="conp"><b>🔨 ${what}</b><div class="cbar"><i style="width:${Math.round(conProgress(o) * 100)}%"></i></div><span class="ct" id="conT">${clock(conLeft(o))}</span>
-    <p class="note">빨리 짓기는 건물을 톡톡! (최대 ${Math.round(CONFIG.build.tapCapPct * 100)}%)${c.kind === 'up' ? ' · 공사 중에도 건물은 그대로 일해요' : ''}</p>
+    <p class="note">빨리 짓기는 건물을 톡톡!${c.cut ? ` <b>톡톡 ×${c.cut}</b>` : ''}${c.kind === 'up' ? ' · 공사 중에도 건물은 그대로 일해요' : ''}</p>
     ${cheerReady() ? '<button class="bigbtn sm" id="conCheer">📮 모모의 응원 · 바로 완성 (하루 1번)</button>' : '<p class="note">모모의 응원은 내일 다시 쓸 수 있어요</p>'}</div>`;
 }
 function bindConPanel(o: Building) {

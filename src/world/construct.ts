@@ -94,9 +94,14 @@ export function tickCons(now = Date.now(), offline = false): Building[] {
 }
 
 /** 뚝딱 탭: 1초 단축, 한 공사에 원래 시간의 30%까지. 줄였으면 true */
+let lastTap = 0;
 export function tapCon(o: Building, now = Date.now()): boolean {
   const c = o.con;
   if (!c || c.end <= now) return false;
+  // BUILDINGS_SPEC §1: 상한 없음 · 매크로 수준 연타만 막는 최소 간격
+  if (now - lastTap < B().tapMinMs) return true;
+  lastTap = now;
+  P.counters.taps = (P.counters.taps ?? 0) + 1;
   const cap = c.total * B().tapCapPct;
   if (c.cut + 1 > cap + 1e-9) return false;
   c.cut += 1;

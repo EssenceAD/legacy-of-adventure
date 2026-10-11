@@ -153,6 +153,14 @@ const GROWTH: { title: string; cur: () => number; need: number; place: Place; ki
   { title: '땅 5단계로 넓히기', cur: () => S.land, need: 5, place: 'land' },
   { title: '주점 Lv.6 만들기', cur: () => lvOf('tavern'), need: 6, place: 'tavern', kind: 'tavern' },
   { title: '여관 본관 Lv.10 만들기', cur: () => lvOf('inn'), need: 10, place: 'inn', kind: 'inn' },
+  // BUILDINGS_SPEC §2: 새 기능 건물
+  { title: '마구간 짓기', cur: () => lvOf('stable'), need: 1, place: 'build', kind: 'stable' },
+  { title: '작은 예배당 짓기', cur: () => lvOf('chapel'), need: 1, place: 'build', kind: 'chapel' },
+  { title: '서재 짓기', cur: () => lvOf('library'), need: 1, place: 'build', kind: 'library' },
+  { title: '연금술 공방 짓기', cur: () => lvOf('alchemy'), need: 1, place: 'build', kind: 'alchemy' },
+  { title: '우체국 짓기', cur: () => lvOf('postoffice'), need: 1, place: 'build', kind: 'postoffice' },
+  { title: '마법사의 탑 짓기', cur: () => lvOf('tower'), need: 1, place: 'build', kind: 'tower' },
+  { title: '모험가 길드 회관 짓기', cur: () => lvOf('guild'), need: 1, place: 'build', kind: 'guild' },
 ];
 /** CONSTRUCTION_SPEC §5: 목표 건물이 공사 중이면 「공사 중 · 2:41」 */
 function conLine(kind?: string): string | null {

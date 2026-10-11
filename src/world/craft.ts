@@ -1,5 +1,7 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
 import { bestOf } from './town';
+import { towerEnhance } from './facilities';
+import { addCrop } from './facilities';
 import { SLOTS } from '../data/items';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
@@ -85,7 +87,7 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
 /** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
-export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance')));
+export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance') + towerEnhance()));
 
 export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
@@ -181,6 +183,7 @@ export function plant(o: Building, i: number, crop: string): string | null {
   const p = plotsOf(o)[i];
   const c = GD.crops[crop];
   if (!p || !c) return '심을 수 없어요';
+  if (c.land && (world.home?.land ?? S.land) < c.land) return `땅 ${c.land}단계에서 심을 수 있어요`;
   if (p.crop) return '이미 자라는 중이에요';
   if (S.gold < c.seed) return '금화가 모자라요';
   S.gold -= c.seed;
@@ -194,7 +197,8 @@ export function harvest(o: Building, i: number): number {
   const p = plotsOf(o)[i];
   if (!p || plotLeft(p) !== 0) return 0;
   const n = GD.crops[p.crop!].yield + bfx(o, 'harvest');
-  P.pantry += n;
+  // BUILDINGS_SPEC §3: 작물별 창고 (주점은 먹을 수 있는 것을 자동으로 · 공방은 골라 쓴다)
+  addCrop(p.crop!, n);
   P.counters.harvests++;
   legendHooks.bond('harvest');
   ownerGain('harvest');

@@ -1,7 +1,7 @@
 // 건물 목록: 이름·발판·가격·손님 행동·레벨업 그림·열리는 땅 단계
 import { CONFIG } from './config';
 
-export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon';
+export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon' | 'pet' | 'pray' | 'read' | 'brew' | 'mail' | 'stargaze' | 'brag';
 
 export interface BuildingDef {
   name: string;
@@ -63,6 +63,14 @@ export const CATALOG = {
   bath: { name: '온천', sprite: 'bath', size: [3, 3], cost: 800, act: 'bath', unlock: 5, stars: 3, levels: [1200, 2000, 3200, 5000], levelText: '회복·기분 +15%', desc: '피로 회복 · 기분 ↑' },
   training: { name: '훈련장', sprite: 'training', size: [3, 3], cost: 350, act: 'train', unlock: 3, levels: [400, 700, 1100, 1600, 2200, 3000, 4000], levelText: '수련 경험치 +20%', desc: '모험가 레벨업 · 허수아비를 팹니다' },
   garden: { name: '텃밭', sprite: 'garden', size: [3, 3], cost: 200, act: 'farm', unlock: 3, levels: [300, 600, 1000, 1600, 2400], levelText: '2레벨마다 밭 +1칸', desc: '식재료 수확 · 식사 품질 ↑' },
+  // BUILDINGS_SPEC §2: 새 기능 건물 7종
+  stable: { name: '마구간', sprite: 'stable', size: [3, 3], cost: CONFIG.newBuildings.stable.cost, act: 'pet', unlock: 3, stars: 2, levels: CONFIG.newBuildings.stable.levels, levelText: '의뢰 시간 −5% → −20%', desc: '의뢰 시간 단축 · Lv3부터 지나가는 손님이 1시간 더 머물러요 · 말 쓰다듬기' },
+  chapel: { name: '작은 예배당', sprite: 'chapel', size: [3, 3], cost: CONFIG.newBuildings.chapel.cost, act: 'pray', unlock: 3, stars: 2, levels: CONFIG.newBuildings.chapel.levels, levelText: '체력 회복 +20% → +60%', desc: '의뢰·사냥 뒤 체력 회복이 빨라져요 · 밤 기도' },
+  library: { name: '서재', sprite: 'library', size: [3, 3], cost: CONFIG.newBuildings.library.cost, act: 'read', unlock: 4, stars: 3, levels: CONFIG.newBuildings.library.levels, levelText: '단골 경험치 +10% → +30%', desc: '단골 경험치 +% · Lv3부터 「손님 일기」' },
+  alchemy: { name: '연금술 공방', sprite: 'alchemy', size: [3, 3], cost: CONFIG.newBuildings.alchemy.cost, act: 'brew', unlock: 4, stars: 3, levels: CONFIG.newBuildings.alchemy.levels, levelText: '물약 칸 +1 · 물약 효과 +5%', desc: '텃밭 작물로 물약 만들기 (사냥·의뢰 버프)' },
+  postoffice: { name: '우체국', sprite: 'post', size: [2, 2], cost: CONFIG.newBuildings.postoffice.cost, act: 'mail', unlock: 4, stars: 3, levels: CONFIG.newBuildings.postoffice.levels, levelText: '편지 보상 +20% → +100%', desc: '모모 편지 보상 +% · Lv3부터 이웃에게 선물 (준비 중)' },
+  tower: { name: '마법사의 탑', sprite: 'tower', size: [2, 2], cost: CONFIG.newBuildings.tower.cost, act: 'stargaze', unlock: 5, stars: 4, levels: CONFIG.newBuildings.tower.levels, levelText: '강화 성공 +3%p → +10%p', desc: '강화 성공률 ↑ · Lv5 운명의 별 하루 2번' },
+  guild: { name: '모험가 길드 회관', sprite: 'guild', size: [4, 4], cost: CONFIG.newBuildings.guild.cost, act: 'brag', unlock: 5, stars: 4, levels: CONFIG.newBuildings.guild.levels, levelText: '의뢰 보상 +10% → +40%', desc: '의뢰 보상 +% · Lv3 의뢰 자리 +1 · Lv5 길드 특별 의뢰' },
   well: { name: '우물', sprite: 'well', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '마을 장식 · 주변 기분 +' },
   board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, levels: [300, 800, 1600], levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
   tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
@@ -126,6 +134,13 @@ export const ROOFS: [string, number | null][] = [
 
 /** 건물 안에 있을 때 하는 일 */
 export const INSIDE_TEXT: Partial<Record<Act, string>> = {
+  pet: '말 쓰다듬는 중',
+  pray: '기도하는 중',
+  read: '책 읽는 중',
+  brew: '공방 구경 중',
+  mail: '편지 부치는 중',
+  stargaze: '별 보는 중',
+  brag: '의뢰 자랑 중',
   sleep: '자는 중',
   drink: '한잔 중',
   bath: '온천욕 중',

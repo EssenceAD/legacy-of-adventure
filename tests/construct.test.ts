@@ -58,15 +58,27 @@ describe('동시 공사 수', () => {
 });
 
 describe('뚝딱 탭', () => {
-  it('탭마다 1초 · 원래 시간의 30%까지', () => {
+  it('BUILDINGS_SPEC §1: 탭마다 1초 · 상한 없이 30분 공사도 끝까지 · 50ms 안 연타는 무시', () => {
     const o = world.objs.find((x) => x.kind === 'inn')!;
-    o.lvl = 4;
-    startUp(o, 0, 1_000_000);
+    o.lvl = 9;
+    const t0 = 1_000_000;
+    startUp(o, 0, t0);
     const total = o.con!.total;
-    let n = 0;
-    while (tapCon(o, 1_000_000)) n++;
-    expect(n).toBe(Math.floor(total * B.tapCapPct));
-    expect(o.con!.end).toBe(1_000_000 + (total - n) * 1000);
+    expect(total).toBe(30 * 60);
+    // 매크로 수준 연타(같은 시각)는 1번만 친다
+    const e0 = o.con!.end;
+    tapCon(o, t0 + 1000);
+    tapCon(o, t0 + 1010);
+    expect(e0 - o.con!.end).toBe(1000);
+    // 사람 속도(0.06초마다)로 계속 누르면 끝까지 줄어든다
+    let now = t0 + 1100;
+    let n = 1;
+    while (tapCon(o, now) && n < 5000) {
+      n++;
+      now += 60;
+    }
+    expect(o.con!.end).toBeLessThanOrEqual(now);
+    expect(n).toBeGreaterThan(total * 0.5);
   });
 });
 

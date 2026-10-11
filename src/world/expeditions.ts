@@ -1,5 +1,7 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { bestOf } from './town';
+import { BOSSES } from '../data/bosses';
+import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
 import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
 import { fillNames, josa } from '../data/josa';
@@ -89,6 +91,14 @@ export function ensureQuests() {
   P.quests.day = today();
   P.quests.refreshUsed = 0;
   P.quests.list = rollQuests();
+  // BUILDINGS_SPEC: 길드 Lv5 — 하루 1번 「길드 특별 의뢰」 (보스 재료)
+  if (guildSpecial()) {
+    const open = REGIONS.filter((_, i) => regionUnlocked(i));
+    const q = makeQuest(open[open.length - 1].id, 2);
+    q.guild = true;
+    q.name = '길드 특별 의뢰';
+    P.quests.list.unshift(q);
+  }
 }
 
 /** 무료 새로고침 (하루 1번) */
@@ -127,9 +137,11 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   const chem = partyChemMult(members, chemPct);
   let power = 0;
   for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
-  power = Math.round(power * chem * roleMult(members));
+  // BUILDINGS_SPEC §3: 힘의 물약
+  power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime'));
+  // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut());
   return {
     power,
     chem,
@@ -139,7 +151,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
 }
 
 /** 핫픽스 12 §3: 원정 파티 최대 인원 (폐광까지 가면 5명) */
-export const partyMax = () => E.partyMax + (P.meta.slot5 ? 1 : 0);
+export const partyMax = () => E.partyMax + (P.meta.slot5 ? 1 : 0) + guildSlot();
 /** 5번째 자리 조건: 폐광 의뢰 3번 성공 또는 폐광 사냥터 1-10 돌파 */
 export const slot5Ready = () => (P.counters.regionWins.mine ?? 0) >= 3 || (P.hunt.best.mine ?? 0) >= CONFIG.hunt.stages;
 
@@ -191,7 +203,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members));
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()));
   tieRun(members);
   const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
   const levelUps: string[] = [];
@@ -240,6 +252,11 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   if (win) {
     P.counters.regionWins[q.region] = (P.counters.regionWins[q.region] ?? 0) + 1;
+    if (q.guild) {
+      const bid = BOSSES.find((b) => b.region === q.region)!.id;
+      P.bossMats[bid] = (P.bossMats[bid] ?? 0) + CONFIG.newBuildings.guild.specialBossMats;
+      extra.push(['narr', `길드 특별 의뢰 성공! 「${BOSSES.find((b) => b.region === q.region)!.mat}」 ×${CONFIG.newBuildings.guild.specialBossMats}`]);
+    }
     addRep(CONFIG.reputation.expeditionWin);
     track('expeditionWin');
   }

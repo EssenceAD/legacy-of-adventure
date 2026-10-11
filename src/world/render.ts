@@ -4,6 +4,7 @@
 // 3) 건물 하나를 그린 직후 그 건물의 창문 불빛 → 앞 건물이 나중에 그려지며 가린다
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
 import { SMOKE } from '../data/catalog';
+import { plotLeft } from './craft';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
@@ -529,6 +530,18 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   drawLight(ctx, o.sprite, x, y);
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
   if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
+  // BUILDINGS_SPEC §3: 다 자란 텃밭 위 「수확!」
+  if (o.kind === 'garden' && !S.visiting && o.plots?.some((p) => plotLeft(p) === 0)) {
+    const X = Math.round(x + im.width / 2);
+    const Y = Math.round(y - 4 + Math.sin(S.T * 4) * 2);
+    const pp = P(ctx);
+    pp.rect(X - 15, Y - 9, 30, 11, '#1c1018');
+    pp.rect(X - 14, Y - 8, 28, 9, '#6fd04b');
+    ctx.font = '8px "Galmuri9"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1c1018';
+    ctx.fillText('수확!', X, Y);
+  }
   // 지붕 위 인원 숫자
   if (o.inside.length) {
     const X = x + im.width / 2;

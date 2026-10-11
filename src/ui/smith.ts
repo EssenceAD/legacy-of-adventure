@@ -113,7 +113,7 @@ export function openGarden(o: Building) {
       const left = plotLeft(p, now);
       if (left == null)
         return `<div class="plot"><b>빈 밭 ${i + 1}</b><div class="btnrow">${Object.entries(CONFIG.garden.crops)
-          .map(([k, c]) => `<button class="bigbtn sm" data-p="${i}" data-c="${k}">${c.name} (${c.seed}G · ${c.minutes}분)</button>`)
+          .map(([k, c]) => (c.land && S.land < c.land ? `<button class="bigbtn sm" disabled>${c.name} (땅 ${c.land}단계)</button>` : `<button class="bigbtn sm" data-p="${i}" data-c="${k}">${c.name} (${c.seed}G · ${c.minutes}분)</button>`))
           .join('')}</div></div>`;
       const c = CONFIG.garden.crops[p.crop!];
       if (left === 0) return `<div class="plot ripe"><b>${c.name} 다 자랐어요!</b><button class="bigbtn sm" data-h="${i}">수확 (+${c.yield})</button></div>`;
@@ -122,7 +122,7 @@ export function openGarden(o: Building) {
     .join('');
   openWin(
     '텃밭',
-    `<p class="sub">수확한 채소 <b class="g">${P.pantry}</b>개 → 주점 식사가 더 든든해져요 (배고픔·기분 ↑)</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
+    `<p class="sub">창고: ${Object.entries(P.crops).filter(([, n]) => n > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로 · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
   );
   $$('[data-c]').forEach(
     (b) =>
@@ -136,7 +136,7 @@ export function openGarden(o: Building) {
     (b) =>
       (b.onclick = () => {
         const n = harvest(o, +b.dataset.h!);
-        toast(`수확! 채소 +${n}`);
+        toast(`수확! +${n}`);
         openGarden(o);
       }),
   );

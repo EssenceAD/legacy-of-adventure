@@ -1,5 +1,6 @@
 // 손님 상태기계: 욕구(체력·배고픔·기분)를 채우러 다닌다 · 입구로 도착/떠남 · 단골 제안 · 영웅 · 케미 · 원정 파티 걷기
 import { def, INSIDE_TEXT, type Act } from '../data/catalog';
+import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
 import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
@@ -188,7 +189,7 @@ function needTarget(a: Actor): { b: Building; why: string } | null {
     const passer = a.status === 'passer';
     if (k === 'hp') opts = passer ? byAct(['bath']) : S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
     if (k === 'food') opts = byAct(['drink']).length || passer ? byAct(['drink']) : byAct(['sleep']);
-    if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink']) : byAct(['bath', 'drink', 'farm']);
+    if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink', 'pray', 'stargaze', 'read']) : byAct(['bath', 'drink', 'farm', 'pet', 'read', 'brew', 'mail', 'brag', 'pray']);
     if (opts.length) return { b: nearestSame(a, pick(opts), opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
   }
   return null;
@@ -312,14 +313,15 @@ function fillNeeds(a: Actor, act: Act | undefined) {
   const tired = a.hp < 30;
   const bathO = a.at?.kind === 'bath' ? a.at : bestOf('bath');
   const bathLv = bathO?.lvl ?? 1;
+  // BUILDINGS_SPEC: 예배당 — 체력 회복 +%
+  const heal = 1 + chapelHeal();
   if (act === 'sleep') {
-    a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp));
+    a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp) * heal);
     // 주점이 없으면 여관에서 간단한 끼니가 나온다
     if (!byAct(['drink']).length) a.food = clamp(a.food + NE.meal * 0.6);
   } else if (act === 'drink') {
-    if (!S.visiting && a.id && P.pantry > 0) {
-      // 텃밭 채소가 있으면 더 든든한 식사
-      P.pantry--;
+    if (!S.visiting && a.id && takeMeal()) {
+      // 텃밭 채소가 있으면 더 든든한 식사 (BUILDINGS_SPEC §3: 옛 채소 → 창고의 먹을 수 있는 작물)
       a.food = clamp(a.food + NE.mealWithProduce);
       a.mood = clamp(a.mood + NE.mealProduceMood * moodMult());
     } else a.food = clamp(a.food + NE.meal);
@@ -332,10 +334,13 @@ function fillNeeds(a: Actor, act: Act | undefined) {
     // 온천 레벨마다 회복·기분 +15%
     // 꽃향기 온천: 기분·회복 +20%
     const k = (1 + 0.15 * (bathLv - 1)) * (1 + (bathO ? bfx(bathO, 'bath') : 0));
-    a.hp = clamp(a.hp + NE.bathHp * k);
+    a.hp = clamp(a.hp + NE.bathHp * k * heal);
     a.mood = clamp(a.mood + NE.bathMood * k * moodMult());
     if (!S.visiting && a.id) legendHooks.bond('bathUse');
   } else if (act === 'forge') a.mood = clamp(a.mood + 4);
+  // BUILDINGS_SPEC §2: 새 기능 건물 — 말 쓰다듬기·기도(밤엔 더)·책·공방 구경·편지·별 보기·의뢰 자랑
+  else if (act === 'pray') a.mood = clamp(a.mood + CONFIG.newBuildings.chapel.prayMood * (S.night ? 1.5 : 1) * moodMult());
+  else if (act && ['pet', 'read', 'brew', 'mail', 'stargaze', 'brag'].includes(act)) a.mood = clamp(a.mood + 5 * moodMult());
   // 지친 손님이 쉬고 일어났다 (성녀 아리아의 부탁)
   if (!S.visiting && tired && a.hp >= 30 && (act === 'sleep' || act === 'bath')) {
     legendHooks.req('tiredRecovered');
@@ -647,7 +652,7 @@ export function dailyGuests() {
 
 /** 지나가는 손님: 저녁이 되면 떠난다. 기분이 좋았으면 단골 대기 목록에 */
 function passersLeave() {
-  if (hourNow() < G.passerLeaveHour && !S.night) return;
+  if (hourNow() < G.passerLeaveHour + passerExtraHours() && !S.night) return;
   for (const a of guestsOf()) {
     if (a.status !== 'passer') continue;
     const avg = a.moodN ? (a.moodSum + a.mood) / (a.moodN + 1) : a.mood;

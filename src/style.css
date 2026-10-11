@@ -1243,3 +1243,10 @@ p.qtag.ok{color:#8fe08f}
 /* HOTFIX15: 약하게 = 1px 한 번 */
 #view.shake.low{animation:shakeLow .08s steps(2) 1}
 @keyframes shakeLow{0%{transform:translate(1px,0)}50%{transform:translate(-1px,0)}100%{transform:none}}
+
+/* BUILDINGS_SPEC: 새 건물 효과 줄 · 공방 · 수확 배지 */
+.sub.fx{color:#ffd36b}
+.alch{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.alch .potion button{margin-left:4px}
+#bVillage{position:relative}
+#bVillage .rbadge{position:absolute;right:2px;top:0;min-width:16px;height:16px;padding:0 3px;background:#6fd04b;color:#1c1018;font-style:normal;font-size:11px;line-height:16px;font-weight:700;box-shadow:0 0 0 2px #1c1018}

@@ -89,8 +89,9 @@ export const CONFIG = {
     upMinutes: [1, 3, 5, 10, 12, 15, 20, 25, 30],
     /** 동시 공사: 처음 1곳 + 여관 이 레벨마다 1곳 */
     workerInnLv: [4, 8],
-    /** 뚝딱 탭: 한 공사에 원래 시간의 이만큼까지 줄일 수 있음 */
-    tapCapPct: 0.3,
+    /** 뚝딱 탭: BUILDINGS_SPEC §1 — 상한 없음 (1 = 끝까지) · 매크로 수준 남용만 막는 최소 간격(ms) */
+    tapCapPct: 1,
+    tapMinMs: 50,
     /** 핫픽스 10 철거: 없으면 게임이 깨지는 건물 · 환불 비율 · 이 시간(초) 안이면 전액 */
     noRemove: ['inn'] as string[],
     refundRate: 0.5,
@@ -159,6 +160,13 @@ export const CONFIG = {
   lines: {
     idle: ['방 좋네~', '오늘 던전 갈까?', '배고프다…', '이 마을 맘에 들어', '주인장 최고!'],
     drink: ['캬~!', '한 잔 더!', '건배!!'],
+    pet: ['착하지~', '갈기가 부드러워', '오늘도 잘 달렸니?'],
+    pray: ['오늘도 무사히…', '고마워요', '조용하다'],
+    read: ['이 책 재밌네', '음… 그렇구나', '한 장만 더'],
+    brew: ['보글보글', '무슨 냄새지?', '반짝인다!'],
+    mail: ['집에 편지 써야지', '답장 왔을까?'],
+    stargaze: ['별이 많다', '저 별 이름이 뭐더라'],
+    brag: ['내가 그 보스를…', '다음 의뢰는 내 거!', '길드에 이름 올렸다!'],
     train: ['하앗!', '받아라!'],
     farm: ['쑥쑥 자라라~'],
     bath: ['아~ 시원하다', '피로가 싹…'],
@@ -391,7 +399,33 @@ export const CONFIG = {
       carrot: { name: '당근', minutes: 10, seed: 10, yield: 3 },
       pumpkin: { name: '호박', minutes: 30, seed: 25, yield: 6 },
       cabbage: { name: '양배추', minutes: 60, seed: 40, yield: 10 },
-    } as Record<string, { name: string; minutes: number; seed: number; yield: number }>,
+      // BUILDINGS_SPEC §3
+      herb: { name: '약초', minutes: 20, seed: 20, yield: 4, eat: false },
+      wheat: { name: '밀', minutes: 45, seed: 30, yield: 8 },
+      starflower: { name: '별꽃', minutes: 120, seed: 120, yield: 2, land: 5, eat: false },
+    } as Record<string, { name: string; minutes: number; seed: number; yield: number; land?: number; eat?: boolean }>,
+  },
+  /**
+   * BUILDINGS_SPEC §2: 새 기능 건물 7종 — 효과는 [Lv1, Lv5] 사이를 레벨에 따라 고르게 · 숫자는 여기 한 곳
+   */
+  newBuildings: {
+    stable: { cost: 2500, levels: [3000, 5000, 8000, 12000], unlock: 3, stars: 2, timeCut: [0.05, 0.2] as [number, number], passerStayLv: 3, passerStayHours: 1 },
+    chapel: { cost: 3000, levels: [3500, 6000, 9000, 14000], unlock: 3, stars: 2, heal: [0.2, 0.6] as [number, number], prayMood: 6 },
+    library: { cost: 5000, levels: [6000, 9000, 14000, 20000], unlock: 4, stars: 3, xp: [0.1, 0.3] as [number, number], diaryLv: 3 },
+    alchemy: { cost: 6000, levels: [7000, 11000, 16000, 24000], unlock: 4, stars: 3, boostPerLv: 0.05 },
+    postoffice: { cost: 4000, levels: [4000, 7000, 10000, 15000], unlock: 4, stars: 3, mail: [0.2, 1] as [number, number], giftLv: 3 },
+    tower: { cost: 10000, levels: [12000, 18000, 26000, 36000], unlock: 5, stars: 4, enhance: [0.03, 0.1] as [number, number], starLv: 5 },
+    guild: { cost: 15000, levels: [18000, 26000, 36000, 50000], unlock: 5, stars: 4, gold: [0.1, 0.4] as [number, number], slotLv: 3, specialLv: 5, specialBossMats: 2 },
+  },
+  /** BUILDINGS_SPEC §3: 연금술 물약 (30분 · 한 번에 하나) */
+  potions: {
+    minutes: 30,
+    list: {
+      power: { name: '힘의 물약', need: { herb: 3, carrot: 2 }, desc: '사냥·의뢰 전투력 +15%', v: 0.15 },
+      stone: { name: '돌피부 물약', need: { herb: 3, pumpkin: 2 }, desc: '받는 피해 −15%', v: 0.15 },
+      luck: { name: '행운의 물약', need: { starflower: 1, herb: 2 }, desc: '아이템 드롭 +20%', v: 0.2 },
+      rest: { name: '휴식의 물약', need: { cabbage: 3, wheat: 2 }, desc: '손님 전원 기분 +20 (바로)', v: 20 },
+    } as Record<string, { name: string; need: Record<string, number>; desc: string; v: number }>,
   },
   /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
   gifts: { sorryGold: 1000, /** 서버 저장에서 이미 하나를 잃은 게 확인된 여관 (지금 저장엔 중복이 없어도 사과 편지) */ sorryInns: ['롯데캐슬 여관', '머리박고힐 여관'] as string[] },

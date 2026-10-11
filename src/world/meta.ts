@@ -1,5 +1,6 @@
 // 5단계 4장: 업적 · 칭호 · 출석(7일·28일) · 상점(일일 진열) · 우편함 — 가볍게, 전부 progress 안이라 클라우드 저장에도 같이
 import { sfx } from '../audio/sfx';
+import { postMailMult } from './facilities';
 import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
 import { evalTitles } from './evaluation';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
@@ -54,6 +55,7 @@ function stat(k: AchStat): number {
     case 'harmony': return P.harmony.found.length;
     case 'events': return C.eventsSolved ?? 0;
     case 'evalBest': return P.evaluation.best;
+    case 'taps': return P.counters.taps ?? 0;
   }
 }
 
@@ -116,8 +118,10 @@ export function claimMail(id: number): Mail['reward'] | null {
   m.claimed = true;
   if (hasReward(m)) sfx('coin');
   const r = m.reward;
-  if (r.gold) S.gold += r.gold;
-  if (r.dust) P.dust.n += r.dust;
+  // BUILDINGS_SPEC: 우체국 — 편지 보상 +%
+  const pm = postMailMult();
+  if (r.gold) S.gold += Math.round(r.gold * pm);
+  if (r.dust) P.dust.n += Math.round(r.dust * pm);
   if (r.tokens) P.tokens += r.tokens;
   if (r.shards) {
     P.hunt.shards += r.shards;

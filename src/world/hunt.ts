@@ -1,6 +1,7 @@
 // 5단계 2장: 사냥 — 지역별 10스테이지(x-10 = 지역 보스). 파밍 → 강해짐 → 다음 스테이지
 // 깬 스테이지는 자동 사냥으로 반복, 꺼져 있어도 가장 높은 스테이지 기준 방치 보상(방치 상한 안에서, 원정과 합산)
 import { BOSSES } from '../data/bosses';
+import { buffOf } from './facilities';
 import { CONFIG } from '../data/config';
 import { REGIONS, type Grade, type RegionId } from '../data/items';
 import { gainXp, powerOf } from './adventurers';
@@ -44,7 +45,7 @@ export function huntRegionOpen(i: number): boolean {
 export const stageOpen = (r: string, s: number) => huntRegionOpen(regionIdx(r)) && s <= best(r) + 1;
 
 /** 파티 전투력 (케미 배율 포함) */
-export const partyPower = (ms: Actor[]) => Math.round(ms.reduce((s, m) => s + powerOf(m), 0) * partyChemMult(ms) * roleMult(ms));
+export const partyPower = (ms: Actor[]) => Math.round(ms.reduce((s, m) => s + powerOf(m), 0) * partyChemMult(ms) * roleMult(ms) * (1 + buffOf('power')));
 
 /** 사냥에 갈 수 있는 손님 (단골·영웅, 원정 중 아님) */
 export const huntCrew = () => homeActors().filter((a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero') && a.runId == null);
@@ -84,7 +85,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
   for (const m of members) if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
   const items: Item[] = [];
-  if (dropItem && (isBoss(s) || Math.random() < H.dropChance)) {
+  if (dropItem && (isBoss(s) || Math.random() < H.dropChance * (1 + buffOf('luck')))) {
     // 원정과 같은 등급표 · 같은 천장(지역별)
     const it = makeItem(r, rollGrade(r, isBoss(s) ? 1 : 0));
     if (addToBag(it) === 'ok') items.push(it);
