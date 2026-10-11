@@ -14,11 +14,11 @@ import { starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, groundFor, groundKey, type Wild } from './ground';
-import { anim, animF, type Prop } from './grade';
+import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { doorOf, grid, inLand, placing, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, groundVersion, inLand, placing, spriteOrigin, type Placement } from './town';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
@@ -58,6 +58,65 @@ export function objTL(o: { sprite: string | null; tx: number; ty: number; fw: nu
   return [view.OX + Math.round(x), view.OY + Math.round(y)];
 }
 
+// ───────── 핫픽스 11 §11: 건물·나무·장식 그리기 순서 = 발판 겹침 기준 (숫자 하나 정렬 대신) ─────────
+//  화면에서 그림이 실제로 겹치는 쌍만 「발판이 완전히 뒤인 쪽 먼저」로 묶고 위상 정렬. 관계 없는 것끼리는 예전 깊이값 순서.
+//  배치가 바뀔 때만 다시 계산해서 캐시한다 (매 프레임 계산 안 함 — 발열).
+type Box = { l: number; r: number; t: number; b: number };
+function boxOf(it: Thing): Box {
+  if ('o' in it && it.o.sprite && META[it.o.sprite]) {
+    const [x, y] = spriteOrigin(it.o);
+    const m = META[it.o.sprite];
+    return { l: x, r: x + m.w, t: y, b: y + m.h };
+  }
+  const h = 'w' in it ? 80 : 64;
+  const b = sy(it.tx + it.fw, it.ty + it.fh) + 2;
+  return { l: sx(it.tx, it.ty + it.fh) - 4, r: sx(it.tx + it.fw, it.ty) + 4, t: b - h, b };
+}
+/** -1 = a를 먼저(뒤) · 1 = b를 먼저 · 0 = 정할 수 없음(대각선 · 발판 겹침) */
+export function behindOf(a: { tx: number; ty: number; fw: number; fh: number }, b: { tx: number; ty: number; fw: number; fh: number }): -1 | 0 | 1 {
+  const x = a.tx + a.fw <= b.tx ? -1 : b.tx + b.fw <= a.tx ? 1 : 0;
+  const y = a.ty + a.fh <= b.ty ? -1 : b.ty + b.fh <= a.ty ? 1 : 0;
+  if (x && y && x !== y) return 0; // 대각선: 화면에서 거의 안 겹친다 → 깊이값에 맡김
+  return (x || y) as -1 | 0 | 1;
+}
+/** 겹치는 쌍만 발판으로 묶은 위상 정렬 (같은 조건이면 깊이값 순) */
+export function orderThings<T extends { d: number; tx: number; ty: number; fw: number; fh: number }>(list: T[], box: (t: T) => Box): T[] {
+  const base = list.slice().sort((p, q) => p.d - q.d);
+  const n = base.length;
+  const bx = base.map(box);
+  const after: number[][] = Array.from({ length: n }, () => []);
+  const indeg = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++) {
+      const A = bx[i];
+      const B = bx[j];
+      if (A.r <= B.l || B.r <= A.l || A.b <= B.t || B.b <= A.t) continue;
+      const r = behindOf(base[i], base[j]);
+      if (r === -1) (after[i].push(j), indeg[j]++);
+      else if (r === 1) (after[j].push(i), indeg[i]++);
+    }
+  const out: T[] = [];
+  const done = new Uint8Array(n);
+  for (let k = 0; k < n; k++) {
+    let pick = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && indeg[i] === 0) {
+      pick = i;
+      break;
+    }
+    // 고리(드묾): 남은 것 중 깊이값이 가장 작은 것부터
+    if (pick < 0) for (let i = 0; i < n; i++) if (!done[i]) {
+      pick = i;
+      break;
+    }
+    done[pick] = 1;
+    out.push(base[pick]);
+    for (const j of after[pick]) indeg[j]--;
+  }
+  return out;
+}
+let orderKey = '';
+let orderCache: Thing[] = [];
+
 export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const { LW, LH, OX, OY } = view;
   const T = S.T;
@@ -91,16 +150,29 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
 
   // 2) 깊이 정렬: 건물·나무를 먼저 기존 키로 정렬하고,
   //    캐릭터는 하나씩 "자기가 앞에 있어야 하는 마지막 건물" 바로 뒤에 끼워 넣는다
-  const things: Thing[] = [];
-  // 옮기는 중인 건물은 제자리에 그리지 않는다 (유령으로만)
-  for (const o of world.objs) if (o !== pl?.move) things.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
-  for (const w of ground.wild) things.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
-  // 마을 등급 장식 · NPC (울타리 밖 개간지·입구 길)
-  for (const pr of propsNow()) things.push({ d: depthBuilding(pr.x, pr.y, pr.fw, pr.fh), tx: pr.x, ty: pr.y, fw: pr.fw, fh: pr.fh, pr });
-  for (const fk of folkNow()) things.push({ d: depthActor(fk.x, fk.y), tx: Math.floor(fk.x), ty: Math.floor(fk.y), fw: 1, fh: 1, fk });
+  // 핫픽스 11 §11: 건물·나무·장식 순서는 배치가 바뀔 때만 다시 계산 (길 다시 깔기 번호 · 건물 수 · 옮기는 중 · 마을 등급 · 이웃)
+  const key = `${groundVersion}|${world.objs.length}|${pl?.move ? world.objs.indexOf(pl.move) : -1}|${gradeNow()}|${anim.on ? Math.round(animF() * 20) : -1}|${S.visiting?.id ?? ''}|${ground.wild.length}`;
+  if (key !== orderKey) {
+    orderKey = key;
+    const list: Thing[] = [];
+    // 옮기는 중인 건물은 제자리에 그리지 않는다 (유령으로만)
+    for (const o of world.objs) if (o !== pl?.move) list.push({ d: depthBuilding(o.tx, o.ty, o.fw, o.fh), tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh, o });
+    for (const w of ground.wild) list.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
+    // 마을 등급 장식 · NPC (울타리 밖 개간지·입구 길)
+    for (const pr of propsNow()) list.push({ d: depthBuilding(pr.x, pr.y, pr.fw, pr.fh), tx: pr.x, ty: pr.y, fw: pr.fw, fh: pr.fh, pr });
+    orderCache = orderThings(list, boxOf);
+  }
+  const things: Thing[] = orderCache.slice();
+  // 움직이는 것(마을 사람·평가단·구경거리)은 캐릭터처럼 발판 기준으로 끼워 넣는다 (깊이값 순)
+  const movers: Thing[] = [];
+  for (const fk of folkNow()) movers.push({ d: depthActor(fk.x, fk.y), tx: Math.floor(fk.x), ty: Math.floor(fk.y), fw: 1, fh: 1, fk });
   // 베타: 평가단 순회
-  if (!S.visiting) things.push(...tourThings(), ...spectacleThings());
-  things.sort((p, q) => p.d - q.d);
+  if (!S.visiting) movers.push(...tourThings(), ...spectacleThings());
+  for (const m of movers.sort((p, q) => p.d - q.d)) {
+    let last = -1;
+    for (let i = 0; i < things.length; i++) if (inFrontOf({ x: m.tx, y: m.ty } as Actor, things[i]) === true) last = i;
+    things.splice(last + 1, 0, m);
+  }
   /** slots[k] = things[k] 앞에 그릴 캐릭터들 (마지막 칸은 맨 끝) */
   const slots: Actor[][] = Array.from({ length: things.length + 1 }, () => []);
   /** 문으로 드나드는 중인 손님은 그 건물 바로 다음에 그린다 (문 영역으로 가려야 해서) */
