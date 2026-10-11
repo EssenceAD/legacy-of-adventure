@@ -8,7 +8,8 @@ import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAM
 import { CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
-import { doingText, sendAway } from '../world/actors';
+import { doingText, regularNeed, sendAway } from '../world/actors';
+import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
 import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
@@ -20,6 +21,19 @@ import { dustLine } from './smith';
 import { closeWin, openWin, toast } from './windows';
 
 const homeActors = () => world.home?.actors ?? world.actors;
+
+/** 핫픽스 10 §15: 묵는 손님마다 단골까지 얼마나 왔나 (규칙은 dailyGuests · passersLeave 그대로, 보여 주기만) */
+function regLine(a: Actor): string {
+  if (a.status !== 'visitor' && a.status !== 'passer') return '';
+  if (a.heroId || a.legendId) return '';
+  const avg = Math.round(a.moodN ? a.moodSum / a.moodN : a.mood);
+  const need = Math.round(regularNeed());
+  const good = avg >= need;
+  const m = `기분 평균 ${avg}/${need}`;
+  if (a.status === 'passer') return `<small class="regp ${good ? 'good' : ''}">저녁에 떠나요 · ${m}${good ? ' → 단골 제안 예정' : ''}</small>`;
+  const d = Math.max(1, (a.leaveDay ?? S.day) - S.day);
+  return good ? `<small class="regp good">💛 단골 후보 · ${m} · D-${d} 아침 결정</small>` : `<small class="regp">${m} · 조금만 더 챙겨 주세요</small>`;
+}
 let gTab = 0;
 let gSort = 0;
 const SORTS = ['레벨', '전투력', '희귀도'];
@@ -32,11 +46,11 @@ export function openGuests() {
   const key = [(a: Actor) => a.lvl, (a: Actor) => powerOf(a), (a: Actor) => RARITIES.indexOf(a.rarity) * 1000 + a.lvl][gSort];
   list.sort((a, b) => key(b) - key(a));
   const rows = list
-    .map((a) => `<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small></span><em>전투력 ${fmt(powerOf(a))}</em></button>`)
+    .map((a) => `<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button>`)
     .join('');
   openWin(
     `손님 ${all.length}명`,
-    `${tabs([`단골 ${regs.length}`, `방문 ${vis.length}`, `대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}`], gTab, 'gT')}
+    `<p class="sub regsum">단골 <b>${regs.length}/${capacity()}</b> · 대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}</p>${tabs([`단골 ${regs.length}`, `방문 ${vis.length}`, `대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}`], gTab, 'gT')}
     ${
       gTab === 2
         ? `<p class="note">단골 자리가 꽉 찼을 때 단골이 되고 싶어 한 손님이에요 · 자리가 나면 다시 찾아와 제안해요</p><div class="glist">${

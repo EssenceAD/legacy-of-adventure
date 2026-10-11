@@ -548,7 +548,7 @@ export function sendAway(a: Actor, happy: boolean) {
   markDirty();
 }
 
-const regularsCount = () => guestsOf().filter((x) => x.status === 'regular' || x.status === 'hero').length;
+export const regularsCount = () => guestsOf().filter((x) => x.status === 'regular' || x.status === 'hero').length;
 
 /** 단골 자리가 없을 때: 대기 목록에 올리고 보낸다 (최대 3명, 꽉 차면 못 올림) */
 function toWaitlist(a: Actor) {
@@ -572,8 +572,8 @@ function callWaitlist() {
   propose(a);
 }
 
-/** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 */
-function propose(a: Actor) {
+/** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 · fast = 새로 생긴 자리의 빠른 제안(받으면 fastSlots -1) */
+function propose(a: Actor, fast = false) {
   queueEvent(() => {
     if (!world.actors.includes(a) || a.leaving) return;
     const regs = regularsCount();
@@ -592,6 +592,7 @@ function propose(a: Actor) {
               return toWaitlist(a);
             }
             a.status = 'regular';
+            if (fast) P.fastSlots = Math.max(0, P.fastSlots - 1);
             addRep(CONFIG.reputation.newRegular);
             ownerGain('regular');
             floatW(a.x, a.y, 40, '단골 등록!', 'big');
@@ -605,7 +606,7 @@ function propose(a: Actor) {
 }
 
 /** 단골이 되고 싶어 하는 기분 기준 (주인 말솜씨가 높을수록 낮다) */
-const regularNeed = () => G.regularMood * (1 - hfx('regular')) - regularCut();
+export const regularNeed = () => G.regularMood * (1 - hfx('regular')) - regularCut();
 
 /** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
 export function dailyGuests() {
@@ -706,7 +707,54 @@ function earlyRegular() {
   }
 }
 
+// ───────── 핫픽스 10 §15: 자리가 새로 생기면 빠른 제안 (규칙은 earlyRegular와 같은 방식) ─────────
+let lastCap = -1;
+let lastFastArrive = -99;
+export const fastHooks = { roomUp: () => {} };
+/** 단골 자리(capacity)가 늘어난 순간 · 옛 저장 구제 1번 */
+export function watchCapacity() {
+  if (S.visiting || !S.started) {
+    lastCap = -1;
+    return;
+  }
+  const c = capacity();
+  if (lastCap >= 0 && c > lastCap) {
+    P.fastSlots += c - lastCap;
+    markDirty();
+    if (P.fastHintN < 2) {
+      P.fastHintN++;
+      fastHooks.roomUp();
+    }
+  }
+  lastCap = c;
+  if (!P.fastRescued) {
+    P.fastRescued = true;
+    const regs = regularsCount();
+    if (regs < c && !P.fastSlots) P.fastSlots = Math.min(2, c - regs);
+    markDirty();
+  }
+}
+export function fastRegular() {
+  if (S.visiting || P.fastSlots <= 0 || regularsCount() >= capacity()) return;
+  // 대기 목록 손님이 먼저 (callWaitlist)
+  if (P.waitlist.length) return;
+  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId && !g.leaving && g.runId == null);
+  const a = stay.find((g) => g.moodN >= EARLY_HOURS && g.moodSum / g.moodN >= regularNeed());
+  if (a) return propose(a, true);
+  // 머무는 손님이 없으면: 소문 듣고 온 손님 (게임 2시간에 한 번까지)
+  const h = absHours();
+  if (!stay.length && h - lastFastArrive >= 2) {
+    lastFastArrive = h;
+    const g = arrive();
+    if (g) {
+      g.mood = Math.max(g.mood, 85);
+      say(g, '방이 새로 났다는 소문 듣고 왔어요!', 0.3);
+    }
+  }
+}
+
 function tickGuests(dt: number) {
+  watchCapacity();
   const gh = dt / CONFIG.clock.realSecondsPerGameHour;
   const list = guestsOf();
   const crowded = stayers().length > capacity();
@@ -728,6 +776,7 @@ function tickGuests(dt: number) {
   passersLeave();
   callWaitlist();
   earlyRegular();
+  fastRegular();
   const h = absHours();
   if (h - P.lastArriveHour >= G.arriveEveryGameHours || h < P.lastArriveHour) {
     P.lastArriveHour = h;
