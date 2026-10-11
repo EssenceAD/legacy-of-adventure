@@ -162,7 +162,11 @@ async function run(size) {
     if (/장부 2장/.test(m)) break;
     const done = await p.evaluate(() => [...document.querySelectorAll('#runbar button.done')].some((x) => x.textContent.includes('보고서')));
     if (done && !(await winOn())) {
-      await clickText('#runbar button.done', '보고서', 800);
+      // 접힌 「진행 중」 띠면 먼저 펼친다 (사람처럼)
+      if (!(await clickText('#runbar button.done', '보고서', 800))) {
+        await click('#rbStrip', 500);
+        await clickText('#runbar button.done', '보고서', 800);
+      }
       await talk();
       await click('#repOk', 800);
       await talk();
@@ -226,7 +230,11 @@ async function run(size) {
     await click('#winX', 300);
     await talk();
     if (await p.evaluate(() => [...document.querySelectorAll('#runbar button.done')].some((x) => x.textContent.includes('보고서')))) {
-      await clickText('#runbar button.done', '보고서', 800);
+      // 접힌 「진행 중」 띠면 먼저 펼친다 (사람처럼)
+      if (!(await clickText('#runbar button.done', '보고서', 800))) {
+        await click('#rbStrip', 500);
+        await clickText('#runbar button.done', '보고서', 800);
+      }
       await talk();
       await click('#repOk', 800);
       await talk();
