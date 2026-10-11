@@ -14,7 +14,7 @@ import { LEGENDS } from '../data/legends';
 import { HARMONIES } from '../data/harmony';
 import { hintLv, hintText, partsText } from '../world/harmony';
 import { PORTRAITS } from '../engine/assets';
-import { $$, bindTabs, fmt, pct, tabs } from './common';
+import { $$, bindTabs, claimOrder, fmt, keepScroll, pct, tabs } from './common';
 import { openWin, toast } from './windows';
 import { openPlace, type Place } from './nav';
 
@@ -132,8 +132,14 @@ export function openDex(tab = dTab) {
 
 export function openGoals() {
   ensureGoals();
-  const rows = P.goals.list
-    .map((g, i) => {
+  // 핫픽스 11 §9-1: 받을 수 있는 목표가 맨 위 · 받은 건 맨 아래 (data-g는 원래 번호)
+  const order = claimOrder(
+    P.goals.list.map((g, i) => ({ g, i })),
+    ({ g }) => ({ ready: g.progress >= g.target && !g.claimed, got: g.claimed, ratio: g.progress / Math.max(1, g.target) }),
+  );
+  const ready = order.filter(({ g }) => g.progress >= g.target && !g.claimed).map(({ i }) => i);
+  const rows = order
+    .map(({ g, i }) => {
       const t = GOAL_TEMPLATES.find((x) => x.id === g.id)!;
       const done = g.progress >= g.target;
       return `<div class="goal ${g.claimed ? 'got' : ''}"><span><b>${t.text(g.target)}</b><small>${g.progress}/${g.target} · 보상 ${fmt(t.reward.gold)}G${t.reward.dust ? ` + 잿빛 가루 ${t.reward.dust}` : ''} · 평판 +${CONFIG.reputation.goal}</small></span>${done || g.claimed ? `<button data-g="${i}" ${g.claimed ? 'disabled' : ''}>${g.claimed ? '받음' : '받기'}</button>` : `<button class="go" data-go="${t.go}">가기 ›</button>`}</div>`;
@@ -144,8 +150,17 @@ export function openGoals() {
     '오늘의 목표',
     `<p class="sub">평판 <b class="g">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</b> (${fmt(P.rep)}점${repToNext() ? ` · 다음 별까지 ${repToNext()}` : ''})</p>
     <p class="note">평판은 원정 성공·단골·도감 보상으로 올라요 · 땅 넓히기에 필요해요</p>
-    <div class="goals">${rows}</div><p class="note">목표는 매일 새로 바뀌어요</p>`,
+    ${ready.length >= 2 ? `<button class="bigbtn sm claimall" id="gAll">모두 받기 (${ready.length})</button>` : ''}<div class="goals">${rows}</div><p class="note">목표는 매일 새로 바뀌어요</p>`,
   );
+  const ga = document.getElementById('gAll');
+  if (ga)
+    ga.onclick = () => {
+      let gold = 0;
+      for (const i of ready) gold += claimGoal(i)?.gold ?? 0;
+      markDirty();
+      toast(`목표 ${ready.length}개 달성 · 금화 +${fmt(gold)}`);
+      keepScroll(openGoals);
+    };
   $$('[data-go]').forEach((b) => (b.onclick = () => openPlace(b.dataset.go as Place)));
   $$('[data-g]').forEach(
     (b) =>
@@ -154,7 +169,7 @@ export function openGoals() {
         if (!r) return;
         markDirty();
         toast(`목표 달성 · 금화 +${fmt(r.gold)}`);
-        openGoals();
+        keepScroll(openGoals);
       }),
   );
 }

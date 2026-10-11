@@ -20,7 +20,7 @@ import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Quest, type Run, type TalkLine } from '../world/state';
-import { $, $$, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic } from './common';
+import { $, $$, claimOrder, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic } from './common';
 import { closeWin, openWin, toast } from './windows';
 
 const E = CONFIG.expedition;
@@ -52,7 +52,11 @@ function questRow(q: Quest) {
 export function openBoard() {
   if (S.visiting) return toast('이웃 마을에선 원정을 못 보내요');
   ensureQuests();
-  const runs = P.runs.filter((r) => !r.claimed);
+  // 핫픽스 11 §9-1: 돌아온 파티(보고서) 먼저 → 진행 중은 많이 간 순
+  const runs = claimOrder(
+    P.runs.filter((r) => !r.claimed),
+    (r) => ({ ready: !!r.result, got: false, ratio: (Date.now() - r.start) / Math.max(1, r.end - r.start) }),
+  );
   const free = E.freeRefreshPerDay - P.quests.refreshUsed;
   const pity = REGIONS.filter((_, i) => regionUnlocked(i))
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)

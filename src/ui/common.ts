@@ -79,6 +79,24 @@ function tickLive() {
   sfx('mission');
 }
 
+/**
+ * 핫픽스 11 §9-1: 목록 순서 — ① 받기 가능 → ② 진행 중(진행률 높은 순) → ③ 받음(맨 아래). 같은 묶음 안은 원래 순서
+ */
+export function claimOrder<T>(items: T[], st: (x: T) => { ready: boolean; got: boolean; ratio: number }): T[] {
+  const g = (s: { ready: boolean; got: boolean }) => (s.got ? 2 : s.ready ? 0 : 1);
+  return items
+    .map((x, i) => ({ x, i, s: st(x) }))
+    .sort((a, b) => g(a.s) - g(b.s) || (g(a.s) === 1 ? b.s.ratio - a.s.ratio : 0) || a.i - b.i)
+    .map((e) => e.x);
+}
+/** 받기 뒤 다시 그릴 때 스크롤이 맨 위로 튀지 않게 */
+export function keepScroll(fn: () => void) {
+  const b = document.getElementById('winB');
+  const top = b?.scrollTop ?? 0;
+  fn();
+  if (b) b.scrollTop = top;
+}
+
 /** 창 안의 [data-end] 진행 막대·남은 시간을 1초마다 고친다 */
 export function tickTimers() {
   tickLive();
