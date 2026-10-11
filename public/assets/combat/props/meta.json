@@ -1,0 +1,102 @@
+{
+ "abyss_crack": {
+  "w": 40,
+  "h": 25,
+  "anchor": "bottom-center"
+ },
+ "abyss_float": {
+  "w": 32,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "abyss_pillar": {
+  "w": 22,
+  "h": 45,
+  "anchor": "bottom-center"
+ },
+ "abyss_stairs": {
+  "w": 40,
+  "h": 37,
+  "anchor": "bottom-center"
+ },
+ "forest_cave": {
+  "w": 40,
+  "h": 38,
+  "anchor": "bottom-center"
+ },
+ "forest_log": {
+  "w": 40,
+  "h": 29,
+  "anchor": "bottom-center"
+ },
+ "forest_mush": {
+  "w": 26,
+  "h": 31,
+  "anchor": "bottom-center"
+ },
+ "forest_stump": {
+  "w": 36,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "ice_banner": {
+  "w": 26,
+  "h": 41,
+  "anchor": "bottom-center"
+ },
+ "ice_cliff": {
+  "w": 30,
+  "h": 32,
+  "anchor": "bottom-center"
+ },
+ "ice_crystal": {
+  "w": 30,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "ice_rock": {
+  "w": 32,
+  "h": 31,
+  "anchor": "bottom-center"
+ },
+ "mine_beam": {
+  "w": 34,
+  "h": 39,
+  "anchor": "bottom-center"
+ },
+ "mine_cart": {
+  "w": 40,
+  "h": 38,
+  "anchor": "bottom-center"
+ },
+ "mine_ore": {
+  "w": 36,
+  "h": 34,
+  "anchor": "bottom-center"
+ },
+ "mine_tools": {
+  "w": 36,
+  "h": 35,
+  "anchor": "bottom-center"
+ },
+ "swamp_bigmush": {
+  "w": 36,
+  "h": 40,
+  "anchor": "bottom-center"
+ },
+ "swamp_bridge": {
+  "w": 44,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "swamp_reeds": {
+  "w": 30,
+  "h": 34,
+  "anchor": "bottom-center"
+ },
+ "swamp_toad": {
+  "w": 30,
+  "h": 29,
+  "anchor": "bottom-center"
+ }
+}
