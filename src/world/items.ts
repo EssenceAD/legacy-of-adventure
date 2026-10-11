@@ -1,4 +1,5 @@
 // 장비: 만들기(등급·랜덤 옵션·세트) · 천장 · 가방 · 장착 · 옵션 합 · 아이콘
+import { bestOf } from './town';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
@@ -88,7 +89,7 @@ export function gearStat(a: Pick<Actor, 'kind'>, it: Item, k: StatKey): number {
 // ───────── 가방 ─────────
 
 export const bagSize = () => {
-  const smith = world.objs.find((o) => o.kind === 'smith');
+  const smith = bestOf('smith');
   return I.bagBase + (smith ? (smith.lvl - 1) * I.bagPerSmithLevel : 0);
 };
 

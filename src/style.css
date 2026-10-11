@@ -1169,3 +1169,7 @@ p.qtag.ok{color:#8fe08f}
 .conp .cbar{height:8px;background:#3a3048;box-shadow:0 0 0 1px #1a1418}
 .conp .cbar i{display:block;height:100%;background:linear-gradient(#a8f080 0 25%,#6fd04b 25%)}
 .conp .ct{font-size:var(--f-big,18px);color:#fff3d6;text-align:center}
+
+/* HOTFIX14 §4: 위쪽 HUD 줄의 빈 곳은 클릭을 막지 않는다 (별똥별·건물 클릭이 캔버스까지) */
+.top{pointer-events:none}
+.top>*:not(.sp){pointer-events:auto}

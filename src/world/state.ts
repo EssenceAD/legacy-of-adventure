@@ -31,6 +31,8 @@ export interface Building {
   /** 핫픽스 10: 지은 시각(ms) — 5분 안 철거는 전액 환불 · 마을 등급 장식을 옮겨 놓은 것(무료, 환불 없음) */
   builtAt?: number;
   fromProp?: boolean;
+  /** HOTFIX14 §1: 두 번째 채부터 실제로 낸 건설비 (기본값과 다를 때만) */
+  paid?: number;
 }
 
 export type ActorState = 'idle' | 'walk' | 'in' | 'atk' | 'pray' | 'sit' | 'door';
@@ -395,6 +397,8 @@ export function freshProgress() {
       cheerBonus: 0,
       /** HOTFIX14 §5: 업데이트 선물을 받은 버전 · 선물 장식(무료로 놓기) */
       giftVer: '',
+      /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
+      sorryDupe: false,
       giftDeco: {} as Record<string, number>,
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */

@@ -395,6 +395,8 @@ export const CONFIG = {
   },
   /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
   gifts: { sorryGold: 1000 },
+  /** HOTFIX14 §1 임시 → TOWN_SPEC T3에서 땅 단계별 최대 채수·수입 배율과 함께 정식으로: n번째 채 건설비 배율 */
+  town: { copyCost: [1, 1.5] as number[] },
   /** 핫픽스 12 §2: 역할 조합(탱·힐·딜) · 멘토 경험치 · 의뢰 조건 태그 */
   party: {
     rolePowerPct: 0.1,

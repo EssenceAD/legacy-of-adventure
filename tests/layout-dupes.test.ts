@@ -1,6 +1,7 @@
-// HOTFIX14 §1: 하나뿐인 건물 중복(온천 2채 · 대장간 2채)과 자리 없는 건물 — 조용히 버리지 않는다
+// HOTFIX14 §1: 같은 건물 여러 채(온천 2채 · 대장간 2채)는 그대로 살리고, 자리 없는 건물도 조용히 버리지 않는다
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildableKinds, placeLayout, type LayoutEntry } from '../src/world/town';
+import { def } from '../src/data/catalog';
+import { bestOf, buildableKinds, buildCost, placeLayout, type LayoutEntry } from '../src/world/town';
 import { S, world } from '../src/world/state';
 
 const E = (kind: string, tx: number, ty: number, lvl = 1, extra: LayoutEntry['extra'] = {}, flip = false): LayoutEntry => ({ kind: kind as never, tx, ty, lvl, hue: null, flip, extra });
@@ -19,38 +20,44 @@ beforeEach(() => {
   S.land = 5;
 });
 
-describe('하나뿐인 건물 중복', () => {
+describe('같은 건물 여러 채 (막지 말고 허용)', () => {
   for (const order of ['lv5', 'lv1'] as const)
-    it(`롯데캐슬 (저장 순서 ${order} 먼저): 온천 1채 · Lv5가 남고 Lv1(공사 중)은 환불 목록`, () => {
+    it(`롯데캐슬 (저장 순서 ${order} 먼저): 온천 2채 모두 남음 · 공사 중인 온천도 그대로`, () => {
       const r = placeLayout(lotte(order), 5);
       const baths = world.objs.filter((o) => o.kind === 'bath');
-      expect(baths.length).toBe(1);
-      expect(baths[0].lvl).toBe(5);
-      expect(r.removed.map((x) => [x.e.kind, x.e.lvl, x.why])).toEqual([['bath', 1, 'dupe']]);
-      // 다른 건물은 하나도 안 사라짐
+      expect(baths.map((o) => o.lvl).sort()).toEqual([1, 5]);
+      expect(baths.find((o) => o.lvl === 1)!.con?.kind).toBe('new');
+      expect(r.removed).toEqual([]);
       for (const k of ['inn', 'tavern', 'training', 'smith', 'garden', 'dungeon']) expect(world.objs.filter((o) => o.kind === k).length).toBe(1);
       expect(world.objs.filter((o) => o.kind === 'cottage').length).toBe(6);
     });
-  it('대장간 2채: 레벨 높은 쪽 · 같으면 먼저 지은 쪽', () => {
-    let r = placeLayout([E('inn', 10, 10, 1), E('smith', 2, 2, 1, { builtAt: 5 }), E('smith', 2, 8, 3, { builtAt: 9 })], 5);
-    expect(world.objs.filter((o) => o.kind === 'smith').map((o) => o.lvl)).toEqual([3]);
-    expect(r.removed.length).toBe(1);
-    r = placeLayout([E('inn', 10, 10, 1), E('smith', 2, 2, 2, { builtAt: 9 }), E('smith', 2, 8, 2, { builtAt: 5 })], 5);
-    expect(world.objs.find((o) => o.kind === 'smith')!.builtAt).toBe(5);
+  it('대장간 2채: 둘 다 남고 「마을 전체 효과」는 높은 레벨 한 채 기준', () => {
+    placeLayout([E('inn', 10, 10, 1), E('smith', 2, 2, 1), E('smith', 2, 8, 3)], 5);
+    expect(world.objs.filter((o) => o.kind === 'smith').map((o) => o.lvl).sort()).toEqual([1, 3]);
+    expect(bestOf('smith')!.lvl).toBe(3);
   });
-  it('불러온 뒤 다시 저장·불러오기 해도 그대로 (두 번째엔 정리할 게 없음)', () => {
+  it('불러온 뒤 다시 불러와도 그대로', () => {
     placeLayout(lotte('lv1'), 5);
     const again = world.objs.map((o) => E(o.kind, o.tx, o.ty, o.lvl, { ...(o.con ? { con: o.con } : {}) }, !!o.flip));
+    const n = world.objs.length;
     const r = placeLayout(again, 5);
     expect(r.removed.length).toBe(0);
-    expect(world.objs.filter((o) => o.kind === 'bath').map((o) => o.lvl)).toEqual([5]);
+    expect(world.objs.length).toBe(n);
+    expect(world.objs.filter((o) => o.kind === 'bath').length).toBe(2);
   });
-  it('짓기 목록: 이미 있는 하나뿐인 건물은 없음 · 별채·장식은 그대로', () => {
+  it('여관 본관·던전만 한 채: 중복이면 레벨 높은 쪽만 · 나머지는 환불 목록', () => {
+    const r = placeLayout([E('inn', 10, 10, 3), E('inn', 2, 2, 1), E('dungeon', 19, 10), E('dungeon', 19, 15)], 5);
+    expect(world.objs.filter((o) => o.kind === 'inn').map((o) => o.lvl)).toEqual([3]);
+    expect(world.objs.filter((o) => o.kind === 'dungeon').length).toBe(1);
+    expect(r.removed.map((x) => x.e.kind).sort()).toEqual(['dungeon', 'inn']);
+  });
+  it('짓기 목록: 온천·대장간은 있어도 또 지을 수 있고 두 번째부터 ×1.5 · 여관 본관은 안 됨', () => {
     placeLayout(lotte('lv5'), 5);
     const b = buildableKinds();
-    for (const k of ['bath', 'smith', 'tavern', 'training', 'garden']) expect(b).not.toContain(k);
-    expect(b).toContain('cottage');
-    expect(b).toContain('flowerbed');
+    for (const k of ['bath', 'smith', 'tavern', 'training', 'garden', 'cottage']) expect(b).toContain(k);
+    expect(b).not.toContain('inn');
+    expect(buildCost('bath')).toBe(Math.round(def('bath').cost * 1.5));
+    expect(buildCost('flowerbed')).toBe(def('flowerbed').cost);
   });
 });
 

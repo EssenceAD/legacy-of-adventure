@@ -12,7 +12,7 @@ import { onNightFlip } from './clock';
 import { queueEvent } from './events';
 import { dexBonus, heroCtx, stars, today } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
-import { entrance } from './town';
+import { entrance, bestOf } from './town';
 import { addEmber, linkedGauge, linkedScale, meetLinked, tieRequestDone } from './owner';
 
 const L = CONFIG.legends;
@@ -24,7 +24,7 @@ export const legendOf = (key: string): LegendState | undefined => P.legends[key]
 
 // ───────── 소문 조건 ─────────
 
-const lvlOf = (kind: string) => homeObjs().find((o) => o.kind === kind && o.build === undefined)?.lvl ?? 0;
+const lvlOf = (kind: string) => bestOf(kind as never, homeObjs(), true)?.lvl ?? 0;
 
 export function legendCtx(scale = 1): LegendCtx {
   const h = heroCtx();

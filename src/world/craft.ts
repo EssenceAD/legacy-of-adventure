@@ -1,4 +1,5 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
+import { bestOf } from './town';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { BOSSES, bossById } from '../data/bosses';
@@ -12,7 +13,7 @@ import { bfx, hfx } from './harmony';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
-export const smithObj = () => homeObjs().find((o) => o.kind === 'smith' && o.build === undefined);
+export const smithObj = () => bestOf('smith', homeObjs(), true);
 export const smithLvl = () => smithObj()?.lvl ?? 0;
 
 // ───────── 분해 ─────────

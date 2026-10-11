@@ -1,4 +1,5 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
+import { bestOf } from './town';
 import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
 import { fillNames, josa } from '../data/josa';
@@ -101,7 +102,7 @@ export function refreshQuests(): boolean {
 
 // ───────── 파티 ─────────
 
-export const boardLevel = () => homeObjs().find((o) => o.kind === 'board' && o.build === undefined)?.lvl ?? 0;
+export const boardLevel = () => bestOf('board', homeObjs(), true)?.lvl ?? 0;
 export const maxParties = () => Math.min(E.maxParties, E.partiesBase + boardLevel());
 export const activeRuns = () => P.runs.filter((r) => !r.result);
 

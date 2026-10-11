@@ -339,32 +339,52 @@ export const signHit = (mx: number, my: number) => SIGN.on && Math.abs(mx - SIGN
 
 // ───────── 운명의 별: 오늘 아직 안 잡았으면 게임 속 밤하늘에 별똥별이 지나간다 (탭하면 인연 +1~10%) ─────────
 
-const STAR = { on: false, x: 0, y: 0 };
-/** 14초마다 4초 동안 화면 위쪽을 가로지른다 */
+const STAR = { on: false, x: 0, y: 0, k: 0 };
+/**
+ * HOTFIX14 §4: 예전엔 4초 동안 화면 맨 위(y 24~74)를 가로질러 — PC는 화면이 넓어 너무 빨랐고, 그 높이를 위쪽 HUD가 덮어 클릭이 캔버스에 안 왔다.
+ *  이제 HUD·임무 카드 아래 띠(화면 높이 28~38%)를 일정한 속도(논리 px/초)로 지나간다 · 지나간 뒤 8초 쉼
+ */
+const STAR_SPEED = 70;
+const STAR_GAP = 8;
 function drawStar(ctx: CanvasRenderingContext2D, T: number) {
   STAR.on = false;
   if (!starAvailable()) return;
-  const k = (T % 14) / 4;
-  if (k > 1) return;
+  const dist = view.LW + 60;
+  const travel = dist / STAR_SPEED;
+  const t = T % (travel + STAR_GAP);
+  if (t > travel) return;
+  const k = t / travel;
   STAR.on = true;
-  STAR.x = Math.round(view.LW + 20 - k * (view.LW + 40));
-  STAR.y = Math.round(24 + k * 50);
+  STAR.k = k;
+  STAR.x = Math.round(view.LW + 30 - k * dist);
+  STAR.y = Math.round(view.LH * (0.28 + k * 0.1));
   const p = P(ctx);
-  for (let i = 0; i < 16; i++) {
-    ctx.globalAlpha = 1 - i / 16;
-    p.px(STAR.x + i * 2, STAR.y - i, i < 3 ? '#ffffff' : '#ffe08a');
+  // 꼬리
+  for (let i = 0; i < 22; i++) {
+    ctx.globalAlpha = 1 - i / 22;
+    p.px(STAR.x + i * 2, STAR.y - i, i < 4 ? '#ffffff' : '#ffe08a');
+    if (i % 3 === 0) p.px(STAR.x + i * 2 + 1, STAR.y - i + 1, '#fff3c0');
   }
   ctx.globalAlpha = 1;
+  // 눌러 볼 대상이라는 게 보이게: 은은한 빛 + 큰 반짝임
+  const g = ctx.createRadialGradient(STAR.x, STAR.y, 0, STAR.x, STAR.y, 14);
+  g.addColorStop(0, 'rgba(255,240,180,.55)');
+  g.addColorStop(1, 'rgba(255,240,180,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(STAR.x - 14, STAR.y - 14, 28, 28);
   p.rect(STAR.x - 1, STAR.y - 1, 3, 3, '#fff8d0');
-  if (Math.sin(T * 20) > 0) {
-    p.px(STAR.x - 3, STAR.y, '#ffffff');
-    p.px(STAR.x + 3, STAR.y, '#ffffff');
-    p.px(STAR.x, STAR.y - 3, '#ffffff');
-    p.px(STAR.x, STAR.y + 3, '#ffffff');
+  const arm = Math.sin(T * 12) > 0 ? 6 : 4;
+  for (let a = 2; a <= arm; a++) {
+    p.px(STAR.x - a, STAR.y, '#ffffff');
+    p.px(STAR.x + a, STAR.y, '#ffffff');
+    p.px(STAR.x, STAR.y - a, '#ffffff');
+    p.px(STAR.x, STAR.y + a, '#ffffff');
   }
 }
-/** 탭한 곳이 별똥별 근처인가 (넉넉히) */
-export const starHit = (mx: number, my: number) => STAR.on && Math.hypot(mx - STAR.x, my - STAR.y) < 22;
+/** 개발용: 별 위치 (논리 좌표 · 지나간 정도 0~1) */
+export const starInfo = () => ({ on: STAR.on, x: STAR.x, y: STAR.y, vis: STAR.k });
+/** 누른 곳이 별똥별 근처인가 (넉넉히 — 반경 32) */
+export const starHit = (mx: number, my: number) => STAR.on && Math.hypot(mx - STAR.x, my - STAR.y) < 32;
 
 /** 모닥불 불꽃 높이 (칸 중심에서 위로 px) — 불티·빛의 중심 */
 const FIRE_FLAME_Y = 12;

@@ -1,4 +1,5 @@
 // 「가기」: 오늘의 목표·임무 카드가 가리키는 곳을 바로 연다 (5단계 0·1장)
+import { bestOf } from '../world/town';
 import { def, type Kind } from '../data/catalog';
 import { world, S, type Building } from '../world/state';
 import { focusTile } from '../game';
@@ -12,7 +13,7 @@ export type Place =
   | 'inn' | 'tavern' | 'smith' | 'garden' | 'training' | 'well' | 'fire' | 'boardObj' | 'eval';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
-const obj = (k: Kind): Building | undefined => homeObjs().find((o) => o.kind === k && o.build === undefined);
+const obj = (k: Kind): Building | undefined => bestOf(k, homeObjs(), true);
 
 /** 이 장소의 아래 메뉴 버튼 (손가락이 가리킬 곳) */
 export const PLACE_BTN: Partial<Record<Place, string>> = {

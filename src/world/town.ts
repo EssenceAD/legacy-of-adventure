@@ -80,14 +80,27 @@ export interface LayoutEntry {
 }
 
 /** 같은 종류가 여러 개여도 되는 것 (별채·장식) */
-/** 여러 채 지어도 되는 것 (별채·장식). 나머지는 마을에 하나뿐 — 짓기·불러오기 규칙이 같아야 한다 (HOTFIX14 §1) */
+/** 별채·장식 (예전 규칙의 「여러 채」 — 어울림·환불 표시 등에서 씀) */
 export const MULTI = (k: Kind) => k === 'cottage' || !!def(k).deco;
+/**
+ * HOTFIX14 §1 (→ TOWN_SPEC T3): 마을에 한 채만 있는 건물 = 여관 본관 · 던전 · 고정 건물. 나머지(온천·대장간·주점…)는 여러 채 허용.
+ *  짓기·불러오기 규칙이 같아야 한다 — 예전엔 짓기는 되는데 불러올 때 둘째를 조용히 버렸다.
+ */
+export const SINGLE = (k: Kind) => k === 'inn' || k === 'dungeon' || !!def(k).fixed;
+/** 같은 종류 몇 채 (공사 중 포함) */
+export const countKind = (k: Kind, objs = world.objs) => objs.filter((o) => o.kind === k).length;
+/** n번째 채 건설비 (첫 채 = 기본 · 두 번째부터 CONFIG.town.copyCost 배) */
+export function buildCost(k: Kind, objs = world.objs): number {
+  const n = MULTI(k) ? 0 : countKind(k, objs);
+  const m = CONFIG.town.copyCost;
+  return Math.round(def(k).cost * m[Math.min(n, m.length - 1)]);
+}
 
 /**
  * 배치표를 내 마을과 같은 규칙으로 놓는다: 발판 겹침 금지 · 땅 안 · 문 앞 1칸 비움 · 다른 건물 문 앞 막지 않기.
  * 어긋난 건물은 가장 가까운 빈자리로 옮긴다. 저장이 깨져 있거나 다른 유저 마을이 이상해도 화면은 안 깨지게. world.objs를 새로 채운다.
  * HOTFIX14 §1: 예전엔 같은 종류 둘째(온천 2채 등)와 자리 없는 건물을 「조용히」 버렸다 → 이제
- *  · 같은 종류는 레벨 높은 것(같으면 공사 중 아닌 것, 그래도 같으면 먼저 지은 것)을 남기고 나머지는 removed 로 돌려준다 (부르는 쪽이 전액 환불)
+ *  · 같은 종류 여러 채는 그대로 살린다. 한 채뿐인 건물(여관 본관·던전·고정)만 레벨 높은 것을 남기고 나머지는 removed (부르는 쪽이 전액 환불)
  *  · 큰 건물부터(발판 넓이 내림차순) 놓고 장식은 맨 마지막 → 장식이 건물 자리를 막지 않는다
  *  · 그래도 자리가 없으면 removed 로 돌려준다 (버리지 않음)
  */
@@ -104,7 +117,7 @@ export function placeLayout(entries: LayoutEntry[], land: number): { moved: numb
   const better = (a: LayoutEntry, b: LayoutEntry) =>
     a.lvl !== b.lvl ? a.lvl > b.lvl : !!a.extra?.con !== !!b.extra?.con ? !a.extra?.con : (a.extra?.builtAt ?? 0) <= (b.extra?.builtAt ?? 0);
   for (const e of valid) {
-    if (MULTI(e.kind)) continue;
+    if (!SINGLE(e.kind)) continue;
     const k = keep.get(e.kind);
     if (!k) keep.set(e.kind, e);
     else if (better(e, k)) {
@@ -165,7 +178,16 @@ export function doorOf(o: { tx: number; ty: number; fw: number; fh: number; flip
   return o.flip ? [o.tx + o.fw, o.ty + Math.floor(o.fh / 2)] : [o.tx + Math.floor(o.fw / 2), o.ty + o.fh];
 }
 
-export const findKind = (k: Kind) => world.objs.find((o) => o.kind === k);
+/** 그 종류 중 가장 높은 레벨 한 채 (같으면 다 지은 것) — 여러 채여도 「마을 전체 효과」는 이 한 채 기준 (HOTFIX14 §1) */
+export function bestOf(k: Kind, objs: Building[] = world.objs, builtOnly = false): Building | undefined {
+  let b: Building | undefined;
+  for (const o of objs) {
+    if (o.kind !== k || (builtOnly && o.build !== undefined)) continue;
+    if (!b || o.lvl > b.lvl || (o.lvl === b.lvl && b.build !== undefined && o.build === undefined)) b = o;
+  }
+  return b;
+}
+export const findKind = (k: Kind) => bestOf(k);
 
 /** 손님 수 = 2 + 여관 레벨×2 + 별채 수×2 */
 export function capacity(objs = world.objs): number {
@@ -468,8 +490,8 @@ export function buildableKinds(): Kind[] {
     if (k === 'monument' && !monumentUnlocked()) return false;
     // HOTFIX14 §5: 선물 장식은 받은 게 있을 때만 (무료)
     if (k === 'thanks_basket') return (P.meta.giftDeco?.[k] ?? 0) > 0;
-    // HOTFIX14 §1: 하나뿐인 건물(별채·장식 말고 전부)은 이미 있으면 못 지음 — 불러오기 규칙과 같게
-    return !d.fixed && !((d.unique || !MULTI(k)) && world.objs.some((o) => o.kind === k));
+    // HOTFIX14 §1: 한 채뿐인 건물(여관 본관·던전)과 unique 장식만 이미 있으면 못 지음 — 나머지는 여러 채 (두 번째부터 비용 ↑)
+    return !d.fixed && !((d.unique || SINGLE(k)) && world.objs.some((o) => o.kind === k));
   });
 }
 

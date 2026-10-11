@@ -18,7 +18,7 @@ import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
 import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
-import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, layoutHooks, nearestWalkable, walkable } from './town';
+import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, layoutHooks, nearestWalkable, walkable, bestOf } from './town';
 import { bfx, hfx, incMult } from './harmony';
 import { dailyAdd } from './daily';
 
@@ -170,6 +170,14 @@ const clampN = (v: number) => Math.max(0, Math.min(CONFIG.map.size - 1, v));
 const ready = () => world.objs.filter((o) => def(o.kind).act && o.kind !== 'dungeon' && o.build === undefined);
 const byAct = (acts: Act[]) => ready().filter((o) => acts.includes(def(o.kind).act!));
 
+/** HOTFIX14 §1: 같은 종류가 여러 채면 가까운 채로 (큰 마을에서 손님 동선이 퍼진다) */
+function nearestSame(a: Actor, b: Building, opts: Building[]): Building {
+  const same = opts.filter((o) => o.kind === b.kind);
+  if (same.length < 2) return b;
+  const d = (o: Building) => Math.hypot(o.tx + o.fw / 2 - a.x, o.ty + o.fh / 2 - a.y);
+  return same.reduce((m, o) => (d(o) < d(m) ? o : m));
+}
+
 /** 채울 욕구를 고른다 (seekBelow 아래 중 가장 낮은 것) */
 function needTarget(a: Actor): { b: Building; why: string } | null {
   const needs: ['hp' | 'food' | 'mood', number][] = [['hp', a.hp], ['food', a.food], ['mood', a.mood]];
@@ -181,7 +189,7 @@ function needTarget(a: Actor): { b: Building; why: string } | null {
     if (k === 'hp') opts = passer ? byAct(['bath']) : S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
     if (k === 'food') opts = byAct(['drink']).length || passer ? byAct(['drink']) : byAct(['sleep']);
     if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink']) : byAct(['bath', 'drink', 'farm']);
-    if (opts.length) return { b: pick(opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
+    if (opts.length) return { b: nearestSame(a, pick(opts), opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
   }
   return null;
 }
@@ -302,7 +310,7 @@ export function enter(a: Actor, o: Building) {
 /** 건물 안에서 욕구가 채워진다 */
 function fillNeeds(a: Actor, act: Act | undefined) {
   const tired = a.hp < 30;
-  const bathO = world.objs.find((o) => o.kind === 'bath');
+  const bathO = a.at?.kind === 'bath' ? a.at : bestOf('bath');
   const bathLv = bathO?.lvl ?? 1;
   if (act === 'sleep') {
     a.hp = clamp(a.hp + (S.night ? NE.sleepNightHp : NE.sleepHp));
