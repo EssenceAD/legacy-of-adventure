@@ -1043,3 +1043,6 @@ html[data-size="wide"] .win{max-height:none}
 #view:has(#title:not([hidden]):not(.out)) #scrim{z-index:31}
 #view:has(#title:not([hidden]):not(.out)) #win{z-index:32}
 body.winopen #title :is(.tbtns,.ver,#tSpk){pointer-events:none}
+/* 핫픽스 8 (2-6): 타이틀 화면에서 뜨는 대화(모모 편지 등)도 타이틀 UI·창보다 위 */
+#view:has(#title:not([hidden]):not(.out)) #dlg{z-index:34}
+#view:has(#title:not([hidden]):not(.out)) #namebox{z-index:35}

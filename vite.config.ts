@@ -18,20 +18,24 @@ try {
 }
 const BUILD = `${pkg.version}+${rev}.${Date.now().toString(36)}`;
 
+let out = 'dist';
 function versionFiles(): Plugin {
   return {
     name: 'legacy-version',
     apply: 'build',
+    configResolved(c) {
+      out = c.build.outDir;
+    },
     closeBundle() {
       const notes = existsSync(at('public/patchnotes.json')) ? JSON.parse(readFileSync(at('public/patchnotes.json'), 'utf8')) : [];
       const top = notes[0] ?? {};
-      writeFileSync(at('dist/version.json'), JSON.stringify({ version: pkg.version, build: BUILD, at: new Date().toISOString(), title: top.version === pkg.version ? (top.title ?? '') : '' }));
+      writeFileSync(at(join(out, 'version.json')), JSON.stringify({ version: pkg.version, build: BUILD, at: new Date().toISOString(), title: top.version === pkg.version ? (top.title ?? '') : '' }));
       // 캐시 이름에 빌드 번호 → 배포할 때마다 바뀌어서 이름이 같은 그림도 새로 받는다
-      const sw = readFileSync(at('dist/sw.js'), 'utf8').replace('__BUILD__', BUILD.replace(/[^a-z0-9.]/gi, '-'));
-      writeFileSync(at('dist/sw.js'), sw);
+      const sw = readFileSync(at(join(out, 'sw.js')), 'utf8').replace('__BUILD__', BUILD.replace(/[^a-z0-9.]/gi, '-'));
+      writeFileSync(at(join(out, 'sw.js')), sw);
       // 타이틀 아래 버전 글자
-      const html = readFileSync(at('dist/index.html'), 'utf8').replace(/(<button class="ver" id="tVer">)[^<]*(<\/button>)/, `$1v${pkg.version}$2`);
-      writeFileSync(at('dist/index.html'), html);
+      const html = readFileSync(at(join(out, 'index.html')), 'utf8').replace(/(<button class="ver" id="tVer">)[^<]*(<\/button>)/, `$1v${pkg.version}$2`);
+      writeFileSync(at(join(out, 'index.html')), html);
     },
   };
 }
@@ -40,6 +44,7 @@ function versionFiles(): Plugin {
 export default defineConfig({
   base: './',
   server: { port: 5181 },
-  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD__: JSON.stringify(BUILD) },
+  // BOT_BUILD=1: 봇·검사용 빌드 (개발용 전역 함수 포함 · dist-bot) — 개발 서버를 건드리지 않고 긴 봇을 돌리려고
+  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD__: JSON.stringify(BUILD), ...(process.env.BOT_BUILD ? { 'import.meta.env.DEV': 'true' } : {}) },
   plugins: [versionFiles()],
 });

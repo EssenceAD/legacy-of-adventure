@@ -344,6 +344,29 @@ export function suggestSpot(pl: Placement) {
     }
   }
   const mid = N / 2;
+  // 핫픽스 8: 큰 건물(장식 아님)은 가장자리·다른 건물에 붙여서 — 가운데부터 놓으면 땅이 조각나 나중 건물(대장간 3×3)이 들어갈 자리가 사라진다
+  if (!def(pl.kind).deco && pl.fw * pl.fh >= 4) {
+    let best: [number, number] | null = null;
+    let bs = -1e9;
+    for (let y = a; y < b; y++)
+      for (let x = a; x < b; x++) {
+        pl.tx = x;
+        pl.ty = y;
+        if (!canPlace(pl) || blocksDoor(pl)) continue;
+        let touch = 0;
+        for (let i = -1; i <= pl.fw; i++)
+          for (const j of [-1, pl.fh]) touch += !inLand(x + i, y + j) || grid[y + j]?.[x + i] ? 1 : 0;
+        for (let j = 0; j < pl.fh; j++) for (const i of [-1, pl.fw]) touch += !inLand(x + i, y + j) || grid[y + j]?.[x + i] ? 1 : 0;
+        const sc = touch * 10 - (Math.abs(x + pl.fw / 2 - mid) + Math.abs(y + pl.fh / 2 - mid));
+        if (sc > bs) [bs, best] = [sc, [x, y]];
+      }
+    if (best) {
+      [pl.tx, pl.ty] = best;
+      return;
+    }
+    pl.tx = pl.ty = null;
+    return;
+  }
   for (let r = 0; r < N * 2; r++)
     for (let y = a; y < b; y++)
       for (let x = a; x < b; x++) {

@@ -3,3 +3,4 @@ dist
 *.log
 audio_raw
 asset_raw
+dist-bot
