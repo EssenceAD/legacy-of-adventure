@@ -20,6 +20,7 @@ import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
 import { startMove, startPlace } from './hud';
+import { cheerCon, cheerReady, clock, conLeft, conProgress } from '../world/construct';
 import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolish';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -259,12 +260,14 @@ const fireThumb = () => FIRE_FRAMES[0] ?? canvas(32, 34);
 
 /** 창 맨 아래에 「옮기기 · 방향」 버튼 (던전처럼 고정된 건물·이웃 마을은 없음) */
 export function appendMoveButton(o: Building) {
-  if (S.visiting || def(o.kind).fixed || o.build !== undefined) return;
+  if (S.visiting || def(o.kind).fixed || (o.build !== undefined && !o.con)) return;
   const b = document.createElement('button');
   b.className = 'bigbtn sm ghost';
   b.id = 'moveB';
   b.textContent = '옮기기 · 방향 바꾸기 ↻';
   b.onclick = () => {
+    // CONSTRUCTION_SPEC §3: 공사 중엔 못 옮김 (철거하면 공사 취소 + 환불)
+    if (o.con) return toast('공사 중이에요 · 다 지은 뒤에 옮길 수 있어요');
     closeWin();
     startMove(o);
   };
@@ -471,7 +474,9 @@ export function showObj(o: Building) {
   const note = d.levelNotes?.[o.lvl];
   const needL = landNeedFor(o);
   const landShort = canUp && needL > S.land;
-  const up = canUp && !S.visiting
+  const up = o.con && !S.visiting
+    ? conPanel(o)
+    : canUp && !S.visiting
     ? landShort
       ? `<button class="bigbtn ghost" id="upB" disabled>Lv.${o.lvl + 1} · 땅 ${needL}단계 필요</button><p class="note">${note ? `다음: ${esc(note)}` : ''}</p>`
       : `${note ? `<p class="note uplv">Lv.${o.lvl + 1} → ${esc(note)}</p>` : ''}<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${note ? '레벨업' : grows + (d.levelText ?? '')} (${fmt(cost!)} G)</button>`
@@ -490,6 +495,39 @@ export function showObj(o: Building) {
   appendMoveButton(o);
   const ub = document.getElementById('upB');
   if (ub) ub.onclick = () => game.upgrade(o);
+  bindConPanel(o);
+}
+
+// ───────── CONSTRUCTION_SPEC §5: 건물 창의 공사 칸 ─────────
+function conPanel(o: Building): string {
+  const c = o.con!;
+  const what = c.kind === 'up' ? `Lv.${c.to} 공사 중` : '짓는 중';
+  return `<div class="conp"><b>🔨 ${what}</b><div class="cbar"><i style="width:${Math.round(conProgress(o) * 100)}%"></i></div><span class="ct" id="conT">${clock(conLeft(o))}</span>
+    <p class="note">빨리 짓기는 건물을 톡톡! (최대 ${Math.round(CONFIG.build.tapCapPct * 100)}%)${c.kind === 'up' ? ' · 공사 중에도 건물은 그대로 일해요' : ''}</p>
+    ${cheerReady() ? '<button class="bigbtn sm" id="conCheer">📮 모모의 응원 · 바로 완성 (하루 1번)</button>' : '<p class="note">모모의 응원은 내일 다시 쓸 수 있어요</p>'}</div>`;
+}
+function bindConPanel(o: Building) {
+  const ch = document.getElementById('conCheer');
+  if (ch)
+    ch.onclick = () => {
+      if (!cheerCon(o)) return;
+      closeWin();
+      trackEv('con_cheer', { kind: o.kind });
+      talk([['post', '사장님 화이팅~! 제가 일꾼들 간식 돌렸어요. 바로 끝났대요!']]);
+    };
+  const t = document.getElementById('conT');
+  if (!t) return;
+  const iv = setInterval(() => {
+    const el = document.getElementById('conT');
+    if (!el || !o.con) {
+      clearInterval(iv);
+      if (el && !o.con) showObj(o);
+      return;
+    }
+    el.textContent = clock(conLeft(o));
+    const bar = document.querySelector('.conp .cbar i') as HTMLElement | null;
+    if (bar) bar.style.width = `${Math.round(conProgress(o) * 100)}%`;
+  }, 500);
 }
 
 // ───────── 메뉴·계정 ─────────

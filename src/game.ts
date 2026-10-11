@@ -1,11 +1,11 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
-import { def } from './data/catalog';
+import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
 import { camFor, lookAt, N, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
-import { addOwner, addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
+import { addOwner, addPostman, afterLayoutChange, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
 import { settleNight } from './world/clock';
 import { clearEvents, queueEvent } from './world/events';
@@ -19,14 +19,15 @@ import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
-import { addObj, astar, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
+import { addObj, astar, blocksDoor, canPlace, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
+import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
 import { sanitizeAlbum, sanitizeOwner } from './world/owner';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
-import { closeWin, toast } from './ui/windows';
+import { closeWin, isWinOpen, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
 import { track as trackEv } from './net/telemetry';
 import { refundOf, removeBuilding } from './world/demolish';
@@ -225,7 +226,7 @@ function applySave(d: SaveData) {
   sanitizeAlbum();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
-    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}) } })),
+    d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}), ...conExtra(b) } })),
     d.land,
   );
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
@@ -312,6 +313,15 @@ export function expandLand(l: number) {
 
 // ───────── 건설 ─────────
 
+/** CONSTRUCTION_SPEC §6: 저장된 공사 → 건물 칸 (새 짓기는 아직 못 쓰는 상태, 커지는 업그레이드는 새 발판) */
+function conExtra(b: { kind: Kind; con?: Con }): Partial<Building> {
+  const c = b.con;
+  if (!c) return {};
+  if (c.kind === 'new') return { con: { ...c }, build: 1 };
+  const [fw, fh] = sizeFor(b.kind, c.to);
+  return { con: { ...c }, ...(c.from ? { fw, fh } : {}) };
+}
+
 export function placeBuilding(pl: Placement): boolean {
   const d = def(pl.kind);
   // 베타: 마을 등급 장식을 마을 안으로 옮기면 무료 (그 자리 장식은 사라진다)
@@ -320,28 +330,51 @@ export function placeBuilding(pl: Placement): boolean {
     toast('금화가 모자라요');
     return false;
   }
+  // CONSTRUCTION_SPEC §3: 동시 공사 수 (1칸 장식은 세지 않음)
+  const [pw, ph] = sizeFor(pl.kind, 1);
+  if (!(pw === 1 && ph === 1) && !slotFree()) {
+    toast(`일꾼이 모두 바빠요 · 동시 공사 ${conSlots()}곳 (여관 레벨업으로 일꾼 +1)`);
+    return false;
+  }
   S.gold -= cost;
   if (pl.prop) P.harmony.moved.push(pl.prop);
   // 땅 개편 §4: 첫 건설 초록 안내는 한 번
   P.buildTipSeen = true;
   landHint.firstBuild = false;
-  const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
+  const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
+  startNew(o);
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
   sfx('build');
   rebuildPaths();
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
-  later(CONFIG.build.constructSeconds, () => {
-    if (!world.objs.includes(o)) return;
-    o.build = undefined;
-    o.pop = 1;
-    puffAt(o, '#fff3b0', 14);
-    floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50, d.name + ' 완성!', 'big');
-    rebuildPaths();
-    markDirty();
-  });
   return true;
+}
+
+// ───────── CONSTRUCTION_SPEC: 공사 완성 연출 ─────────
+const offlineDone: string[] = [];
+conHooks.done = (o, offline) => {
+  const d = def(o.kind);
+  const name = o.lvl > 1 ? `${d.name} Lv.${o.lvl}` : d.name;
+  rebuildPaths();
+  if (offline) {
+    offlineDone.push(name);
+    return;
+  }
+  o.pop = 1;
+  puffAt(o, '#fff3b0', 20);
+  floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 60, name + ' 완성!', 'big');
+  sfx('grade_up');
+  if (isWinOpen()) toast(`${name} 완성!`);
+  afterLayoutChange();
+};
+/** 접속했을 때: 꺼져 있던 동안 끝난 공사 요약 */
+export function settleOfflineCons() {
+  tickCons(Date.now(), true);
+  if (!offlineDone.length) return;
+  const names = offlineDone.splice(0);
+  queueEvent(() => toast(`자는 동안 ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}곳` : ''} 공사가 끝났어요!`), 'conDone');
 }
 
 export function upgrade(o: Building) {
@@ -351,7 +384,9 @@ export function upgrade(o: Building) {
   const needL = landNeedFor(o);
   if (needL > S.land) return toast(`땅 ${needL}단계가 필요해요`);
   if (S.gold < cost) return toast('금화가 모자라요');
-  if (!upgradeObj(o)) {
+  if (o.con) return toast('공사 중이에요');
+  if (!slotFree()) return toast(`일꾼이 모두 바빠요 · 동시 공사 ${conSlots()}곳 (여관 레벨업으로 일꾼 +1)`);
+  if (!canGrow(o)) {
     // 땅 개편: 커지면 문 자리가 바뀐다 — 문 앞이 막혔으면 그렇게 알려 준다
     const [nw, nh] = sizeFor(o.kind, o.lvl + 1);
     const [dx, dy] = doorOf({ tx: o.tx - (nw - o.fw), ty: o.ty - (nh - o.fh), fw: nw, fh: nh, flip: o.flip });
@@ -360,16 +395,29 @@ export function upgrade(o: Building) {
   }
   S.gold -= cost;
   closeWin();
+  // CONSTRUCTION_SPEC §2·§3: 레벨업은 공사 시간 뒤 — 커지면 지금 새 발판으로 공사 터 (손님 밀어내기 · 길 다시)
+  startUp(o, cost);
   rebuildPaths();
-  o.pop = 1;
-  puffAt(o, '#fff3b0', 20);
-  floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 70, `${def(o.kind).name} Lv.${o.lvl}!`, 'big');
+  afterLayoutChange();
+  trackEv('upgrade_start', { kind: o.kind, to: o.con!.to, sec: Math.round(o.con!.total) });
+  puffAt(o, '#c9bfa8', 12);
+  sfx('build');
+  floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50, '뚝딱뚝딱!', 'big');
   markDirty();
+}
+/** 커지는 레벨: 뒤쪽 자리·문 앞이 비었나 (upgradeObj와 같은 검사, 적용은 안 함) */
+function canGrow(o: Building): boolean {
+  const [nw, nh] = sizeFor(o.kind, o.lvl + 1);
+  if (nw === o.fw && nh === o.fh) return true;
+  const nt = { kind: o.kind, tx: o.tx - (nw - o.fw), ty: o.ty - (nh - o.fh), fw: nw, fh: nh, flip: o.flip };
+  return canPlace(nt, o) && !blocksDoor(nt, o);
 }
 
 /** 핫픽스 10: 철거 — 손님 꺼내기 · 길 다시 · 환불 · 먼지 · 「털썩」 · 기록 */
 export function demolish(o: Building): boolean {
-  const { gold } = refundOf(o);
+  // CONSTRUCTION_SPEC §3: 공사 중 철거 = 공사 취소 + 그 업그레이드 비용 전액 환불
+  const conBack = o.con?.kind === 'up' ? o.con.cost : 0;
+  const gold = refundOf(o).gold + conBack;
   const ageSec = o.builtAt ? Math.round((Date.now() - o.builtAt) / 1000) : -1;
   const { kind, lvl } = o;
   // 먼지·글자는 지우기 전에 자리 잡기

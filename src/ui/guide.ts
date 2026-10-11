@@ -2,6 +2,7 @@
 // 카드를 누르면: 다 했으면 받기(버나드 한마디 → 다음 임무), 아니면 그곳을 열고 손가락이 버튼을 가리킨다.
 // 1~3장은 창이 없을 때 손가락이 저절로 다음 버튼을 가리킨다.
 import { CHAPTERS, GRADE_NAMES } from '../data/guide';
+import { clock, conLeft } from '../world/construct';
 import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, rewardText, skipDone } from '../world/guide';
 import { P, S, uiHooks, type TalkLine } from '../world/state';
 import { huntCrew } from '../world/hunt';
@@ -143,16 +144,21 @@ function waitNote(place: string): string {
 /** 0.5초마다 (hud): 카드 글자 · 반짝 · 손가락 자리 */
 // ───────── 땅 개편 §11-3: 장부를 다 마친 뒤에도 카드가 비지 않게 — 성장 목표 (보상 없음 · 이루면 다음으로) ─────────
 const lvOf = (k: string) => findKind(k as never)?.lvl ?? 0;
-const GROWTH: { title: string; cur: () => number; need: number; place: Place }[] = [
-  { title: '여관 본관 Lv.5 만들기', cur: () => lvOf('inn'), need: 5, place: 'inn' },
+const GROWTH: { title: string; cur: () => number; need: number; place: Place; kind?: string }[] = [
+  { title: '여관 본관 Lv.5 만들기', cur: () => lvOf('inn'), need: 5, place: 'inn', kind: 'inn' },
   { title: '땅 4단계로 넓히기', cur: () => S.land, need: 4, place: 'land' },
-  { title: '주점 Lv.4 만들기', cur: () => lvOf('tavern'), need: 4, place: 'tavern' },
-  { title: '온천 Lv.3 만들기', cur: () => lvOf('bath'), need: 3, place: 'build' },
-  { title: '여관 본관 Lv.8 만들기', cur: () => lvOf('inn'), need: 8, place: 'inn' },
+  { title: '주점 Lv.4 만들기', cur: () => lvOf('tavern'), need: 4, place: 'tavern', kind: 'tavern' },
+  { title: '온천 Lv.3 만들기', cur: () => lvOf('bath'), need: 3, place: 'build', kind: 'bath' },
+  { title: '여관 본관 Lv.8 만들기', cur: () => lvOf('inn'), need: 8, place: 'inn', kind: 'inn' },
   { title: '땅 5단계로 넓히기', cur: () => S.land, need: 5, place: 'land' },
-  { title: '주점 Lv.6 만들기', cur: () => lvOf('tavern'), need: 6, place: 'tavern' },
-  { title: '여관 본관 Lv.10 만들기', cur: () => lvOf('inn'), need: 10, place: 'inn' },
+  { title: '주점 Lv.6 만들기', cur: () => lvOf('tavern'), need: 6, place: 'tavern', kind: 'tavern' },
+  { title: '여관 본관 Lv.10 만들기', cur: () => lvOf('inn'), need: 10, place: 'inn', kind: 'inn' },
 ];
+/** CONSTRUCTION_SPEC §5: 목표 건물이 공사 중이면 「공사 중 · 2:41」 */
+function conLine(kind?: string): string | null {
+  const o = kind ? findKind(kind as never) : null;
+  return o?.con ? `공사 중 · ${clock(conLeft(o))}` : null;
+}
 export const growthGoal = () => GROWTH.find((g) => g.cur() < g.need) ?? null;
 
 export function syncGuide(force = false) {
@@ -164,7 +170,7 @@ export function syncGuide(force = false) {
     if (g) {
       card.hidden = false;
       card.classList.remove('done');
-      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>성장 목표</small><b>${esc(g.title)}</b><em>${Math.min(g.cur(), g.need)}/${g.need}</em></span>`;
+      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>성장 목표</small><b>${esc(g.title)}</b><em>${conLine(g.kind) ?? `${Math.min(g.cur(), g.need)}/${g.need}`}</em></span>`;
       if (card.innerHTML !== html) card.innerHTML = html;
       hideHand();
       return;

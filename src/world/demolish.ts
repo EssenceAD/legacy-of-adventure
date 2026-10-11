@@ -11,7 +11,8 @@ const B = () => CONFIG.build;
 
 /** 철거할 수 있나 (이웃 방문 중 · 던전 같은 고정 건물 · 짓는 중 · 여관 본관 등 필수 건물은 안 됨) */
 export function canRemove(o: Building, visiting = false): boolean {
-  if (visiting || def(o.kind).fixed || o.build !== undefined) return false;
+  // CONSTRUCTION_SPEC §3: 공사 중이어도 철거 = 공사 취소
+  if (visiting || def(o.kind).fixed || (o.build !== undefined && !o.con)) return false;
   return !B().noRemove.includes(o.kind);
 }
 export const isNoRemove = (o: Building) => B().noRemove.includes(o.kind);

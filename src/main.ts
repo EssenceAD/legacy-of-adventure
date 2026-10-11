@@ -4,12 +4,14 @@ import { CONFIG } from './data/config';
 import { alphaAt, AssetError, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
 import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
+import { tapCon, tickCons } from './world/construct';
 import { tour } from './world/evalTour';
 import { anim as gradeAnim } from './world/grade';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
+import { settleOfflineCons } from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
 import { hourNow } from './world/clock';
@@ -74,7 +76,7 @@ import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
 import { maybeAlarm } from './world/raid';
 import { landHint, signHit, starHit } from './world/render';
-import { floatW } from './world/fx';
+import { floatW, puffAt } from './world/fx';
 import { talk } from './ui/dialogue';
 import { NEIGHBORS } from './data/neighbors';
 import { say } from './world/fx';
@@ -146,6 +148,7 @@ function update(dt: number) {
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
       checkSlot5(true);
+      settleOfflineCons();
       if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
@@ -222,6 +225,7 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
+let conAcc = 0;
 function tick(dt: number) {
   // 핫픽스 10 §13: 접어 둔 사냥은 마을 시간대로 마저 진행
   foldedTick(dt);
@@ -231,6 +235,12 @@ function tick(dt: number) {
   tickSettle(dt);
   tickSpectacles(dt);
   tickPowerUI(dt);
+  // CONSTRUCTION_SPEC: 끝난 공사 마무리 (0.5초마다)
+  conAcc += dt;
+  if (conAcc > 0.5 && S.started) {
+    conAcc = 0;
+    tickCons();
+  }
   tickSound(dt);
   const t0 = performance.now();
   let t = t0;
@@ -407,6 +417,13 @@ function tap(e: PointerEvent) {
     return;
   }
   const o = buildingAt(mx, my, alphaAt);
+  // CONSTRUCTION_SPEC §4: 공사 중인 건물을 톡톡 → 1초씩 빨리 (한도까지 줄이면 그다음 탭은 창)
+  if (o && o.con && !S.visiting && tapCon(o)) {
+    audioSfx.sfx('tap', { vol: 0.5 });
+    floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50 + Math.random() * 20, '뚝딱! −1초');
+    puffAt(o, '#efe2c6', 3);
+    return;
+  }
   if (o) return showObj(o);
   // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
   const [fx, fy] = toTile(cv, e.clientX, e.clientY);

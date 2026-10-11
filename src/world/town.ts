@@ -99,7 +99,8 @@ export function placeLayout(entries: LayoutEntry[], land: number): { moved: numb
   const list = entries.filter((e) => e && e.kind in CATALOG).sort((a, b) => order(a) - order(b));
   const occupied = (x: number, y: number) => world.objs.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
   const fits = (e: LayoutEntry, tx: number, ty: number) => {
-    const [fw, fh] = sizeFor(e.kind, e.lvl);
+    // CONSTRUCTION_SPEC: 커지는 업그레이드 공사 중이면 새 발판 크기로
+    const [fw, fh] = e.extra?.fw && e.extra?.fh ? [e.extra.fw, e.extra.fh] : sizeFor(e.kind, e.lvl);
     const fixed = !!def(e.kind).fixed;
     for (let j = 0; j < fh; j++)
       for (let i = 0; i < fw; i++) {

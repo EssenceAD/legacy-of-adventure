@@ -18,8 +18,10 @@ export interface Building {
   hue: number | null;
   /** 안에 있는 손님 */
   inside: Actor[];
-  /** 공사 중이면 남은 초 */
+  /** 새로 짓는 중이면 1 (아직 못 씀) — 시간은 con */
   build?: number;
+  /** CONSTRUCTION_SPEC: 공사 (새 짓기·업그레이드) */
+  con?: import('./construct').Con;
   /** 완성·레벨업 때 살짝 튀는 연출 (1 → 0) */
   pop?: number;
   /** 텃밭 칸 (작물, 심은 시각 ms) */
@@ -388,6 +390,8 @@ export function freshProgress() {
       /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
       slot5: false,
       slot5Seen: false,
+      /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 */
+      cheerDay: '',
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {

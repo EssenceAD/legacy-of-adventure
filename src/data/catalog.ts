@@ -46,7 +46,7 @@ export const CATALOG = {
     // 땅 개편: Lv.10까지 · Lv.5 inn5 · Lv.8 inn8 (뒤로 커진다) · 그 사이 레벨은 코드로 덧그리는 장식 (render.ts levelDeco)
     stages: [{ from: 2, sprite: 'inn3', size: [4, 4] }, { from: 5, sprite: 'inn5', size: [5, 5] }, { from: 8, sprite: 'inn8', size: [5, 5] }],
     levels: CONFIG.upgrade.innLevels, needLand: [1, 1, 2, 3, 3, 4, 4, 5, 5, 5], levelText: '방이 늘어요',
-    levelNotes: ['', '방 +2 · 더 큰 여관으로', '방 +2 · 문 옆에 등불', '방 +1 · 처마에 등불 줄', '방 +1 · 종탑과 별관이 생겨요', '방 +1 · 창가에 화분', '방 +1 · 굴뚝 연기가 하나 더', '방 +1 · 탑이 둘 선 큰 여관으로', '방 +1 · 문 앞에 석등', '방 +1 · 깃발과 금빛 간판'],
+    levelNotes: ['', '방 +2 · 더 큰 여관으로', '방 +2 · 문 옆에 등불', '방 +1 · 처마에 등불 줄 · 일꾼 +1 (동시 공사 2곳)', '방 +1 · 종탑과 별관이 생겨요', '방 +1 · 창가에 화분', '방 +1 · 굴뚝 연기가 하나 더', '방 +1 · 탑이 둘 선 큰 여관으로 · 일꾼 +1 (동시 공사 3곳)', '방 +1 · 문 앞에 석등', '방 +1 · 깃발과 금빛 간판'],
     desc: '손님이 묵는 곳. 레벨이 오르면 방이 늘어요',
   },
   cottage: { name: '객실 별채', sprite: 'cottage', size: [2, 2], cost: 300, act: 'sleep', unlock: 4, roofable: true, desc: '방 2칸이 늘어나요' },

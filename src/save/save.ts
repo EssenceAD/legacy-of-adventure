@@ -18,6 +18,8 @@ export interface SavedBuilding {
   /** 핫픽스 10: 지은 시각 · 마을 등급 장식 출신 */
   builtAt?: number;
   fromProp?: boolean;
+  /** CONSTRUCTION_SPEC: 공사 중 (끝 시각은 현실 시간 — 앱을 꺼도 흐른다) */
+  con?: import('../world/construct').Con;
 }
 
 /** 저장되는 손님 필드 (그림·이동 상태는 빼고) */
@@ -54,7 +56,7 @@ export function snapshot(): SaveData {
     version: CONFIG.save.version,
     savedAt: Date.now(),
     land: S.visiting && world.home ? world.home.land : S.land,
-    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, flip: !!o.flip, ...(o.plots ? { plots: o.plots } : {}), ...(o.builtAt ? { builtAt: o.builtAt } : {}), ...(o.fromProp ? { fromProp: true } : {}) })),
+    buildings: objs.map((o) => ({ kind: o.kind, tx: o.tx, ty: o.ty, lvl: o.lvl, hue: o.hue, flip: !!o.flip, ...(o.plots ? { plots: o.plots } : {}), ...(o.builtAt ? { builtAt: o.builtAt } : {}), ...(o.fromProp ? { fromProp: true } : {}), ...(o.con ? { con: { ...o.con } } : {}) })),
     gold: S.gold,
     day: S.day,
     clock: S.clock,
@@ -193,6 +195,11 @@ function mergeProgress(src: any): Progress {
   return base as Progress;
 }
 
+/** CONSTRUCTION_SPEC §6: 공사 기록이 멀쩡한가 (옛 저장엔 없음 → 공사 중이던 건 바로 완성) */
+function validCon(c: any): boolean {
+  return !!c && (c.kind === 'new' || c.kind === 'up') && Number.isFinite(c.end) && Number.isFinite(c.total) && c.total > 0 && Number.isFinite(c.to) && Number.isFinite(c.cut) && Number.isFinite(c.cost);
+}
+
 function validate(d: any): SaveData | null {
   if (!d || !Array.isArray(d.buildings)) return null;
   const buildings: SavedBuilding[] = d.buildings
@@ -200,6 +207,7 @@ function validate(d: any): SaveData | null {
     .map((b: any) => ({
       kind: b.kind, tx: b.tx, ty: b.ty, lvl: Math.max(1, num(b.lvl, 1)), hue: typeof b.hue === 'number' ? b.hue : null, flip: b.flip === true,
       ...(typeof b.builtAt === 'number' ? { builtAt: b.builtAt } : {}), ...(b.fromProp === true ? { fromProp: true } : {}),
+      ...(validCon(b.con) ? { con: b.con } : {}),
       ...(Array.isArray(b.plots) ? { plots: b.plots.map((p: any) => ({ crop: typeof p?.crop === 'string' ? p.crop : null, at: num(p?.at, 0) })) } : {}),
     }));
   if (!buildings.some((b) => b.kind === 'inn')) return null;

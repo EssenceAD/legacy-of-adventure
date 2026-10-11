@@ -20,7 +20,8 @@ import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { doorOf, grid, groundVersion, inLand, landBounds, placing, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, groundVersion, inLand, landBounds, placing, spriteFor, spriteOrigin, type Placement } from './town';
+import { drawConstruction } from './conDraw';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
@@ -482,19 +483,17 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   if (!META[o.sprite]) return missingMeta(o.sprite);
   const im = tinted(baseImage(o), NL);
   const [x, y] = objTL(o);
-  if (o.build !== undefined) {
-    // 공사 중: 반투명 + 비계 + 먼지
-    ctx.globalAlpha = 0.35;
-    ctx.drawImage(im, x, y);
-    ctx.globalAlpha = 1;
-    const p = P(ctx);
-    for (let i = 0; i < 4; i++) {
-      const px = (x + 8 + (i * (im.width - 16)) / 3) | 0;
-      p.rect(px, (y + im.height * 0.3) | 0, 2, (im.height * 0.7) | 0, '#a06a3c');
+  if (o.con || o.build !== undefined) {
+    // CONSTRUCTION_SPEC §1: 공사 연출 (업그레이드는 목표 레벨 그림이 아래부터 올라간다)
+    if (o.con?.kind === 'up') {
+      const to = spriteFor(o.kind, o.con.to, o.flip);
+      if (to && IMG[to]) {
+        const tim = tinted(baseImage({ sprite: to, hue: o.hue }), NL);
+        const [tx, ty] = spriteOrigin({ sprite: to, tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh });
+        return drawConstruction(ctx, o, tim as HTMLCanvasElement, Math.round(view.OX + tx), Math.round(view.OY + ty));
+      }
     }
-    for (let j = 0; j < 3; j++) p.rect(x + 6, (y + im.height * 0.4 + j * im.height * 0.2) | 0, im.width - 12, 2, '#c08050');
-    if (Math.random() < 0.15) puff(x + Math.random() * im.width - view.OX, y + im.height * 0.8 - view.OY, '#efe2c6', (Math.random() - 0.5) * 20, -10, 0.7, 2);
-    return;
+    return drawConstruction(ctx, o, im as HTMLCanvasElement, x, y);
   }
   if (o.pop) {
     // 쾅! 살짝 튀는 연출

@@ -34,7 +34,7 @@ export function villageSnapshot() {
     grade: townGrade(),
     title: myTitle(),
     trophies: [...P.trophies],
-    layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.tx, o.ty, o.lvl, o.hue, !!o.flip]),
+    layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.con?.from?.[0] ?? o.tx, o.con?.from?.[1] ?? o.ty, o.lvl, o.hue, !!o.flip]),
   };
 }
 

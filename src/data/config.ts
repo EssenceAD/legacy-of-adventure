@@ -79,8 +79,18 @@ export const CONFIG = {
     dungeonMax: 120,
   },
   build: {
-    /** 비계+먼지 시간 (초) */
+    /** 비계+먼지 시간 (초) — 예전 값 (CONSTRUCTION_SPEC 이후 안 씀) */
     constructSeconds: 2.2,
+    /** CONSTRUCTION_SPEC §2: 1칸 장식 3초 · 새 건물 = 비용/10초 (30~120초) · 업그레이드 목표 Lv.2~10 분 */
+    decoSeconds: 3,
+    newMin: 30,
+    newMax: 120,
+    newPerCostSec: 10,
+    upMinutes: [1, 3, 5, 10, 12, 15, 20, 25, 30],
+    /** 동시 공사: 처음 1곳 + 여관 이 레벨마다 1곳 */
+    workerInnLv: [4, 8],
+    /** 뚝딱 탭: 한 공사에 원래 시간의 이만큼까지 줄일 수 있음 */
+    tapCapPct: 0.3,
     /** 핫픽스 10 철거: 없으면 게임이 깨지는 건물 · 환불 비율 · 이 시간(초) 안이면 전액 */
     noRemove: ['inn'] as string[],
     refundRate: 0.5,

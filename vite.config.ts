@@ -47,6 +47,6 @@ export default defineConfig({
   base: './',
   server: { port: 5181 },
   // BOT_BUILD=1: 봇·검사용 빌드 (개발용 전역 함수 포함 · dist-bot) — 개발 서버를 건드리지 않고 긴 봇을 돌리려고
-  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD__: JSON.stringify(BUILD), ...(process.env.BOT_BUILD ? { 'import.meta.env.DEV': 'true' } : {}) },
+  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD__: JSON.stringify(BUILD), __BOT__: JSON.stringify(!!process.env.BOT_BUILD), ...(process.env.BOT_BUILD ? { 'import.meta.env.DEV': 'true' } : {}) },
   plugins: [versionFiles()],
 });
