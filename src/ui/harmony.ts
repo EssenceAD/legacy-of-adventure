@@ -17,9 +17,12 @@ const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySele
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
 /** 발견 연출 차례 (한 번에 하나씩) */
+import { holdUi } from '../audio/scene';
 const queue: { s: HSet; gold: number }[] = [];
 let showing = false;
 function next() {
+  // 핫픽스 8 (2-9): 전투·티저 중이면 돌아올 때까지 미룬다
+  if (queue.length && holdUi(next)) return;
   const q = queue.shift();
   if (!q) {
     showing = false;

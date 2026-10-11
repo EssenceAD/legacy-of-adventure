@@ -15,6 +15,7 @@ import { online, sendLetter } from '../net/server';
 import { openAccount } from './account';
 import { APP_VERSION } from './update';
 import { track as trackEv } from '../net/telemetry';
+import { holdUi } from '../audio/scene';
 import * as game from '../game';
 import { addReport } from '../save/save';
 import { talk } from './dialogue';
@@ -141,6 +142,8 @@ export const isWinOpen = () => $('#win').classList.contains('on');
 
 let toastTimer = 0;
 export function toastHtml(html: string, ms: number = CONFIG.ui.toastMs) {
+  // 핫픽스 8 (2-9): 전투·티저 중엔 쌓아 두었다가 돌아오면 (최대 3개)
+  if (holdUi(() => toastHtml(html, ms))) return;
   const e = $('#toast');
   e.innerHTML = html;
   e.classList.add('on');

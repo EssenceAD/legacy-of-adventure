@@ -13,6 +13,7 @@ import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
 import { noteAutoUsed } from '../world/hunt';
+import { flushScene } from '../audio/scene';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
 
@@ -532,8 +533,9 @@ export function closeCombat() {
   root?.remove();
   root = null;
   F = null;
-  // 전투 중 미뤄 둔 새 버전 띠
+  // 전투 중 미뤄 둔 새 버전 띠 · 마을 소리·알림
   afterBusy();
+  flushScene();
 }
 export const combatOn = () => !!F;
 export type { Unit };

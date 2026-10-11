@@ -27,10 +27,11 @@ import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
 import { showSettlement, tickSettle } from './ui/daily';
 import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
-import { playTeaser, teaserCut, teaserTouchGate } from './teaser/director';
+import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
 import { initTelemetry } from './net/telemetry';
+import { setBusy } from './audio/scene';
 import { hasSave } from './save/save';
 import { combatOn } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
@@ -415,6 +416,8 @@ async function boot() {
   document.getElementById('tLetter')!.onclick = () => openReport();
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   initUpdate(() => combatOn());
+  // 핫픽스 8 (2-9): 전투·티저 중엔 마을 소리·알림을 미룬다
+  setBusy(() => combatOn() || teaserOn());
   // 밤샘 ④-3: 플레이 기록 (설정에서 끌 수 있음)
   initTelemetry(!hasSave());
   const ver = document.getElementById('tVer');

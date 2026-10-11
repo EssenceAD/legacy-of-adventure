@@ -16,6 +16,7 @@ import { S, world } from '../world/state';
 import { findKind } from '../world/town';
 import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
+import { flushScene } from '../audio/scene';
 
 /** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
 function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
@@ -114,7 +115,7 @@ const CUTS: Cut[] = [
         once('harm', () => {
           const s = computeSets(world.objs).find((x) => x.id === 2) ?? computeSets(world.objs)[0];
           if (s) harmonyAnim.push({ set: s, t0: S.T });
-          sfx('harmony');
+          sfx('harmony', { force: true });
         });
       if (t > 1.3)
         once('banner', () =>
@@ -357,6 +358,8 @@ function finish() {
   teaserEnd();
   $('#title').hidden = false;
   onDone();
+  // 티저 중 미뤄 둔 마을 소리·알림
+  flushScene();
 }
 
 /** 처음 실행: 「터치해서 시작」 → 첫 터치(소리 잠금 해제)와 함께 티저 */

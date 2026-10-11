@@ -1,6 +1,7 @@
 // 효과음 · 팡파르: Suno로 만든 파일 (public/audio/sfx/*.wav 미리 받기 · jingle/J1~J5.mp3 처음 쓸 때 받기)
 //  동시 최대 8개 · 같은 소리 50ms 안 겹침 금지 · 잦은 소리는 재생 속도를 살짝 흔든다. 파일이 없으면 부드러운 합성음(예비)
 import { ctx, duck, onUnlock, sfxBus } from './engine';
+import { holdSfx, setScenePlayer } from './scene';
 
 export type SfxName =
   | 'tap' | 'open' | 'close' | 'coin' | 'build' | 'place_bad' | 'levelup' | 'fail' | 'item' | 'rare' | 'harmony' | 'mission' | 'chapter' | 'grade_up'
@@ -83,12 +84,15 @@ function playBuffer(b: AudioBuffer, vol: number, when: number, rate = 1) {
 /** 효과음 하나 (소리가 아직 안 열렸거나 꺼져 있으면 조용히) */
 /** 개발용: 최근에 부른 효과음 */
 export const sfxLog: string[] = [];
-export function sfx(name: SfxName | string, opt: { vol?: number } = {}) {
+setScenePlayer((n) => sfx(n));
+export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean } = {}) {
   if (import.meta.env.DEV) {
     sfxLog.push(name);
     if (sfxLog.length > 60) sfxLog.shift();
   }
   if (!ctx || ctx.state !== 'running') return;
+  // 핫픽스 8 (2-9): 전투·티저 중엔 마을 소리를 막는다 (큰 팡파르는 돌아올 때 하나만)
+  if (!opt.force && holdSfx(name)) return;
   const now = ctx.currentTime;
   if ((last[name] ?? -1) > now - 0.08) return;
   const hist = (perSec[name] ??= []).filter((t) => t > now - 1);
