@@ -3,6 +3,7 @@ import './style.css';
 import { CONFIG } from './data/config';
 import { alphaAt, AssetError, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
+import { shakeLv } from './engine/shake';
 import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
 import { tapCon, tickCons } from './world/construct';
 import { tour } from './world/evalTour';
@@ -517,11 +518,13 @@ async function boot() {
   uiHooks.rumor = rumorNow;
   uiHooks.announce = announce;
   uiHooks.shake = () => {
-    // 핫픽스 11: 배터리 절약이면 화면 흔들림 끔
-    if (saverOn()) return;
-    host.classList.remove('shake');
+    // 핫픽스 11: 배터리 절약이면 화면 흔들림 끔 · HOTFIX15: 설정(끔 기본 / 약하게 / 보통)
+    const lv = shakeLv();
+    if (lv === 'off') return;
+    host.classList.remove('shake', 'low');
     void host.offsetWidth;
     host.classList.add('shake');
+    if (lv === 'low') host.classList.add('low');
   };
   uiHooks.report = (run) => {
     if (!run.claimed) showReport(run);

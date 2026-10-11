@@ -11,7 +11,7 @@ import { skipFrame } from '../engine/fps';
 import { ACTION_NAME, actionOf, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, type Action } from '../engine/keys';
 import { getPref, setPref } from '../save/save';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
-import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
+import { digits, draw, drawVignette, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
@@ -289,6 +289,7 @@ function frame(now: number) {
 function render() {
   if (!F) return;
   draw(lctx, F, LW, LH);
+  drawVignette(lctx, F, LW, LH);
   const cv = $<HTMLCanvasElement>('#cbCv');
   const x = cv.getContext('2d')!;
   x.imageSmoothingEnabled = false;
