@@ -32,6 +32,9 @@ const cache = new Map<string, Ground>();
 
 export const groundKey = (visitKey: string, g: number) => `${curLand()}|${groundVersion}|${visitKey ? 'v:' + visitKey : ''}|g${g}`;
 /** 땅 개편: 땅 넓히기 팻말 칸 (최대 크기면 없음) */
+/** TOWN T0: 앞 경계 띠 폭 (큰 나무 56px · 앞으로 n칸이면 경계선보다 16n px 아래 → 3칸까지는 꼭대기가 경계를 넘는다) */
+export const FRONT_BAND = 3;
+
 export function signSpot(): [number, number] | null {
   if (curLand() >= CONFIG.land.length) return null;
   const [a, b] = landBounds();
@@ -164,7 +167,10 @@ function drawGround(g: number, key: string): Ground {
       if (isPath(x, y)) continue; // 던전 가는 길 위엔 나무 없음
       if (keep.has(`${x},${y}`)) continue; // 등급 장식·마을 사람 자리
       const inMap = x >= 0 && y >= 0 && x < N && y < N;
-      if (v < (nextIn(x, y) ? 0.45 : inMap ? 0.55 : 0.6)) wild.push({ x, y, k });
+      // TOWN T0: 땅 앞쪽 경계 띠(앞 가장자리에서 FRONT_BAND칸 안)는 키 작은 어린 나무만 — 큰 나무 꼭대기가 경계 안쪽 소품(우물·꽃밭·가로등)을 가리지 않게
+      const fd = Math.max(x - lb, y - lb);
+      const kk: Wild['k'] = !back && fd >= 0 && fd <= FRONT_BAND && k !== 'sapling' ? 'sapling' : k;
+      if (v < (nextIn(x, y) ? 0.45 : inMap ? 0.55 : 0.6)) wild.push({ x, y, k: kk });
     }
 
   // 울타리 (땅 경계). 길이 울타리를 지나가는 자리는 비워 둔다(문)
