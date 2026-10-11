@@ -15,6 +15,7 @@ import { onNightFlip } from '../world/clock';
 import { $, $$, esc, fmt } from './common';
 import { holdLine, isTalking, talkStory } from './dialogue';
 import { iconSrc } from './kit';
+import { capture } from './photo';
 import { closeWin, isWinOpen, openWin, setWinLock, toast } from './windows';
 
 // ───────── 대사 틀기 (연출 포함) ─────────
@@ -46,12 +47,13 @@ function fx(k: string) {
     b.innerHTML = `<img class="ledg" src="${iconSrc('m_quest')}" alt="">`;
   } else if (k === 'photo') photoThumb();
 }
-/** 엔딩 사진: 지금 마을 화면 한 장 → 앨범 썸네일 (이 기기에만) */
+/** 엔딩 사진: 사진 모드로 마을 한 장 → 앨범 썸네일 (이 기기에만) */
 let lastThumb = '';
 function photoThumb() {
   try {
-    const cv = document.getElementById('scene') as HTMLCanvasElement | null;
-    if (!cv || !cv.width) return;
+    // PHOTO: 사진 모드 렌더(마을만 · 넓은 틀 · 이름 글씨)로 한 장
+    const cv = capture('wide', true);
+    if (!cv.width) return;
     const w = 240;
     const h = Math.round((cv.height / cv.width) * w);
     const t = document.createElement('canvas');
