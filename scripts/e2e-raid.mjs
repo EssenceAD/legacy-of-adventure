@@ -18,7 +18,7 @@ await ctx.addInitScript((s) => {
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
-p.on('dialog', (d) => d.accept());
+p.on('dialog', (d) => { errs.push('confirm 창: ' + d.message()); d.accept(); });
 const W = (ms) => p.waitForTimeout(ms);
 let fail = 0;
 const out = [];
@@ -68,12 +68,22 @@ ok(held > 0.2, `J 꾹 → 공격 (${held.toFixed(2)}초)`);
 await p.keyboard.press('k');
 await W(100);
 ok(((await F())?.dodge ?? 0) > 0, 'K → 구르기');
-// ✕ 포기 (확인 창 수락)
+// ✕ → 일시정지 창 (핫픽스 12 §5: confirm() 대신) → 포기하기
 await p.locator('#cbQuit').click();
+await W(300);
+ok(await p.evaluate(() => !document.querySelector('#cbPause').hidden), '✕ → 일시정지 창');
+await p.locator('#cbGiveUp').click();
 await W(2500);
 const res = await p.evaluate(() => !document.querySelector('#cbRes')?.hidden && !!document.querySelector('#cbRes')?.textContent);
 // 토벌은 전투 화면을 닫고 「토벌 결과」 창으로 끝난다
-const resWin = await p.evaluate(() => (document.querySelector('#win')?.classList.contains('on') ? document.querySelector('#winT').textContent : ''));
+// 패치 노트 창이 먼저 떠 있으면 닫고 본다
+let resWin = '';
+for (let i = 0; i < 4; i++) {
+  resWin = await p.evaluate(() => (document.querySelector('#win')?.classList.contains('on') ? document.querySelector('#winT').textContent : ''));
+  if (!/업데이트/.test(resWin)) break;
+  await p.locator('#winX').click();
+  await W(500);
+}
 ok(res || /토벌 결과/.test(resWin), '✕ 포기 → 끝나고 결과 (' + (resWin || 'cbRes') + ')');
 ok(errs.length === 0, '페이지 에러 0 ' + errs.join(' | '));
 console.log(JSON.stringify({ [name]: out }, null, 1));

@@ -1114,3 +1114,19 @@ html:not([data-size="phone"]) #updBar{bottom:calc(env(safe-area-inset-bottom,0px
 .repparty{display:flex;gap:10px;justify-content:center;margin:0 0 8px}
 .repparty span{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:var(--f-small)}
 .repparty img{width:56px;height:56px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--line)}
+/* 핫픽스 12 §5: PC 단축키 — 키캡·⌨ 버튼은 마우스 화면에서만 · 일시정지 · 단축키 카드 */
+.cbt kbd.kc{display:none;position:absolute;right:-3px;bottom:-3px;min-width:14px;padding:0 3px;font:700 10px/14px var(--f);color:#1c1018;background:#fff3d6;box-shadow:0 0 0 1px #1c1018;pointer-events:none;text-align:center}
+.cbtop .cbkeys{display:none}
+@media (hover: hover) and (pointer: fine) {
+  .cbt kbd.kc{display:block}
+  .cbtop .cbkeys{display:inline-block}
+}
+.cbtop button{position:relative}
+.cbpause,.cbkeycard{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(6,8,20,.6)}
+.cbpause[hidden],.cbkeycard[hidden]{display:none}
+.cbpause .card,.cbkeycard .card{padding:14px 16px;max-width:min(420px,92%);text-align:center;color:var(--cream)}
+.cbpause .card b,.cbkeycard .card b{display:block;font-size:var(--f-ui);color:var(--gold);margin-bottom:6px}
+.cbpause .go{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.cbkeycard dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:6px 0;text-align:left;font-size:var(--f-small)}
+.cbkeycard dt{color:var(--gold);font-weight:700;white-space:nowrap}.cbkeycard dd{margin:0}
+.cbkeycard p{font-size:var(--f-small);color:#9aa6d8;margin:6px 0 0}

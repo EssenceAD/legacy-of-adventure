@@ -1,0 +1,166 @@
+// 핫픽스 12 §5: PC 단축키 — 마을 키(H·B·C·M) · 설정에서 공격 키 바꾸기 · 전투 키(공격 꾹·스킬·AUTO·Esc 일시정지·접기) · 첫 전투 안내 카드
+//  phone(se): 키캡·⌨ 버튼 안 보임. 실행: dist-bot 미리보기 4190 · node scripts/e2e-keys.mjs [pc|se]
+import { chromium } from 'playwright-core';
+import fs from 'node:fs';
+const name = process.argv[2] ?? 'pc';
+const save = fs.readFileSync('tests/fixtures/beta_town.json', 'utf8');
+const DEV = { se: { viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, pc: { viewport: { width: 1280, height: 800 } } };
+const b = await chromium.launch({ channel: 'chrome' });
+const ctx = await b.newContext(DEV[name]);
+await ctx.addInitScript((s) => {
+  try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
+  localStorage.clear();
+  localStorage.setItem('legacy-of-adventure-save', s);
+  localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
+  localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
+  localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
+}, save);
+const p = await ctx.newPage();
+const errs = [];
+p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
+p.on('dialog', (d) => { errs.push('confirm/alert 창: ' + d.message()); d.accept(); });
+const W = (ms) => p.waitForTimeout(ms);
+let fail = 0;
+const out = [];
+const ok = (c, m) => { out.push((c ? '✓ ' : '✗ ') + m); if (!c) fail++; };
+const clear = async () => {
+  for (let i = 0; i < 25; i++) {
+    const st = await p.evaluate(() => ({ d: !document.querySelector('#dlg').hidden, w: document.querySelector('#win').classList.contains('on') }));
+    if (st.d) await p.locator('#dlg').click().catch(() => {});
+    else if (st.w) await p.locator('#winX').click().catch(() => {});
+    else return;
+    await W(300);
+  }
+};
+const winT = () => p.evaluate(() => (document.querySelector('#win').classList.contains('on') ? document.querySelector('#winT').textContent : ''));
+await p.goto(process.env.URL ?? 'http://localhost:4190/', { waitUntil: 'networkidle' });
+await p.waitForFunction(() => !!window.__S, null, { timeout: 20000 });
+await W(1500);
+await p.locator('#tCont').click();
+await W(3000);
+await clear();
+await W(2500);
+await clear();
+await p.evaluate(() => { const P = window.__P; P.runs.length = 0; P.hunt.auto = null; for (const a of window.__world.actors) if (a.id) a.hp = 100; });
+const F = () => p.evaluate(() => { const f = window.__combat.field(); return f ? { auto: f.auto, hold: f.holdAtk, cd0: f.me.cd?.[0] ?? 0, time: f.time, done: f.done } : null; });
+const enterHunt = async () => {
+  await p.locator('#bMenu2').click();
+  await W(900);
+  await p.locator('.mtile', { hasText: '사냥' }).first().click();
+  await W(900);
+  await p.locator('[data-s="1"]').click();
+  await W(900);
+  await p.locator('#hMan').click();
+  await W(2500);
+};
+
+if (name === 'pc') {
+  // ── 마을 키
+  await p.keyboard.press('h');
+  await W(700);
+  ok(/사냥/.test(await winT()), 'H → 사냥터 (' + (await winT()) + ')');
+  await p.keyboard.press('Escape');
+  await W(500);
+  ok(!(await winT()), 'Esc → 창 닫힘');
+  await p.keyboard.press('b');
+  await W(700);
+  ok(/건설|짓기/.test(await winT()), 'B → 건설 (' + (await winT()) + ')');
+  await clear();
+  await p.keyboard.press('g');
+  await W(700);
+  ok(!!(await winT()), 'G → 원정 게시판 (' + (await winT()) + ')');
+  await clear();
+  await p.keyboard.press('c');
+  await W(700);
+  const focus = await p.evaluate(() => document.activeElement?.id);
+  ok(focus === 'chatv', 'C → 채팅 · 입력칸에 커서 (' + focus + ')');
+  await p.keyboard.type('bgh');
+  await W(400);
+  ok(/채팅|소식|대화/.test(await winT()) && (await p.evaluate(() => document.querySelector('#chatv')?.value)) === 'bgh', '채팅 입력 중엔 B·G·H가 단축키로 안 먹힘 (' + (await winT()) + ')');
+  await p.keyboard.press('Escape');
+  await W(500);
+  ok(!(await winT()), '채팅 Esc → 닫힘');
+  // ── 설정 → 단축키 바꾸기: 공격 = L
+  await p.keyboard.press('m');
+  await W(700);
+  await p.locator('.mtile', { hasText: '설정' }).first().click();
+  await W(700);
+  await p.locator('#mKeys').click();
+  await W(600);
+  ok(/단축키/.test(await winT()), '설정 → 단축키 창');
+  await p.locator('[data-act="attack"]').click();
+  await W(300);
+  await p.keyboard.press('k');
+  await W(400);
+  ok(/구르기/.test(await p.evaluate(() => document.querySelector('#toast, .toast')?.textContent ?? document.body.innerText.slice(-400))), 'K는 구르기와 겹침 → 경고');
+  await p.locator('[data-act="attack"]').click();
+  await W(300);
+  await p.keyboard.press('l');
+  await W(400);
+  const row = await p.evaluate(() => document.querySelector('[data-act="attack"] em')?.textContent);
+  ok(row === 'L', '공격 = L 로 바뀜 (' + row + ')');
+  ok(await p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('legacy-of-adventure-keys') ?? '{}')).includes('"attack":"l"')), 'setPref(keys) 저장');
+  await clear();
+  // ── 전투
+  await enterHunt();
+  ok(!!(await F()), '사냥 전투 시작');
+  ok(await p.evaluate(() => !document.querySelector('#cbKeyCard').hidden), '첫 PC 전투 → 단축키 카드');
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('#cbAtk kbd.kc')).display !== 'none' && document.querySelector('#cbAtk kbd.kc').textContent === 'L'), '공격 버튼 키캡 = L (PC에서 보임)');
+  await p.keyboard.press('x');
+  await W(200);
+  ok(await p.evaluate(() => document.querySelector('#cbKeyCard').hidden), '아무 키 → 카드 닫힘');
+  await p.keyboard.down('j');
+  await W(500);
+  const holdJ = (await F())?.hold ?? 0;
+  await p.keyboard.up('j');
+  ok(holdJ < 0.05, `바꾼 뒤 J는 공격 아님 (${holdJ.toFixed(2)})`);
+  await p.keyboard.down('l');
+  await W(500);
+  const holdL = (await F())?.hold ?? 0;
+  await p.keyboard.up('l');
+  ok(holdL > 0.2, `L 꾹 → 공격 (${holdL.toFixed(2)}초)`);
+  await p.keyboard.press('u');
+  await W(150);
+  ok(((await F())?.cd0 ?? 0) > 0, 'U → 스킬 1');
+  await p.keyboard.press('t');
+  await W(200);
+  ok((await F())?.auto === true, 'T → AUTO 켜짐');
+  await p.keyboard.press('t');
+  await W(200);
+  ok((await F())?.auto === false, 'T → AUTO 꺼짐');
+  await p.keyboard.press('Escape');
+  await W(200);
+  const t0 = (await F())?.time;
+  await W(800);
+  const t1 = (await F())?.time;
+  ok(await p.evaluate(() => !document.querySelector('#cbPause').hidden), 'Esc → 일시정지 창');
+  ok(t0 === t1, `일시정지 중 시간 멈춤 (${t0} → ${t1})`);
+  await p.keyboard.press('Escape');
+  await W(200);
+  ok(await p.evaluate(() => document.querySelector('#cbPause').hidden), 'Esc 다시 → 계속하기');
+  await p.locator('#cbKeysBtn').click();
+  await W(200);
+  ok(await p.evaluate(() => !document.querySelector('#cbKeyCard').hidden), '⌨ 버튼 → 카드 다시 보기');
+  await p.keyboard.press('x');
+  await W(200);
+  await p.keyboard.press('f');
+  await W(600);
+  ok(await p.evaluate(() => !document.querySelector('#cbAtk')), 'F → 접기');
+} else {
+  await enterHunt();
+  ok(!!(await F()), '사냥 전투 시작');
+  ok(await p.evaluate(() => [...document.querySelectorAll('kbd.kc')].every((k) => getComputedStyle(k).display === 'none')), '폰: 키캡 안 보임');
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('#cbKeysBtn')).display === 'none'), '폰: ⌨ 버튼 안 보임');
+  ok(await p.evaluate(() => document.querySelector('#cbKeyCard').hidden), '폰: 단축키 카드 안 뜸');
+  await p.locator('#cbQuit').click();
+  await W(300);
+  ok(await p.evaluate(() => !document.querySelector('#cbPause').hidden), '✕ → 일시정지 창 (confirm 아님)');
+  await p.locator('#cbGiveUp').click();
+  await W(2500);
+  ok(!!(await p.evaluate(() => document.querySelector('#cbRes')?.textContent)), '포기하기 → 결과');
+}
+ok(errs.length === 0, '페이지 에러·confirm 0 ' + errs.join(' | '));
+console.log(JSON.stringify({ [name]: out }, null, 1));
+console.log(fail ? `✗ ${fail}개 실패` : '✓ 모두 통과');
+await b.close();
+process.exit(fail ? 1 : 0);

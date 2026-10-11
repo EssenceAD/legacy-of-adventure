@@ -3,6 +3,7 @@ import './style.css';
 import { CONFIG } from './data/config';
 import { alphaAt, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
+import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
 import { tour } from './world/evalTour';
 import { anim as gradeAnim } from './world/grade';
 import { CLASSES, type ClassKey } from './data/classes';
@@ -19,11 +20,12 @@ import { buildingAt, renderFrame } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { doorOf, placing } from './world/town';
-import { initChat } from './ui/chat';
+import { initChat, openChat } from './ui/chat';
+import { openBoard } from './ui/expedition';
 import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
 import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange } from './ui/screen';
-import { buildThumbs, initWindows, isWinOpen, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
 import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
@@ -532,6 +534,25 @@ async function boot() {
     game.newGame();
   };
   document.getElementById('tCont')!.onclick = () => game.continueGame();
+  // 핫픽스 12 §5: 마을 단축키 (PC) — B 건설 · G 원정 · H 사냥 · C/Enter 채팅 · M 메뉴. 글 쓰는 중·대화·창·전투·배치 중엔 끔
+  addEventListener('keydown', (e) => {
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!S.started || S.visiting || isTalking() || isWinOpen() || combatOn() || teaserOn() || placing.pl || document.getElementById('raid')) return;
+    const t = document.getElementById('title');
+    if (t && !t.hidden && !t.classList.contains('out')) return;
+    const a = actionOf(e.key, VILLAGE_ACTIONS);
+    if (!a) return;
+    e.preventDefault();
+    if (a === 'build') return openBuild();
+    if (a === 'board') return openBoard();
+    if (a === 'hunt') return openHunt();
+    if (a === 'menu') return openGridMenu();
+    if (a === 'chat') {
+      openChat();
+      (document.getElementById('chatv') as HTMLInputElement | null)?.focus();
+    }
+  });
   addEventListener('keydown', (e) => {
     const title = document.getElementById('title')!;
     if (!title.hidden && !title.classList.contains('out') && (e.key === 'Enter' || e.key === 'z' || e.key === 'Z')) {

@@ -8,6 +8,8 @@ import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
 import { uiHooks, type Actor, type Item } from '../world/state';
 import { skipFrame } from '../engine/fps';
+import { ACTION_NAME, actionOf, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, type Action } from '../engine/keys';
+import { getPref, setPref } from '../save/save';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
@@ -151,7 +153,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   root.className = 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
-    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO</button>${opts.mode === 'raid' ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small></button>'}<button id="cbQuit" aria-label="포기">✕</button></div>
+    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button><button id="cbQuit" aria-label="포기">✕</button></div>
     <div class="cbparty" id="cbParty"></div>
     <div class="cbchain" id="cbChain"></div>
     <div class="cbhit" id="cbHit"><b id="cbHitN"></b><small id="cbHitB"></small><strong id="cbKills"></strong></div>
@@ -162,15 +164,17 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbstick" id="cbStick" hidden><i></i></div>
     <div class="cbpad">
       <div class="cbnames" id="cbNames" hidden><span id="cbN1"></span><span id="cbN2"></span></div>
-      <button class="cbb ult" id="cbUlt"><img alt=""><i class="ring"></i></button>
-      <button class="cbb s2" id="cbS2"><img alt=""><i class="cd"></i><em></em></button>
-      <button class="cbb s1" id="cbS1"><img alt=""><i class="cd"></i><em></em></button>
-      <button class="cbb dodge" id="cbDodge"><b>⤼</b><i class="cd"></i></button>
-      <button class="cbb atk" id="cbAtk"><img src="${iconSrc('skill_attack')}" alt=""></button>
+      <button class="cbb ult" id="cbUlt"><img alt=""><i class="ring"></i><kbd class="kc" data-k="ult"></kbd></button>
+      <button class="cbb s2" id="cbS2"><img alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s2"></kbd></button>
+      <button class="cbb s1" id="cbS1"><img alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s1"></kbd></button>
+      <button class="cbb dodge" id="cbDodge"><b>⤼</b><i class="cd"></i><kbd class="kc" data-k="dodge"></kbd></button>
+      <button class="cbb atk" id="cbAtk"><img src="${iconSrc('skill_attack')}" alt=""><kbd class="kc" data-k="attack"></kbd></button>
     </div>
     <div class="cbcast" id="cbCast" hidden></div>
     <div class="cbcut" id="cbCut" hidden></div>
-    <div class="cbres" id="cbRes" hidden></div>`;
+    <div class="cbres" id="cbRes" hidden></div>
+    <div class="cbpause" id="cbPause" hidden><div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div></div>
+    <div class="cbkeycard" id="cbKeyCard" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
   fit();
   addEventListener('resize', fit);
@@ -253,8 +257,8 @@ function tick(dt: number) {
   if (!F) return;
   // 키보드 이동 (조이스틱이 없을 때)
   if (!stickOn) {
-    const kx = (keys.has('d') ? 1 : 0) - (keys.has('a') ? 1 : 0);
-    const ky = (keys.has('s') ? 1 : 0) - (keys.has('w') ? 1 : 0);
+    const kx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0);
+    const ky = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
     const l = Math.hypot(kx, ky) || 1;
     F.stick.x = kx / l;
     F.stick.y = ky / l;
@@ -264,6 +268,12 @@ function tick(dt: number) {
 }
 function frame(now: number) {
   if (!F || !root) return;
+  // 핫픽스 12 §5: 일시정지 중엔 시간이 흐르지 않는다
+  if (paused) {
+    last = now;
+    raf = requestAnimationFrame(frame);
+    return;
+  }
   // 핫픽스 11: 최대 60fps (배터리 절약 30) — 120Hz 화면에서 120번 그리지 않게
   if (skipFrame(last, now)) {
     raf = requestAnimationFrame(frame);
@@ -549,33 +559,123 @@ function bindInput() {
     F!.auto = !F!.auto;
     if (F!.auto) F!.autoUsed = true;
   });
+  // 핫픽스 12 §5: ✕ = 일시정지 창 (confirm() 대신)
   $('#cbQuit').onclick = () => {
     if (!F || F.done) return;
-    if (confirm('사냥을 포기할까요? (패배로 기록돼요)')) {
-      F.done = 'lose';
-      F.doneT = 2;
-    }
+    openPause();
   };
+  $('#cbResume').onclick = resume;
+  $('#cbGiveUp').onclick = giveUp;
+  $('#cbKeysBtn').onclick = () => (keyCardOpen() ? hideKeyCard() : showKeyCard(false));
+  $('#cbKeyCard').onclick = hideKeyCard;
+  syncKeycaps();
+  // 처음 PC로 전투할 때 한 번: 키 배치 카드 3초
+  if (isPointerFine() && !getPref<boolean>('keysIntro', false)) {
+    setPref('keysIntro', true);
+    showKeyCard(true);
+  }
   addEventListener('keydown', onKey);
   addEventListener('keyup', onKeyUp);
 }
 function onKey(e: KeyboardEvent) {
   if (!F || F.done) return;
-  const k = e.key.toLowerCase();
-  if ('wasd'.includes(k) && k.length === 1) keys.add(k);
-  if (k === 'j') {
-    if (!holding) attack(F, F.me);
-    holding = true;
+  const tag = (e.target as HTMLElement)?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  // 단축키 안내 카드가 떠 있으면 아무 키로 닫기
+  if (keyCardOpen()) {
+    hideKeyCard();
+    e.preventDefault();
+    return;
   }
-  if (k === 'k') dodge(F, F.me);
-  if (k === 'u') skill(F, F.me, 0);
-  if (k === 'i') skill(F, F.me, 1);
-  if (k === 'o') ultimate(F);
+  const a = actionOf(e.key, COMBAT_ACTIONS);
+  if (!a) return;
+  // Space·Tab·방향키·Shift가 페이지를 움직이거나 포커스를 옮기지 않게
+  e.preventDefault();
+  if (a === 'pause') return paused ? resume() : openPause();
+  if (paused) return;
+  if (a === 'up' || a === 'down' || a === 'left' || a === 'right') return void keys.add(a);
+  if (e.repeat && a !== 'attack') return;
+  switch (a) {
+    case 'attack':
+      if (!holding) attack(F, F.me);
+      holding = true;
+      break;
+    case 'dodge':
+      dodge(F, F.me);
+      break;
+    case 's1':
+      skill(F, F.me, 0);
+      break;
+    case 's2':
+      skill(F, F.me, 1);
+      break;
+    case 'ult':
+      ultimate(F);
+      break;
+    case 'swap':
+      swapAlly();
+      break;
+    case 'auto':
+      F.auto = !F.auto;
+      if (F.auto) F.autoUsed = true;
+      break;
+    case 'fold':
+      foldCombat();
+      break;
+  }
 }
 function onKeyUp(e: KeyboardEvent) {
-  const k = e.key.toLowerCase();
-  keys.delete(k);
-  if (k === 'j') holding = false;
+  const a = actionOf(e.key, COMBAT_ACTIONS);
+  if (!a) return;
+  keys.delete(a);
+  if (a === 'attack') holding = false;
+}
+/** Tab: 살아 있는 다음 동료로 */
+function swapAlly() {
+  const f = F!;
+  const alive = f.allies.filter((u) => !u.dead);
+  if (alive.length < 2) return;
+  const i = alive.indexOf(f.me);
+  f.me = alive[(i + 1) % alive.length];
+  syncSkillButtons(true);
+}
+// ───────── 핫픽스 12 §5: 일시정지(Esc·✕ — confirm() 대신 게임 안 창) · 키캡 · 단축키 안내 ─────────
+let paused = false;
+function openPause() {
+  if (!F || F.done || !root) return;
+  paused = true;
+  holding = false;
+  keys.clear();
+  (root.querySelector('#cbPause') as HTMLElement).hidden = false;
+}
+function resume() {
+  paused = false;
+  if (root) (root.querySelector('#cbPause') as HTMLElement).hidden = true;
+}
+function giveUp() {
+  resume();
+  if (!F || F.done) return;
+  F.done = 'lose';
+  F.doneT = 2;
+}
+/** 버튼 모서리 키캡 글자 (PC에서만 보인다 — CSS) */
+function syncKeycaps() {
+  root?.querySelectorAll<HTMLElement>('kbd.kc').forEach((k) => (k.textContent = keyLabel(keysFor(k.dataset.k as Action)[0])));
+}
+const keyCardOpen = () => !!root && !(root.querySelector('#cbKeyCard') as HTMLElement).hidden;
+function hideKeyCard() {
+  if (root) (root.querySelector('#cbKeyCard') as HTMLElement).hidden = true;
+}
+let keyCardT = 0;
+function showKeyCard(auto: boolean) {
+  if (!root) return;
+  const c = root.querySelector('#cbKeyCard') as HTMLElement;
+  const rows = COMBAT_ACTIONS.filter((a) => a !== 'up' && a !== 'down' && a !== 'left' && a !== 'right' && (a !== 'fold' || !!root!.querySelector('#cbFold')));
+  const move = (['up', 'left', 'down', 'right'] as Action[]).map((a) => keyLabel(keysFor(a)[0])).join('');
+  c.innerHTML = `<div class="card px"><b>⌨ 단축키</b><dl><dt>${move} / 방향키</dt><dd>이동</dd>${rows.map((a) => `<dt>${keysFor(a).map(keyLabel).join(' / ')}</dt><dd>${ACTION_NAME[a]}</dd>`).join('')}</dl><p>설정 → 단축키 바꾸기에서 바꿀 수 있어요 · 아무 키나 눌러 닫기</p></div>`;
+  c.hidden = false;
+  clearTimeout(keyCardT);
+  if (auto) keyCardT = window.setTimeout(hideKeyCard, 3000);
 }
 
 // ───────── 끝 ─────────
@@ -609,6 +709,7 @@ export function closeCombat() {
   root?.remove();
   root = null;
   F = null;
+  paused = false;
   folded = false;
   foldEnded = false;
   // 전투 중 미뤄 둔 새 버전 띠 · 마을 소리·알림

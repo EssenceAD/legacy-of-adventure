@@ -31,6 +31,7 @@ import { screen, setFontStep } from './screen';
 import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
+import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysFor, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
 const has = (k: string) => (world.home?.objs ?? world.objs).some((o) => o.kind === k && o.build === undefined);
 
@@ -304,7 +305,7 @@ export function openSettings() {
     '설정',
     `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p></div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
-    <button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
+    <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
   $$('[data-fs]').forEach(
@@ -324,6 +325,7 @@ export function openSettings() {
     trackEv('saver', { on: saverOn() });
   };
   $('#mLetter').onclick = () => openReport();
+  $('#mKeys').onclick = () => openKeys();
   bindSoundSettings();
   ($('#mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
   ($('#mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
@@ -339,6 +341,61 @@ export function openSettings() {
     closeWin();
     game.toTitle();
   };
+}
+
+// ───────── 핫픽스 12 §5: 단축키 바꾸기 ─────────
+let keyWait: Action | null = null;
+let keyListen: ((e: KeyboardEvent) => void) | null = null;
+export function openKeys() {
+  const row = (a: Action) => `<button class="stp keyrow ${keyWait === a ? 'cur' : ''}" data-act="${a}"><span style="grid-column:1/3"><b>${ACTION_NAME[a]}</b></span><em>${keyWait === a ? '누를 키…' : keysFor(a).map(keyLabel).join(' / ')}</em></button>`;
+  openWin(
+    '단축키',
+    `<p class="sub">바꿀 동작을 누르고, 쓰고 싶은 키를 눌러요 (Esc = 그만두기)</p>
+    <div class="qhd"><b class="g">전투</b></div><div class="steps">${COMBAT_ACTIONS.map(row).join('')}</div>
+    <div class="qhd"><b class="g">마을</b></div><div class="steps">${VILLAGE_ACTIONS.map(row).join('')}</div>
+    <button class="bigbtn ghost sm" id="kReset">기본값으로 되돌리기</button>`,
+  );
+  $$('[data-act]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        keyWait = b.dataset.act as Action;
+        keepScroll(openKeys);
+      }),
+  );
+  $('#kReset').onclick = () => {
+    resetKeys();
+    keyWait = null;
+    toast('단축키를 기본값으로 되돌렸어요');
+    trackEv('keybind_change', { action: 'reset' });
+    keepScroll(openKeys);
+  };
+  if (keyListen) removeEventListener('keydown', keyListen, true);
+  keyListen = null;
+  if (!keyWait) return;
+  keyListen = (e: KeyboardEvent) => {
+    // 창이 닫혔으면 기다리기 그만 (다음 키를 먹지 않게)
+    if (!keyWait || !document.querySelector('#winB [data-act]')) {
+      keyWait = null;
+      if (keyListen) removeEventListener('keydown', keyListen, true);
+      keyListen = null;
+      return;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const a = keyWait;
+    keyWait = null;
+    if (keyListen) removeEventListener('keydown', keyListen, true);
+    keyListen = null;
+    if (e.key === 'Escape') return keepScroll(openKeys);
+    const clash = setKey(a, e.key);
+    if (clash) toast(`「${keyLabel(e.key.toLowerCase())}」는 이미 「${ACTION_NAME[clash]}」에 쓰고 있어요`);
+    else {
+      toast(`${ACTION_NAME[a]} = ${keyLabel(e.key.toLowerCase())}`);
+      trackEv('keybind_change', { action: a, key: e.key.toLowerCase().slice(0, 12) });
+    }
+    keepScroll(openKeys);
+  };
+  addEventListener('keydown', keyListen, true);
 }
 
 // ───────── 안내서 「여관 운영 안내서」 ─────────
