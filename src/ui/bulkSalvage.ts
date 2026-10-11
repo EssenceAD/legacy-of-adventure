@@ -1,0 +1,79 @@
+// HOTFIX14 §2: 등급별 일괄 분해 창 + 자동 분해 등급 고르기 (가방 · 대장간 분해 탭 · 설정에서 같이 씀)
+//  · 등급 체크(기본 일반만) · 등급마다 「개수 · 얻을 가루」 · 끼운 것·잠금은 늘 빠짐 · 강화·세트는 「포함」 체크 때만
+//  · 부위별 최고 장비 1개 남기기(기본 켬) · 전설·유물이 있으면 빨간 버튼 + 경고 · confirm() 대신 두 번 누르기
+import { DUST_NAME, GRADE_INFO, type Grade } from '../data/items';
+import { bulkPreview, salvageBulk } from '../world/craft';
+import { markDirty, P } from '../world/state';
+import { $, $$, fmt } from './common';
+import { openWin, toast } from './windows';
+
+const GRADES: Grade[] = ['n', 'r', 'e', 'l', 'a'];
+let armed = false;
+
+export function openBulkSalvage(back: () => void) {
+  const pref = P.salvage;
+  const grades = new Set(pref.grades as Grade[]);
+  const opts = { upgraded: pref.upgraded, keepBest: pref.keepBest };
+  const pv = bulkPreview(GRADES, opts);
+  const sel = GRADES.filter((g) => grades.has(g));
+  const total = sel.reduce((s, g) => s + pv[g].n, 0);
+  const rare = sel.filter((g) => (g === 'l' || g === 'a') && pv[g].n > 0);
+  const rows = GRADES.map(
+    (g) =>
+      `<label class="tog bulkg ${pv[g].n ? '' : 'zero'}"><input type="checkbox" data-g="${g}" ${grades.has(g) ? 'checked' : ''}> <b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name}</b> <span>${pv[g].n}개 · ${DUST_NAME[g]} +${fmt(pv[g].dust)}</span></label>`,
+  ).join('');
+  openWin(
+    '일괄 분해',
+    `<p class="sub">끼운 장비와 🔒 잠근 장비는 빠져요</p>
+    <div class="bulk">${rows}</div>
+    <label class="tog"><input type="checkbox" id="bkBest" ${opts.keepBest ? 'checked' : ''}> 부위별 최고 장비 1개 남기기 (무기·갑옷·장신구)</label>
+    <label class="tog"><input type="checkbox" id="bkUp" ${opts.upgraded ? 'checked' : ''}> 강화·세트 장비도 포함</label>
+    <p class="sub">합계 <b class="g">${total}개</b> · ${sel.filter((g) => pv[g].n).map((g) => `${DUST_NAME[g]} +${fmt(pv[g].dust)}`).join(' · ') || '얻을 가루 없음'}</p>
+    ${rare.length ? `<p class="sub bad">⚠ ${rare.map((g) => `${GRADE_INFO[g].name} ${pv[g].n}개`).join(' · ')} 포함</p>` : ''}
+    <button class="bigbtn ${rare.length ? 'red' : ''}" id="bkGo" ${total ? '' : 'disabled'}>${armed ? '한 번 더 누르면 분해' : `분해하기 (${total}개)`}</button>`,
+  );
+  const save = () => {
+    pref.grades = GRADES.filter((g) => grades.has(g));
+    pref.upgraded = ($('#bkUp') as HTMLInputElement).checked;
+    pref.keepBest = ($('#bkBest') as HTMLInputElement).checked;
+    markDirty();
+    armed = false;
+    openBulkSalvage(back);
+  };
+  $$('[data-g]').forEach(
+    (b) =>
+      ((b as HTMLInputElement).onchange = () => {
+        if ((b as HTMLInputElement).checked) grades.add(b.dataset.g as Grade);
+        else grades.delete(b.dataset.g as Grade);
+        save();
+      }),
+  );
+  ($('#bkUp') as HTMLInputElement).onchange = save;
+  ($('#bkBest') as HTMLInputElement).onchange = save;
+  $('#bkGo').onclick = () => {
+    if (!armed) {
+      armed = true;
+      return openBulkSalvage(back);
+    }
+    armed = false;
+    const r = salvageBulk(sel, opts);
+    const parts = GRADES.filter((g) => r.dust[g]).map((g) => `${DUST_NAME[g].replace(' 가루', '')} +${fmt(r.dust[g]!)}`);
+    toast(r.count ? `${r.count}개 분해 · ${parts.join(' · ')}` : '분해할 장비가 없어요');
+    back();
+  };
+}
+
+/** 자동 분해 고르기 (가방이 차면): 끔 / 일반 / 희귀 이하 — 영웅 이상은 고를 수 없음 */
+export const autoSalvageHtml = (id: string) => {
+  const cur = P.salvage.auto || (P.autoSalvage ? 'n' : '');
+  return `<label class="tog">가방이 차면 자동 분해 <select id="${id}">${[['', '끔'], ['n', '일반'], ['r', '희귀 이하']].map(([v, t]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+};
+export function bindAutoSalvage(id: string) {
+  const s = document.getElementById(id) as HTMLSelectElement | null;
+  if (!s) return;
+  s.onchange = () => {
+    P.salvage.auto = s.value as '' | 'n' | 'r';
+    P.autoSalvage = s.value !== '';
+    markDirty();
+  };
+}

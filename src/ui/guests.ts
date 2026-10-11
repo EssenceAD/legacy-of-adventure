@@ -11,7 +11,8 @@ import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed, sendAway } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, smithObj } from '../world/craft';
+import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
@@ -262,19 +263,12 @@ export function openBag() {
     ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
     <button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
-    <label class="tog"><input type="checkbox" id="autoS" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label>
-    <button class="bigbtn sm" id="salAll">안 끼운 일반 장비 모두 분해</button>`,
+    ${autoSalvageHtml('autoS')}
+    <button class="bigbtn sm" id="salAll">일괄 분해…</button>`,
   );
   $$('.bag .ic').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!)));
-  ($('#autoS') as HTMLInputElement).onchange = (e) => {
-    P.autoSalvage = (e.target as HTMLInputElement).checked;
-    markDirty();
-  };
-  $('#salAll').onclick = () => {
-    const r = salvageAllCommon();
-    toast(r.count ? `${r.count}개 분해 · ${DUST_NAME.n} +${r.dust}` : '분해할 일반 장비가 없어요');
-    openBag();
-  };
+  bindAutoSalvage('autoS');
+  $('#salAll').onclick = () => openBulkSalvage(openBag);
   $('#bagAuto').onclick = () => {
     autoAll();
     keepScroll(openBag);

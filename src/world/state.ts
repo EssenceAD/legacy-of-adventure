@@ -352,6 +352,8 @@ export function freshProgress() {
     /** 지난 7일(게임 날) 수입 */
     week: [] as { day: number; gold: number }[],
     autoSalvage: false,
+    /** HOTFIX14 §2: 일괄 분해 마지막 선택 · 자동 분해 등급(끔 / 일반 / 희귀 이하) */
+    salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, auto: '' as '' | 'n' | 'r' },
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
     /** 핫픽스 10 §15: 단골 자리가 새로 생긴 만큼 「빠른 제안」 (받으면 하나 줄어든다) · 옛 저장 구제 1번 · 모모 안내 횟수 */

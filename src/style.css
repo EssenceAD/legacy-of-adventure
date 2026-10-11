@@ -1173,3 +1173,8 @@ p.qtag.ok{color:#8fe08f}
 /* HOTFIX14 §4: 위쪽 HUD 줄의 빈 곳은 클릭을 막지 않는다 (별똥별·건물 클릭이 캔버스까지) */
 .top{pointer-events:none}
 .top>*:not(.sp){pointer-events:auto}
+/* HOTFIX14 §2: 일괄 분해 창 */
+.bulk{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.bulkg{display:flex;gap:6px;align-items:center}
+.bulkg span{margin-left:auto;font-size:var(--f-small)}
+.bulkg.zero{opacity:.45}

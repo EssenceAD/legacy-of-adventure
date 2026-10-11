@@ -1,7 +1,8 @@
 // 대장간 창(분해·강화·제작 탭 + 레벨) · 텃밭 창(심기·수확)
 import { CONFIG } from '../data/config';
+import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type RegionId, type Slot } from '../data/items';
-import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, salvageAllCommon, smithLvl } from '../world/craft';
+import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
@@ -31,7 +32,7 @@ export function openSmith(o: Building, tab = smTab) {
       .filter((it) => it.owner == null && !it.locked)
       .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]}</small></span><button data-sal="${it.id}">분해</button></div>`)
       .join('');
-    body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">안 끼운 일반 장비 모두 분해</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
+    body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">일괄 분해…</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
   } else if (tab === 1) {
     const rows = sorted()
       .map((it) => {
@@ -81,11 +82,7 @@ export function openSmith(o: Building, tab = smTab) {
   );
   const sa = document.getElementById('salAll');
   if (sa)
-    sa.onclick = () => {
-      const r = salvageAllCommon();
-      toast(r.count ? `${r.count}개 분해 · ${DUST_NAME.n} +${r.dust}` : '분해할 일반 장비가 없어요');
-      openSmith(o);
-    };
+    sa.onclick = () => openBulkSalvage(() => openSmith(o));
   $$('.regs button').forEach(
     (b) =>
       (b.onclick = () => {
