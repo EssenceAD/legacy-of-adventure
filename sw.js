@@ -1,6 +1,6 @@
 // 서비스워커: 에셋 캐시. 페이지(HTML)·JSON은 네트워크 먼저(업데이트가 바로 반영), 그림은 캐시 먼저 + 뒤에서 새로 받아 둠.
 // 핫픽스 13: 에셋 주소에 ?v=빌드번호가 붙어서 버전마다 캐시 키가 다르다 → 새 코드가 옛 그림·옛 크기표를 받을 수 없다
-const CACHE = 'legacy-0.12.0-beta-d20b267.mv3z16fp';
+const CACHE = 'legacy-0.12.1-beta-4076ba2.mv3zn8au';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
