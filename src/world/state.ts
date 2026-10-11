@@ -324,6 +324,10 @@ export function freshProgress() {
       best: 0,
       day: '',
       tries: 0,
+      /** HOTFIX17 §2: 토벌 판 번호 · 마지막으로 정산한 판 · 오늘 도전 횟수를 한 번 돌려줬나 */
+      runSeq: 0,
+      lastSettled: 0,
+      fix17: false,
       /** 이번 주 참여 보상(인연의 증표)을 받았나 */
       joined: false,
       alarmed: false,

@@ -17,6 +17,8 @@ import { pairOf } from '../world/chem';
 import { powerTips } from '../world/expeditions';
 import {
   canSweep, expectOf, raidCrew, rankOf, settle, submitRecord, triesLeft, wanderTarget, weeklyTarget, type RaidExpect, type RaidOutcome, type RaidTarget,
+  beginRaid,
+  cancelRaid,
 } from '../world/raid';
 import { legendHooks, markDirty, P, type Actor } from '../world/state';
 import { $, $$, esc, fmt, keepScroll, nameTag, pct, pic } from './common';
@@ -92,17 +94,31 @@ export function openRaidPrep(t: RaidTarget) {
       }),
   );
   // 전투 2차: 자동 토벌은 소탕 역할 (전투 화면 없이 기대 피해의 70% · 보상도 70%)
+  // HOTFIX17 §2: 판마다 시작할 때 도전 1 차감 (연타·이중 정산 막기)
+  const go = (): number | null => {
+    const run = beginRaid();
+    if (run == null) toast('오늘 남은 도전이 없어요');
+    else $$('#rgMan, #rgAuto, #rgSweep').forEach((b) => ((b as HTMLButtonElement).disabled = true));
+    return run;
+  };
   $('#rgAuto').onclick = () => {
+    const run = go();
+    if (run == null) return;
     const dmg = Math.round(ex.target * CONFIG.combat.raidAuto);
-    const out = settle(t, members, dmg, 'auto', ex);
+    const out = settle(t, members, dmg, 'auto', ex, run);
     showResult(t, out, ex, 'auto', members, false);
   };
   // 직접 토벌: 사냥과 같은 쿼터뷰 필드 액션 · 보스 패턴 3개 · 50%부터 빨라짐 · 30%부터 「마지막 일격」
-  $('#rgMan').onclick = () => fieldRaid(t, members, ex);
+  $('#rgMan').onclick = () => {
+    const run = go();
+    if (run != null) fieldRaid(t, members, ex, run);
+  };
   const sw = document.getElementById('rgSweep');
   if (sw)
     sw.onclick = () => {
-      const out = settle(t, members, ex.target, 'sweep', ex);
+      const run = go();
+      if (run == null) return;
+      const out = settle(t, members, ex.target, 'sweep', ex, run);
       showResult(t, out, ex, 'sweep', members, false);
     };
 }
@@ -391,6 +407,9 @@ export const _raidAdvance = (sec: number) => active?.advance(sec);
 
 /** 옛 토벌 전투 화면 — 1차 동안 쓰지 않는다 (2차에 새 토벌전으로 바꾼다) */
 export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
+  const run0 = beginRaid();
+  if (run0 == null) return toast('오늘 남은 도전이 없어요');
+  const run: number = run0;
   notePrep('raid', ex.power);
   active?.stop();
   const b = t.boss;
@@ -697,7 +716,7 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     damage = Math.round(damage);
     if (killedNow) view.cutin([pic(leader), bossPic(b)], `${b.name} 처치!`);
     sfx(killedNow ? 'win' : survived ? 'win' : 'lose');
-    const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex);
+    const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex, run);
     view.log(killedNow ? `${b.name} 처치!` : survived ? '시간 종료' : '파티가 쓰러졌어요…', killedNow ? 'wave' : survived ? 'kill' : 'bad');
     view.log(`가한 피해 ${fmt(damage)}`, 'loot');
     setTimeout(() => showResult(t, out, ex, manual ? 'manual' : 'auto', members, true, S.died, S.bestStreak), killedNow ? 1400 : 500);
@@ -714,7 +733,7 @@ export function raidLook(t: RaidTarget): BossLook {
 /** 필드 피해 → 토벌 피해 단위: 「자동으로 버틴 파티가 R.seconds 동안 넣는 필드 피해」를 기대 피해량에 맞춘다 */
 export const fieldExpect = (members: Actor[]) => members.reduce((s, m) => s + powerOf(m), 0) * CONFIG.combat.dmgK * CONFIG.combat.raidFieldDps * R.seconds;
 
-function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect) {
+function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect, run: number) {
   notePrep('raid', ex.power);
   closeWin();
   const look = raidLook(t);
@@ -735,11 +754,15 @@ function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect) {
       // 랭킹 이론치 검사(기록 상한)를 넘지 않게
       damage = Math.round(Math.min(damage, ex.theory * R.recordCap * 0.99));
       const mode = res.autoUsed ? 'auto' : 'manual';
-      const out = settle(t, members, damage, mode, ex);
+      const out = settle(t, members, damage, mode, ex, run);
       void showFieldRaidResult(t, out, ex, mode, members, !survived);
     },
     { mode: 'raid', raid: { look, hp, seconds: R.seconds, power: t.boss.power } },
-  );
+  ).catch(() => {
+    // 판이 열리지 못했으면 도전 차감을 되돌린다
+    cancelRaid(run);
+    toast('토벌을 시작하지 못했어요 · 도전 횟수는 그대로예요');
+  });
 }
 
 async function showFieldRaidResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode: 'auto' | 'manual', members: Actor[], died: boolean) {

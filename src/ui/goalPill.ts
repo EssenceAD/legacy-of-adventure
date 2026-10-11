@@ -76,7 +76,8 @@ function drawPanel() {
 export function syncGoalPill() {
   const pill = $('#goalPill');
   if (!pill) return;
-  const battle = !!document.querySelector('.battle, .cbt, #cbCv') || document.body.classList.contains('photo');
+  // HOTFIX17 §1: 창·대화·전투(사냥/토벌)·사진 모드·컷신 중 하나라도 있으면 숨김 (장부 카드와 같은 조건 + 창)
+  const battle = !!document.querySelector('.battle, .cbt, #cbCv, #hunt, #raid, #storyFx') || document.body.classList.contains('photo') || isWinOpen();
   // 날이 바뀌면 새 목표로 (알약이 다시 켜진다)
   if (S.started && !S.visiting) ensureGoals();
   const show = goalPillOn() && S.started && !S.visiting && !battle && !isTalking() && P.goals.list.length > 0;

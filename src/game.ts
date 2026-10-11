@@ -1,6 +1,7 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
 import { initStory } from './world/story';
+import { repairRaidTries } from './world/raid';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
@@ -188,6 +189,8 @@ export function continueGame() {
   applySave(save);
   // STORY_V1: 옛 저장은 진행도로 막 추정 · 유산 포인트·기억 채우기
   initStory(false);
+  // HOTFIX17 §2: 토벌 도전 횟수 오류 복구 (오늘 횟수 한 번 돌려주기)
+  repairRaidTries();
   S.started = true;
   S.nightT = S.night ? 1 : 0;
   resetCamera();
