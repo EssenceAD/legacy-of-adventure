@@ -133,6 +133,8 @@ describe('추천 편성', () => {
     world.actors = [a, b];
     // 둘 다 혼자서 충분히 넘기는 의뢰 → 한 명만, 레벨이 같으니 아무나 / 레벨이 다르면 낮은 쪽
     b.lvl = 7;
+    // 희귀도는 무작위라 같게 맞춘다 (레벨만 다르게)
+    b.rarity = a.rarity;
     const need = Math.round(Math.min(powerOf(a), powerOf(b)) * 0.5);
     const r = recommendParty([a, b], { power: need, region: 'forest', min: 1, max: 1 })!;
     expect(r.members).toEqual([b]);
