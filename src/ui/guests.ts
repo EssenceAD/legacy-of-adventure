@@ -5,18 +5,20 @@ import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
 import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
-import { CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
+import { CLASS_WEAPON, CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed, sendAway } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageAllCommon, smithObj } from '../world/craft';
-import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
+import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
+import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
+import { track as trackEv } from '../net/telemetry';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
 import { track } from '../world/progress';
 import { speakerOf, talk } from './dialogue';
-import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, portrait, tabs } from './common';
+import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, pic, portrait, tabs } from './common';
 import { dustLine } from './smith';
 import { closeWin, openWin, toast } from './windows';
 
@@ -56,7 +58,7 @@ export function openGuests() {
         ? `<p class="note">단골 자리가 꽉 찼을 때 단골이 되고 싶어 한 손님이에요 · 자리가 나면 다시 찾아와 제안해요</p><div class="glist">${
             P.waitlist.map((w) => `<div class="wrow"><b style="color:${RARITY_INFO[w.rarity].color}">${esc(w.name)}</b> · Lv.${w.lvl} ${RACE_NAME[w.race]} ${CLASSES[w.kind].name}</div>`).join('') || '<p class="note">대기 중인 손님이 없어요</p>'
           }</div>`
-        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}<button id="gBag" class="bagb">가방</button></div>
+        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>
     <div class="glist">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
@@ -74,6 +76,12 @@ export function openGuests() {
   $$('.glist button').forEach((b) => (b.onclick = () => showActor(all.find((a) => a.id === +b.dataset.id!)!)));
   const gb = document.getElementById('gBag');
   if (gb) gb.onclick = () => openBag();
+  const ga = document.getElementById('gAuto');
+  if (ga)
+    ga.onclick = () => {
+      autoAll();
+      keepScroll(openGuests);
+    };
 }
 
 /** 손님에게 말 걸기: 한마디 듣고 기분 + (손님마다 하루 한 번만 기분이 오른다) */
@@ -103,7 +111,7 @@ export function showActor(a: Actor) {
     a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
   const slots = SLOTS.map((s) => {
     const it = P.bag.find((x) => x.id === a.equip[s]);
-    return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small></button>`;
+    return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small>${it ? fitTag(a, it) : ''}</button>`;
   }).join('');
   const bonds = bondsOf(a);
   const chem = bonds.map((b) => `<span class="chip"><img src="${pic(b.other)}" alt="">${esc(b.other.name)} · ${esc(b.pair.name)} ${'♥'.repeat(b.lv)}</span>`).join('');
@@ -117,7 +125,7 @@ export function showActor(a: Actor) {
       ${bar('경험', a.xp, '#6f8fff', xpToNext(a.lvl))}
     </div></div>
     <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b></span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
-    ${a.status === 'regular' || a.status === 'hero' ? `<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
+    ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}` : ''}</p>` : ''}
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
@@ -127,6 +135,17 @@ export function showActor(a: Actor) {
   const tk = document.getElementById('aTalk');
   if (tk) tk.onclick = () => talkGuest(a);
   $$('.slot').forEach((b) => (b.onclick = () => pickGear(a, b.dataset.s as Slot)));
+  const tk2 = document.getElementById('aTake') as HTMLInputElement | null;
+  if (tk2) tk2.onchange = () => (takeOthers = tk2.checked);
+  const rec = document.getElementById('aRec');
+  if (rec)
+    rec.onclick = () => {
+      const r = recommendEquip(a, takeOthers);
+      trackEv('auto_equip', { mode: 'one', take: takeOthers, gain: r.gain });
+      markDirty();
+      toast(r.changed ? `${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
+      showActor(a);
+    };
   bindLegend(a);
   const bye = document.getElementById('aBye');
   if (bye)
@@ -203,7 +222,7 @@ function pickGear(a: Actor, slot: Slot) {
       const diff = powerOf(a) - before;
       a.equip[slot] = old;
       const owner = it.owner != null ? homeActors().find((x) => x.id === it.owner)?.name : null;
-      return `<button class="irow" data-id="${it.id}">${itemCell(it)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}</b><small>${owner ? `${esc(owner)} 착용 중` : regionById(it.region).name}</small></span><em class="${diff >= 0 ? 'good' : 'bad'}">${diff >= 0 ? '+' : ''}${diff}</em></button>`;
+      return `<button class="irow" data-id="${it.id}">${itemCell(it)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}</b><small>${owner ? `${esc(owner)} 착용 중` : regionById(it.region).name}${fitTag(a, it)}</small></span><em class="${diff >= 0 ? 'good' : 'bad'}">${diff >= 0 ? '+' : ''}${diff}</em></button>`;
     })
     .join('');
   openWin(
@@ -241,6 +260,7 @@ export function openBag() {
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>
     ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
+    <button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
     <label class="tog"><input type="checkbox" id="autoS" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label>
     <button class="bigbtn sm" id="salAll">안 끼운 일반 장비 모두 분해</button>`,
@@ -255,7 +275,47 @@ export function openBag() {
     toast(r.count ? `${r.count}개 분해 · ${DUST_NAME.n} +${r.dust}` : '분해할 일반 장비가 없어요');
     openBag();
   };
+  $('#bagAuto').onclick = () => {
+    autoAll();
+    keepScroll(openBag);
+  };
 }
+
+// ───────── 핫픽스 12 §1: 자동 장착 ─────────
+let takeOthers = false;
+/** 무기 칸: 직업에 맞으면 「딱 맞아요」, 아니면 흐리게 「다른 직업용」 */
+export function fitTag(a: Actor, it: Item): string {
+  const f = fitsClass(a, it);
+  return f == null ? '' : f ? '<i class="fit ok">딱 맞아요</i>' : '<i class="fit no">다른 직업용</i>';
+}
+/** 「모두 자동 장착」 */
+export function autoAll() {
+  const r = autoEquipAll();
+  trackEv('auto_equip', { mode: 'all', people: r.people, gain: r.gain });
+  markDirty();
+  toast(r.people ? `단골 ${r.people}명 장비 정리 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
+}
+/** §1-4: 결과 창 「○○에게 더 좋아요 → 바로 끼우기」 (없으면 빈 글) */
+export function upgradeBtn(items: Item[], also: Actor[] = []): string {
+  const u = upgradeFor(items, also);
+  if (!u) return '';
+  return `<button class="bigbtn sm equp" data-equp="${u.a.id}:${u.it.id}">${esc(u.a.name)}에게 더 좋아요 → 바로 끼우기 <b class="good">+${fmt(u.gain)}</b></button>`;
+}
+// 결과 창이 어디서 그려지든 한 곳에서 받는다
+addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement)?.closest?.('[data-equp]') as HTMLElement | null;
+  if (!b) return;
+  const [aid, iid] = b.dataset.equp!.split(':').map(Number);
+  const a = homeActors().find((x) => x.id === aid);
+  const it = P.bag.find((x) => x.id === iid);
+  b.remove();
+  if (!a || !it || it.owner != null) return toast('이미 다른 곳에 쓰였어요');
+  const before = powerOf(a);
+  equip(a, it);
+  markDirty();
+  trackEv('auto_equip', { mode: 'new', gain: powerOf(a) - before });
+  toast(`${a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(a) - before)}`);
+});
 
 /** 아이템 상세 */
 export function showItem(it: Item, back: () => void = openBag) {
@@ -272,10 +332,12 @@ export function showItem(it: Item, back: () => void = openBag) {
     it.name + (it.enh ? ` +${it.enh}` : ''),
     `<div class="idet">${itemCell(it)}<div><b style="color:${g.color}">${g.name} ${SLOT_NAME[it.slot]}</b><small>${reg.name}${owner ? ` · ${esc(owner.name)} 착용` : ''}</small></div></div>
     <div class="stats">${stats}<span class="pw">합 <b>${itemPower(it)}</b></span></div>
+    ${it.slot === 'weapon' && it.wkind ? `<p class="note">딱 맞는 직업: <b>${fitClassName(it)}</b> (끼면 공격·마력 +${Math.round(CONFIG.items.classWeaponBonus * 100)}%)</p>` : ''}
     ${opts ? `<div class="opts">${opts}</div>` : ''}${it.uniq ? `<div class="opts g">유물: ${esc(it.uniq)}</div>` : ''}${set}
     <div class="btnrow">
       <button class="bigbtn sm" id="iEnh" ${smith && !maxed ? '' : 'disabled'}>${maxed ? '최대 강화' : smith ? `강화 +${it.enh + 1} (${DUST_NAME[it.grade]} ${enhanceCost(it)}/${P.dust[it.grade]} · ${pct(enhanceRate(it))})` : '강화 (대장간 필요)'}</button>
-      <button class="bigbtn sm red" id="iSal" ${it.owner != null ? 'disabled' : ''}>분해 (${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]})</button>
+      <button class="bigbtn sm ghost" id="iLock">${it.locked ? '🔒 잠금 풀기' : '🔓 잠그기'}</button>
+      <button class="bigbtn sm red" id="iSal" ${it.owner != null || it.locked ? 'disabled' : ''}>분해 (${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]})</button>
     </div>
     <button class="bigbtn sm ghost" id="iBack">← 돌아가기</button>`,
   );
@@ -293,4 +355,11 @@ export function showItem(it: Item, back: () => void = openBag) {
     back();
   };
   $('#iBack').onclick = back;
+  $('#iLock').onclick = () => {
+    it.locked = !it.locked;
+    markDirty();
+    toast(it.locked ? '잠갔어요 · 자동 장착·분해에서 빠져요' : '잠금을 풀었어요');
+    showItem(it, back);
+  };
 }
+const fitClassName = (it: Item) => (Object.entries(CLASS_WEAPON).filter(([, w]) => w === it.wkind).map(([k]) => (CLASSES as Record<string, { name: string }>)[k]?.name ?? k).join('·') || '없음');

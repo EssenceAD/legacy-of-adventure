@@ -52,7 +52,7 @@ export const kindText = (a: Actor) => `${RACE_NAME[a.race]} ${CLASSES[a.kind].na
 /** 아이템 칸 (등급 테두리 · 강화 · NEW! · 전설 이상 반짝) */
 export function itemCell(it: Item, extra = '') {
   const g = GRADE_INFO[it.grade];
-  return `<span class="ic g-${it.grade}" style="--gc:${g.color}" ${extra}><img src="${itemIcon(it)}" alt="">${it.enh ? `<i>+${it.enh}</i>` : ''}${it.isNew ? '<u>NEW</u>' : ''}${it.owner != null ? '<s>E</s>' : ''}</span>`;
+  return `<span class="ic g-${it.grade}" style="--gc:${g.color}" ${extra}><img src="${itemIcon(it)}" alt="">${it.enh ? `<i>+${it.enh}</i>` : ''}${it.isNew ? '<u>NEW</u>' : ''}${it.owner != null ? '<s>E</s>' : ''}${it.locked ? '<b class="lk">🔒</b>' : ''}</span>`;
 }
 
 /** 남은 시간 글자 */

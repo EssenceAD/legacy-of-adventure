@@ -7,8 +7,8 @@ import {
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
 import { GRADE_INFO, STATS, type StatKey } from '../data/items';
-import { P, pick, S, world, type Actor } from './state';
-import { equippedItems, itemStat, optSum } from './items';
+import { P, pick, S, world, type Actor, type Item } from './state';
+import { equippedItems, gearStat, optSum, optSumOf } from './items';
 import { dexBonus, heroStarBonus } from './progress';
 import { bondTierBonus, legacyPower, ownerBonus, xpMult } from './owner';
 import { legendByKey } from '../data/legends';
@@ -103,7 +103,7 @@ export function baseStats(a: Actor): Record<StatKey, number> {
 /** 기본 + 장비 */
 export function totalStats(a: Actor): Record<StatKey, number> {
   const o = baseStats(a);
-  for (const it of equippedItems(a)) for (const k of STATS) o[k] += itemStat(it, k);
+  for (const it of equippedItems(a)) for (const k of STATS) o[k] += gearStat(a, it, k);
   return o;
 }
 
@@ -130,13 +130,20 @@ export function gainXp(a: Actor, n: number): boolean {
  * 성장 수단은 레벨·장비·도감·케미 넷뿐. 4단계: 주인 보너스(최대 +15%) · 인연 단계(+2%/단계) · 유산 보너스(본 엔딩)
  */
 export function powerOf(a: Actor, chemMult = 1): number {
+  return powerCalc(a, chemMult)(equippedItems(a));
+}
+/** 핫픽스 12 §1: 장비만 바꿔 가며 전투력을 빨리 재는 함수 (장비와 상관없는 배수는 한 번만) */
+export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
   const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
-  let gear = 0;
-  for (const it of equippedItems(a)) for (const k of STATS) gear += itemStat(it, k);
-  const mult = 1 + dexBonus() + heroStarBonus() + optSum(a, 'atkPct') / 100 + ownerBonus() + legacyPower(a);
+  const m0 = 1 + dexBonus() + heroStarBonus() + ownerBonus() + legacyPower(a);
   // 전설 영웅: ★ 하나 오를 때마다 +8%
   const legend = a.legendId ? 1 + CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
-  return Math.round((base + gear) * mult * legend * (1 + bondTierBonus(a)) * chemMult);
+  const rest = legend * (1 + bondTierBonus(a)) * chemMult;
+  return (items) => {
+    let gear = 0;
+    for (const it of items) for (const k of STATS) gear += gearStat(a, it, k);
+    return Math.round((base + gear) * (m0 + optSumOf(a, items, 'atkPct') / 100) * rest);
+  };
 }
 
 // ───────── 겉모습 ─────────

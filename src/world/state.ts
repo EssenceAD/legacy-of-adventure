@@ -167,6 +167,8 @@ export interface Item {
   isNew?: boolean;
   /** 끼고 있는 손님 id */
   owner?: number | null;
+  /** 핫픽스 12 §1-3: 잠금 — 자동 장착·자동 분해에서 빠짐 */
+  locked?: boolean;
 }
 
 export interface Quest {

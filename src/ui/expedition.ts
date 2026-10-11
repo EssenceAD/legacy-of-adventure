@@ -20,6 +20,7 @@ import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
+import { upgradeBtn } from './guests';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
 
@@ -242,6 +243,7 @@ function showLoot(run: Run) {
     `${partyRow(run)}<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('')}</div>
     <div class="rew">금화 <b class="g">+${fmt(res.gold)}</b> · 경험치 +${res.xp} · ${reg.mat} +${res.mats}</div>
     ${items}
+    ${run.quest.tutorial ? '' : upgradeBtn(res.items, run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[])}
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
     ${res.newChem.length ? `<p class="sub heart">새 케미 발견! ${res.newChem.map(esc).join(', ')}</p>` : ''}
     <button class="bigbtn" id="repOk">받기</button>`,

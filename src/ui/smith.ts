@@ -28,7 +28,7 @@ export function openSmith(o: Building, tab = smTab) {
   let body = '';
   if (tab === 0) {
     const rows = sorted()
-      .filter((it) => it.owner == null)
+      .filter((it) => it.owner == null && !it.locked)
       .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]}</small></span><button data-sal="${it.id}">분해</button></div>`)
       .join('');
     body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">안 끼운 일반 장비 모두 분해</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;

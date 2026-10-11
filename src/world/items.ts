@@ -2,6 +2,7 @@
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { heroById } from '../data/heroes';
+import { CLASS_WEAPON, GUEST_KINDS, type GuestKind } from '../data/classes';
 import { legendByKey } from '../data/legends';
 import {
   GRADE_INFO, OPT_INFO, REGIONS, SLOT_STATS, SLOTS, WEAPON_KINDS, itemName, regionById,
@@ -71,6 +72,19 @@ export function itemStat(it: Item, k: StatKey): number {
 }
 export const itemPower = (it: Item) => Object.keys(it.stats).reduce((s, k) => s + itemStat(it, k as StatKey), 0);
 
+// ───────── 핫픽스 12 §1-1: 직업 무기 궁합 ─────────
+/** 이 손님 직업에 맞는 무기인가 (무기가 아니면 null) */
+export function fitsClass(a: Pick<Actor, 'kind'>, it: Pick<Item, 'slot' | 'wkind'>): boolean | null {
+  if (it.slot !== 'weapon' || !it.wkind) return null;
+  const kind = (GUEST_KINDS as readonly string[]).includes(a.kind) ? (a.kind as GuestKind) : 'knight';
+  return CLASS_WEAPON[kind] === it.wkind;
+}
+/** 이 손님이 꼈을 때의 능력치 — 맞는 무기면 공격·마력 +15% */
+export function gearStat(a: Pick<Actor, 'kind'>, it: Item, k: StatKey): number {
+  const v = itemStat(it, k);
+  return fitsClass(a, it) && (k === 'atk' || k === 'mag') ? Math.round(v * (1 + I.classWeaponBonus)) : v;
+}
+
 // ───────── 가방 ─────────
 
 export const bagSize = () => {
@@ -129,8 +143,11 @@ export function unequip(a: Actor, slot: Slot) {
 
 /** 장비 옵션 + 세트 효과 + 영웅 기술의 합 (예: timeCut 12 → −12%) */
 export function optSum(a: Actor, k: OptKey, region?: RegionId): number {
+  return optSumOf(a, equippedItems(a), k, region);
+}
+/** 끼운 장비 대신 주어진 장비로 (추천 장착 계산용) */
+export function optSumOf(a: Actor, items: Item[], k: OptKey, region?: RegionId): number {
   let v = 0;
-  const items = equippedItems(a);
   for (const it of items) for (const o of it.opts) if (o.k === k && (k !== 'regionDmg' || o.region === region)) v += o.v;
   // 세트: 같은 지역 세트 부위 2·3개
   const count: Partial<Record<RegionId, number>> = {};

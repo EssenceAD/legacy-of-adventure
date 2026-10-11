@@ -21,7 +21,7 @@ export const smithLvl = () => smithObj()?.lvl ?? 0;
 export const dustOf = (g: Grade) => P.dust[g];
 
 export function salvage(it: Item): number {
-  if (it.owner != null) return 0;
+  if (it.owner != null || it.locked) return 0;
   const i = P.bag.indexOf(it);
   if (i < 0) return 0;
   P.bag.splice(i, 1);
@@ -38,7 +38,7 @@ export function salvageAllCommon(): { count: number; dust: number } {
   let count = 0;
   let d = 0;
   for (const it of [...P.bag]) {
-    if (it.grade !== 'n' || it.owner != null) continue;
+    if (it.grade !== 'n' || it.owner != null || it.locked) continue;
     d += salvage(it);
     count++;
   }

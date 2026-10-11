@@ -342,6 +342,8 @@ export const CONFIG = {
     mats: [2, 4],
   },
   items: {
+    /** 핫픽스 12 §1: 직업에 맞는 무기(CLASS_WEAPON)를 끼면 무기 공격·마력 +15% */
+    classWeaponBonus: 0.15,
     /** 등급별 능력치 배수 · 랜덤 옵션 수 */
     gradeMult: { n: 1, r: 1.4, e: 1.9, l: 2.6, a: 3.4 } as Record<string, number>,
     gradeOpts: { n: 0, r: 1, e: 2, l: 3, a: 3 } as Record<string, number>,
