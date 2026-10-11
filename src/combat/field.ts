@@ -9,6 +9,7 @@ import { TH, TW } from '../engine/iso';
 import { sfx } from '../audio/sfx';
 import { recPower } from '../world/hunt';
 import { bondOf, pairOf } from '../world/chem';
+import { roleMult } from '../world/party';
 import { ultName5 } from '../world/chemNews';
 import { addToBag, makeItem, rollGrade } from '../world/items';
 import type { Grade } from '../data/items';
@@ -278,13 +279,15 @@ export interface FieldOpts {
 }
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
+  // 핫픽스 12 §2-2: 탱·힐·딜이 고루 있으면 전투력 ×1.10
+  const rm = roleMult(members.slice(0, 3));
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
     const { key, def } = appearance(a);
     const max = Math.round(C.hpBase + a.lvl * C.hpPerLv);
     return {
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
-      actor: a, job, power: powerOf(a), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
+      actor: a, job, power: powerOf(a) * rm, role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
     };
   };

@@ -383,6 +383,16 @@ export const CONFIG = {
       cabbage: { name: '양배추', minutes: 60, seed: 40, yield: 10 },
     } as Record<string, { name: string; minutes: number; seed: number; yield: number }>,
   },
+  /** 핫픽스 12 §2: 역할 조합(탱·힐·딜) · 멘토 경험치 · 의뢰 조건 태그 */
+  party: {
+    rolePowerPct: 0.1,
+    roleHpSave: 0.2,
+    mentorGap: 5,
+    mentorXp: 1.5,
+    tagBonus: 0.3,
+    /** 하루 의뢰 중 태그가 붙는 수 [최소, 최대] */
+    tagsPerDay: [1, 2] as [number, number],
+  },
   chem: {
     /** 친밀도 단계(2~5)에 필요한 누적 경험치 */
     levels: [0, 30, 80, 150, 250],

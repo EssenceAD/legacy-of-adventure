@@ -2,6 +2,7 @@
 //  하루 최대 3번 · 나머지는 「케미 소식」(장부 탭 · 빨간 점) · 설정 「전부 / 중요한 것만(기본) / 끄기」 · 5단계 보상(전용 합동 오의 · 칭호)
 import { orderPair, pairById, type ChemPair } from '../data/chem';
 import { getPref } from '../save/save';
+import { track } from '../net/telemetry';
 import { pairOf, type BondGain } from './chem';
 import { queueEvent } from './events';
 import { today } from './progress';
@@ -55,9 +56,11 @@ export function notifyChem(g: BondGain, from: 'town' | 'party'): boolean {
   const want = mode === 'all' ? from === 'party' || important : mode === 'important' ? from === 'party' && important : false;
   if (!want || (mode !== 'all' && !takeTalkSlot())) {
     pushNews(lineOf(g));
+    track('chem_notice', { how: 'news', from, lv: g.levelUp ?? 0, mode });
     return false;
   }
   chemTalk(g.a, g.b, g.levelUp, g.discovered);
+  track('chem_notice', { how: 'talk', from, lv: g.levelUp ?? 0, mode });
   return true;
 }
 

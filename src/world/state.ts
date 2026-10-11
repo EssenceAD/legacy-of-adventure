@@ -183,6 +183,15 @@ export interface Quest {
   power: number;
   minutes: number;
   gold: [number, number];
+  /** 핫픽스 12 §2-4: 조건 태그 (맞으면 보상 +30%, 안 맞아도 보낼 수 있음) */
+  tag?: QuestTag;
+}
+
+export interface QuestTag {
+  k: 'race' | 'kind' | 'noKind' | 'maxLvl';
+  v: string;
+  n: number;
+  text: string;
 }
 
 export interface Run {

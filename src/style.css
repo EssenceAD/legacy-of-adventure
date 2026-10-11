@@ -1150,3 +1150,17 @@ i.fit.no{color:#8a8fa8;opacity:.75}
 .tab i.tdot{display:inline-block;width:7px;height:7px;background:var(--red);vertical-align:top;margin-left:2px}
 .chemrow small.r5{display:block;color:#b39ad8;opacity:.8}
 .chemrow small.r5.got{color:#ffd36b;opacity:1}
+/* 핫픽스 12 §2: 추천 편성 · 역할 3칸 · 멘토 배지 · 의뢰 태그 */
+.recb{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+.recb small{color:#ffd36b;flex:1;min-width:140px;line-height:1.3}
+.roles{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px}
+.roles .rl{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border:1px solid #3a3f5c;color:#5d6280;filter:grayscale(1);font-size:var(--f-small)}
+.roles .rl.on{color:#fff;border-color:#8a7aff;filter:none;background:#2b2a4a}
+.roles .rl small{font-size:var(--f-tiny)}
+.roles b.good,.roles small.note{font-size:var(--f-tiny)}
+.roles .skew{color:#e8a23a;font-size:var(--f-tiny)}
+.pm i.ri{font-style:normal;margin-right:3px;font-size:.9em}
+.pm i.mentor{font-style:normal;font-size:var(--f-tiny);color:#8fe08f;margin-left:4px;padding:0 3px;border:1px solid #4d7a4d}
+.qtag{color:#e8c46a}
+p.qtag{margin:4px 0;font-size:var(--f-small)}
+p.qtag.ok{color:#8fe08f}

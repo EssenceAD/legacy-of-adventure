@@ -22,6 +22,8 @@ import { markDirty, P, type Actor } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
 import { upgradeBtn } from './guests';
+import { recommendParty } from '../world/party';
+import { mentorBadge, recButton, roleIcon, roleRow } from './partyUi';
 import { checkSlot5 } from '../world/meta';
 import { queueEvent } from '../world/events';
 import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
@@ -95,6 +97,8 @@ function awayNote(): string {
   return `단골이 모두 원정 중이에요 · ${Math.ceil(soon / 1000)}초 뒤 돌아와요`;
 }
 
+/** 핫픽스 12 §2: 마지막 「추천 편성」 이유 */
+let huntWhy = { k: '', text: '' };
 function openHuntPrep(r: RegionId, s: number) {
   const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id));
@@ -112,7 +116,7 @@ function openHuntPrep(r: RegionId, s: number) {
   const rows = crew
     .map((a) => {
       const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
   // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위
@@ -129,6 +133,7 @@ function openHuntPrep(r: RegionId, s: number) {
     <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티 ${prepLine('hunt', pw)}</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>
+    ${crew.length ? recButton('hRec', huntWhy.k === `${r}-${s}` ? huntWhy.text : '') : ''}${roleRow(ms)}
     <div class="plist">${rows || `<p class="note">${awayNote()}</p>`}</div>
     <div class="hopts">${hopts.join('')}</div>
     <button class="bigbtn ghost sm" id="hBack">지도로</button>`,
@@ -142,6 +147,18 @@ function openHuntPrep(r: RegionId, s: number) {
         keepScroll(() => openHuntPrep(r, s));
       }),
   );
+  const hr = document.getElementById('hRec');
+  if (hr)
+    hr.onclick = () => {
+      const best = recommendParty(crew.filter((a) => a.hp >= 1), { power: rec, region: r, min: 1, max: 3 });
+      if (!best) return;
+      // 대장은 가장 센 사람
+      picked = best.members.sort((a, b) => powerOf(b) - powerOf(a)).map((m) => m.id);
+      manualPick = true;
+      huntWhy = { k: `${r}-${s}`, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(rec)}` };
+      trackEv('party_recommend', { where: 'hunt', action: 'use', n: picked.length });
+      keepScroll(() => openHuntPrep(r, s));
+    };
   $('#hBack').onclick = () => openHunt(r);
   $('#hMan').onclick = () => go(true);
   $('#hAuto1').onclick = () => go(false);

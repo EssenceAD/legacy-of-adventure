@@ -4,6 +4,7 @@ import { BOSSES } from '../data/bosses';
 import { CONFIG } from '../data/config';
 import { REGIONS, type Grade, type RegionId } from '../data/items';
 import { gainXp, powerOf } from './adventurers';
+import { roleMult, xpMultIn } from './party';
 import { partyChemMult } from './chem';
 import { feature } from './guide';
 import { addRep } from './progress';
@@ -43,7 +44,7 @@ export function huntRegionOpen(i: number): boolean {
 export const stageOpen = (r: string, s: number) => huntRegionOpen(regionIdx(r)) && s <= best(r) + 1;
 
 /** 파티 전투력 (케미 배율 포함) */
-export const partyPower = (ms: Actor[]) => Math.round(ms.reduce((s, m) => s + powerOf(m), 0) * partyChemMult(ms));
+export const partyPower = (ms: Actor[]) => Math.round(ms.reduce((s, m) => s + powerOf(m), 0) * partyChemMult(ms) * roleMult(ms));
 
 /** 사냥에 갈 수 있는 손님 (단골·영웅, 원정 중 아님) */
 export const huntCrew = () => homeActors().filter((a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero') && a.runId == null);
@@ -79,7 +80,9 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
     P.bossMats[bid] = (P.bossMats[bid] ?? 0) + bossMats;
   }
   const levelUps: string[] = [];
-  for (const m of members) if (gainXp(m, xp)) levelUps.push(`${m.name} Lv.${m.lvl}`);
+  // 핫픽스 12 §2-3: 멘토 경험치 (레벨이 오르기 전에 잡아 둔다)
+  const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
+  for (const m of members) if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
   const items: Item[] = [];
   if (dropItem && (isBoss(s) || Math.random() < H.dropChance)) {
     // 원정과 같은 등급표 · 같은 천장(지역별)

@@ -23,6 +23,9 @@ import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
 import { upgradeBtn } from './guests';
 import { checkSlot5 } from '../world/meta';
+import { track as trackEv } from '../net/telemetry';
+import { recommendParty } from '../world/party';
+import { mentorBadge, recButton, roleIcon, roleRow, tagLine } from './partyUi';
 import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
@@ -50,7 +53,7 @@ const durText = (m: number) => (m < 1 ? `${Math.round(m * 60)}초` : minText(m))
 function questRow(q: Quest) {
   const reg = regionById(q.region);
   const dc = dropChances(q.region, q.tier);
-  return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small><small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
+  return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small>${q.tag ? `<small class="qtag">📜 ${esc(q.tag.text)}</small>` : ''}<small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
 }
 
 /** 의뢰 게시판 */
@@ -132,13 +135,14 @@ function openParty(q: Quest, picked: number[] = []) {
     .map((a) => {
       const why = canSend(a);
       const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
   const pmin = partyMinFor(q);
   openWin(
     questName(q),
     `${slot5Banner()}<p class="sub">파티 ${pmin}~${partyMax()}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
+    ${tagLine(q.tag, sel)}${list.length ? recButton('pRec', recWhy.q === q.id ? recWhy.text : '') : ''}${roleRow(sel)}
     <div class="plist">${rows || '<p class="note">단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요</p>'}</div>
     <div class="psum">${
       info
@@ -157,9 +161,19 @@ function openParty(q: Quest, picked: number[] = []) {
         keepScroll(() => openParty(q, next));
       }),
   );
+  const rb = document.getElementById('pRec');
+  if (rb)
+    rb.onclick = () => {
+      const best = recommendParty(list.filter((a) => !canSend(a)), { power: q.power, region: q.region, min: partyMinFor(q), max: partyMax(), tag: q.tag });
+      if (!best) return toast('보낼 수 있는 단골이 없어요');
+      recWhy = { q: q.id, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(q.power)}`, ids: best.members.map((m) => m.id).sort().join(',') };
+      trackEv('party_recommend', { where: 'expedition', action: 'use', n: best.members.length });
+      keepScroll(() => openParty(q, best.members.map((m) => m.id)));
+    };
   $('#pGo').onclick = () => {
     const r = sendParty(q, sel);
     if (typeof r === 'string') return toast(r);
+    if (recWhy.q === q.id) trackEv('party_recommend', { where: 'expedition', action: 'go', modified: recWhy.ids !== sel.map((m) => m.id).sort().join(',') });
     departParty(r);
     markDirty();
     closeWin();
@@ -238,6 +252,9 @@ function partyRow(run: Run): string {
   if (!ms.length) return '';
   return `<div class="repparty">${ms.map((a) => `<span><img src="${portrait(a)}" alt=""><small>${esc(a.name)}</small></span>`).join('')}</div>`;
 }
+
+/** 핫픽스 12 §2: 마지막 「추천 편성」 이유 (그 의뢰 창에서만 보여 준다) */
+let recWhy = { q: -1, text: '', ids: '' };
 
 /** 핫픽스 12 §6: 파티에 같이 들어간 케미 짝 — ♥ 줄과 배율을 바로 보여 준다 (사냥 준비 창도 씀) */
 export function chemLine(sel: Actor[]): string {

@@ -9,6 +9,7 @@ import { REGIONS, GRADE_INFO, SLOT_NAME, regionById, type RegionId } from '../da
 import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, RUN_BEATS, RUN_COMMON, WIN_LINES } from '../data/reports';
 import type { GuestKind } from '../data/classes';
 import { gainXp, powerOf, xpToNext } from './adventurers';
+import { roleHpMult, roleMult, rollTag, tagGoldMult, xpMultIn } from './party';
 import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
 import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
@@ -73,6 +74,11 @@ function rollQuests(): Quest[] {
     list.push(makeQuest(reg.id, tier));
   }
   ensureQuick(list);
+  // 핫픽스 12 §2-4: 하루 1~2개 의뢰에 조건 태그 (튜토리얼·1분 의뢰 제외)
+  const [t0, t1] = CONFIG.party.tagsPerDay;
+  const nTags = t0 + Math.floor(Math.random() * (t1 - t0 + 1));
+  const can = list.filter((q) => !q.tutorial && q.minutes > E.quickMinutes);
+  for (let i = 0; i < nTags && can.length; i++) can.splice(Math.floor(Math.random() * can.length), 1)[0].tag = rollTag();
   return list;
 }
 
@@ -120,7 +126,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   const chem = partyChemMult(members, chemPct);
   let power = 0;
   for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
-  power = Math.round(power * chem);
+  power = Math.round(power * chem * roleMult(members));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime'));
   return {
@@ -184,13 +190,15 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult());
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members));
   tieRun(members);
   const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
   const levelUps: string[] = [];
+  const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
   for (const m of members) {
-    if (gainXp(m, xp)) levelUps.push(`${m.name} Lv.${m.lvl}`);
-    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100));
+    // 핫픽스 12 §2-3: 파티 최고 레벨 −5 이하는 경험치 ×1.5 · §2-2: 탱·힐·딜이면 체력 소모 −20%
+    if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
+    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members);
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
