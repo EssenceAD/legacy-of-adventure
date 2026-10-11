@@ -72,7 +72,7 @@ await W(900);
 const ids = await p.evaluate(() => Object.keys(window.__P.bonds)[0].split('-'));
 for (const id of ids) { await p.locator('#winB .pm[data-id="' + id + '"]').click(); await W(400); }
 const cp = await p.evaluate(() => document.querySelector('#winB .cpair')?.textContent ?? '');
-ok(/♥/.test(cp) && /케미 ×1.dd/.test(cp), '파티 창 ♥ 줄: ' + cp);
+ok(/♥/.test(cp) && /케미 ×1\.\d\d/.test(cp), '파티 창 ♥ 줄: ' + cp);
 ok(errs.length === 0, '페이지 에러 0 ' + errs.join(' | '));
 console.log(JSON.stringify({ [name]: out }, null, 1));
 console.log(fail ? '✗ ' + fail + '개 실패' : '✓ 모두 통과');
