@@ -1,5 +1,6 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { heroCtx } from '../world/progress';
 import { CLASSES, GUEST_KINDS, RACE_NAME, RACES, RARITIES, RARITY_INFO } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES } from '../data/goals';
@@ -97,10 +98,14 @@ export function openDex(tab = dTab) {
     }).join('');
     body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · 한 건물에 최대 ${CONFIG.harmony.perBuilding}개</p><div class="hgrid">${cells}</div>`;
   } else {
+    // HOTFIX14 §6: 의뢰 게시판 조건은 진행 수 + [의뢰 게시판 가기]
+    const hc = heroCtx();
+    const progOf = (f?: (c: typeof hc) => [number, number]) => (f ? `(${Math.min(f(hc)[0], f(hc)[1])}/${f(hc)[1]})` : '');
+    const boardBtn = '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>';
     const cards = HEROES.map((h) => {
       const st = P.dex.heroes[h.id];
-      if (!st?.appeared) return `<div class="hcard"><b>???</b><small>힌트: ${h.hint}</small></div>`;
-      return `<div class="hcard ${st.recruited ? 'on' : ''}"><b>${h.name} <span class="g">${st.recruited ? '★'.repeat(st.stars) : ''}</span></b><small>「${h.title}」</small><small>${st.recruited ? `기술 ${h.skill.name}: ${OPT_INFO[h.skill.k].label(h.skill.v)} · 등록 보너스 +${Math.round(h.bonus * 100)}%` : `부탁: ${h.request.text}`}</small></div>`;
+      if (!st?.appeared) return `<div class="hcard"><b>???</b><small>힌트: ${h.hint}</small>${h.appearText ? `<small>등장: ${h.appearText} ${progOf(h.appearProg)}</small>${boardBtn}` : ''}</div>`;
+      return `<div class="hcard ${st.recruited ? 'on' : ''}"><b>${h.name} <span class="g">${st.recruited ? '★'.repeat(st.stars) : ''}</span></b><small>「${h.title}」</small><small>${st.recruited ? `기술 ${h.skill.name}: ${OPT_INFO[h.skill.k].label(h.skill.v)} · 등록 보너스 +${Math.round(h.bonus * 100)}%` : `부탁: ${h.request.text} ${progOf(h.request.prog)}`}</small>${!st.recruited && h.request.prog ? boardBtn : ''}</div>`;
     }).join('');
     const sets = HERO_SETS.map((s) => {
       const done = s.members.every((m) => P.dex.heroes[m]?.recruited);

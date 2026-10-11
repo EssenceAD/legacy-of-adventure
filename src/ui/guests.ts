@@ -16,7 +16,7 @@ import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../worl
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
-import { track } from '../world/progress';
+import { heroCtx, track } from '../world/progress';
 import { speakerOf, talk } from './dialogue';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, pic, portrait, tabs } from './common';
 import { dustLine } from './smith';
@@ -126,7 +126,7 @@ export function showActor(a: Actor) {
     </div></div>
     <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b></span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
     ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
-    ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}` : ''}</p>` : ''}
+    ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}

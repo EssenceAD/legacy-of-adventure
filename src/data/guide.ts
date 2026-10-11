@@ -5,6 +5,8 @@ import type { Kind } from './catalog';
 
 export interface GuideCtx {
   expeditions: number;
+  /** HOTFIX14 §6: 사냥 스테이지 첫 돌파 수 */
+  huntFirsts: number;
   quickRuns: number;
   equippedRare: boolean;
   has: (kind: string) => boolean;
@@ -48,6 +50,8 @@ export interface Mission {
   beta?: boolean;
   /** 핫픽스 8: 건설 임무의 건물 — 자리가 없으면 카드에 「자리 부족」 */
   build?: Kind;
+  /** HOTFIX14 §6: 진행 줄을 숫자 대신 이걸로 (어느 쪽으로 채워지는지: 「의뢰 1/3 · 사냥 2-3 ✓」) */
+  note?: (c: GuideCtx) => string;
 }
 
 export interface Chapter {
@@ -112,7 +116,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c4_salvage', title: '장비 3개 분해하기', check: (c) => n(c.salvaged, 3), place: 'smith', reward: { dust: 60 }, line: '쓸모없는 장비도 가루가 되면 보물이지.' },
       { id: 'c4_enh', title: '장비 +3까지 강화하기', check: (c) => n(c.enhanceMax, 3), place: 'smith', reward: { gold: 200, dust: 40 }, line: '+3이면 벌써 반짝이는군. 망치질이 손에 익었어.' },
       { id: 'c4_craft', title: '세트 장비 1부위 제작하기', check: (c) => n(c.crafted, 1), place: 'smith', reward: { gold: 300 }, line: '재료를 모아 직접 만든 장비는 각별하지.' },
-      { id: 'c4_wins', title: '의뢰 10번 성공하기', check: (c) => n(c.regionWins('all'), 10), place: 'board', reward: { gold: 300 }, line: '열 번이라! 이제 단골들 이름이 숲 너머까지 알려졌겠군.' },
+      { id: 'c4_wins', title: '의뢰 성공·사냥 첫 돌파 합쳐 10번', check: (c) => n(c.regionWins('all') + c.huntFirsts, 10), note: (c) => `의뢰 ${c.regionWins('all')} · 사냥 첫 돌파 ${c.huntFirsts} (합 ${Math.min(10, c.regionWins('all') + c.huntFirsts)}/10)`, place: 'board', reward: { gold: 300 }, line: '열 번이라! 이제 단골들 이름이 숲 너머까지 알려졌겠군.' },
       { id: 'c4_hunt2', title: '사냥 2-1 (버섯 늪) 돌파', check: (c) => n(c.huntBest('swamp'), 1), place: 'hunt', reward: { gold: 300 }, line: '늪은 질척하지만 보물도 많지. 장화를 단단히 신기게.' },
       { id: 'c4_eval', title: '평가단 점수 브론즈(300) 넘기기', check: (c) => n(c.evalScore, 300), place: 'eval', reward: { gold: 400 }, line: '『여행자 안내서』에 이름이 실리겠군! 일요일 저녁엔 마을을 깨끗이 해 두게.', beta: true },
     ],
@@ -125,7 +129,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c5_swamp', title: '사냥 2-5 돌파', check: (c) => n(c.huntBest('swamp'), 5), place: 'hunt', reward: { gold: 300, dust: 60 }, line: '늪 한복판까지 갔군. 개구리들이 놀랐겠어.' },
       { id: 'c5_hero', title: '영웅 1명 영입하기', check: (c) => n(c.heroes, 1), place: 'dex', reward: { gold: 400 }, line: '영웅이 머무는 여관이라… 내가 하던 시절엔 꿈도 못 꿨지.' },
       { id: 'c5_reglv', title: 'Lv10 단골 1명 키우기', check: (c) => n(c.regularLv(10), 1), place: 'guests', reward: { gold: 300 }, line: '처음 왔을 땐 칼도 제대로 못 쥐던 녀석이었는데.' },
-      { id: 'c5_swampwin', title: '버섯 늪에서 3번 이기기 (의뢰 성공·사냥 돌파)', check: (c) => n(c.regionWins('swamp') + c.huntBest('swamp'), 3), place: 'board', reward: { gold: 300 }, line: '늪을 건너면 폐광이 기다리지. 길이 하나 더 열렸어.' },
+      { id: 'c5_swampwin', title: '버섯 늪 의뢰 3번 성공 또는 사냥 2-3 돌파', check: (c) => n(c.huntBest('swamp') >= 3 ? 3 : c.regionWins('swamp'), 3), note: (c) => `의뢰 ${Math.min(3, c.regionWins('swamp'))}/3 · 사냥 2-${Math.min(3, c.huntBest('swamp'))}${c.huntBest('swamp') >= 3 ? ' ✓' : '/3'}`, place: 'board', reward: { gold: 300 }, line: '늪을 건너면 폐광이 기다리지. 길이 하나 더 열렸어.' },
     ],
   },
   {

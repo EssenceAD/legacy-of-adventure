@@ -3,7 +3,7 @@
 // 1~3장은 창이 없을 때 손가락이 저절로 다음 버튼을 가리킨다.
 import { CHAPTERS, GRADE_NAMES } from '../data/guide';
 import { clock, conLeft } from '../world/construct';
-import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, rewardText, skipDone } from '../world/guide';
+import { chapterOf, claimMission, currentMission, guideHooks, missionProgress, rewardText, skipDone , guideCtx } from '../world/guide';
 import { P, S, uiHooks, type TalkLine } from '../world/state';
 import { huntCrew } from '../world/hunt';
 import { josa } from '../data/josa';
@@ -194,7 +194,7 @@ export function syncGuide(force = false) {
   const inCh = ch.missions.findIndex((x) => x.id === m.id) + 1;
   // 핫픽스 8: 건설 임무인데 지금 땅에 놓을 자리가 없으면 알려 준다 (누르면 건설 → 자리 정리 도우미)
   const cramped = !pr.done && m.build && !findKind(m.build) && !hasSpot(m.build);
-  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : cramped ? '자리 부족 · 눌러서 정리' : `${pr.cur}/${pr.need}${waitNote(m.place)}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
+  card.innerHTML = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>장부 ${ch.no}장 ${inCh}/${ch.missions.length}</small><b>${esc(m.title)}</b><em>${pr.done ? '완료! 눌러서 받기' : cramped ? '자리 부족 · 눌러서 정리' : `${m.note ? m.note(guideCtx()) : `${pr.cur}/${pr.need}`}${waitNote(m.place)}`}</em></span><img class="rw" src="${iconSrc(m.reward.tokens ? 'cur_token' : m.reward.dust && !m.reward.gold ? 'cur_dust_n' : 'cur_gold')}" alt="" title="${esc(rewardText(m))}">`;
   // 손가락: 1~3장은 창·대화가 없을 때 저절로, 그 뒤엔 카드를 눌렀을 때만
   const auto = m.ch <= 3 && !pr.done && !isWinOpen() && !isTalking();
   const sel = Date.now() < handUntil ? handTarget : auto ? PLACE_BTN[m.place] ?? null : pr.done ? '#mission' : null;

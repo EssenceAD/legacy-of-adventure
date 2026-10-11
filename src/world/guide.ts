@@ -28,6 +28,7 @@ export function guideCtx(): GuideCtx {
     goalsClaimed: C.goalsClaimed,
     // 전투 2차: 모든 스테이지가 열려 원래 조건으로 (1차 동안 이미 인정받은 임무는 진행 기록에 남아 그대로)
     huntBest: (r) => P.hunt.best[r] ?? 0,
+    huntFirsts: P.hunt.firstClear.length,
     huntAutoUsed: C.huntAutoUsed > 0,
     regulars: regs.length,
     land: world.home?.land ?? S.land,
