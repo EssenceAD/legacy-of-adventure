@@ -559,7 +559,8 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
     f.castTxt = SKILL_NAMES[u.job!][i];
     f.castT = 0.6;
   }
-  sfx('skill', { vol: u === f.me ? 1 : C.allyVol });
+  // 핫픽스 8 (2-8): 직업마다 다른 스킬 소리
+  sfx(`skill_${u.job ?? 'warrior'}`, { vol: u === f.me ? 1 : C.allyVol });
   const P = (mult: number) => powerHit(f, u, mult);
   const near = (r: number, cx = u.x, cy = u.y) => mobsAlive(f).filter((m) => Math.hypot(m.x - cx, m.y - cy) <= r + m.r);
   switch (`${u.job}${i}`) {

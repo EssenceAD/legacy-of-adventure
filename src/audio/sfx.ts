@@ -2,6 +2,7 @@
 //  동시 최대 8개 · 같은 소리 50ms 안 겹침 금지 · 잦은 소리는 재생 속도를 살짝 흔든다. 파일이 없으면 부드러운 합성음(예비)
 import { ctx, duck, onUnlock, sfxBus } from './engine';
 import { holdSfx, setScenePlayer } from './scene';
+import { COMBAT_SYNTH, combatSynth } from './combatSfx';
 
 export type SfxName =
   | 'tap' | 'open' | 'close' | 'coin' | 'build' | 'place_bad' | 'levelup' | 'fail' | 'item' | 'rare' | 'harmony' | 'mission' | 'chapter' | 'grade_up'
@@ -44,7 +45,7 @@ async function load(path: string): Promise<AudioBuffer | null> {
 }
 /** 첫 터치 뒤: 짧은 효과음 18개를 미리 받는다 (합쳐서 2MB) */
 onUnlock(() => {
-  for (const n of FILE_SFX) void load(`sfx/${n}.wav`);
+  for (const n of FILE_SFX) if (!COMBAT_SYNTH.has(n)) void load(`sfx/${n}.wav`);
 });
 
 // 띵띵띵 금지 (전투 개편 4장): 같은 소리 80ms에 한 번 · 이름마다 1초에 최대 8번 · 동시에 최대 6개(넘으면 가장 오래된 것을 끈다)
@@ -101,6 +102,8 @@ export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean
   perSec[name] = hist;
   last[name] = now;
   const v0 = opt.vol ?? 1;
+  // 핫픽스 8 (2-8): 전투 효과음은 코드 합성음 (Suno 파일은 남겨 둠)
+  if (COMBAT_SYNTH.has(name) && combatSynth(name, v0)) return;
   const n = name as SfxName;
   const jg = JINGLE[n];
   if (jg) {

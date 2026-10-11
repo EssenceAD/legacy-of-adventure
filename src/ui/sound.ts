@@ -84,6 +84,7 @@ export function soundSettingsHtml(): string {
   return `<div class="snd"><p class="sub">소리</p>
     <label class="tog"><input type="checkbox" id="sBgm" ${prefs.bgmOn ? 'checked' : ''}> 배경음악 <input type="range" id="sBgmV" min="0" max="100" value="${Math.round(prefs.bgmVol * 100)}"></label>
     <label class="tog"><input type="checkbox" id="sSfx" ${prefs.sfxOn ? 'checked' : ''}> 효과음 <input type="range" id="sSfxV" min="0" max="100" value="${Math.round(prefs.sfxVol * 100)}"></label>
+    <button class="trk" id="sCbTest">전투 소리 미리 듣기</button>
     <details class="tracks"><summary>음악 목록 (${heard.size}/${Object.keys(TRACKS).length}) · 들어 본 곡만 · 누르면 미리 듣기</summary><div>${list}</div><button id="sStop" class="trk">미리 듣기 멈추기</button></details></div>`;
 }
 export function bindSoundSettings() {
@@ -96,6 +97,13 @@ export function bindSoundSettings() {
   ch('sBgmV', (e) => ((prefs.bgmVol = +e.value / 100), applyPrefs(), sfx('tap')));
   ch('sSfxV', (e) => ((prefs.sfxVol = +e.value / 100), applyPrefs(), sfx('tap')));
   document.querySelectorAll<HTMLButtonElement>('[data-trk]').forEach((b) => (b.onclick = () => previewTrack(b.dataset.trk!)));
+  // 핫픽스 8 (2-8): 전투 합성음 미리 듣기 — 타격 · 치명타 · 막기 · 완벽 · 직업 스킬 6
+  const cb = document.getElementById('sCbTest');
+  if (cb)
+    cb.onclick = () =>
+      ['hit', 'hit', 'crit', 'block', 'perfect', 'skill_knight', 'skill_warrior', 'skill_rogue', 'skill_mage', 'skill_priest', 'skill_hunter'].forEach((n, i) =>
+        setTimeout(() => sfx(n), i * 420),
+      );
   const st = document.getElementById('sStop');
   if (st) st.onclick = () => previewTrack(null);
 }
