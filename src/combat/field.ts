@@ -95,6 +95,9 @@ export interface Unit {
   pat?: number;
   enraged?: boolean;
   dash?: { vx: number; vy: number; t: number };
+  /** 핫픽스 9: 막혀서 못 다가온 시간 · 직전 거리 */
+  stuckT?: number;
+  lastD?: number;
   atk?: number;
   speed?: number;
   target?: Unit;
@@ -843,6 +846,15 @@ function aiMob(f: Field, m: Unit, dt: number) {
         return;
       }
       const [nx, ny] = norm(t.x - m.x, t.y - m.y);
+      // 핫픽스 9: 바위 등에 막혀 2초 동안 다가오지 못하면 한 칸 훌쩍 (가만히 서 있는 플레이어도 끝까지 깰 수 있게)
+      if (d < (m.lastD ?? 1e9) - 0.05 * dt * 60 * 0.1) m.stuckT = 0;
+      else m.stuckT = (m.stuckT ?? 0) + dt;
+      m.lastD = d;
+      if ((m.stuckT ?? 0) > 2) {
+        m.x += nx;
+        m.y += ny;
+        m.stuckT = 0;
+      }
       // 슬라임류는 통통 튀며 (빠르기 출렁)
       const hop = md.hop ? 0.45 + Math.max(0, Math.sin(m.t * 6)) * 1.1 : 1;
       m.x += nx * m.speed! * hop * dt * 0.62;
