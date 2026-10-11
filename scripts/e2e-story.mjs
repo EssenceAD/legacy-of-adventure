@@ -69,7 +69,7 @@ ok(st0.act >= 1, `불러오기 → 막 추정 ${st0.act}막 · ${st0.gen}회차`
 await p.evaluate(() => {
   const P = window.__P;
   P.story.act = 2;
-  P.dex.heroes.oswin = { appeared: true, recruited: true, stars: 1 };
+  P.dex.heroes.kael = { appeared: true, recruited: true, stars: 1 };
   window.__S.day = P.story.day0 + 45;
   P.runs.length = 0;
   P.hunt.auto = null;
@@ -82,6 +82,7 @@ for (let i = 0; i < 20 && !started; i++) {
 }
 ok(started, '3막 컷이 저절로 시작');
 const act3 = await readTalk([[/별이 비처럼/, 'act3_cut']]);
+ok(act3.some((t) => /은빛 머리의 늙은 기사/.test(t)), '오스윈을 못 만났으면 소개 줄');
 ok(act3.some((t) => /별이 비처럼/.test(t)) && act3.some((t) => /어느 쪽이든 틀린 길은 없네/.test(t)), `3막 컷 대사 ${act3.length}줄`);
 await W(3200);
 ok(/편지/.test(await winT()), '컷 뒤 모모의 편지: ' + (await winT()));
@@ -156,7 +157,7 @@ await W(300);
 await p.locator('#sNew').click();
 await W(400);
 const conf = await readTalk();
-ok(conf.some((t) => /새 여관을 여시는 거예요/.test(t)), '모모의 확인 대사');
+ok(conf.some((t) => /새 여관 주인 이야기를 시작하시는 거예요/.test(t)), '모모의 확인 대사');
 await W(400);
 ok(/새 여관 열기/.test(await winT()), '확인 창');
 await p.locator('#sNewOk').click();
