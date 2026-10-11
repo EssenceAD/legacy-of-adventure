@@ -324,12 +324,13 @@ export function expandLand(l: number) {
 function sorryForDupes() {
   if (P.meta.sorryDupe) return;
   const kinds = [...new Set(world.objs.map((o) => o.kind))].filter((k) => !MULTI(k) && !SINGLE(k) && world.objs.filter((o) => o.kind === k).length >= 2);
-  if (!kinds.length) return;
+  const named = CONFIG.gifts.sorryInns.includes(S.innName);
+  if (!kinds.length && !named) return;
   P.meta.sorryDupe = true;
   addMail({
     from: 'system',
     title: '모모의 편지 · 사라진 건물 미안해요',
-    body: `같은 건물(${kinds.map((k) => def(k).name).join('·')})을 두 채 지으셨죠? 예전 버전에서는 다시 열 때 하나가 사라지는 일이 있었어요. 이제는 여러 채 그대로 남아요! 불편을 드려서 미안해요 — 작은 사과를 담았어요.`,
+    body: `같은 건물${kinds.length ? `(${kinds.map((k) => def(k).name).join('·')})` : ''}을 두 채 지으셨죠? 예전 버전에서는 다시 열 때 하나가 사라지는 일이 있었어요. 이제는 여러 채 그대로 남아요! 불편을 드려서 미안해요 — 작은 사과를 담았어요.`,
     reward: { gold: CONFIG.gifts.sorryGold },
   });
   trackEv('sorry_dupe', { kinds: kinds.join(',') });
