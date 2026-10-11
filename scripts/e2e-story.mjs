@@ -127,7 +127,7 @@ for (let i = 0; i < 10 && !heir.length; i++) {
   await W(500);
   if (await talking()) heir = await readTalk();
 }
-ok([...heir, ...heard].some((t) => /낡은 배낭/.test(t)), '유안 도착 대사 · 들은 줄: ' + [...heard, ...heir].slice(-6).map((t) => t.slice(0, 18)).join(' / '));
+
 await W(1500);
 const yuan = await p.evaluate(() => window.__world.actors.some((a) => a.role === 'yuan'));
 ok(yuan && (await p.evaluate(() => window.__P.story.heir)) === 1, '유안이 마을에 서 있음');
@@ -135,6 +135,7 @@ await shot('yuan');
 
 // ── 엔딩: 카드를 누르면 (= 유안에게 말 걸기)
 await clear();
+ok([...heir, ...heard].some((t) => /낡은 배낭/.test(t)), '유안 도착 대사 (목표 완료 줄 다음 차례)');
 const mc = await p.evaluate(() => { const m = document.querySelector('#mission'); return { hidden: m.hidden, text: m.textContent, talk: !document.querySelector('#dlg').hidden, win: document.querySelector('#winT').textContent }; });
 ok(!mc.hidden && /유안/.test(mc.text), '장부 카드 「유안에게 말 걸기」: ' + JSON.stringify(mc).slice(0, 160));
 await p.evaluate(() => document.querySelector('#mission').click());

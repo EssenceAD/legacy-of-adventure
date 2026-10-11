@@ -1226,3 +1226,7 @@ p.qtag.ok{color:#8fe08f}
 .sgift{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:6px 8px}
 .sgift.on{box-shadow:inset 3px 0 0 #ffd36b}
 .sgift small{opacity:.85}
+/* STORY_V1: 그림 없는 줄 (갈림길 · 목표 · 기억) — 글이 한 칸에 몰리지 않게 */
+.storyw .stp,.albumw .steps .stp{grid-template-columns:1fr auto;width:100%}
+.ecard.t-story .sthumb,.sendc .sthumb{max-height:150px;object-fit:cover;object-position:center 60%}
+.ecard.t-story .sthumb{max-height:80px;width:100%}
