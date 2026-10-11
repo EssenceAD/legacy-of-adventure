@@ -429,7 +429,32 @@ export function freshProgress() {
      * 유산: 세대 · seen = 이 마을에서 본 엔딩(유산 보너스 기준, 새 여관 열기 때 초기화)
      * album·cards = 엔딩 앨범(지금까지 본 엔딩 전부, 새 여관 열기를 해도 남는다) · 앞 주인
      */
-    legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '' },
+    legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '',
+      /** STORY_V1 §5: 유산 포인트 · 모은 기억 조각 수 · 옛 저장에 포인트·기억을 한 번 채웠나 · 지난 회차 가장 친했던 단골 (이름·직업·종족) */
+      pts: 0, mem: 0, v14: false, prevFav: null as null | { name: string; kind: string; race?: string } },
+    /**
+     * STORY_V1: 막 · 고른 루트 · 루트 점수(보이지 않게) · 이 회차에 본 대사 · 이 회차 시작 일차 · 막이 오른 일차
+     * 회차를 넘어 남는 것(회차 = legacy.gen · 엔딩 = legacy.album · 유산 포인트 · 기억)은 legacy에 있다
+     */
+    story: {
+      act: 0 as 0 | 1 | 2 | 3,
+      route: null as null | string,
+      score: { hero: 0, legend: 0, town: 0, love: 0, retire: 0 } as Record<string, number>,
+      seen: [] as string[],
+      day0: 1,
+      actDay: {} as Record<string, number>,
+      /** 3막 편지: 0 아직 · 1 받음(고르기 전) · 2 고름 · 루트를 한 번 바꿨나 */
+      letter: 0,
+      changed: false,
+      /** 손님 기분 최고인 날 수 (이 회차) · 마지막으로 센 날 */
+      goodDays: 0,
+      goodLast: 0,
+      /** 후계자: 0 아직 · 1 왔음(말 걸면 엔딩) · 2 엔딩 봄 · 목표를 다 채운 날 */
+      heir: 0,
+      readyDay: 0,
+      /** 이 회차 플레이 시간 (분) */
+      playMin: 0,
+    },
     /**
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
@@ -534,6 +559,12 @@ export interface EndingCard {
   gender: OwnerState['gender'];
   partner?: string;
   rel?: 'lover' | 'comrade';
+  /** STORY_V1: 스토리 엔딩 카드 — 운영 일수 · 플레이 시간(분) · 단골 수 · 가장 친한 단골 · 얻은 유산 포인트 */
+  day?: number;
+  playMin?: number;
+  regulars?: number;
+  fav?: string;
+  pts?: number;
 }
 export interface PrevOwner {
   name: string;

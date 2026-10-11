@@ -1,6 +1,7 @@
 // 4단계 엔딩 36개: 모험 24(동료마다) + 여관 5 + 진짜 6(출신마다) + 홀로 1
 // 본 엔딩은 엔딩 앨범에 남고, 처음 볼 때 영구 「유산 보너스」가 쌓인다.
 import type { GuestKind } from './classes';
+import { ENDINGS as STORY_END, ROUTES } from './story/v1';
 
 export type LegacyBonus =
   | { k: 'kindPower'; kind: GuestKind; v: number }
@@ -8,7 +9,8 @@ export type LegacyBonus =
 
 export interface EndingDef {
   id: string;
-  type: 'adventure' | 'inn' | 'true' | 'solo';
+  /** story = STORY_V1 루트 엔딩 (앨범 「이야기」 칸 · 대사는 data/story) */
+  type: 'adventure' | 'inn' | 'true' | 'solo' | 'story';
   title: string;
   /** 앨범 실루엣 옆 아주 짧은 힌트 */
   hint: string;
@@ -258,5 +260,8 @@ export const ENDINGS: EndingDef[] = [
     '몇 해 뒤, {inn}에 새 지도가 도착했다. 끝이 조금 더 넓어진 지도였다.',
   ] },
 ];
+
+// STORY_V1: 루트 엔딩 (v1은 조용한 은퇴만 · 다시 보기는 엔딩 컷 그대로)
+ENDINGS.push({ id: 'story_retire', type: 'story', title: STORY_END.retire.name, hint: ROUTES.retire.hint, lines: [STORY_END.retire.card], bonus: { k: 'mood', v: 0.05 } });
 
 export const endingById = (id: string) => ENDINGS.find((e) => e.id === id);

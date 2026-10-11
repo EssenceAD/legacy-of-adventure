@@ -427,6 +427,27 @@ export const CONFIG = {
       rest: { name: '휴식의 물약', need: { cabbage: 3, wheat: 2 }, desc: '손님 전원 기분 +20 (바로)', v: 20 },
     } as Record<string, { name: string; need: Record<string, number>; desc: string; v: number }>,
   },
+  /**
+   * STORY_V1: 막 전환 · 은퇴 루트. 게임 1일 = 현실 24분(시계 1분=1시간, 켜 둔 동안만 흐름)이라
+   * 명세의 「5일차≈5시간 · 16일차≈16시간」 감에 맞춰 일수를 늘렸다 (실제 시간 ≈ 일수 × 24분)
+   */
+  story: {
+    /** 막 전환: 장부 몇 장 · 이 회차 운영 며칠째 이상 · 영웅 수 */
+    act2: { chapters: 3, day: 12 },
+    act3: { chapters: 7, day: 40, heroes: 1 },
+    /** 은퇴: 이 회차 운영 일수 목표 (3막 40일차 진입 → 20일 ≈ 실제 8시간) */
+    retireDays: 60,
+    /** 손님 기분 최고인 날 = 그날 평균 기분 이 값 이상 · 모을 날 수 */
+    goodMood: 95,
+    retireGoodDays: 10,
+    retireHarvests: 100,
+    /** 유산 포인트: 엔딩마다 · 처음 보는 엔딩 더 */
+    legacyPts: 100,
+    legacyFirst: 50,
+    /** 시작 선물: 비상금 금화 · 옛 단골 레벨 */
+    giftGold: 3000,
+    giftFavLv: 10,
+  },
   /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
   gifts: { sorryGold: 1000, /** 서버 저장에서 이미 하나를 잃은 게 확인된 여관 (지금 저장엔 중복이 없어도 사과 편지) */ sorryInns: ['롯데캐슬 여관', '머리박고힐 여관'] as string[] },
   /** HOTFIX14 §1 임시 → TOWN_SPEC T3에서 땅 단계별 최대 채수·수입 배율과 함께 정식으로: n번째 채 건설비 배율 */
