@@ -1,4 +1,5 @@
 // 베타 1장: 어울림 그리기 — 금빛 점선(발견·「어울림 보기」) · 배치 중 범위 타일·짝 건물 초록·미리보기 말풍선
+import { av } from '../engine/ver';
 import { CONFIG } from '../data/config';
 import { harmonyById } from '../data/harmony';
 import { sx, sy, view } from '../engine/iso';
@@ -12,9 +13,9 @@ const img = (src: string) => {
   im.src = src;
   return im;
 };
-const RANGE = img('assets/ui/harmony_range.png');
-const RANGE_ON = img('assets/ui/harmony_range_active.png');
-const DOT = img('assets/ui/harmony_dot.png');
+const RANGE = img(av('assets/ui/harmony_range.png'));
+const RANGE_ON = img(av('assets/ui/harmony_range_active.png'));
+const DOT = img(av('assets/ui/harmony_dot.png'));
 const N = CONFIG.map.size;
 
 /** 발견 연출 중인 어울림 (점선이 이어지고 이름이 뜬다) */

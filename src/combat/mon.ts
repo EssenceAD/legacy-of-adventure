@@ -42,13 +42,13 @@ const cut = (src: CanvasImageSource, sx: number, sy: number, w: number, h: numbe
 export function loadMon(id: string): Promise<MonSheet | null> {
   return (cache[id] ??= (async () => {
     try {
-      const meta = (await (await fetch(`assets/mon/${id}/meta.json`)).json()) as MonMeta;
+      const meta = (await (await fetch(av(`assets/mon/${id}/meta.json`))).json()) as MonMeta;
       // decode()는 화면이 숨어 있으면 끝나지 않는다 → onload로
       const im = await new Promise<HTMLImageElement>((ok, fail) => {
         const i = new Image();
         i.onload = () => ok(i);
         i.onerror = fail;
-        i.src = `assets/mon/${id}/sheet.png`;
+        i.src = av(`assets/mon/${id}/sheet.png`);
       });
       const frames: MonSheet['frames'] = {};
       for (const [name, a] of Object.entries(meta.anims)) {
@@ -91,4 +91,5 @@ export function flipOf(c: HTMLCanvasElement): HTMLCanvasElement {
     FLIPPED.set(c, f);
   }
   return f;
-}
+}import { av } from '../engine/ver';
+

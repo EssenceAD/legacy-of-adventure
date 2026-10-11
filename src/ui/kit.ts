@@ -14,7 +14,7 @@ export const UI = [
  * 상대 경로면 /assets/assets/ui/…로 가 404가 났다 (개발 서버는 CSS가 문서 안이라 멀쩡했다)
  */
 export const abs = (path: string) => new URL(path, document.baseURI).href;
-export const uiSrc = (k: (typeof UI)[number]) => abs(`assets/ui/${k}.png`);
+export const uiSrc = (k: (typeof UI)[number]) => av(abs(`assets/ui/${k}.png`));
 /** 금테 도트 아이콘 (24px, 작은 건 _16) */
 export type IconKey =
   | 'm_account' | 'm_achieve' | 'm_album' | 'm_attendance' | 'm_bag' | 'm_bond' | 'm_chat' | 'm_dex' | 'm_expedition' | 'm_garden'
@@ -23,7 +23,7 @@ export type IconKey =
   | 'skill_attack' | 'skill_auto' | 'skill_block' | 'skill_combo' | 'skill_fireslash' | 'skill_pray'
   | 'harmony' | 'eval_gourmet' | 'eval_relax' | 'eval_adventure' | 'eval_scenery'
   | 'cur_gold' | 'cur_seed' | 'cur_token' | 'cur_dust_n' | 'cur_dust_r' | 'cur_dust_e' | 'cur_dust_l' | 'cur_dust_a';
-export const iconSrc = (k: IconKey, small = false) => `assets/icons/${k}${small ? '_16' : ''}.png`;
+export const iconSrc = (k: IconKey, small = false) => av(`assets/icons/${k}${small ? '_16' : ''}.png`);
 /** 아이콘 <img>: 크기는 그림의 정수배만 (24 → 24·48, 16 → 16·32) */
 export const icon = (k: IconKey, px: 16 | 24 | 32 | 48 = 24, cls = '') =>
   `<img class="kic ${cls}" src="${iconSrc(k, px === 16 || px === 32)}" width="${px}" height="${px}" alt="">`;
@@ -54,4 +54,5 @@ export function initKit() {
   addEventListener('resize', applyScale);
   // 그림을 미리 받아 둔다 (창이 처음 열릴 때 테두리가 늦게 뜨지 않게)
   for (const k of UI) new Image().src = uiSrc(k);
-}
+}import { av } from '../engine/ver';
+

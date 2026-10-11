@@ -5,7 +5,7 @@
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
 import { SMOKE } from '../data/catalog';
 import { CONFIG } from '../data/config';
-import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
+import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
@@ -479,6 +479,7 @@ function baseImage(o: { sprite: string | null; hue: number | null }) {
 function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   if (o.kind === 'fire') return drawFire(ctx, o);
   if (!o.sprite || !IMG[o.sprite]) return;
+  if (!META[o.sprite]) return missingMeta(o.sprite);
   const im = tinted(baseImage(o), NL);
   const [x, y] = objTL(o);
   if (o.build !== undefined) {
@@ -729,6 +730,8 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, nt: number) {
   const name = (S.visiting ? S.visiting.name : S.innName) || '';
   if (!name) return;
   const m = META[inn.sprite];
+  // 핫픽스 13: 크기표에 없는 그림이면 (옛 meta.json + 새 코드) 이름판은 건너뛴다 — 예전엔 여기서 i.w 오류로 멈췄다
+  if (!m) return missingMeta(inn.sprite);
   const [x, y] = objTL(inn);
   ctx.font = '10px "Galmuri9"';
   const w = Math.ceil(ctx.measureText(name).width) + 10;

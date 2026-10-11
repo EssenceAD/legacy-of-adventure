@@ -1,7 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
 import { CONFIG } from './data/config';
-import { alphaAt, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
+import { alphaAt, AssetError, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
 import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
 import { tour } from './world/evalTour';
@@ -35,7 +35,7 @@ import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
-import { initTelemetry, track as trackEv } from './net/telemetry';
+import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
 import { combatOn, foldedTick } from './combat/ui';
@@ -416,15 +416,51 @@ function tap(e: PointerEvent) {
 
 // ───────── 부팅 ─────────
 
+// ───────── 핫픽스 13: 그림 불러오기 실패 ─────────
+const RELOAD_FLAG = 'legacy-asset-reload';
+/** 실패한 파일을 기록(부팅 전이라도 바로 보냄) → 처음이면 한 번 자동 새로고침 → 또 실패면 오류 화면 + 「다시 시도」(SW 캐시 비우고 새로고침) */
+function bootFailed(loading: HTMLElement, err: unknown) {
+  const url = err instanceof AssetError ? err.url.replace(/^.*?assets\//, 'assets/').slice(0, 120) : String(err).slice(0, 120);
+  let again = false;
+  try {
+    again = sessionStorage.getItem(RELOAD_FLAG) === '1';
+    sessionStorage.setItem(RELOAD_FLAG, '1');
+  } catch {
+    again = true;
+  }
+  trackEv('error', { msg: 'asset_load', url, again });
+  flushTelemetry();
+  if (!again) {
+    loading.textContent = '새 버전을 준비하는 중…';
+    setTimeout(() => location.reload(), 600);
+    return;
+  }
+  loading.innerHTML = '<p>그림을 불러오지 못했어요.</p><button id="bootRetry" class="bigbtn">다시 시도</button>';
+  document.getElementById('bootRetry')!.onclick = async () => {
+    loading.textContent = '다시 불러오는 중…';
+    try {
+      for (const k of await caches.keys()) await caches.delete(k);
+      sessionStorage.removeItem(RELOAD_FLAG);
+    } catch {
+      /* 무시 */
+    }
+    location.reload();
+  };
+}
+
 async function boot() {
   const loading = document.getElementById('loading')!;
   await loadFonts();
   try {
     await loadAssets((p) => (loading.textContent = `불러오는 중… ${Math.round(p * 100)}%`));
   } catch (err) {
-    loading.textContent = '그림을 불러오지 못했어요. 새로고침해 주세요.';
     console.error(err);
-    return;
+    return bootFailed(loading, err);
+  }
+  try {
+    sessionStorage.removeItem(RELOAD_FLAG);
+  } catch {
+    /* 무시 */
   }
   loading.remove();
   // 밤 색조 캐시를 조금씩 미리 만든다 (건물·나무 그림 + 캐릭터 프레임)

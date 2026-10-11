@@ -1,4 +1,5 @@
 // 베타 1장: 어울림 화면 — 발견 배너 · 「어울림 보기」 토글 · 마을 등급 장식 옮기기 · 건물 창의 어울림 줄
+import { av } from '../engine/ver';
 import { track as trackEv } from '../net/telemetry';
 import { def, type Kind } from '../data/catalog';
 import { harmonyById } from '../data/harmony';
@@ -35,7 +36,7 @@ function next() {
   // 점선이 이어진 뒤(0.8초) 가운데 배너
   setTimeout(() => {
     const b = $('#hBanner');
-    b.innerHTML = `<img src="assets/emotes/emo_sparkle.png" alt=""><span><small>새 어울림 발견!</small><b>${esc(h.name)}</b><em>${esc(h.text)}</em><i>금화 +${fmt(q.gold)} · 평판 +3</i></span><img src="assets/emotes/emo_sparkle.png" alt="">`;
+    b.innerHTML = `<img src="${av('assets/emotes/emo_sparkle.png')}" alt=""><span><small>새 어울림 발견!</small><b>${esc(h.name)}</b><em>${esc(h.text)}</em><i>금화 +${fmt(q.gold)} · 평판 +3</i></span><img src="${av('assets/emotes/emo_sparkle.png')}" alt="">`;
     b.hidden = false;
     b.classList.remove('go');
     void b.offsetWidth;

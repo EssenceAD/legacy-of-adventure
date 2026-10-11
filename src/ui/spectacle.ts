@@ -1,4 +1,5 @@
 // 베타 4장: 구경거리 사건 해결 — 탭하면 짧은 대사 + 고르기 → 결과 · [소문] 한 줄 · 해결 횟수(업적)
+import { av } from '../engine/ver';
 import { CONFIG } from '../data/config';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
 import { REGIONS } from '../data/items';
@@ -162,7 +163,7 @@ function openMerchant(s: Spectacle) {
   openWin(
     '떠돌이 상인',
     `<p class="sub">「먼 길 왔수다! 오늘만 이 값이오.」 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="alist">${goods
-      .map((g) => `<div class="arow shopi"><img src="assets/icons/${g.icon}.png" alt=""><span><b>${esc(g.name)}</b><small>${esc(g.desc)}</small></span><button data-g="${g.id}" ${S.gold < g.cost ? 'disabled' : ''}>${fmt(g.cost)}G</button></div>`)
+      .map((g) => `<div class="arow shopi"><img src="${av(`assets/icons/${g.icon}.png`)}" alt=""><span><b>${esc(g.name)}</b><small>${esc(g.desc)}</small></span><button data-g="${g.id}" ${S.gold < g.cost ? 'disabled' : ''}>${fmt(g.cost)}G</button></div>`)
       .join('')}</div><p class="note">상인은 게임 속 3시간 뒤 떠나요</p>`,
   );
   document.querySelectorAll<HTMLButtonElement>('[data-g]').forEach((b) => (b.onclick = () => {

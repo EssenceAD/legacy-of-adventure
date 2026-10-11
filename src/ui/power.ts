@@ -1,4 +1,5 @@
 // 베타 5장: 전투력 롤링 (HUD 여관 이름 옆) · 이유 한 줄 · 큰 카드
+import { av } from '../engine/ver';
 import { notePrep, powerHooks, prepDiff, tickPower, townPower } from '../world/power';
 import { S } from '../world/state';
 import { sfx } from './battle';
@@ -41,7 +42,7 @@ function nextCard() {
     return;
   }
   carding = true;
-  el.innerHTML = `<img src="assets/emotes/emo_sparkle.png" alt=""><span><small>강해졌다!</small><b>${esc(c[0])}</b><em>${esc(c[1])}</em></span><img src="assets/emotes/emo_sparkle.png" alt="">`;
+  el.innerHTML = `<img src="${av('assets/emotes/emo_sparkle.png')}" alt=""><span><small>강해졌다!</small><b>${esc(c[0])}</b><em>${esc(c[1])}</em></span><img src="${av('assets/emotes/emo_sparkle.png')}" alt="">`;
   el.hidden = false;
   el.classList.remove('go');
   void el.offsetWidth;

@@ -1,5 +1,6 @@
 // 티저 컷마다 쓸 가짜 상태 — 메모리에서만 만들고 버린다 (저장 데이터는 절대 건드리지 않는다)
 //  마을 컷: 이웃 「달빛 쉼터」 배치를 등급(땅 단계)만큼 잘라 그린다 · 전투/다락 컷: 작은 캔버스에 정수 배율로
+import { av } from '../engine/ver';
 import { CLASSES } from '../data/classes';
 import { NEIGHBORS } from '../data/neighbors';
 import { BOSS_IMG, MOB_IMG, RAID_BG } from '../engine/assets';
@@ -108,7 +109,7 @@ export function drawBoss(ctx: CanvasRenderingContext2D, t: number) {
 }
 
 /** 다락: 달빛 · 옛 장비 · 낡은 지도 (코드 도트 160×120) */
-const ATTIC = { sword: img('assets/icons/skill_attack.png'), map: img('assets/icons/m_expedition.png'), helm: img('assets/icons/m_heroes.png') };
+const ATTIC = { sword: img(av('assets/icons/skill_attack.png')), map: img(av('assets/icons/m_expedition.png')), helm: img(av('assets/icons/m_heroes.png')) };
 function img(src: string) {
   const i = new Image();
   i.src = src;

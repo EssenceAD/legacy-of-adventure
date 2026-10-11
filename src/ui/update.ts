@@ -70,14 +70,39 @@ let newer: { version: string; build: string } | null = null;
 let busy: () => boolean = () => false;
 const bootDay = new Date().toDateString();
 
-/** 저장 → 새로고침 (진행은 저장 마이그레이션으로 이어진다) */
-export function applyUpdate() {
+/**
+ * 저장 → 새 서비스워커 받기 → 자리 잡을 때까지(controllerchange, 최대 3초) 기다림 → 새로고침.
+ *  핫픽스 13: 예전엔 바로 reload 해서 아이폰 홈 화면 앱에서 옛 SW 교체·캐시 지우기와 그림 150여 개 로딩이 겹쳐 「그림을 불러오지 못했어요」가 났다.
+ */
+let applying = false;
+export async function applyUpdate() {
+  if (applying) return;
+  applying = true;
   try {
     if (S.started) writeSave();
   } catch {
     /* 저장 실패해도 새로고침은 한다 — 마지막 자동 저장이 남아 있다 */
   }
+  const bar = document.getElementById('updNow') ?? document.getElementById('updBar');
+  if (bar) bar.textContent = '새 버전 받는 중…';
+  await waitNewWorker(3000);
   location.reload();
+}
+async function waitNewWorker(ms: number) {
+  try {
+    const sw = navigator.serviceWorker;
+    const reg = sw && (await sw.getRegistration());
+    if (!reg) return;
+    const changed = new Promise<void>((r) => sw.addEventListener('controllerchange', () => r(), { once: true }));
+    await Promise.race([reg.update().catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
+    // 새 SW가 설치·대기 중이면 자리 잡을 때까지 (skipWaiting → activate → clients.claim → controllerchange)
+    if (reg.installing || reg.waiting) {
+      reg.waiting?.postMessage('skipWaiting');
+      await Promise.race([changed, new Promise((r) => setTimeout(r, ms))]);
+    }
+  } catch {
+    /* 서비스워커가 없거나 막혀 있으면 그냥 새로고침 */
+  }
 }
 
 function showBar() {

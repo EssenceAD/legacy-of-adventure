@@ -1,6 +1,7 @@
 // 오프닝 티저 (약 40초): "이 게임은 이런 게임이다" 미리보기 — 실제 게임 화면을 가짜 상태로 띄우고 카메라·글자로 편집
 //  01 「모험의 유산」 88 BPM(1박 0.68초)에 맞춰 컷을 넘긴다. 곡이 재생 중이면 곡 위치가 시계, 아니면 실제 시간.
 //  저장 데이터는 절대 건드리지 않는다: 티저 동안 게임은 시작 전(S.started = false)이고, 끝나면 타이틀 배경 마을로 되돌린다.
+import { av } from '../engine/ver';
 import { harmonyById } from '../data/harmony';
 import { HEROES } from '../data/heroes';
 import { PORTRAITS } from '../engine/assets';
@@ -67,7 +68,7 @@ const CUTS: Cut[] = [
     beats: 4,
     cap: '한때, 당신은 모험가였다.',
     enter: () => {
-      el(`<div class="tledger"><i class="glow"></i><img src="assets/icons/m_quest.png" alt=""></div>`);
+      el(`<div class="tledger"><i class="glow"></i><img src="${av('assets/icons/m_quest.png')}" alt=""></div>`);
     },
     update: (t) => stage.querySelector('.tledger')!.classList.toggle('open', t > 0.9),
   },
@@ -77,7 +78,7 @@ const CUTS: Cut[] = [
     world: true,
     enter: () => {
       village(0, true, { keeper: true });
-      el(`<div class="tbook"><img src="assets/icons/m_quest.png" alt=""></div>`);
+      el(`<div class="tbook"><img src="${av('assets/icons/m_quest.png')}" alt=""></div>`);
     },
     update: (t) => {
       const b = stage.querySelector<HTMLElement>('.tbook');
@@ -120,7 +121,7 @@ const CUTS: Cut[] = [
         });
       if (t > 1.3)
         once('banner', () =>
-          el(`<div class="tbanner"><img src="assets/emotes/emo_sparkle.png" alt=""><span><small>새 어울림 발견!</small><b>${harmonyById(2).name}</b><em>${harmonyById(2).text}</em></span><img src="assets/emotes/emo_sparkle.png" alt=""></div>`),
+          el(`<div class="tbanner"><img src="${av('assets/emotes/emo_sparkle.png')}" alt=""><span><small>새 어울림 발견!</small><b>${harmonyById(2).name}</b><em>${harmonyById(2).text}</em></span><img src="${av('assets/emotes/emo_sparkle.png')}" alt=""></div>`),
         );
     },
   },
@@ -193,7 +194,7 @@ const CUTS: Cut[] = [
         });
       if (t > 1.4)
         once('plaque', () => {
-          el(`<div class="tplaque"><img src="assets/sprites/plaque_gold.png" alt=""><b>골드</b></div>`);
+          el(`<div class="tplaque"><img src="${av('assets/sprites/plaque_gold.png')}" alt=""><b>골드</b></div>`);
           stage.classList.add('shake');
           sfxClip('J3', 0.9);
         });
@@ -205,7 +206,7 @@ const CUTS: Cut[] = [
     enter: () => {
       stage.classList.add('dark');
       el(`<div class="tduo"><img src="${portrait('mc_knight_f')}" alt=""><img class="r" src="${portrait('legend_leon')}" alt=""></div>`);
-      el(`<div class="thearts">${'<img src="assets/ui/heart.png" alt="">'.repeat(5)}</div>`);
+      el(`<div class="thearts">${`<img src="${av('assets/ui/heart.png')}" alt="">`.repeat(5)}</div>`);
     },
     update: (t) => stage.querySelectorAll('.thearts img').forEach((h, i) => h.classList.toggle('on', t > 0.6 + i * 0.5)),
   },

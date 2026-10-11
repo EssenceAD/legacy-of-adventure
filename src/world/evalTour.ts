@@ -1,4 +1,5 @@
 // 베타 2장: 평가단 순회 — 깃 달린 모자 3명이 입구에서 들어와 건물마다 들러 이모트(♥ / ? / !)를 띄우고 나간다
+import { av } from '../engine/ver';
 import { def } from '../data/catalog';
 import type { ClassDef } from '../data/classes';
 import { IMG, tinted } from '../engine/assets';
@@ -18,7 +19,7 @@ const EMO: Record<string, HTMLImageElement> = {};
 export const emote = (k: string) => {
   if (!EMO[k]) {
     EMO[k] = new Image();
-    EMO[k].src = `assets/emotes/emo_${k}.png`;
+    EMO[k].src = av(`assets/emotes/emo_${k}.png`);
   }
   return EMO[k];
 };

@@ -1,4 +1,5 @@
 // 토벌전 화면 (3단계 2~4장): 준비 창(파티·권장 전투력·경고) → 와이프 전환 → 옆에서 보는 도트 전투장 → 결과
+import { av } from '../engine/ver';
 import { battleMusic } from './sound';
 // 시안(raid_battle.html)의 전투를 옮겼다. 피해량은 「자동 기대 피해량」에 맞춰 보정한다:
 //  · 자동: 기대 피해량 ±10% (끝까지 버텼을 때)  · 직접: 자동의 90% ~ 130%
@@ -39,7 +40,7 @@ let picked: number[] = [];
 export function bossPic(b: BossDef): string {
   // 핫픽스 8: 새 보스는 Ninja Adventure 얼굴(Faceset) · 심연의 눈은 옛 그림
   const look = RAID_LOOK_OF[b.id];
-  if (look && look.startsWith('nb_')) return abs(`assets/mon/${look}/face.png`);
+  if (look && look.startsWith('nb_')) return av(abs(`assets/mon/${look}/face.png`));
   const c = BOSS_IMG[b.id];
   return c ? c.toDataURL() : '';
 }

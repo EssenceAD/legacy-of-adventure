@@ -1,4 +1,5 @@
 // 베타 2장: 평가단 화면 — 임무 카드 아래 평가 바 · 평가 창 · 새 시즌 알림 · 평가단 순회 → 결과 카드
+import { av } from '../engine/ver';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { def, type Kind } from '../data/catalog';
@@ -56,7 +57,7 @@ function showResult(r: EvalResult) {
       '평가 결과',
       `<div class="evres t${r.tier}"><img src="${icon(r.theme, false)}" alt=""><small>${themeName(r.theme)} 부문</small><b>${tierName(r.tier)}</b><em>${fmt(r.score)}점</em></div>
       <div class="evrows">${rows}</div>
-      <div class="evmiss"><img src="assets/emotes/emo_question.png" alt=""><span><b>평가단의 한마디</b><small>「${esc(r.miss.text)}」</small>${hint}</span></div>
+      <div class="evmiss"><img src="${av('assets/emotes/emo_question.png')}" alt=""><span><b>평가단의 한마디</b><small>「${esc(r.miss.text)}」</small>${hint}</span></div>
       ${rw}${pl}${r.title ? `<p class="g">칭호 「${esc(r.title)}」를 얻었어요</p>` : ''}`,
     ),
   );

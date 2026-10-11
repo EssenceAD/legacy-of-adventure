@@ -34,7 +34,9 @@ function versionFiles(): Plugin {
       const sw = readFileSync(at(join(out, 'sw.js')), 'utf8').replace('__BUILD__', BUILD.replace(/[^a-z0-9.]/gi, '-'));
       writeFileSync(at(join(out, 'sw.js')), sw);
       // 타이틀 아래 버전 글자
-      const html = readFileSync(at(join(out, 'index.html')), 'utf8').replace(/(<button class="ver" id="tVer">)[^<]*(<\/button>)/, `$1v${pkg.version}$2`);
+      const html = readFileSync(at(join(out, 'index.html')), 'utf8').replace(/(<button class="ver" id="tVer">)[^<]*(<\/button>)/, `$1v${pkg.version}$2`)
+        // 핫픽스 13: index.html 의 그림 주소에도 빌드 번호 (옛 SW 캐시의 옛 그림이 섞이지 않게)
+        .replace(/(src="assets\/[^"?]+)"/g, `$1?v=${encodeURIComponent(BUILD)}"`);
       writeFileSync(at(join(out, 'index.html')), html);
     },
   };

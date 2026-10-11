@@ -1,4 +1,5 @@
 // 베타 3장: 하루 마감 정산 카드 (4초 · 탭하면 닫힘 · 설정에서 끌 수 있다)
+import { av } from '../engine/ver';
 import { getPref, setPref } from '../save/save';
 import { takeSettlement, tickDaily } from '../world/daily';
 import { P, S } from '../world/state';
@@ -34,7 +35,7 @@ export function showSettlement(): boolean {
   const title = days.length > 1 ? `${days.length}일 치 정산 · ${days[0].day}~${sum.day}일차` : `${sum.day}일차 마감`;
   const c = $('#settle');
   c.innerHTML = `<div class="card px">
-    <b class="t">${title}</b>${record ? '<p class="rec"><img src="assets/ui/star.png" alt=""> 개업 이래 최고! <img src="assets/ui/star.png" alt=""></p>' : ''}
+    <b class="t">${title}</b>${record ? `<p class="rec"><img src="${av('assets/ui/star.png')}" alt=""> 개업 이래 최고! <img src="${av('assets/ui/star.png')}" alt=""></p>` : ''}
     <div class="sts"><span><small>수입</small><b class="g">${fmt(sum.gold)} G</b></span><span><small>손님</small><b>${sum.guests}명</b></span><span><small>평균 기분</small><b>${sum.mood}</b></span><span><small>새 어울림 · 새 손님</small><b>${sum.newHarm} · ${sum.newDex}</b></span></div>
     <div class="bars">${bars}</div><small class="tap">탭하면 닫혀요</small></div>`;
   c.hidden = false;

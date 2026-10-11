@@ -1,5 +1,6 @@
 // 전투 그리기: 논리 해상도(도트 1개 = 1px) 캔버스에 전부 같은 크기로 → 화면 캔버스에 정수배로 키운다
 //  바닥 타일 · 예고 범위 · 캐릭터/몬스터 · 슬래시 · 탄 · 연기 · 금화 · 도트 숫자 · 흔들림(정수 px)
+import { av } from '../engine/ver';
 import { CONFIG } from '../data/config';
 import { IMG } from '../engine/assets';
 import { sx, sy, TH, TW } from '../engine/iso';
@@ -23,7 +24,7 @@ let fxLoading: Promise<void> | null = null;
 export function loadFx(): Promise<void> {
   return (fxLoading ??= (async () => {
     try {
-      const meta = (await (await fetch(new URL('assets/fx/fx.json', document.baseURI).href)).json()) as Record<string, { w: number; h: number; n: number }>;
+      const meta = (await (await fetch(av(new URL('assets/fx/fx.json', document.baseURI).href))).json()) as Record<string, { w: number; h: number; n: number }>;
       await Promise.all(
         Object.entries(meta).map(
           ([id, m]) =>
@@ -46,7 +47,7 @@ export function loadFx(): Promise<void> {
                 ok();
               };
               im.onerror = () => ok();
-              im.src = new URL(`assets/fx/${id}.png`, document.baseURI).href;
+              im.src = av(new URL(`assets/fx/${id}.png`, document.baseURI).href);
             }),
         ),
       );

@@ -1,4 +1,6 @@
 // 건물 PNG 로드, 밤 창문 마스크(windows.json), 지붕 색 바꾸기, 밤 색조 캐시
+import { av } from './ver';
+import { track } from '../net/telemetry';
 import { HEROES } from '../data/heroes';
 import { LEGENDS } from '../data/legends';
 import { JOBS, mcPortrait } from '../data/origins';
@@ -33,21 +35,61 @@ export const PORTRAITS: Record<string, string> = {};
 /** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
 const PORTRAIT_IMGS: HTMLImageElement[] = [];
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+/** 핫픽스 13: 실패하면 0.5초·1.5초 뒤 두 번 더 (&r=n 으로 캐시 우회) — 그래도 안 되면 실패한 주소를 들고 실패 */
+export class AssetError extends Error {
+  constructor(public url: string) {
+    super('그림을 못 불러옴: ' + url);
+  }
+}
+function loadOnce(src: string): Promise<HTMLImageElement> {
   return new Promise((ok, fail) => {
     const im = new Image();
     im.onload = () => ok(im);
-    im.onerror = () => fail(new Error('그림을 못 불러옴: ' + src));
+    im.onerror = () => fail(new AssetError(src));
     im.src = src;
   });
+}
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  const url = av(src);
+  const waits = [0, 500, 1500];
+  for (let i = 0; i < waits.length; i++) {
+    if (waits[i]) await new Promise((r) => setTimeout(r, waits[i]));
+    try {
+      return await loadOnce(i ? `${url}&r=${i}` : url);
+    } catch {
+      /* 다시 */
+    }
+  }
+  throw new AssetError(url);
+}
+/** JSON도 같은 방식 (네트워크 먼저 — 서비스워커가 처리) */
+async function loadJson<T>(path: string): Promise<T> {
+  const url = av(path);
+  for (const [i, w] of [0, 500, 1500].entries()) {
+    if (w) await new Promise((r) => setTimeout(r, w));
+    try {
+      const r = await fetch(i ? `${url}&r=${i}` : url);
+      if (r.ok) return (await r.json()) as T;
+    } catch {
+      /* 다시 */
+    }
+  }
+  throw new AssetError(url);
+}
+/** 핫픽스 13: 크기표(META)에 없는 그림 — 어떤 키인지 한 번만 기록 (그 건물은 그리지 않고 넘어간다) */
+const missed = new Set<string>();
+export function missingMeta(key: string) {
+  if (missed.has(key)) return;
+  missed.add(key);
+  track('error', { msg: 'meta_missing', key: key.slice(0, 60) });
 }
 
 export async function loadAssets(onProgress?: (p: number) => void) {
   const [meta, windows, doors, roofs] = await Promise.all([
-    fetch(BASE + 'sprites/meta.json').then((r) => r.json() as Promise<Record<string, SpriteMeta>>),
-    fetch(BASE + 'sprites/windows.json').then((r) => r.json() as Promise<Record<string, [number, number][]>>),
-    fetch(BASE + 'sprites/doors.json').then((r) => r.json() as Promise<Record<string, unknown>>),
-    fetch(BASE + 'sprites/roofs.json').then((r) => r.json() as Promise<Record<string, [number, number][][]>>),
+    loadJson<Record<string, SpriteMeta>>(BASE + 'sprites/meta.json'),
+    loadJson<Record<string, [number, number][]>>(BASE + 'sprites/windows.json'),
+    loadJson<Record<string, unknown>>(BASE + 'sprites/doors.json'),
+    loadJson<Record<string, [number, number][][]>>(BASE + 'sprites/roofs.json'),
   ]);
   Object.assign(ROOF_POLYS, roofs);
   for (const [k, v] of Object.entries(doors)) {
@@ -90,7 +132,7 @@ export async function loadAssets(onProgress?: (p: number) => void) {
       // 디코드는 기다리지 않는다 (화면이 숨어 있으면 끝나지 않아 로딩이 멈춘다)
       im.decode?.().catch(() => {});
       PORTRAIT_IMGS.push(im);
-      PORTRAITS[k] = src;
+      PORTRAITS[k] = av(src);
       tick();
     }),
     // 캔버스에 쓰는 글꼴은 미리 불러 둬야 첫 프레임부터 도트 글꼴로 나온다
