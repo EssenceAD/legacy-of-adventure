@@ -44,7 +44,18 @@ const stack: WinState[] = [];
 /** 창 때문에 쌓은 history 항목 수 · 우리가 부른 popstate는 무시 */
 let histDepth = 0;
 let ignorePop = 0;
+/**
+ * 핫픽스 11 §7: history.go(-n)는 비동기다. 되돌아가는 중에 새 창이 pushState를 하면, 늦게 끝난 되돌리기가
+ * 방금 쌓은 항목을 지워 버려 다음 닫기 때 게임 페이지 밖(이전 사이트·빈 페이지 · 앱 닫힘)으로 나갔다.
+ * → 되돌리기가 끝날 때까지 쌓기를 미뤄 두고(queuedPush), 되돌리기는 지금 항목 깊이보다 더 가지 않는다.
+ */
+let queuedPush = 0;
 function pushHist() {
+  if (ignorePop > 0) {
+    queuedPush++;
+    histDepth++;
+    return;
+  }
   try {
     history.pushState({ legacyWin: histDepth + 1 }, '');
     histDepth++;
@@ -52,11 +63,31 @@ function pushHist() {
     /* 무시 */
   }
 }
+function flushQueuedPush() {
+  while (queuedPush > 0) {
+    queuedPush--;
+    try {
+      history.pushState({ legacyWin: histDepth - queuedPush }, '');
+    } catch {
+      /* 무시 */
+    }
+  }
+}
 function dropHist(n: number) {
   if (n <= 0) return;
+  // 아직 쌓지 않은(미뤄 둔) 항목부터 지운다
+  const q = Math.min(n, queuedPush);
+  queuedPush -= q;
+  histDepth = Math.max(0, histDepth - q);
+  n -= q;
+  if (n <= 0) return;
+  // 지금 항목이 우리가 쌓은 몇 번째인지보다 더 뒤로 가지 않는다 (게임 페이지 밖으로 나가지 않게)
+  const cur = ignorePop > 0 ? histDepth : ((history.state as { legacyWin?: number } | null)?.legacyWin ?? 0);
+  const go = Math.min(n, cur);
   histDepth = Math.max(0, histDepth - n);
+  if (go <= 0) return;
   ignorePop++;
-  history.go(-n);
+  history.go(-go);
 }
 function showHead(title: string) {
   $('#winT').textContent = title;
@@ -199,6 +230,8 @@ export function initWindows() {
   addEventListener('popstate', () => {
     if (ignorePop) {
       ignorePop--;
+      // 되돌리기가 끝났다 → 그동안 미뤄 둔 창 항목을 이제 쌓는다
+      if (!ignorePop) flushQueuedPush();
       return;
     }
     if (!isWinOpen()) return;
