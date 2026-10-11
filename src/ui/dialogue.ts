@@ -1,9 +1,10 @@
 // 대화창: 초상화 + 이름표 + 한 글자씩 타이핑 + ▼. Z/엔터/탭 = 다음, X = 건너뛰기(이름 짓기는 못 건너뜀)
-import { speakerName } from '../data/classes';
+import { GUEST_KINDS, speakerName } from '../data/classes';
+import { pic } from './common';
 import { CONFIG } from '../data/config';
 import { PORTRAITS } from '../engine/assets';
 import { mcPortrait } from '../data/origins';
-import { P, S, type TalkChoice, type TalkLine } from '../world/state';
+import { P, S, world, type Actor, type TalkChoice, type TalkLine } from '../world/state';
 
 /** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기, 이름표] — 누가: narr(해설)·hero·keeper·post·직업 */
 export type Line = TalkLine;
@@ -22,6 +23,8 @@ interface Talk {
   iv: number;
   /** 인연 이벤트: 오른쪽에 설 사람 초상화 키 (왼쪽은 나) */
   duo?: string;
+  /** 인연 단계가 오르는 긴 대화 — 이때만 곡 15 */
+  bondUp?: boolean;
 }
 
 /** 나(주인)의 초상화 · 이름. 'me'는 늘 나, 오프닝의 'hero'도 주인이 있으면 나 */
@@ -32,6 +35,7 @@ let DQ: Talk | null = null;
 export const isTalking = () => DQ !== null;
 /** 인연 이벤트(초상화 마주보기) 중 — 배경음악 「마주 앉은 밤」 */
 export const isDuo = () => !!DQ?.duo;
+export const isBondUp = () => !!DQ?.bondUp;
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 
@@ -51,13 +55,28 @@ export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
 }
 
 /** 인연 이벤트: 나(왼쪽)와 그 사람(오른쪽) 초상화가 마주본다 */
-export function talkDuo(lines: Line[], right: string, done?: () => void, choices?: TalkChoice[]) {
+export function talkDuo(lines: Line[], right: string, done?: () => void, choices?: TalkChoice[], bondUp = false) {
   talk(lines, done, choices);
   if (DQ) {
     DQ.duo = right;
+    DQ.bondUp = bondUp;
     showLine();
   }
 }
+
+/** 핫픽스 9: 화자 → 이름표 + 초상화를 한 묶음으로.
+ *  '@id'는 그 손님 · 직업 키 + 이름표면 그 이름의 손님을 찾아 그 손님의 도트 얼굴(성별·직업이 실제와 같게).
+ *  영웅·전설·NPC는 전용 초상화. */
+export function resolveSpeaker(who: string, nameTag?: string): { actor: Actor | null; port: string; name: string } {
+  const all = [...world.actors, ...(world.home?.actors ?? [])].filter((a) => a.id && !a.role);
+  let actor: Actor | null = null;
+  if (who.startsWith('@')) actor = all.find((a) => a.id === +who.slice(1)) ?? null;
+  else if ((GUEST_KINDS as readonly string[]).includes(who) && nameTag) actor = all.find((a) => a.name === nameTag) ?? null;
+  if (actor) return { actor, port: pic(actor), name: actor.name };
+  return { actor: null, port: PORTRAITS[who] || '', name: nameTag ?? speakerName(who, S.innName) };
+}
+/** 대사 줄을 만들 때: 손님이면 '@id', 영웅·전설은 전용 초상화 키 */
+export const speakerOf = (a: Actor) => (a.heroId ? 'hero_' + a.heroId : a.legendId ? 'legend_' + a.legendId : '@' + a.id);
 
 function showLine() {
   if (!DQ) return;
@@ -67,9 +86,10 @@ function showLine() {
   d.classList.toggle('narr', narr);
   const port = $<HTMLImageElement>('#dPort');
   const me = isMe(who);
-  port.src = me ? myPort() : PORTRAITS[who] || '';
+  const sp = me ? null : resolveSpeaker(who, nameTag);
+  port.src = me ? myPort() : sp!.port;
   port.hidden = narr;
-  $('#dName').textContent = me && P.owner ? P.owner.name : nameTag ?? speakerName(who, S.innName);
+  $('#dName').textContent = me && P.owner ? P.owner.name : sp!.name;
   // 마주보기: 말하는 쪽만 밝게
   const duo = $('#dDuo');
   d.classList.toggle('duo', !!DQ.duo);

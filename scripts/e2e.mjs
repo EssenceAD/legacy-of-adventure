@@ -266,6 +266,11 @@ async function run(size) {
   }
   L('사냥 1-1: ' + (huntRes || '못 함'));
   await shot('07_village');
+  // 남아 있는 창·대화(원정 보고서 등)부터 정리 — 사람처럼 「받기」나 ✕
+  for (let k = 0; k < 6 && ((await winOn()) || (await vis('#dlg'))); k++) {
+    await talk();
+    if (!(await click('#repOk', 600))) await click('#winX', 400);
+  }
   // ── 메뉴 모든 칸: ✕ · ← · Esc 돌아가며 ──
   await click('#bMenu', 600);
   const tiles = await p.evaluate(() => [...document.querySelectorAll('.mtile')].map((t) => t.querySelector('span').textContent));

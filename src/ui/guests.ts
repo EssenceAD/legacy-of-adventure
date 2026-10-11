@@ -14,7 +14,7 @@ import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, 
 import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
 import { track } from '../world/progress';
-import { talk } from './dialogue';
+import { speakerOf, talk } from './dialogue';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, tabs } from './common';
 import { dustLine } from './smith';
 import { closeWin, openWin, toast } from './windows';
@@ -74,7 +74,7 @@ function talkGuest(a: Actor) {
   markDirty();
   const pool = a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
   const line = a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0];
-  talk([[a.heroId ? 'hero_' + a.heroId : a.legendId ? 'legend_' + a.legendId : a.kind, line, undefined, a.name], ...(fresh ? [['narr', `${a.name}의 기분이 조금 좋아졌다.`] as TalkLine] : [])]);
+  talk([[speakerOf(a), line], ...(fresh ? [['narr', `${a.name}의 기분이 조금 좋아졌다.`] as TalkLine] : [])]);
 }
 
 /** 손님 상세 */

@@ -704,8 +704,12 @@ export const CONFIG = {
     /** 장비: 한 판 기대 개수(정예 확정 1개 별도) · 줍는 거리 */
     dropsPerRun: 1.2,
     pickR: 0.9,
-    move: 3.2,
-    dodge: { inv: 0.35, cd: 1.5, dist: 1.9, dur: 0.3 },
+    /** 핫픽스 9: 굼벵이 같다는 피드백 → 캐릭터 +30% · 몬스터 +25% · 구르기 거리도 이동 속도에 비례 (예고 0.6초는 그대로) */
+    move: 3.2 * 1.3,
+    dodge: { inv: 0.35, cd: 1.5, dist: 1.9 * 1.3, dur: 0.3 },
+    mobSpeed: 1.25,
+    /** 직업별 이동 체감: 도적 +10% · 기사 −5% */
+    jobMove: { rogue: 1.1, knight: 0.95 } as Record<string, number>,
     combo: { window: 0.55, swing: 0.24, range: 1.05, arc: 1.25, mult: [1, 1.1, 1.6] },
     /** 직업별 기본 공격 (핫픽스 7): swing=한 번 휘두르는 초 · dmg=힘 배율 · 근접은 range·arc(부채꼴), 원거리는 speed(탄 속도)
      *  초당 힘(dmg/swing)은 비슷하게 맞추고 손맛만 다르게: 마법사 느리고 셈 · 도적 빠르고 약함 */
@@ -749,7 +753,7 @@ export const CONFIG = {
     autoDodge: 0.5,
     /** 평가 · 보상 배율 */
     /** 평가 점수 = 100 − 맞은 횟수×perHit − (시간 비율−timeFree)×perTime + min(KILLS 연속, streakCap)×perStreak → s 이상 S · a 이상 A */
-    grade: { perHit: 4, timeFree: 0.45, perTime: 60, perStreak: 1, streakCap: 20, s: 90, a: 70, bonus: { S: 0.3, A: 0.15, B: 0 } },
+    grade: { perHit: 4, timeFree: 0.1, perTime: 100, perStreak: 1, streakCap: 20, s: 90, a: 70, bonus: { S: 0.3, A: 0.15, B: 0 } },
     sweep: 0.7,
     allyVol: 0.6,
   },

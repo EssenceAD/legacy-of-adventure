@@ -25,7 +25,7 @@ export const owner = () => P.owner;
 
 /** ui가 채운다: 초상화 둘 마주보기 대화 · 동료 고르기 · 엔딩 보여 주기 */
 export const ownerHooks = {
-  duo: (_lines: TalkLine[], _right: string, _done?: () => void, _choices?: TalkChoice[]) => {},
+  duo: (_lines: TalkLine[], _right: string, _done?: () => void, _choices?: TalkChoice[], _bondUp?: boolean) => {},
   partner: (_list: BondDef[], _solo: boolean, _done: (id: string | null) => void) => {},
   ending: (_ids: string[], _partner: string | null, _rel: 'lover' | 'comrade' | undefined) => {},
   /** 우편함 (world/meta가 채운다) */
@@ -318,7 +318,7 @@ export function tieEvent(id: string) {
       label: rel === 'lover' ? '연인이 되자' : '평생의 전우가 되자',
       fn: () => {
         t.rel = rel;
-        ownerHooks.duo([evLine(d, rel === 'lover' ? d.lover : d.comrade), closing(d, next, rel)], d.port, after);
+        ownerHooks.duo([evLine(d, rel === 'lover' ? d.lover : d.comrade), closing(d, next, rel)], d.port, after, undefined, true);
       },
     }));
   } else {
@@ -330,7 +330,7 @@ export function tieEvent(id: string) {
       });
     choices = [{ label: a, fn: pick(T.choiceGood) }, { label: b, fn: pick(T.choiceMeh) }];
   }
-  ownerHooks.duo(lines, d.port, undefined, choices);
+  ownerHooks.duo(lines, d.port, undefined, choices, true);
 }
 
 const AFTER_LINES = [

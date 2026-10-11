@@ -52,8 +52,22 @@ export function updDrawParts(ctx: CanvasRenderingContext2D, dt: number) {
 
 const over = () => document.getElementById('over')!;
 
+/** 핫픽스 9: 같은 자리에서 뜨는 숫자는 0.6초 간격으로 차례대로 (겹쳐 읽히지 않게) */
+const floatNext = new Map<string, number>();
 /** 타일 위치 위로 글자가 떠올랐다 사라진다 */
 export function floatW(x: number, y: number, up: number, text: string, cls = '') {
+  const key = `${Math.round(x)},${Math.round(y)}`;
+  const now = performance.now();
+  const at = Math.max(now, floatNext.get(key) ?? 0);
+  floatNext.set(key, at + 600);
+  if (at > now + 3000) return; // 너무 밀리면 버린다
+  if (at > now) {
+    setTimeout(() => floatNow(x, y, up, text, cls), at - now);
+    return;
+  }
+  floatNow(x, y, up, text, cls);
+}
+function floatNow(x: number, y: number, up: number, text: string, cls: string) {
   const [X, Y] = scr(x, y);
   const e = document.createElement('div');
   e.className = 'flt ' + cls;
@@ -69,9 +83,45 @@ interface Bubble extends HTMLDivElement {
   _o?: Building;
 }
 
+// 핫픽스 9: 말풍선은 동시에 최대 2개 · 화면 거리 80px 안의 말풍선이 있으면 차례(큐)로
+const MAX_BUB = 2;
+const NEAR_PX = 80;
+const bubQ: { a: Actor; text: string; cls: string }[] = [];
+const bubXY = (a: Actor): [number, number] => {
+  const [X, Y] = scr(a.x, a.y);
+  return [X * view.SC, (Y - 30) * view.SC];
+};
+function bubbleRoom(a: Actor): boolean {
+  const list = [...over().querySelectorAll<Bubble>('.bub')];
+  if (list.length >= MAX_BUB) return false;
+  const [x, y] = bubXY(a);
+  return !list.some((b) => b._a && Math.hypot(bubXY(b._a)[0] - x, bubXY(b._a)[1] - y) < NEAR_PX);
+}
+function nextBubble() {
+  for (let i = 0; i < bubQ.length; i++) {
+    const q = bubQ[i];
+    if (q.a.hidden || q.a.bub || q.a.leaving) {
+      bubQ.splice(i--, 1);
+      continue;
+    }
+    if (!bubbleRoom(q.a)) continue;
+    bubQ.splice(i, 1);
+    showBubble(q.a, q.text, q.cls);
+    return;
+  }
+}
 /** 손님 머리 위 말풍선. p = 뜰 확률 */
 export function say(a: Actor, text: string, p = 1, cls = '') {
   if (Math.random() > p || a.bub || a.hidden) return;
+  if (!bubbleRoom(a)) {
+    // 자리가 없으면 차례를 기다린다 (오래된 것부터 버림)
+    if (!bubQ.some((q) => q.a === a)) bubQ.push({ a, text, cls });
+    if (bubQ.length > 6) bubQ.shift();
+    return;
+  }
+  showBubble(a, text, cls);
+}
+function showBubble(a: Actor, text: string, cls: string) {
   const b = document.createElement('div') as Bubble;
   b.className = 'bub ' + cls;
   b.textContent = text;
@@ -81,11 +131,13 @@ export function say(a: Actor, text: string, p = 1, cls = '') {
   setTimeout(() => {
     b.remove();
     if (a.bub === b) a.bub = null;
+    nextBubble();
   }, CONFIG.actors.bubbleMs);
 }
 
-/** 건물 지붕 위 말풍선 (안에 있는 손님 대사) */
+/** 건물 지붕 위 말풍선 (안에 있는 손님 대사) — 핫픽스 9: 자리가 없으면 띄우지 않음 */
 export function bldSay(o: Building, text: string) {
+  if (over().querySelectorAll('.bub').length >= MAX_BUB) return;
   const b = document.createElement('div') as Bubble;
   b.className = 'bub';
   b.textContent = text;
@@ -122,4 +174,15 @@ export function posBubbles() {
       b.style.top = Math.round(Y * view.SC) + 'px';
       b.classList.toggle('rt', X * view.SC > view.LW * view.SC - 90);
     });
+  // 핫픽스 9: 그래도 겹치면 뒤의 것을 위로 밀어 쌓는다
+  const list = [...over().querySelectorAll<HTMLElement>('.bub')];
+  for (let i = 1; i < list.length; i++) {
+    const r = list[i].getBoundingClientRect();
+    for (let j = 0; j < i; j++) {
+      const q = list[j].getBoundingClientRect();
+      if (r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top) {
+        list[i].style.top = Math.round(parseFloat(list[i].style.top) - (r.bottom - q.top) - 4) + 'px';
+      }
+    }
+  }
 }

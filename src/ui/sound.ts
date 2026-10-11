@@ -8,7 +8,9 @@ import { hourNow, onNightFlip } from '../world/clock';
 import { tour } from '../world/evalTour';
 import { S } from '../world/state';
 import { ownerHooks } from '../world/owner';
-import { isDuo, isTalking } from './dialogue';
+import { isBondUp, isTalking } from './dialogue';
+import { talkDuck } from '../audio/engine';
+import { currentScene } from '../audio/music';
 import { onWinClose } from './windows';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -26,7 +28,8 @@ function wanted(): Scene {
   if (titleOn) return 'title';
   if (musicFlags.ember && isTalking()) return 'ember';
   if (musicFlags.ember) musicFlags.ember = false;
-  if (isTalking() && isDuo()) return 'bond';
+  // 핫픽스 9: 곡 15(인연)는 인연 단계가 오르는 긴 대화에만 · 다른 대화·사건은 곡을 바꾸지 않고 덕킹
+  if (isTalking() && isBondUp()) return 'bond';
   if (document.getElementById('hunt')) return battleMusic.huntRegion === 'forest' ? 'hunt_forest' : 'hunt_deep';
   if (document.getElementById('raid')) return battleMusic.raidLow ? 'raid2' : 'raid';
   battleMusic.raidLow = false;
@@ -37,11 +40,24 @@ function wanted(): Scene {
 }
 
 let acc = 0;
+let lastSwitch = -1e9;
+/** 전투·타이틀·엔딩처럼 바로 바꿔야 하는 장면 */
+const URGENT = /^(hunt|raid|title|ending|ember|none)/;
 export function tickSound(dt: number) {
   acc += dt;
   if (acc < 0.5) return;
   acc = 0;
-  if (!isPreviewing()) setScene(wanted());
+  // 대화창(인연 단계 이벤트 빼고): 곡은 그대로 · 음량 60%
+  talkDuck(isTalking() && !isBondUp());
+  if (isPreviewing()) return;
+  const w = wanted();
+  const now = performance.now();
+  if (w !== currentScene()) {
+    // 핫픽스 9: 장면이 10초 안에 또 바뀌면 곡을 바꾸지 않는다 (전투·타이틀은 바로)
+    if (!URGENT.test(w) && !URGENT.test(currentScene()) && now - lastSwitch < 10000) return;
+    lastSwitch = now;
+  }
+  setScene(w);
 }
 
 // ───────── 스피커 아이콘 (코드 도트 12×12) ─────────

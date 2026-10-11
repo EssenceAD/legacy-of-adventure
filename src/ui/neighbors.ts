@@ -55,6 +55,7 @@ export async function openVillage() {
       ${sb ? `<p class="sub g">실제 여관</p><div class="steps">${loading ? '<p class="note">불러오는 중…</p>' : realRows || '<p class="note">아직 다른 여관이 없어요</p>'}</div>` : ''}
       <p class="sub g">예시 마을</p><div class="steps">${fakeRows}</div>`,
     );
+    game.setVisitList([...real, ...NEIGHBORS]);
     $$('.stp[data-f]').forEach((b) => (b.onclick = () => game.visit(NEIGHBORS[+b.dataset.f!])));
     $$('.stp[data-r]').forEach((b) => (b.onclick = () => game.visit(real[+b.dataset.r!])));
   };

@@ -18,6 +18,14 @@ let master: GainNode;
 /** 배경음악·마을 소리 (설정 볼륨) → 덕킹 → 마스터 */
 export let bgmBus: GainNode;
 let duckNode: GainNode;
+let talkNode: GainNode | null = null;
+/** 대화 덕킹: on이면 배경음악 60% */
+export function talkDuck(on: boolean) {
+  if (!ctx || !talkNode) return;
+  const to = on ? 0.6 : 1;
+  if (Math.abs(talkNode.gain.value - to) < 0.01) return;
+  talkNode.gain.setTargetAtTime(to, ctx.currentTime, 0.15);
+}
 export let sfxBus: GainNode;
 
 const unlockFns: (() => void)[] = [];
@@ -38,7 +46,10 @@ function build() {
   duckNode = ctx.createGain();
   duckNode.connect(master);
   bgmBus = ctx.createGain();
-  bgmBus.connect(duckNode);
+  // 핫픽스 9: 대화창이 떠 있는 동안 배경음악 60% (곡은 바꾸지 않는다)
+  talkNode = ctx.createGain();
+  talkNode.connect(duckNode);
+  bgmBus.connect(talkNode);
   sfxBus = ctx.createGain();
   sfxBus.connect(master);
   applyPrefs(false);

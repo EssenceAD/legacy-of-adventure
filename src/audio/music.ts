@@ -50,9 +50,33 @@ function ramp(d: Deck, to: number, sec: number) {
   d.gain.gain.linearRampToValueAtTime(to, t + Math.max(0.01, sec));
 }
 
-/** 곡 하나 틀기 (덱을 바꿔 크로스페이드) */
+// 핫픽스 9: 다른 곡끼리는 겹치지 않는다 — 지금 곡 1.0초 페이드아웃 → 0.6초 무음 → 새 곡 1.5초 페이드인
+//  (조성이 다른 두 곡이 겹치면 전조처럼 들린다) · 같은 곡을 이어 틀 때만 크로스페이드
+const OUT = 1.0;
+const GAP = 0.6;
+const IN = 1.5;
+let startT = 0;
 function play(track: string, fade: number, at = 0, loop = false) {
   resting = false;
+  clearTimeout(startT);
+  const old = decks[cur];
+  const busy = !!old?.track && !old.el.paused && (old.gain?.gain.value ?? 0) > 0.01;
+  if (busy && old.track !== track) {
+    // 지금 곡을 먼저 내리고, 무음 뒤에 새 곡
+    ramp(old, 0, OUT);
+    const o = old;
+    startT = window.setTimeout(() => {
+      o.el.pause();
+      o.track = null;
+      start(track, IN, at, loop);
+    }, (OUT + GAP) * 1000);
+    ambFade(0, 3);
+    return;
+  }
+  start(track, busy ? fade : Math.max(fade, IN), at, loop);
+}
+/** 실제로 새 덱에서 틀기 (같은 곡 이어 틀기면 크로스페이드) */
+function start(track: string, fade: number, at = 0, loop = false) {
   const old = decks[cur];
   cur = 1 - cur;
   const d = decks[cur];
@@ -146,17 +170,14 @@ export function setScene(next: Scene) {
   // 마을 곡을 떠날 때 자리 기억
   if (VILLAGE.has(prev) && d.track && !d.el.paused) resumeAt[prev] = { track: d.track, t: d.el.currentTime };
   if (next === 'none') {
+    clearTimeout(startT);
     ramp(d, 0, 1.2);
     ambFade(0, 1.2);
     return;
   }
-  // 낮 ↔ 밤: 지금 곡을 4초 페이드아웃한 뒤 새 목록
+  // 낮 ↔ 밤: 핫픽스 9 — 곡 중간엔 바꾸지 않는다. 지금 곡은 끝까지, 끝나고 쉼 뒤에 새 목록에서 고른다
   if (VILLAGE.has(prev) && VILLAGE.has(next)) {
     if (resting) return rest();
-    ramp(d, 0, 4);
-    switchT = window.setTimeout(() => {
-      if (scene === next) play(pick(PLAYLISTS[next as 'day'], next), 1.2);
-    }, 4000);
     return;
   }
   const raidSwap = prev === 'raid' && next === 'raid2';
@@ -204,6 +225,8 @@ onUnlock(() => {
 });
 
 /** 개발용: 덱 상태 */
+/** 핫픽스 9 확인용: 두 덱이 동시에 소리 나는가 (겹침 측정) */
+export const overlapNow = () => decks.length === 2 && decks.every((d) => !d.el.paused && (d.gain?.gain.value ?? 0) > 0.01);
 export const deckState = () => ({
   scene,
   resting,

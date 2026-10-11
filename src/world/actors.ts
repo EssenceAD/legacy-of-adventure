@@ -464,8 +464,8 @@ export function queueChemTalk(f: Actor, s: Actor, lv: number) {
   queueEvent(() =>
     uiHooks.talk([
       ['narr', `「${pair.name}」 ${f.name} & ${s.name} — 친밀도 ${lv}단계!`],
-      [f.kind, t[0], undefined, f.name],
-      [s.kind, t[1], undefined, s.name],
+      ['@' + f.id, t[0]],
+      ['@' + s.id, t[1]],
     ]),
   );
 }
@@ -579,7 +579,7 @@ function propose(a: Actor) {
     const regs = regularsCount();
     uiHooks.talk(
       [
-        [a.kind, `${S.innName || '여관'}… 정말 마음에 들어요. 여기 눌러앉아도 될까요?`, undefined, a.name],
+        ['@' + a.id, `${S.innName || '여관'}… 정말 마음에 들어요. 여기 눌러앉아도 될까요?`],
         ['narr', `단골이 되면 원정에 보낼 수 있어요. (단골 ${regs}/${capacity()})`],
       ],
       undefined,

@@ -12,7 +12,7 @@ import { removeSpectacle, spawn, spectacleAt, spectacles, tickSpectacle, type Sp
 import { tour } from '../world/evalTour';
 import { placing } from '../world/town';
 import { sx, sy } from '../engine/iso';
-import { isTalking, talk } from './dialogue';
+import { isTalking, speakerOf, talk } from './dialogue';
 import { esc, fmt } from './common';
 import { closeWin, isWinOpen, openWin, toast } from './windows';
 
@@ -40,7 +40,7 @@ export function resolve(s: Spectacle) {
   const [a, b] = s.actors;
   switch (s.kind) {
     case 'quarrel':
-      return ask([[a.kind, `${b.name}, 그 자리 내가 먼저 맡았거든?`, undefined, a.name], [b.kind, '무슨 소리! 내가 먼저 앉았다고!', undefined, b.name]], [
+      return ask([[speakerOf(a), `${b.name}, 그 자리 내가 먼저 맡았거든?`], [speakerOf(b), '무슨 소리! 내가 먼저 앉았다고!']], [
         { label: '말린다', fn: () => {
           for (const x of s.actors) x.mood = Math.min(100, x.mood + SP.calmMood);
           addRep(1);
@@ -62,7 +62,7 @@ export function resolve(s: Spectacle) {
         { label: '못 본 척', fn: () => solved(s) },
       ]);
     case 'confess':
-      return ask([[a.kind, `${b.name}… 사실 처음 본 날부터…`, undefined, a.name], ['narr', `${b.name}의 얼굴이 빨개졌다.`]], [
+      return ask([[speakerOf(a), `${b.name}… 사실 처음 본 날부터…`], ['narr', `${b.name}의 얼굴이 빨개졌다.`]], [
         { label: '응원한다', fn: () => {
           const ok = addBond(a, b, 10);
           for (const x of s.actors) {
@@ -101,7 +101,7 @@ export function resolve(s: Spectacle) {
     case 'sleepy':
       return ask([['narr', `${a.name}이(가) 벤치에 곯아떨어져 코를 곤다.`]], [
         { label: '깨운다', fn: () => {
-          talk([[a.kind, pick(SLEEPY), undefined, a.name]]);
+          talk([[speakerOf(a), pick(SLEEPY)]]);
           a.mood = Math.min(100, a.mood + 5);
           solved(s, `${inn()}에서 드워프가 또 곯아떨어졌대`);
         } },

@@ -212,7 +212,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   const rogue = members.find((m) => m.kind === 'rogue');
   if (rogue && Math.random() < 0.3) {
-    extra.push([rogue.kind, win ? `${rogue.name}${josa(rogue.name, '가')} 그림자처럼 숨어들어 경비를 따돌렸다! (은밀 성공)` : `${rogue.name}${josa(rogue.name, '가')} 몰래 지나가다 깡통을 찼다… (은밀 실패)`, rogue.name]);
+    extra.push(['narr', win ? `${rogue.name}${josa(rogue.name, '가')} 그림자처럼 숨어들어 경비를 따돌렸다! (은밀 성공)` : `${rogue.name}${josa(rogue.name, '가')} 몰래 지나가다 깡통을 찼다… (은밀 실패)`]);
     if (win) legendHooks.req('stealthSuccess');
   }
   if (win && q.region === 'forest' && members.some((m) => m.legendId === 'luna') && Math.random() < 0.4) {
@@ -251,7 +251,8 @@ function buildReport(members: Actor[], region: RegionId, win: boolean, items: { 
   const lines: [string, string, string?][] = [];
   lines.push(['narr', fill(pick(REGION_OPEN[region]), a.name, b.name, reg)]);
   const c = pick(members);
-  lines.push([c.heroId ? 'hero_' + c.heroId : c.kind, fill(pick(CLASS_EVENT[c.kind as GuestKind] ?? CLASS_EVENT.knight), c.name, b.name, reg), c.name]);
+  // 핫픽스 9: 「○○가 …했다」는 그 사람의 대사가 아니라 서술 — narr
+  lines.push(['narr', fill(pick(CLASS_EVENT[c.kind as GuestKind] ?? CLASS_EVENT.knight), c.name, b.name, reg)]);
   // 짝이 같이 갔으면 케미 문장
   outer: for (const x of members)
     for (const y of members)

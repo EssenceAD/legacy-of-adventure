@@ -321,7 +321,7 @@ function addMob(f: Field, id: string, x: number, y: number, o: { delay?: number;
   const max = Math.round(mobBaseHp(f.rec, f.stage, avgPow(f)) * d.hp * (o.hpMul ?? 1));
   const u: Unit = {
     id: f.nextId++, team: 'mob', mon: id, x, y, vx: 0, vy: 0, r: d.r + (o.elite ? 0.08 : 0), hp: max, max, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: Math.random(), dead: false, deadT: 0,
-    st: 'spawn', stT: o.delay ?? 0.45, atk: (C.mobAtk + f.rec * C.mobAtkK * d.atk) * (o.atkMul ?? 1), speed: d.speed * (o.elite ? 1.1 : 1), elite: o.elite, minion: o.minion,
+    st: 'spawn', stT: o.delay ?? 0.45, atk: (C.mobAtk + f.rec * C.mobAtkK * d.atk) * (o.atkMul ?? 1), speed: d.speed * (o.elite ? 1.1 : 1) * C.mobSpeed, elite: o.elite, minion: o.minion,
   };
   f.units.push(u);
   f.fx.push({ kind: 'puff', x, y, t: 0, dur: 0.5, big: true });
@@ -379,7 +379,7 @@ function spawnElite(f: Field) {
 export function spawnBoss(f: Field, look: BossLook, hp: number, x: number, y: number) {
   const u: Unit = {
     id: f.nextId++, team: 'mob', mon: look.id, x, y, vx: 0, vy: 0, r: look.r, hp, max: hp, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
-    st: 'spawn', stT: 1, atk: (C.mobAtk + f.rec * C.mobAtkK) * C.bossAtk, speed: 1.2, boss: look, pat: 0,
+    st: 'spawn', stT: 1, atk: (C.mobAtk + f.rec * C.mobAtkK) * C.bossAtk, speed: 1.2 * C.mobSpeed, boss: look, pat: 0,
   };
   f.units.push(u);
   f.elite = u;
@@ -797,7 +797,7 @@ function aiAlly(f: Field, u: Unit, dt: number) {
 function moveToward(_f: Field, u: Unit, x: number, y: number, dt: number) {
   const [nx, ny] = norm(x - u.x, y - u.y);
   // 화면 속도로 맞춘 이동 속도 (가로·세로 고르게)
-  const sp = C.move * 0.75;
+  const sp = C.move * 0.75 * (C.jobMove[u.job!] ?? 1);
   u.x += nx * sp * dt * 0.62;
   u.y += ny * sp * dt * 0.62;
   u.ax = nx;
@@ -1073,7 +1073,7 @@ export function step(f: Field, dt: number) {
             const [nx, ny] = norm(wx, wy);
             // 화면에서 같은 빠르기: 세로로 갈 때 월드 거리가 더 길다
             const scr = Math.hypot(screenDx(nx, ny), ((nx + ny) * TH) / 2) || 1;
-            const sp = (C.move * 16 * Math.min(1, m)) / scr;
+            const sp = (C.move * (C.jobMove[u.job!] ?? 1) * 16 * Math.min(1, m)) / scr;
             u.x += nx * sp * dt;
             u.y += ny * sp * dt;
             if ((u.swing ?? 0) <= 0) {

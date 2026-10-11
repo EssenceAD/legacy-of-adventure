@@ -1046,3 +1046,26 @@ body.winopen #title :is(.tbtns,.ver,#tSpk){pointer-events:none}
 /* 핫픽스 8 (2-6): 타이틀 화면에서 뜨는 대화(모모 편지 등)도 타이틀 UI·창보다 위 */
 #view:has(#title:not([hidden]):not(.out)) #dlg{z-index:34}
 #view:has(#title:not([hidden]):not(.out)) #namebox{z-index:35}
+/* ── 핫픽스 9 ── */
+/* 서술(narr): 이름표·초상화 없이 가운데 · 기울임 · 연한 금색 (소설 지문) */
+#dlg.narr #dText{font-style:italic;color:#f0d890;text-align:center}
+/* 말풍선: 불투명 (뒤 글자가 비치지 않게) */
+.bub{background:#fff6e0;opacity:1}
+/* 상태 카드: 1줄 이름 + 전투력 · 2줄 금화 | 날짜 시각(줄바꿈 금지) | ★ */
+.stat .r1{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;white-space:nowrap}
+.stat .r1>span{white-space:nowrap;display:flex;align-items:center;gap:4px;min-width:0}
+.stat .r1 #dayv{justify-content:center;text-align:center}
+.stat .r1 #gold{white-space:nowrap}
+/* 이웃 방문: 내 마을 HUD 숨김 · 방문 전용 HUD */
+body.visiting :is(.top .stat,#mission,#evalbar,#bHarm,#hSpk,nav.dk,#runbar,#chatlog,#pcard){display:none!important}
+#visitbar{top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;transform:none;justify-content:space-between;padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;z-index:6}
+#visitbar .vtxt{display:flex;flex-direction:column;min-width:0}
+#visitbar .vtxt b{font-size:var(--f-ui);color:var(--gold);overflow:hidden;text-overflow:ellipsis}
+#visitbar .vtxt small{font-size:var(--f-small);color:#c9d0ee;overflow:hidden;text-overflow:ellipsis}
+#visitbar #vLike{flex:none;min-height:40px;padding:4px 12px}
+html:not([data-size="phone"]) #visitbar{left:50%;right:auto;transform:translateX(-50%);min-width:360px}
+#visitfoot{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:grid;grid-template-columns:3fr 2fr;gap:8px;z-index:6}
+#visitfoot[hidden]{display:none}
+#visitfoot .bigbtn{min-height:48px;font-size:var(--f-ui)}
+html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translateX(-50%);width:420px}
+.stat .r1{column-gap:14px}.stat .r1 #dayv{padding:0 2px;color:#c9d0ee}

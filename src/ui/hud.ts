@@ -321,6 +321,7 @@ export function initHud() {
   $('#placeOk').onclick = confirmPlace;
   $('#vLike').onclick = game.likeNeighbor;
   $('#vHome').onclick = game.goHome;
+  $('#vNext').onclick = game.nextNeighbor;
 }
 
 /** 마을 아래 원정 진행 바: 나가 있는 파티마다 남은 시간 (누르면 진행 일지 · 끝났으면 보고서) */
@@ -418,7 +419,8 @@ export function tickHud() {
   if (S.gold !== shownGold) {
     const up = S.gold > shownGold && shownGold >= 0;
     shownGold = S.gold;
-    $('#goldv').textContent = fmt(S.gold);
+    // 핫픽스 9: 100만이 넘으면 「1.2M」로 줄여 상태 카드 줄이 안 갈리게
+    $('#goldv').textContent = S.gold >= 1e6 ? (S.gold / 1e6).toFixed(S.gold >= 1e7 ? 0 : 1) + 'M' : fmt(S.gold);
     if (up) {
       const g = $('#gold');
       g.classList.remove('bump');

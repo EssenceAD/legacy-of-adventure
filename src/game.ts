@@ -363,11 +363,25 @@ export function visit(v: Neighbor) {
     rebuildPaths();
     spawnExtras();
     resetCamera();
+    // 핫픽스 9: 방문 중엔 내 마을 HUD를 숨기고 방문 전용 HUD (위 카드 1장 · 아래 「← 내 마을로」 「다음 이웃 ›」)
+    document.body.classList.add('visiting');
     $('#visitbar').hidden = false;
-    $('#vName').textContent = `${v.name} · ${v.title ? `「${v.title}」 ` : ''}${v.owner} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
+    $('#visitfoot').hidden = false;
+    $('#vName').textContent = v.name;
+    $('#vSub').textContent = `${v.title ? `「${v.title}」 ` : ''}주인 ${v.owner} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
   });
+}
+
+/** 핫픽스 9: 「다음 이웃 ›」 차례 (이웃 목록 창이 채운다) */
+let visitList: Neighbor[] = [];
+export const setVisitList = (l: Neighbor[]) => (visitList = l);
+export function nextNeighbor() {
+  const v = S.visiting;
+  const list = visitList.length ? visitList : NEIGHBORS;
+  const i = v ? list.findIndex((x) => x.id === v.id && x.uid === v.uid) : -1;
+  visit(list[(i + 1) % list.length]);
 }
 
 export function updateLike() {
@@ -406,6 +420,8 @@ export function goHome() {
     rebuildPaths();
     resetCamera();
     $('#visitbar').hidden = true;
+    $('#visitfoot').hidden = true;
+    document.body.classList.remove('visiting');
     $('#bVillage .lbl').textContent = '마을';
   });
 }
@@ -414,7 +430,7 @@ export function goHome() {
 
 export function syncHud() {
   $('#innv').textContent = S.innName || '여관';
-  $('#dayv').textContent = `${S.day}일차 · ${String(hourNow()).padStart(2, '0')}시`;
+  $('#dayv').textContent = `${S.day}일차 ${String(hourNow()).padStart(2, '0')}시`;
   $('#starv').textContent = '★' + stars();
   // 핫픽스 7: 아이콘 + 짧은 글자 (누르면 바뀌는 쪽을 보여 준다)
   $('#bDNi').textContent = S.night ? '☀' : '☾';

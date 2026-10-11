@@ -71,6 +71,9 @@ import { maybeAlarm } from './world/raid';
 import { starHit } from './world/render';
 import { floatW } from './world/fx';
 import { talk } from './ui/dialogue';
+import { NEIGHBORS } from './data/neighbors';
+import { say } from './world/fx';
+import type { TalkLine } from './world/state';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -480,6 +483,10 @@ async function boot() {
       __teaserCut: teaserCut,
       __audio: { engine: audioEngine, music: audioMusic, sfx: audioSfx, battle: battleMusic },
       __event: forceSpectacle,
+      // 핫픽스 9 확인용: 대화 · 이웃 목록 · 손님 모두 한마디
+      __uiTalk: (lines: TalkLine[]) => talk(lines),
+      __neighbors: NEIGHBORS,
+      __sayAll: () => world.actors.filter((a) => !a.role && !a.hidden).forEach((a, i) => say(a, ['방 좋네~', '제가 지켜드릴게요', '오늘 던전 갈까?', '배고프다…', '이 마을 맘에 들어', '주인장 최고!'][i % 6])),
       __events: spectacles,
       __resolve: resolveSpectacle,
       __harm: { sets: harmonySets, computeSets, checkDiscover, props: propsNow, openPropInfo },
