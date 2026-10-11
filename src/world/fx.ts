@@ -4,6 +4,7 @@ import { META } from '../engine/assets';
 import { scr, sx, sy, TW, view } from '../engine/iso';
 import { P } from '../engine/pixel';
 import type { Actor, Building } from './state';
+import { saverOn } from '../engine/fps';
 
 interface Part {
   x: number;
@@ -18,12 +19,18 @@ interface Part {
 /** 입자 좌표는 월드 원점 기준 논리 픽셀 */
 let parts: Part[] = [];
 
+/** 짓기·철거·땅 넓히기 먼지 같은 한 번짜리 연출이 도는 중인가 (굴뚝 연기처럼 늘 있는 입자는 빼고) */
+let burstUntil = 0;
+export const burstOn = () => performance.now() < burstUntil;
 export function puff(x: number, y: number, c: string, vx: number, vy: number, life: number, size: number) {
+  // 핫픽스 11: 배터리 절약이면 입자 절반
+  if (saverOn() && Math.random() < 0.5) return;
   parts.push({ x, y, vx, vy, life, max: life, c, size });
 }
 
 /** 건물 발치에서 먼지 n개 */
-export function puffAt(o: Building, c: string, n: number) {
+export function puffAt(o: Building, c: string, n: number, burst = true) {
+  if (burst) burstUntil = performance.now() + 1500;
   const X = sx(o.tx, o.ty) + ((o.fw - o.fh) * TW) / 4;
   const Y = sy(o.tx + o.fw, o.ty + o.fh);
   for (let i = 0; i < n; i++) puff(X + (Math.random() - 0.5) * o.fw * 20, Y - 4, c, (Math.random() - 0.5) * 16, -8 - Math.random() * 10, 0.7, 2);

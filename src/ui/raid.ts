@@ -25,6 +25,7 @@ import { closeWin, openWin, toast } from './windows';
 import { RAID_LOOK_OF, RAID_LOOKS, type BossLook } from '../combat/mons';
 import { abs } from './kit';
 import { closeCombat, startCombat } from '../combat/ui';
+import { skipFrame } from '../engine/fps';
 
 const R = CONFIG.raid;
 /** 보스 기본 x · 돌진 거리 (장면 356×200 기준) */
@@ -650,6 +651,11 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     if (wasOn && !S.on && !ended) finish();
   };
   const frame = (now: number) => {
+    // 핫픽스 11: 최대 60fps (배터리 절약 30)
+    if (skipFrame(last, now)) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     tickBattle(dt);

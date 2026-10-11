@@ -17,7 +17,7 @@ import { openDex, openGoals, openLedger } from './book';
 import { openChat, rumorEnabled, setRumor } from './chat';
 import { setSettle, settleOn } from './daily';
 import { bindSoundSettings, soundSettingsHtml } from './sound';
-import { $, $$, esc, fmt } from './common';
+import { $, $$, claimOrder, esc, fmt, keepScroll } from './common';
 import { openBoard } from './expedition';
 import { openBag, openGuests } from './guests';
 import { openHunt } from './hunt';
@@ -29,7 +29,8 @@ import { openAlbum, openGifts, openOwner, openTies } from './owner';
 import { openRank } from './rank';
 import { screen, setFontStep } from './screen';
 import { closeWin, helpHook, openReport, openWin, toast } from './windows';
-import { setTelemetry, telemetryOn } from '../net/telemetry';
+import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
+import { saverOn, setSaver } from '../engine/fps';
 
 const has = (k: string) => (world.home?.objs ?? world.objs).some((o) => o.kind === k && o.build === undefined);
 
@@ -152,7 +153,13 @@ export function openGuideList() {
 // ───────── 업적 ─────────
 
 export function openAchieve() {
-  const rows = ACHIEVEMENTS.map((d) => {
+  // 핫픽스 11 §9-1: 받기 가능 → 진행 중(진행률 순) → 받음
+  const sorted = claimOrder(ACHIEVEMENTS, (d) => {
+    const pr = achProgress(d);
+    return { ready: pr.done && !pr.claimed, got: pr.claimed, ratio: pr.cur / Math.max(1, pr.need) };
+  });
+  const readyIds = sorted.filter((d) => achProgress(d).done && !achProgress(d).claimed).map((d) => d.id);
+  const rows = sorted.map((d) => {
     const v = achVisible(d);
     const pr = achProgress(d);
     const rw = [d.reward.gold ? `금화 ${fmt(d.reward.gold)}` : '', d.reward.dust ? `가루 ${d.reward.dust}` : '', d.reward.title ? `칭호 「${d.reward.title}」` : ''].filter(Boolean).join(' · ');
@@ -161,14 +168,27 @@ export function openAchieve() {
       ${pr.claimed ? '<em>받음</em>' : pr.done ? `<button data-a="${d.id}">받기</button>` : ''}</div>`;
   }).join('');
   const got = P.meta.ach.length;
-  openWin('업적', `<p class="sub">${got}/${ACHIEVEMENTS.length} · 받을 수 있는 업적 ${achReady()}개</p><div class="alist">${rows}</div>`);
+  openWin('업적', `<p class="sub">${got}/${ACHIEVEMENTS.length} · 받을 수 있는 업적 ${achReady()}개</p>${readyIds.length >= 2 ? `<button class="bigbtn sm claimall" id="aAll">모두 받기 (${readyIds.length})</button>` : ''}<div class="alist">${rows}</div>`);
+  const aa = document.getElementById('aAll');
+  if (aa)
+    aa.onclick = () => {
+      let gold = 0;
+      let dust = 0;
+      for (const id of readyIds) {
+        const r = claimAch(id);
+        gold += r?.gold ?? 0;
+        dust += r?.dust ?? 0;
+      }
+      toast(`업적 보상 ${readyIds.length}개 · ${[gold ? `금화 +${fmt(gold)}` : '', dust ? `가루 +${dust}` : ''].filter(Boolean).join(' · ') || '칭호'}`);
+      keepScroll(openAchieve);
+    };
   $$('[data-a]').forEach(
     (b) =>
       (b.onclick = () => {
         const r = claimAch(b.dataset.a!);
         if (!r) return;
         toast(`업적 보상 · ${[r.gold ? `금화 +${fmt(r.gold)}` : '', r.dust ? `가루 +${r.dust}` : '', r.title ? `칭호 「${r.title}」` : ''].filter(Boolean).join(' · ')}`);
-        openAchieve();
+        keepScroll(openAchieve);
       }),
   );
 }
@@ -282,7 +302,7 @@ export function openShop() {
 export function openSettings() {
   openWin(
     '설정',
-    `${soundSettingsHtml()}<div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
+    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p></div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu"><label class="tog"><input type="checkbox" id="mAuto" ${P.autoSalvage ? 'checked' : ''}> 가방이 차면 일반 장비 자동 분해</label><label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
@@ -299,6 +319,10 @@ export function openSettings() {
     markDirty();
   };
   ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
+  ($('#mSaver') as HTMLInputElement).onchange = (e) => {
+    setSaver((e.target as HTMLInputElement).checked);
+    trackEv('saver', { on: saverOn() });
+  };
   $('#mLetter').onclick = () => openReport();
   bindSoundSettings();
   ($('#mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
@@ -324,7 +348,7 @@ export const MANUAL: { key: string; icon: IconKey; title: string; lines: string[
   { key: 'build', icon: 'm_smith', title: '건설 · 땅', lines: ['아래 「건설」에서 건물을 골라 원하는 칸에 지어요.', '잠긴 건물은 무엇을 하면 열리는지 적혀 있어요 (땅 단계 · 평판 · 장부).', '땅 넓히기는 평판 별이 필요해요.'] },
   { key: 'guests', icon: 'm_guests', title: '손님 · 단골', lines: ['손님은 기분이 좋으면 떠날 때 단골이 되겠다고 해요.', '단골은 원정·사냥·토벌에 데려갈 수 있어요.', '손님을 눌러 말을 걸면 기분이 조금 좋아져요.'] },
   { key: 'expedition', icon: 'm_expedition', title: '원정', lines: ['의뢰 게시판에서 의뢰를 골라 파티를 보내요.', '짧은 원정(1분)은 자주, 긴 원정은 잘 때.', '진행 바를 누르면 원정 일지를 볼 수 있어요.'] },
-  { key: 'hunt', icon: 'm_hunt', title: '사냥', lines: ['지역마다 10스테이지, x-10은 지역 보스.', '깬 스테이지는 「자동 사냥」으로 반복 · 꺼 둬도 방치 보상.', '전투력이 모자라면 장비·레벨·케미로 올리고 다시!'] },
+  { key: 'hunt', icon: 'm_hunt', title: '사냥', lines: ['지역마다 10스테이지, x-10은 지역 보스.', '깬 스테이지는 「맡겨 두기」로 마을에서 계속 사냥 · 꺼 둬도 방치 보상.', '전투력이 모자라면 장비·레벨·케미로 올리고 다시!'] },
   { key: 'raid', icon: 'm_raid', title: '토벌', lines: ['매주 월요일 보스가 바뀌어요. 체력은 주간 동안 이어서 깎여요.', '번쩍이면 막기를 꾹 — 완벽하게 막으면 보스가 기절.', '한 판 피해량으로 주간 랭킹에 올라요.'] },
   { key: 'smith', icon: 'm_smith', title: '대장간', lines: ['분해 → 가루 → 강화(+10까지), 재료로 세트 장비 제작.', '지역 보스 재료는 사냥 x-10과 토벌에서 얻어요.'] },
   { key: 'dex', icon: 'm_dex', title: '도감', lines: ['손님·아이템·케미·영웅을 모으면 모든 전투력이 올라요.', '도감 하나를 100% 채우면 유산의 기념비가 열려요.'] },

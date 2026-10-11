@@ -19,6 +19,7 @@ import {
   best, clearStage, failStage, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, stageOpen, stopAuto, sweepStage, type HuntReward,
 } from '../world/hunt';
 import { markDirty, P, type Actor } from '../world/state';
+import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
 import { $, $$, esc, fmt, itemCell, nameTag, pic } from './common';
 import { iconSrc } from './kit';
@@ -435,6 +436,11 @@ export function startHunt(r: RegionId, s: number, members: Actor[], manual: bool
     draw();
   };
   const frame = (now: number) => {
+    // 핫픽스 11: 최대 60fps (배터리 절약 30)
+    if (skipFrame(last, now)) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     tick(dt);

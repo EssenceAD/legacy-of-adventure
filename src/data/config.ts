@@ -48,6 +48,16 @@ export const CONFIG = {
     updateStep: 1 / 30,
     /** 창(건설·땅·손님…)이 열려 있는 동안 마을 그리기 간격 (초) — 30fps. 0.002는 rAF 흔들림 여유 */
     drawStepWhileWindow: 1 / 30 - 0.002,
+    /** 핫픽스 11 발열: 마을 그리기 fps · 손 안 댄 지 idleAfterSec초 뒤 · 배터리 절약(idle) · 전투·토벌·티저 상한 */
+    drawFpsVillage: 30,
+    drawFpsIdle: 15,
+    idleAfterSec: 60,
+    drawFpsSaver: 20,
+    drawFpsSaverIdle: 10,
+    drawFpsBattle: 60,
+    drawFpsBattleSaver: 30,
+    /** 창이 마을 화면의 이 비율 이상을 덮으면 마을을 그리지 않는다 */
+    coverRatio: 0.92,
   },
   /** 땅 넓히기 5단계: 울타리 범위 [시작, 끝) 과 비용 */
   land: [

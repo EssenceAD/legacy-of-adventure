@@ -1088,6 +1088,7 @@ html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translate
 #runbar .hline.fold.done{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:rdy 1s steps(2) infinite}#runbar .hline.fold.done b{color:var(--gold)}
 /* 사냥 전투: 접기 (보너스 없음 안내) */
 .cbtop .cbfold{display:flex;flex-direction:column;align-items:center;line-height:1.1}.cbtop .cbfold small{font-size:calc(var(--f-small) * .8);color:#ffb0a8}
+.claimall{width:100%;margin:0 0 8px}
 /* 손님 창: 단골 진행 (§15) */
 .regsum{margin:0 0 6px}.regsum b{color:var(--gold)}
 .glist .regp{display:block;color:#9aa6d8;white-space:normal;overflow-wrap:anywhere}.glist .regp.good{color:#ffd8e6}
@@ -1099,3 +1100,11 @@ html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translate
 #updPop .updl{margin:0;padding-left:18px;color:#cfd8ff;font-size:var(--f-small)}#updPop .updl li{margin:2px 0}
 #updPop .updf{margin:0;text-align:center;color:#ffb070;font-size:var(--f-small)}
 #updPop .updb{display:flex;flex-direction:column;gap:8px;margin-top:4px}#updPop .updb .bigbtn{width:100%;margin:0;min-height:44px}
+/* 핫픽스 11 §6-1: 금화 칸이 늘면 날짜 칸이 줄어든다 (넘치는 글자는 dayfit.ts가 짧게 바꾼다) */
+.stat .r1{grid-template-columns:auto minmax(0,1fr) auto}
+.stat .r1 #dayv{overflow:hidden;min-width:0;display:block}
+html[data-size="phone"] .stat .r1{column-gap:6px}
+.stat .r1 #dayv.tight{font-size:calc(var(--f-ui) * .8);letter-spacing:-.5px}
+/* 핫픽스 11 §6-2: 「새 버전」 띠는 위쪽 버튼(소식·밤·메뉴·어울림·소리)을 가리지 않게 아래 독 바로 위로 */
+#updBar{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 86px + 4px);max-width:calc(100% - 24px);white-space:nowrap}
+html:not([data-size="phone"]) #updBar{bottom:calc(env(safe-area-inset-bottom,0px) + 132px + 4px)}

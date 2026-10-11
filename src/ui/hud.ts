@@ -20,6 +20,7 @@ import { syncGuide } from './guide';
 import { autoTick } from '../world/hunt';
 import { iconSrc } from './kit';
 import { openHunt, unfoldHunt } from './hunt';
+import { fitDay } from './dayfit';
 import { foldInfo } from '../combat/ui';
 import { openGuests } from './guests';
 import { openVillage } from './neighbors';
@@ -425,6 +426,7 @@ export function tickHud() {
     if (hr && (hr.items.length || hr.levelUps.length)) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>맡겨 둔 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
+    fitDay();
   }
   if (S.gold !== shownGold) {
     const up = S.gold > shownGold && shownGold >= 0;

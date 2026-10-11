@@ -37,6 +37,7 @@ for (const name of which === 'all' ? Object.keys(DEV) : [which]) {
   const out = [];
   const ok = (c, m) => {
     out.push((c ? '✓ ' : '✗ ') + m);
+    if (process.env.LIVE) console.error((c ? '✓ ' : '✗ ') + m);
     if (!c) fail++;
   };
   const vis = (s) => p.evaluate((s) => { const e = document.querySelector(s); return !!e && !e.hidden && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden'; }, s);

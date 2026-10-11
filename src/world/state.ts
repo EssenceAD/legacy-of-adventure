@@ -338,6 +338,8 @@ export function freshProgress() {
     fastSlots: 0,
     fastRescued: false,
     fastHintN: 0,
+    /** 핫픽스 11: 폰에서 20분 넘게 하면 「배터리 절약」 안내 한 번 (계정당) */
+    saverHint: false,
     /** 마지막으로 켜 있던 현실 시각 (방치 계산) */
     lastSeen: Date.now(),
     /** 게임 시간으로 마지막 손님 도착 판정 시각 (게임 시) */

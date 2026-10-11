@@ -322,6 +322,7 @@ const warmQueue: [Drawable, number][] = [];
 export function queueTintWarmup(imgs: Drawable[]) {
   for (let lv = CONFIG.dayNight.tintSteps; lv >= 1; lv--) for (const im of imgs) warmQueue.push([im, lv]);
 }
+export const tintWarmPending = () => warmQueue.length > 0;
 export function pumpTintWarmup(budgetMs: number) {
   const end = performance.now() + budgetMs;
   while (warmQueue.length && performance.now() < end) {

@@ -17,6 +17,7 @@ import { findKind } from '../world/town';
 import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
+import { skipFrame } from '../engine/fps';
 
 /** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
 function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
@@ -288,6 +289,11 @@ function pulse(sel: string) {
 
 function frame(now: number) {
   if (!on) return;
+  // 핫픽스 11: 최대 60fps (배터리 절약 30)
+  if (skipFrame(lastPerf, now)) {
+    raf = requestAnimationFrame(frame);
+    return;
+  }
   const mt = skipped ? null : teaserTime();
   if (mt != null) t = mt;
   else t += Math.min(0.1, (now - lastPerf) / 1000);

@@ -7,12 +7,13 @@ import { lookAt, N, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
 import { addOwner, addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
-import { hourNow, settleNight } from './world/clock';
+import { settleNight } from './world/clock';
 import { clearEvents, queueEvent } from './world/events';
 import { ensureQuests } from './world/expeditions';
 import { clearBubbles, clearParts, floatW, puff, puffAt } from './world/fx';
 import { itemById } from './world/items';
 import { computeOffline } from './world/offline';
+import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
 import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
@@ -462,7 +463,7 @@ export function goHome() {
 
 export function syncHud() {
   $('#innv').textContent = S.innName || '여관';
-  $('#dayv').textContent = `${S.day}일차 ${String(hourNow()).padStart(2, '0')}시`;
+  fitDay(true);
   $('#starv').textContent = '★' + stars();
   // 핫픽스 7: 아이콘 + 짧은 글자 (누르면 바뀌는 쪽을 보여 준다)
   $('#bDNi').textContent = S.night ? '☀' : '☾';

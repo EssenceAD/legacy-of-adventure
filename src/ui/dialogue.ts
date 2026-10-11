@@ -33,6 +33,8 @@ const isMe = (who: string) => who === 'me' || (who === 'hero' && !!P.owner);
 
 let DQ: Talk | null = null;
 export const isTalking = () => DQ !== null;
+/** 핫픽스 11: 글자가 찍히는 중 (타자 효과) — 이때는 마을 그리기를 늦추지 않는다 */
+export const isTyping = () => !!DQ?.typing;
 /** 인연 이벤트(초상화 마주보기) 중 — 배경음악 「마주 앉은 밤」 */
 export const isDuo = () => !!DQ?.duo;
 export const isBondUp = () => !!DQ?.bondUp;

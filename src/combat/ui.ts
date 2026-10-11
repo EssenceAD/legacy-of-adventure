@@ -7,6 +7,7 @@ import { pic } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
 import { uiHooks, type Actor, type Item } from '../world/state';
+import { skipFrame } from '../engine/fps';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
@@ -263,6 +264,11 @@ function tick(dt: number) {
 }
 function frame(now: number) {
   if (!F || !root) return;
+  // 핫픽스 11: 최대 60fps (배터리 절약 30) — 120Hz 화면에서 120번 그리지 않게
+  if (skipFrame(last, now)) {
+    raf = requestAnimationFrame(frame);
+    return;
+  }
   // rAF 시각은 performance.now()보다 조금 앞설 수 있다 (음수 dt 금지)
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000 || 0));
   last = now;

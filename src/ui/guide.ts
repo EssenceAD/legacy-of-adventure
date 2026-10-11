@@ -32,6 +32,7 @@ export function initGuide() {
   // 손가락: 0.4초마다 두 그림을 바꿔 톡톡
   let f = 0;
   setInterval(() => {
+    if (document.hidden) return;
     f ^= 1;
     const h = document.getElementById('hand') as HTMLImageElement | null;
     if (h && !h.hidden) h.src = uiSrc(f ? 'hand_1' : 'hand_0');

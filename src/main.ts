@@ -1,7 +1,10 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
 import { CONFIG } from './data/config';
-import { alphaAt, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored } from './engine/assets';
+import { alphaAt, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
+import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
+import { tour } from './world/evalTour';
+import { anim as gradeAnim } from './world/grade';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
@@ -11,13 +14,13 @@ import { arrive, enter, fastHooks, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pumpEvents } from './world/events';
-import { posBubbles } from './world/fx';
+import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame } from './world/render';
-import { P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
+import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
-import { initDialogue, isTalking, setOnNamed } from './ui/dialogue';
+import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tickHud } from './ui/hud';
 import { initScreen, screen, setOnScreenChange } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
@@ -30,7 +33,7 @@ import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
-import { initTelemetry } from './net/telemetry';
+import { initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave } from './save/save';
 import { combatOn, foldedTick } from './combat/ui';
@@ -175,6 +178,40 @@ const mark = (k: string, t: number) => {
   return now;
 };
 
+// ───────── 핫픽스 11: 마을 그리기 간격 ─────────
+let hudAcc = 0;
+/** 화면에 움직이는 연출이 있는가 (있으면 손 안 대도 idle로 내리지 않는다) */
+const visualBusy = () => isTyping() || tour.on || spectacles.length > 0 || burstOn() || !!placing.pl || gradeAnim.on;
+function drawStep(winOpen: boolean): number {
+  const L = CONFIG.loop;
+  let fps: number;
+  if (teaserOn()) fps = saverOn() ? L.drawFpsBattleSaver : L.drawFpsBattle;
+  else {
+    const idle = idleFor() >= L.idleAfterSec && !visualBusy();
+    fps = saverOn() ? (idle ? L.drawFpsSaverIdle : L.drawFpsSaver) : idle ? L.drawFpsIdle : L.drawFpsVillage;
+    if (winOpen) fps = Math.min(fps, 30);
+  }
+  // 0.002 = rAF 흔들림 여유
+  return 1 / fps - 0.002;
+}
+/** 마을이 안 보이는가: 전투·토벌 화면이 덮고 있거나, 창이 화면 거의 전부를 덮을 때 (0.5초마다 잰다) */
+let coverAt = 0;
+let covered = false;
+function villageCovered(): boolean {
+  const now = performance.now();
+  if (now - coverAt < 500) return covered;
+  coverAt = now;
+  if (combatOn() || document.getElementById('raid') || document.getElementById('hunt')) covered = true;
+  else if (isWinOpen()) {
+    const w = document.getElementById('win')!.getBoundingClientRect();
+    const v = cv.getBoundingClientRect();
+    covered = w.width * w.height >= v.width * v.height * CONFIG.loop.coverRatio;
+  } else covered = false;
+  return covered;
+}
+/** 모드가 바뀌었을 때 (전투를 닫았다 등) 바로 다시 재게 */
+export const recheckCover = () => (coverAt = 0);
+
 function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000 || 0);
   last = now;
@@ -201,10 +238,22 @@ function tick(dt: number) {
     acc -= STEP;
   }
   t = mark('update', t);
-  // 그리기는 화면 주사율대로 — 단, 창이 열려 있으면 30fps로 낮춰 창 애니메이션에 여유를 준다
+  // 핫픽스 11: 그리기 상한 — 마을 30 · 손 안 댄 지 1분 15 · 배터리 절약 20/10 · 창 열림 30 이하
+  //  입력이 들어온 프레임은 바로 그린다 · 마을이 전부 가려져 있으면(전투·토벌·큰 창) 그리지 않는다
   drawAcc += dt;
   const winOpen = isWinOpen();
-  if (winOpen && drawAcc < CONFIG.loop.drawStepWhileWindow) return;
+  const kicked = takeKick();
+  if (villageCovered()) {
+    // 그리기는 쉬지만 HUD 일(자동 사냥 · 원정 띠 · 타이머)은 0.5초마다 그대로
+    hudAcc += dt;
+    if (hudAcc >= 0.5) {
+      hudAcc = 0;
+      tickHud();
+    }
+    drawAcc = Math.min(drawAcc, 0.25);
+    return;
+  }
+  if (!kicked && drawAcc < drawStep(winOpen)) return;
   const ddt = drawAcc;
   drawAcc = 0;
   S.T += ddt;
@@ -215,8 +264,8 @@ function tick(dt: number) {
   posBubbles();
   tickHud();
   t = mark('dom', t);
-  // 밤 색조 미리 만들기도 창이 열려 있는 동안엔 쉰다
-  if (!winOpen) pumpTintWarmup(3);
+  // 밤 색조 미리 만들기도 창이 열려 있는 동안엔 쉰다 · 다 만들었으면 부르지도 않는다
+  if (!winOpen && tintWarmPending()) pumpTintWarmup(3);
   mark('warm', t);
   const w = performance.now() - t0;
   stats.frames++;
@@ -387,6 +436,8 @@ async function boot() {
   uiHooks.rumor = rumorNow;
   uiHooks.announce = announce;
   uiHooks.shake = () => {
+    // 핫픽스 11: 배터리 절약이면 화면 흔들림 끔
+    if (saverOn()) return;
     host.classList.remove('shake');
     void host.offsetWidth;
     host.classList.add('shake');
@@ -421,6 +472,30 @@ async function boot() {
   document.getElementById('tLetter')!.onclick = () => openReport();
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   game.resumeHooks.folded = () => void settleFolded();
+  // 핫픽스 11 §5: 1분마다 성능 기록 한 줄 · §4: 폰에서 20분 넘게 하면 배터리 절약 안내 (계정당 1번)
+  let perfPrev = { f: stats.frames, w: stats.work };
+  let playMin = 0;
+  setInterval(() => {
+    if (document.hidden) {
+      perfPrev = { f: stats.frames, w: stats.work };
+      return;
+    }
+    const f = stats.frames - perfPrev.f;
+    const w = stats.work - perfPrev.w;
+    perfPrev = { f: stats.frames, w: stats.work };
+    if (!S.started) return;
+    playMin++;
+    const ua = navigator.userAgent;
+    const kind = /iPhone|iPad|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop';
+    trackEv('perf', { fps: Math.round((f / 60) * 10) / 10, workMs: Math.round((w / Math.max(1, f)) * 100) / 100, saver: saverOn(), dpr: Math.round(devicePixelRatio * 10) / 10, kind });
+    if (kind !== 'desktop' && playMin >= 20 && !P.saverHint && !saverOn()) {
+      P.saverHint = true;
+      markDirty();
+      toast('모모: 폰이 따끈하면 설정에서 배터리 절약을 켜 보세요~');
+    }
+  }, 60000);
+  // 핫픽스 11: 입력이 들어오면 idle에서 바로 깨어나 그 프레임에 그린다
+  for (const ev of ['pointerdown', 'wheel', 'keydown'] as const) addEventListener(ev, noteInput, { capture: true, passive: true });
   // 핫픽스 10 §15-3: 방이 늘었을 때 모모 한 줄 (계정당 처음 2번)
   fastHooks.roomUp = () => setTimeout(() => toast('모모: 방이 늘었어요! 기분 좋게 묵은 손님이 곧 단골을 청할 거예요~'), 2600);
   initUpdate(() => combatOn() || isTalking());
@@ -492,6 +567,7 @@ async function boot() {
       __uiTalk: (lines: TalkLine[]) => talk(lines),
       __say: say,
       __fakeUpdate: _fakeNewer,
+      __visual: () => ({ talk: isTalking(), tour: tour.on, spect: spectacles.length, burst: burstOn(), placing: !!placing.pl, grade: gradeAnim.on, idle: idleFor(), step: drawStep(isWinOpen()), saver: saverOn(), title: document.getElementById('winT')?.textContent }),
       __arrive: (status?: 'visitor' | 'passer') => arrive(makeAdventurer(0, 0, { day: S.day, status: status ?? 'visitor' })),
       __neighbors: NEIGHBORS,
       __sayAll: () => world.actors.filter((a) => !a.role && !a.hidden).forEach((a, i) => say(a, ['방 좋네~', '제가 지켜드릴게요', '오늘 던전 갈까?', '배고프다…', '이 마을 맘에 들어', '주인장 최고!'][i % 6])),
