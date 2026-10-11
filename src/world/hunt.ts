@@ -9,6 +9,7 @@ import { feature } from './guide';
 import { addRep } from './progress';
 import { addToBag, makeItem, rollGrade } from './items';
 import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type Item } from './state';
+import { track } from '../net/telemetry';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -135,7 +136,7 @@ export function failStage(r: RegionId, s: number, members: Actor[]): HuntReward 
 
 // ───────── 자동 사냥 ─────────
 
-/** 핫픽스 8 (2-10): 「자동 사냥 켜 보기」 — 사냥터의 자동 사냥 켜기 · 전투 중 AUTO 버튼(· 오토 전투로 시작) 어느 쪽이든 센다 */
+/** 핫픽스 10 (11-2): 장부 「사냥 맡겨 두기」 — 맡겨 두기(setAuto)가 성공했을 때만 센다 (전투 안 AUTO는 그냥 기능) */
 export function noteAutoUsed() {
   P.counters.huntAutoUsed++;
   markDirty();
@@ -145,12 +146,15 @@ export function setAuto(r: RegionId, s: number, members: Actor[]): string | null
   if (s > best(r)) return '깬 스테이지만 자동 사냥할 수 있어요';
   if (!members.length) return '파티를 골라요';
   if (partyPower(members) < recPower(r, s) * H.autoRatio) return `전투력이 부족해요 (추천 ${recPower(r, s)})`;
-  P.hunt.auto = { region: r, stage: s, members: members.map((m) => m.id) };
+  P.hunt.auto = { region: r, stage: s, members: members.map((m) => m.id), n: 0, gold: 0 };
   P.hunt.idleAt = Date.now();
   noteAutoUsed();
+  track('hunt_auto_on', { region: r, stage: s, power: Math.round(partyPower(members)) });
   return null;
 }
-export function stopAuto() {
+export function stopAuto(reason = 'user') {
+  const a = P.hunt.auto;
+  if (a) track('hunt_auto_off', { reason, region: a.region, stage: a.stage, n: a.n ?? 0, gold: a.gold ?? 0 });
   P.hunt.auto = null;
   markDirty();
 }
@@ -164,11 +168,14 @@ export function autoTick(now = Date.now()): HuntReward | null {
   P.hunt.idleAt = now;
   const ms = autoMembers().filter((m) => m.runId == null);
   if (!ms.length || partyPower(ms) < recPower(a.region, a.stage) * H.autoRatio) {
-    stopAuto();
-    uiHooks.toast('자동 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)');
+    stopAuto(ms.length ? 'power' : 'party');
+    uiHooks.toast('맡겨 둔 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)');
     return null;
   }
-  return clearStage(a.region as RegionId, a.stage, ms);
+  const out = clearStage(a.region as RegionId, a.stage, ms);
+  a.n = (a.n ?? 0) + 1;
+  a.gold = (a.gold ?? 0) + out.gold;
+  return out;
 }
 
 export interface IdleHunt {

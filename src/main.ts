@@ -7,7 +7,7 @@ import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
-import { enter, updActors } from './world/actors';
+import { arrive, enter, fastHooks, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pumpEvents } from './world/events';
@@ -29,11 +29,11 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
-import { APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
+import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
 import { initTelemetry } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave } from './save/save';
-import { combatOn } from './combat/ui';
+import { combatOn, foldedTick } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
@@ -55,13 +55,13 @@ import * as SYNC from './net/sync';
 import { checkLastWeek, dailyStats, startCloud } from './net/sync';
 import { dailyOwner, nightOwner } from './world/owner';
 import * as OWN from './world/owner';
-import { powerOf } from './world/adventurers';
+import { makeAdventurer, powerOf } from './world/adventurers';
 import { initOwnerUi, openOwner } from './ui/owner';
 import { initKit } from './ui/kit';
 import { initGuide } from './ui/guide';
 import { gradeDev, startGradeAnim, stepGradeAnim } from './world/grade';
 import { navHooks } from './ui/nav';
-import { _huntAdvance, openHunt } from './ui/hunt';
+import { _huntAdvance, openHunt, settleFolded } from './ui/hunt';
 import { openDex, openGoals } from './ui/book';
 import { skipDone } from './world/guide';
 import { afterLogin } from './ui/account';
@@ -183,6 +183,8 @@ function frame(now: number) {
 }
 
 function tick(dt: number) {
+  // 핫픽스 10 §13: 접어 둔 사냥은 마을 시간대로 마저 진행
+  foldedTick(dt);
   stepGradeAnim(dt);
   tickHarmony(dt);
   tickEval(dt);
@@ -418,7 +420,10 @@ async function boot() {
 
   document.getElementById('tLetter')!.onclick = () => openReport();
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
-  initUpdate(() => combatOn());
+  game.resumeHooks.folded = () => void settleFolded();
+  // 핫픽스 10 §15-3: 방이 늘었을 때 모모 한 줄 (계정당 처음 2번)
+  fastHooks.roomUp = () => setTimeout(() => toast('모모: 방이 늘었어요! 기분 좋게 묵은 손님이 곧 단골을 청할 거예요~'), 2600);
+  initUpdate(() => combatOn() || isTalking());
   // 핫픽스 8 (2-9): 전투·티저 중엔 마을 소리·알림을 미룬다
   setBusy(() => combatOn() || teaserOn());
   // 밤샘 ④-3: 플레이 기록 (설정에서 끌 수 있음)
@@ -486,6 +491,8 @@ async function boot() {
       // 핫픽스 9 확인용: 대화 · 이웃 목록 · 손님 모두 한마디
       __uiTalk: (lines: TalkLine[]) => talk(lines),
       __say: say,
+      __fakeUpdate: _fakeNewer,
+      __arrive: (status?: 'visitor' | 'passer') => arrive(makeAdventurer(0, 0, { day: S.day, status: status ?? 'visitor' })),
       __neighbors: NEIGHBORS,
       __sayAll: () => world.actors.filter((a) => !a.role && !a.hidden).forEach((a, i) => say(a, ['방 좋네~', '제가 지켜드릴게요', '오늘 던전 갈까?', '배고프다…', '이 마을 맘에 들어', '주인장 최고!'][i % 6])),
       __events: spectacles,

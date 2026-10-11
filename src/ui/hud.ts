@@ -19,7 +19,8 @@ import { openBoard, openRunLog, runsWaiting } from './expedition';
 import { syncGuide } from './guide';
 import { autoTick } from '../world/hunt';
 import { iconSrc } from './kit';
-import { openHunt } from './hunt';
+import { openHunt, unfoldHunt } from './hunt';
+import { foldInfo } from '../combat/ui';
 import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
@@ -330,7 +331,8 @@ function updateRunbar() {
   const bar = $('#runbar');
   const runs = S.visiting ? [] : PG.runs.filter((r) => !r.claimed).slice(0, CONFIG.expedition.maxParties);
   const au = S.visiting ? null : PG.hunt.auto;
-  bar.hidden = !runs.length && !au;
+  const fo = S.visiting ? null : foldInfo();
+  bar.hidden = !runs.length && !au && !fo;
   if (bar.hidden) {
     // 숨길 땐 예전 버튼도 치운다 (끝난 원정이 남아 보이지 않게)
     if (runbarKey) {
@@ -341,37 +343,44 @@ function updateRunbar() {
   }
   const now = Date.now();
   // 핫픽스 6: 접힌 「진행 중」 띠 한 줄(아이콘 + 남은 시간) · 누르면 위로 펼쳐 원정·자동 사냥 줄이 나온다
-  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '');
+  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '') + (fo ? `|f${fo.region}${fo.stage}${fo.done ? 'd' : ''}` : '');
   if (key !== runbarKey) {
     runbarKey = key;
-    const chips =
-      runs.map((r) => `<span class="rc" data-rc="${r.id}"><img src="${iconSrc('m_expedition', true)}" alt=""><em></em></span>`).join('') +
-      (au ? `<span class="rc hunt" id="rcHunt"><img src="${iconSrc('m_hunt', true)}" alt=""><em></em></span>` : '');
+    const chips = runs.map((r) => `<span class="rc" data-rc="${r.id}"><img src="${iconSrc('m_expedition', true)}" alt=""><em></em></span>`).join('');
+    // 핫픽스 10 (11-3): 맡겨 둔 사냥은 접히지 않는 한 줄 「⚔ 숲 1-7 사냥 중 · 12판 · 💰+3,240」 — 누르면 사냥터(멈추기)
+    const hline =
+      (fo ? `<button class="px hline fold ${fo.done ? 'done' : ''}" id="rbFold"><b></b></button>` : '') + (au ? `<button class="px hline" id="rbHunt"><b></b><i><u></u></i></button>` : '');
     bar.innerHTML = `<div class="rblist" id="rbList"${rbOpen ? '' : ' hidden'}>${runs
       .map((r) => `<button class="px" data-rb="${r.id}"><b>${esc(r.quest.name ?? regionById(r.quest.region).name)}</b><i><u></u></i><em></em></button>`)
-      .join('')}</div><button class="px rbstrip" id="rbStrip" aria-label="진행 중 펼치기">${chips}<s>${rbOpen ? '▾' : '▴'}</s></button>`;
+      .join('')}</div>${hline}${runs.length ? `<button class="px rbstrip" id="rbStrip" aria-label="진행 중 펼치기">${chips}<s>${rbOpen ? '▾' : '▴'}</s></button>` : ''}`;
     bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => (b.onclick = () => openRunLog(PG.runs.find((r) => r.id === +b.dataset.rb!)!)));
-    if (au) {
-      const hb = document.createElement('button');
-      hb.className = 'px hunt';
-      hb.id = 'rbHunt';
-      hb.innerHTML = `<b>자동 사냥 ${regionById(au.region as never).name.slice(0, 2)} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage}</b><i><u></u></i><em></em>`;
-      hb.onclick = () => openHunt(au.region as never);
-      $('#rbList').appendChild(hb);
-    }
-    $('#rbStrip').onclick = () => {
-      rbOpen = !rbOpen;
-      $('#rbList').hidden = !rbOpen;
-      $('#rbStrip s').textContent = rbOpen ? '▾' : '▴';
-    };
+    const hb = document.getElementById('rbHunt');
+    if (hb && au) hb.onclick = () => openHunt(au.region as never);
+    // 핫픽스 10 §13: 접어 둔 전투 — 누르면 다시 펼치기 (끝났으면 결과 카드)
+    const fb = document.getElementById('rbFold');
+    if (fb) fb.onclick = () => unfoldHunt();
+    const sb = document.getElementById('rbStrip');
+    if (sb)
+      sb.onclick = () => {
+        rbOpen = !rbOpen;
+        $('#rbList').hidden = !rbOpen;
+        $('#rbStrip s').textContent = rbOpen ? '▾' : '▴';
+      };
+  }
+  const fb = document.getElementById('rbFold');
+  if (fb && fo) {
+    const nm = `${regionById(fo.region).name.slice(0, 2).trim()} ${REGIONS.findIndex((x) => x.id === fo.region) + 1}-${fo.stage}`;
+    const t = fo.done ? `⚔ ${nm} 끝! · 결과 보기` : `⚔ ${nm} 전투 중 · ${Math.floor(fo.time / 60)}:${String(Math.floor(fo.time % 60)).padStart(2, '0')}`;
+    const tb = fb.querySelector('b')!;
+    if (tb.textContent !== t) tb.textContent = t;
   }
   const hb = document.getElementById('rbHunt');
   if (hb && au) {
     const f = Math.min(1, (now - PG.hunt.idleAt) / (CONFIG.hunt.autoSeconds * 1000));
     (hb.querySelector('u') as HTMLElement).style.width = f * 100 + '%';
-    const t = `${Math.max(0, Math.ceil(CONFIG.hunt.autoSeconds * (1 - f)))}초`;
-    hb.querySelector('em')!.textContent = t;
-    $('#rcHunt em').textContent = t;
+    const t = `⚔ ${regionById(au.region as never).name.slice(0, 2).trim()} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage} 사냥 중 · ${fmt(au.n ?? 0)}판 · 💰+${fmt(au.gold ?? 0)}`;
+    const tb = hb.querySelector('b')!;
+    if (tb.textContent !== t) tb.textContent = t;
   }
   let anyDone = false;
   bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => {
@@ -388,7 +397,7 @@ function updateRunbar() {
       c.querySelector('em')!.textContent = r.result ? '도착!' : done ? '귀환' : clockText(r.end - now);
     }
   });
-  $('#rbStrip').classList.toggle('done', anyDone);
+  document.getElementById('rbStrip')?.classList.toggle('done', anyDone);
 }
 let rbOpen = false;
 const clockText = (ms: number) => {
@@ -411,8 +420,9 @@ export function tickHud() {
     // 메뉴 빨간 점: 받을 업적 · 우편
     $('#bMenu2 .ndot').hidden = !(achReady() + mailWaiting());
     // 5단계: 자동 사냥 — 켜 있으면 30초마다 한 판
+    // 핫픽스 10 (11-3): 판마다 토스트는 끄고 마을 줄 숫자만 · 장비를 얻었거나 레벨업일 때만 토스트
     const hr = autoTick();
-    if (hr) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>자동 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
+    if (hr && (hr.items.length || hr.levelUps.length)) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>맡겨 둔 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
   }

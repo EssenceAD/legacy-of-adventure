@@ -30,15 +30,8 @@ const TABLE: Record<string, Row> = {
   c2_well: { act: build('well') },
   c2_harm: { act: () => void P.harmony.found.push(2) },
   c2_hunt1: { act: huntBest('forest', 1), sites: [['src/world/hunt.ts', /P\.hunt\.best\[r\] = Math\.max/]] },
-  // 2-10: 사냥터 「자동 사냥 켜기」(setAuto) · 전투 중 AUTO 버튼 · 오토 전투로 시작 — 모두 noteAutoUsed
-  c2_auto: {
-    act: () => noteAutoUsed(),
-    sites: [
-      ['src/world/hunt.ts', /export function setAuto[\s\S]*?noteAutoUsed\(\)/],
-      ['src/combat/ui.ts', /press\('#cbAuto'[\s\S]*?noteAutoUsed\(\)/],
-      ['src/combat/ui.ts', /if \(auto && F\.mode === 'hunt'\) noteAutoUsed\(\)/],
-    ],
-  },
+  // 핫픽스 10 (11-2): 「사냥 맡겨 두기」 — 맡겨 두기(setAuto) 성공만 센다 · 전투 안 AUTO는 세지 않는다
+  c2_auto: { act: () => noteAutoUsed(), sites: [['src/world/hunt.ts', /export function setAuto[\s\S]*?noteAutoUsed\(\)/]] },
   c2_hunt5: { act: huntBest('forest', 5) },
   c2_reg: { act: () => void world.actors.push(...[1, 2, 3].map((id) => ({ id, status: 'regular', lvl: 1 }) as never)) },
   c2_land: { act: land(2) },

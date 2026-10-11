@@ -334,6 +334,10 @@ export function freshProgress() {
     autoSalvage: false,
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
+    /** 핫픽스 10 §15: 단골 자리가 새로 생긴 만큼 「빠른 제안」 (받으면 하나 줄어든다) · 옛 저장 구제 1번 · 모모 안내 횟수 */
+    fastSlots: 0,
+    fastRescued: false,
+    fastHintN: 0,
     /** 마지막으로 켜 있던 현실 시각 (방치 계산) */
     lastSeen: Date.now(),
     /** 게임 시간으로 마지막 손님 도착 판정 시각 (게임 시) */
@@ -366,8 +370,13 @@ export function freshProgress() {
     hunt: {
       best: {} as Record<string, number>,
       firstClear: [] as string[],
-      auto: null as null | { region: string; stage: number; members: number[] },
+      /** 맡겨 둔 사냥 · n/gold = 맡긴 뒤 판 수·금화 (핫픽스 10 마을 줄) */
+      auto: null as null | { region: string; stage: number; members: number[]; n?: number; gold?: number; next?: boolean },
       idleAt: 0,
+      /** 핫픽스 10: 처음 깼을 때 모모의 「맡겨 두기」 안내 (계정당 1번) */
+      autoHint: false,
+      /** 핫픽스 10 §13: 접어 둔 사냥 (앱을 껐다 켜면 결과를 계산해 보여 준다) */
+      folded: null as null | { region: string; stage: number; members: number[]; at: number },
       /** 증표 조각 (10개 = 인연의 증표 1) */
       shards: 0,
     },

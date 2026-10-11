@@ -93,6 +93,8 @@ export function newGame() {
   const album = { album: [...P.legacy.album], cards: { ...P.legacy.cards } };
   resetProgress();
   Object.assign(P.legacy, album);
+  // 핫픽스 10 §15: 새 여관은 옛 저장 구제 대상이 아니다
+  P.fastRescued = true;
   startTown();
   rebuildPaths();
   spawnStart();
@@ -165,6 +167,8 @@ export function continueGame() {
   const off = computeOffline();
   const after = () => {
     if (off) offlineHook(off);
+    // 핫픽스 10 §13: 접어 둔 사냥이 있으면 결과를 계산해 바로 보여 준다
+    setTimeout(() => resumeHooks.folded(), 400);
     syncOwnerButton();
     syncHud();
     refreshNoticeDot();
@@ -175,6 +179,9 @@ export function continueGame() {
   if (!P.owner) openCreate('existing', after);
   else after();
 }
+
+/** 이어하기 뒤 할 일 (ui가 채운다) */
+export const resumeHooks = { folded: () => {} };
 
 /** 방치 요약 창 (ui가 채운다) */
 let offlineHook: (s: NonNullable<ReturnType<typeof computeOffline>>) => void = () => {};

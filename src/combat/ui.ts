@@ -6,13 +6,12 @@ import { PORTRAITS } from '../engine/assets';
 import { pic } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
-import type { Actor, Item } from '../world/state';
+import { uiHooks, type Actor, type Item } from '../world/state';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
-import { noteAutoUsed } from '../world/hunt';
 import { flushScene } from '../audio/scene';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
@@ -48,8 +47,78 @@ export const devAdvance = (sec: number) => {
 };
 export const devField = () => F;
 
+// ───────── 핫픽스 10 §13: 사냥 「접기」 — 화면은 닫고 그 판은 AUTO로 마저 (같은 step · 새 규칙 없음) ─────────
+let folded = false;
+let foldEnded = false;
+export const foldHooks = { fold: () => {}, done: (_win: boolean) => {} };
+/** 접어 둔 판: 지역·스테이지 · 남은 시간 · 끝났나 */
+export function foldInfo(): { region: RegionId; stage: number; time: number; done: boolean; win: boolean } | null {
+  if (!folded || !F) return null;
+  return { region: F.region as RegionId, stage: F.stage, time: Math.max(0, F.time), done: foldEnded, win: F.done === 'win' };
+}
+export function foldCombat() {
+  if (!F || !root || folded || F.done || F.mode === 'raid') return;
+  // 그 순간부터 AUTO 취급 → 평가 보너스 없음
+  F.auto = true;
+  F.autoUsed = true;
+  F.stick.x = F.stick.y = 0;
+  keys.clear();
+  holding = false;
+  stickOn = false;
+  folded = true;
+  foldEnded = false;
+  cancelAnimationFrame(raf);
+  removeEventListener('resize', fit);
+  removeEventListener('keydown', onKey);
+  removeEventListener('keyup', onKeyUp);
+  root.remove();
+  foldHooks.fold();
+  afterBusy();
+  flushScene();
+}
+/** 마을 루프가 부른다: 접어 둔 판을 실제 시간대로 진행 */
+export function foldedTick(dt: number) {
+  if (!folded || !F || foldEnded) return;
+  const n = Math.ceil(Math.min(0.25, dt) / (1 / 30));
+  for (let i = 0; i < n && F; i++) step(F, Math.min(0.25, dt) / n);
+  if (F.done && F.doneT > 1) {
+    foldEnded = true;
+    finish();
+    foldHooks.done(F.done === 'win');
+  }
+}
+/** 접은 판의 파티 (손님 번호) — 저장용 */
+export const foldMembers = (): number[] => (F ? F.allies.map((u) => u.actor?.id ?? 0).filter(Boolean) : []);
+/** 접어 둔 채 앱을 껐을 때: 화면 없이 AUTO로 처음부터 끝까지 (같은 makeField·step) */
+export function runHeadless(region: RegionId, stage: number, members: Actor[]): CombatResult {
+  const f = makeField(region, stage, members, true);
+  f.autoUsed = true;
+  const dt = 1 / 30;
+  for (let t = 0; t < C.timeLimit + 5 && !f.done; t += dt) step(f, dt);
+  for (let i = 0; i < 60; i++) step(f, dt);
+  if (!f.done) f.done = 'lose';
+  return { win: f.done === 'win', grade: grade(f), autoUsed: true, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: [...f.picked], raidDmg: 0, bossDown: !!f.elite?.dead };
+}
+/** 다시 펼치기 (끝났으면 결과 카드가 그대로 보인다) */
+export function unfoldCombat() {
+  if (!folded || !F || !root) return;
+  folded = false;
+  document.getElementById('view')!.appendChild(root);
+  fit();
+  addEventListener('resize', fit);
+  addEventListener('keydown', onKey);
+  addEventListener('keyup', onKeyUp);
+  last = performance.now();
+  raf = requestAnimationFrame(frame);
+}
+
 
 export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void, opts: FieldOpts = {}) {
+  // 핫픽스 10 §13: 접어 둔 판이 있으면 새 전투는 그게 끝난 뒤에
+  if (folded) {
+    if (!foldEnded) return uiHooks.toast('접어 둔 사냥이 끝나면 시작할 수 있어요 · 아래 줄을 눌러 펼쳐요');
+    closeCombat();
+  }
   // 전투 2차: 이 판에 나올 몬스터·정예·보스·부하 그림 + 이펙트를 미리
   const ids = new Set<string>(stageMons(region, stage).map((m) => m.id));
   if (stage >= 10) {
@@ -74,7 +143,6 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
   F = makeField(region, stage, members, auto, opts);
-  if (auto && F.mode === 'hunt') noteAutoUsed();
   onEnd = done;
   root = document.createElement('div');
   // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
@@ -82,7 +150,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   root.className = 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
-    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO</button><button id="cbQuit" aria-label="포기">✕</button></div>
+    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO</button>${opts.mode === 'raid' ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small></button>'}<button id="cbQuit" aria-label="포기">✕</button></div>
     <div class="cbparty" id="cbParty"></div>
     <div class="cbchain" id="cbChain"></div>
     <div class="cbhit" id="cbHit"><b id="cbHitN"></b><small id="cbHitB"></small><strong id="cbKills"></strong></div>
@@ -468,12 +536,10 @@ function bindInput() {
   press('#cbS1', () => skill(F!, F!.me, 0));
   press('#cbS2', () => skill(F!, F!.me, 1));
   press('#cbUlt', () => ultimate(F!));
+  press('#cbFold', foldCombat);
   press('#cbAuto', () => {
     F!.auto = !F!.auto;
-    if (F!.auto) {
-      F!.autoUsed = true;
-      if (F!.mode === 'hunt') noteAutoUsed();
-    }
+    if (F!.auto) F!.autoUsed = true;
   });
   $('#cbQuit').onclick = () => {
     if (!F || F.done) return;
@@ -516,11 +582,12 @@ function finish() {
 }
 
 /** 결과 카드를 전투 화면 위에 (hunt UI가 내용을 채운다) */
-export function showCombatResult(html: string, bind: () => void) {
-  const r = $('#cbRes');
+export function showCombatResult(html: string, bind: (card: HTMLElement) => void) {
+  // 접어 둔 판은 화면(root)이 문서에 없다 → root 안에서 찾는다 (버튼 연결도 root 기준)
+  const r = (root?.querySelector('#cbRes') ?? $('#cbRes')) as HTMLElement;
   r.innerHTML = `<div class="card px res">${html}</div>`;
   r.hidden = false;
-  bind();
+  bind(r);
 }
 
 export function closeCombat() {
@@ -534,9 +601,11 @@ export function closeCombat() {
   root?.remove();
   root = null;
   F = null;
+  folded = false;
+  foldEnded = false;
   // 전투 중 미뤄 둔 새 버전 띠 · 마을 소리·알림
   afterBusy();
   flushScene();
 }
-export const combatOn = () => !!F;
+export const combatOn = () => !!F && !folded;
 export type { Unit };

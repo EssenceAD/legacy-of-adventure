@@ -3,7 +3,7 @@ import { battleMusic } from './sound';
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
 import { notePrep, prepLine } from './power';
-import { closeCombat, showCombatResult, startCombat } from '../combat/ui';
+import { closeCombat, foldHooks, foldInfo, foldMembers, runHeadless, showCombatResult, startCombat, unfoldCombat, type CombatResult } from '../combat/ui';
 import { gradeBonus } from '../combat/field';
 import { REGION_BOSS, stageMons } from '../combat/mons';
 import { track as trackEv } from '../net/telemetry';
@@ -67,7 +67,7 @@ export function openHunt(region?: RegionId) {
     `<div class="tabs">${tabs}</div>
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap">${cells}</div>
-    <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 자동 사냥 중 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${H.autoSeconds}초마다 한 판</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지는 「자동 사냥」으로 반복해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
+    <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
     <p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
   );
@@ -111,6 +111,14 @@ function openHuntPrep(r: RegionId, s: number) {
       return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
+  // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위
+  const dis = ms.length ? '' : 'disabled';
+  const opt = (id: string, cls: string, label: string, desc: string) => `<div class="hopt"><button class="bigbtn ${cls}" id="${id}" ${dis}>${label}</button><small>${desc}</small></div>`;
+  const man = opt('hMan', cleared ? 'ghost' : 'red', '직접 사냥', '내가 조작 · 평가 보너스 S +30% · A +15%');
+  const watch = opt('hAuto1', 'ghost', '전투 보기 (AUTO)', '화면을 보면서 자동으로 싸워요 · 기본 보상');
+  const keep = opt('hRepeat', 'keep', '맡겨 두기 · 마을에서 계속 사냥', `화면 안 봐도 돼요 · 마을에 있어도 ${H.autoSeconds}초마다 한 판`);
+  const sweepB = opt('hSweep', 'ghost', '소탕', '전투 없이 바로 · 보상 70% (첫 돌파 보상 없음)');
+  const hopts = cleared ? [keep, man, watch, sweepB] : [man, watch];
   openWin(
     `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
     `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
@@ -118,13 +126,7 @@ function openHuntPrep(r: RegionId, s: number) {
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>
     <div class="plist">${rows || `<p class="note">${awayNote()}</p>`}</div>
-    <div class="btnrow raidgo">
-      <button class="bigbtn red" id="hMan" ${ms.length ? '' : 'disabled'}>직접 사냥</button>
-      <button class="bigbtn" id="hAuto1" ${ms.length ? '' : 'disabled'}>오토 전투</button>
-      ${cleared ? `<button class="bigbtn ghost" id="hSweep" ${ms.length ? '' : 'disabled'}>소탕</button>` : ''}
-      ${cleared ? `<button class="bigbtn ghost" id="hRepeat" ${ms.length ? '' : 'disabled'}>자동 사냥 켜기</button>` : ''}
-    </div>
-    <p class="note">직접 사냥은 평가 보너스(S +30% · A +15%) · 오토는 기본 보상 · 소탕은 깬 스테이지만, 전투 없이 70% (첫 돌파 보상 없음)</p>
+    <div class="hopts">${hopts.join('')}</div>
     <button class="bigbtn ghost sm" id="hBack">지도로</button>`,
   );
   $$('.pm').forEach(
@@ -144,7 +146,7 @@ function openHuntPrep(r: RegionId, s: number) {
     rp.onclick = () => {
       const err = setAuto(r, s, ms);
       if (err) return toast(err);
-      toast(`자동 사냥 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`);
+      toast(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`);
       openHunt(r);
     };
   const sw = document.getElementById('hSweep');
@@ -504,7 +506,7 @@ function showHuntResult(view: BattleView, r: RegionId, s: number, members: Actor
       const err = setAuto(r, s, members);
       if (err) return toast(err);
       done();
-      toast(`자동 사냥 시작 · ${stageName(r, s)}`);
+      toast(`맡겨 두기 시작 · ${stageName(r, s)}`);
     };
   const mp = document.getElementById('hMap');
   if (mp)
@@ -526,47 +528,97 @@ function lootHtml(r: RegionId, out: HuntReward): string {
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   notePrep('hunt', partyPower(ms));
   trackEv('hunt_start', { stage: `${r}-${s}`, mode: auto ? 'auto' : 'manual' });
+  P.hunt.folded = null;
   void startCombat(r, s, ms, auto, (res) => {
-    trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
-    const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
-    // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
-    const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
-    out.items.push(...res.items);
-    for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
-    markDirty();
-    const next = s + 1;
-    const canNext = res.win && next <= H.stages && stageOpen(r, next);
-    const gradeLine = res.win
-      ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
-      : '';
-    showCombatResult(
-      `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
+    const html = settleHunt(r, s, ms, res);
+    showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
+  });
+}
+
+/** 한 판 끝: 보상 · 기록 → 결과 카드 HTML (전투 화면 · 접은 판 · 다시 켰을 때 정산 공통) */
+function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): string {
+  P.hunt.folded = null;
+  trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
+  const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
+  // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
+  const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
+  out.items.push(...res.items);
+  for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
+  markDirty();
+  const next = s + 1;
+  const canNext = res.win && next <= H.stages && stageOpen(r, next);
+  // 핫픽스 10 (11-4): 처음 깼을 때 한 번 — 모모가 「맡겨 두기」를 알려 준다 (계정당 1번)
+  const hint = res.win && !!out.first && !P.hunt.autoHint;
+  if (hint) P.hunt.autoHint = true;
+  const gradeLine = res.win
+    ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
+    : '';
+  return `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
       <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
       ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${lootHtml(r, out)}
       <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
-      <div class="go">${canNext ? `<button class="a" id="cNext">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
-      <div class="go"><button class="b" id="cMap">사냥터 지도</button>${canNext ? '<button class="b" id="cAgain">다시 하기</button>' : ''}</div>`,
-      () => {
-        const on = (id: string, f: () => void) => {
-          const b = document.getElementById(id);
-          if (b) b.onclick = f;
-        };
-        on('cHome', () => closeCombat());
-        on('cMap', () => {
-          closeCombat();
-          openHunt(r);
-        });
-        on('cAgain', () => {
-          closeCombat();
-          openHuntPrep(r, s);
-        });
-        on('cNext', () => {
-          closeCombat();
-          openHuntPrep(r, next);
-        });
-      },
-    );
+      ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">이 스테이지 자동 사냥</button></div>` : ''}
+      <div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
+      <div class="go"><button class="b" id="cMap">사냥터 지도</button>${canNext ? '<button class="b" id="cAgain">다시 하기</button>' : ''}</div>`;
+}
+
+function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], close: () => void) {
+  const on = (id: string, f: () => void) => card.querySelectorAll<HTMLElement>('#' + id).forEach((b) => (b.onclick = f));
+  on('cHome', () => close());
+  on('cKeep', () => {
+    const err = setAuto(r, s, ms);
+    if (err) return toast(err);
+    close();
+    toast(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`);
   });
+  on('cMap', () => {
+    close();
+    openHunt(r);
+  });
+  on('cAgain', () => {
+    close();
+    openHuntPrep(r, s);
+  });
+  on('cNext', () => {
+    close();
+    openHuntPrep(r, s + 1);
+  });
+}
+
+// ───────── 핫픽스 10 §13: 접기 ─────────
+foldHooks.fold = () => {
+  const fi = foldInfo();
+  const fl = foldMembers();
+  if (fi) P.hunt.folded = { region: fi.region, stage: fi.stage, members: fl, at: Date.now() };
+  markDirty();
+  trackEv('hunt_fold', { stage: fi ? `${fi.region}-${fi.stage}` : '' });
+  toast('전투를 접었어요 · 마을에서 마저 싸워요 (평가 보너스 없음)');
+};
+foldHooks.done = (win) => {
+  const fi = foldInfo();
+  if (!fi) return;
+  const nm = `${REGIONS[regionIdx(fi.region)].name} ${stageName(fi.region, fi.stage)}`;
+  toast(win ? `${nm} 돌파! · 아래 줄을 눌러 결과 보기` : `${nm} 실패… 전투력을 올려 봐요`);
+};
+/** 마을 줄을 눌렀을 때: 전투(또는 결과) 다시 펼치기 */
+export function unfoldHunt() {
+  if (!foldInfo()?.done) P.hunt.folded = null;
+  unfoldCombat();
+}
+
+/** 접어 둔 채 앱을 껐다 켰을 때: 그 판을 AUTO로 끝까지 돌려 결과를 바로 보여 준다 */
+export function settleFolded(): boolean {
+  const fo = P.hunt.folded;
+  if (!fo) return false;
+  P.hunt.folded = null;
+  const r = fo.region as RegionId;
+  const ms = fo.members.map((id) => huntCrew().find((a) => a.id === id)).filter(Boolean) as Actor[];
+  if (!ms.length || !REGIONS.some((x) => x.id === r)) return false;
+  const res = runHeadless(r, fo.stage, ms);
+  const html = settleHunt(r, fo.stage, ms, res);
+  openWin('사냥 결과 (접어 둔 판)', `<div class="res huntres">${html}</div>`);
+  bindResult($('#winB'), r, fo.stage, ms, closeWin);
+  return true;
 }
 
 function sweep(r: RegionId, s: number, ms: Actor[]) {
