@@ -1258,3 +1258,41 @@ body.photo #view>*:not(#scene):not(#photoBar):not(#photoFrame):not(.photoflash):
 .photoflash{position:absolute;inset:0;background:#fff;z-index:50;pointer-events:none;animation:pflash .4s ease-out forwards}
 @keyframes pflash{from{opacity:.95}to{opacity:0}}
 #visitbar #vPhoto{border:0;background:none;font-size:18px;cursor:pointer}
+/* HOTFIX16 §1: 단골 제안 손님 카드 (대화창 위) */
+#propCard{position:absolute;left:50%;transform:translateX(-50%);bottom:250px;z-index:46;width:min(92%,340px);display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream);pointer-events:none}
+#propCard .pc1{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center}
+#propCard .pc1 img{width:40px;height:40px;image-rendering:pixelated;background:#8fc4f0;box-shadow:0 0 0 2px var(--ink)}
+#propCard .pc1 span{display:flex;flex-direction:column;min-width:0}
+#propCard .pc1 small{color:#9aa6d8;font-size:var(--f-small)}
+#propCard .rar{font-style:normal;font-size:var(--f-small);color:#1c1018;background:var(--rc);padding:1px 5px;box-shadow:0 0 0 1px #1c1018}
+#propCard .pc1 em{font-style:normal;color:var(--gold)}
+#propCard .pc2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+#propCard .pw{font-size:var(--f-big,18px);color:#fff3d6}
+#propCard small.up{color:#8fe08f}#propCard small.down{color:#8a8fa8}
+#propCard .pc2 small{font-size:var(--f-small);color:#9aa6d8}
+#propCard .pc3{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
+#propCard .sb{display:grid;grid-template-columns:2.6em 1fr 2em;gap:4px;align-items:center;font-size:var(--f-small)}
+#propCard .sb small{color:#9aa6d8}#propCard .sb b{text-align:right;font-weight:400}
+#propCard .sb i{height:5px;background:#2a2340;box-shadow:0 0 0 1px #1c1018}#propCard .sb u{display:block;height:100%;background:#6fb0ff}
+#propCard .pc4,#propCard .pc5{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:var(--f-small)}
+#propCard .role{font-style:normal;background:#3a3460;padding:1px 6px;box-shadow:0 0 0 1px #1c1018}
+#propCard .pc5 small{color:#ff9ab8}
+/* HOTFIX16 §2: 「🎯 오늘 2/4」 알약 · 펼침 패널 */
+#goalPill{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);z-index:4;padding:3px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;white-space:nowrap}
+html:not([data-size="phone"]) #goalPill{top:calc(env(safe-area-inset-top,0px) + 150px)}
+#goalPill.ready{color:#ffd36b;animation:mglow 1s steps(2) infinite}
+#goalPill.over{color:#8a8fa8;filter:grayscale(.6)}
+#goalPill .ndot{position:absolute;right:-3px;top:-3px;width:8px;height:8px;background:#e84a4a;box-shadow:0 0 0 1px #1c1018}
+#goalPanel{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 66px);z-index:30;width:min(calc(100% - 20px),320px);display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream)}
+#goalPanel .gph{display:flex;align-items:baseline;gap:8px}
+#goalPanel .gph small{color:#9aa6d8;font-size:var(--f-small);flex:1}
+#goalPanel .gx{background:none;border:0;color:var(--cream);cursor:pointer}
+#goalPanel .gpr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+#goalPanel .gpr span{display:flex;flex-direction:column;gap:2px;min-width:0}
+#goalPanel .gpr b{font-size:var(--f-ui);font-weight:400}
+#goalPanel .gpr small{color:#9aa6d8;font-size:var(--f-small)}
+#goalPanel .gpr i{height:5px;background:#2a2340;box-shadow:0 0 0 1px #1c1018}#goalPanel .gpr u{display:block;height:100%;background:#6fd04b}
+#goalPanel .gpr.got{opacity:.55}
+#goalPanel .gpr button{padding:4px 8px}
+#goalPanel .gpr button.rd{color:#ffd36b}
+#goalPanel .gall{margin-top:2px}
