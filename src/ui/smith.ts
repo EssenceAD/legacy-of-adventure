@@ -6,7 +6,7 @@ import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
 import * as game from '../game';
-import { $, $$, bindTabs, esc, fmt, itemCell, leftText, pct, tabs } from './common';
+import { $, $$, bindTabs, esc, fmt, itemCell, leftText, liveWin, pct, tabs } from './common';
 import { showItem } from './guests';
 import { appendMoveButton, openWin, toast } from './windows';
 
@@ -143,6 +143,13 @@ export function openGarden(o: Building) {
         openGarden(o);
       }),
   );
+  // 핫픽스 10 §10: 열어 둔 사이 다 자라면 「수확」 버튼으로 바로
+  const ripe = new Set(plots.map((p, i) => (plotLeft(p, now) === 0 ? i : -1)));
+  liveWin('텃밭', () => plotsOf(o).some((p, i) => plotLeft(p, Date.now()) === 0 && !ripe.has(i)), () => {
+    const fresh = plotsOf(o).map((p, i) => (plotLeft(p, Date.now()) === 0 && !ripe.has(i) ? i : -1)).filter((i) => i >= 0);
+    openGarden(o);
+    for (const i of fresh) document.querySelector(`[data-h="${i}"]`)?.closest('.plot')?.classList.add('fresh');
+  });
   appendMoveButton(o);
   void S;
 }

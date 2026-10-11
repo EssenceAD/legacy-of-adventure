@@ -20,7 +20,7 @@ import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Quest, type Run, type TalkLine } from '../world/state';
-import { $, $$, esc, fmt, itemCell, leftText, minText, nameTag, pct, pic } from './common';
+import { $, $$, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic } from './common';
 import { closeWin, openWin, toast } from './windows';
 
 const E = CONFIG.expedition;
@@ -101,6 +101,12 @@ export function openBoard() {
       openBoard();
     }
   };
+  // 핫픽스 10 §10: 열어 둔 사이 돌아온 파티 → 「보고서 보기」로 바로 바뀌게
+  const shown = new Set(runs.filter((r) => r.result).map((r) => r.id));
+  liveWin('원정 · 의뢰 게시판', () => P.runs.some((r) => !r.claimed && r.result && !shown.has(r.id)), () => {
+    openBoard();
+    for (const id of P.runs.filter((r) => !r.claimed && r.result && !shown.has(r.id)).map((r) => r.id)) document.querySelector(`.run.done[data-run="${id}"]`)?.classList.add('fresh');
+  });
 }
 
 // ───────── 파티 고르기 ─────────

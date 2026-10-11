@@ -7,6 +7,7 @@ import { framesFor } from '../engine/sprites';
 import { appearance } from '../world/adventurers';
 import { itemIcon } from '../world/items';
 import type { Actor, Item } from '../world/state';
+import { sfx } from '../audio/sfx';
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 export const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -59,8 +60,28 @@ export function bar(label: string, v: number, color: string, max = 100) {
   return `<div class="bar"><span>${label}</span><i><b style="width:${w}%;background:${color}"></b></i><em>${Math.round(v)}</em></div>`;
 }
 
+/**
+ * 핫픽스 10 §10: 진행 막대가 있는 창(원정 게시판 · 텃밭)이 열린 채로 일이 끝나면 그 자리에서 다시 그린다.
+ * 창이 등록: 제목 · 「새로 끝난 게 있나」 · 다시 그리기. 다른 창이 위에 쌓여 있으면(제목이 다르면) 건너뜀.
+ */
+let live: { title: string; due: () => boolean; redraw: () => void } | null = null;
+export const liveWin = (title: string, due: () => boolean, redraw: () => void) => (live = { title, due, redraw });
+function tickLive() {
+  const w = document.querySelector('#win');
+  if (!live || !w?.classList.contains('on')) return;
+  if (document.querySelector('#winT')?.textContent !== live.title) return;
+  if (!live.due()) return;
+  const body = $('#winB');
+  const top = body.scrollTop;
+  live.redraw();
+  body.scrollTop = top;
+  for (const e of $$('#winB .fresh')) e.classList.add('flash');
+  sfx('mission');
+}
+
 /** 창 안의 [data-end] 진행 막대·남은 시간을 1초마다 고친다 */
 export function tickTimers() {
+  tickLive();
   const now = Date.now();
   for (const el of $$('[data-end]')) {
     const st = +el.dataset.start!;
