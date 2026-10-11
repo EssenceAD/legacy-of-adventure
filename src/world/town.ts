@@ -484,6 +484,8 @@ export function upgradeObj(o: Building, silent = false): boolean {
 export function buildableKinds(): Kind[] {
   return (Object.keys(CATALOG) as Kind[]).filter((k) => {
     const d = def(k);
+    // TOWN T1: 쇼케이스 장식은 T5 전까지 건설 목록에 없음
+    if (d.showcase) return false;
     // 트로피는 그 보스를 처치했을 때만
     if (k.startsWith('trophy_') && !P.trophies.includes(k.slice(7))) return false;
     // 기념비는 손님·아이템·영웅 도감 중 하나를 100% 채웠을 때

@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 const SIZE = {
   inn: (l) => (l >= 5 ? [5, 5] : l >= 2 ? [4, 4] : [3, 3]), tavern: (l) => (l >= 2 ? [4, 4] : [3, 3]), cottage: [2, 2], smith: [3, 3], bath: [3, 3], training: [3, 3], garden: [3, 3],
-  stable: [3, 3], chapel: [3, 3], library: [3, 3], alchemy: [3, 3], postoffice: [2, 2], tower: [2, 2], guild: [4, 4], stall: [2, 2], fountain: [2, 2], gate: [2, 2], monument: [2, 2], dungeon: [3, 3],
+  stable: [3, 3], chapel: [3, 3], library: [3, 3], alchemy: [3, 3], postoffice: [2, 2], tower: [2, 2], guild: [4, 4], stall: [2, 2], fountain: [2, 2], rock_fall: [2, 2], koi_pond: [2, 2], windmill: [2, 2], gazebo: [2, 2], lily_pond: [2, 2], gate: [2, 2], monument: [2, 2], dungeon: [3, 3],
 };
 const CH = { inn: 'I', tavern: 'T', cottage: 'c', smith: 'S', bath: 'B', training: 'R', garden: 'G', stable: 'H', chapel: 'C', library: 'L', alchemy: 'A', postoffice: 'P', tower: 'W', guild: 'U', stall: 's', fountain: 'F', gate: '=', dungeon: 'D', well: 'o', board: 'b', tree: 't', pine: 'p', fire: '*', bench: 'n', flowerbed: 'f', barrels: 'r', target: 'x', arbor: 'a', lamppost: 'l', statue: 'q', banner: 'g', monument: 'M', trophy_boar: 'y' };
 const FROM = [14, 11, 8, 4, 0];
@@ -28,9 +28,9 @@ for (const v of JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))) {
       }
   }
   // 문 앞 칸 (건물만): 땅 안 · 비어 있어야
-  const DECO = new Set(['well','board','tree','pine','fire','bench','flowerbed','barrels','target','arbor','lamppost','statue','stall','fountain','banner','gate','monument','trophy_boar']);
+  const BUILD = new Set(['inn','tavern','cottage','smith','bath','training','garden','stable','chapel','library','alchemy','postoffice','tower','guild']);
   for (const [k, x, y, l = 1] of v.layout) {
-    if (DECO.has(k) || k === 'dungeon') continue;
+    if (!BUILD.has(k)) continue;
     const s2 = typeof SIZE[k] === 'function' ? SIZE[k](l) : SIZE[k] ?? [1, 1];
     const dx = x + Math.floor(s2[0] / 2), dy = y + s2[1];
     if (dx >= N || dy >= N || dx < a || dy < a) errs.push(`${k}(${x},${y}) 문이 땅 밖`);

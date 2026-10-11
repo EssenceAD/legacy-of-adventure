@@ -36,6 +36,8 @@ export interface BuildingDef {
   levelText?: string;
   /** 지붕 색을 바꿀 수 있는지 */
   roofable?: boolean;
+  /** TOWN T1: 이웃 쇼케이스 마을에만 (건설 목록엔 T5에서 땅·장부·평판·어울림 보상으로 연다) */
+  showcase?: boolean;
   desc: string;
 }
 
@@ -100,6 +102,48 @@ export const CATALOG = {
   trophy_eye: { name: '심연의 눈 조각', sprite: 'trophy_eye', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   monument: { name: '유산의 기념비', sprite: 'monument', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '도감 100% 보상 · 밤엔 책이 은은하게 빛나요' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
+  // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
+  cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },
+  beehives: { name: '벌통', sprite: 'beehives', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '벌통' },
+  dog_house: { name: '강아지 집', sprite: 'dog_house', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '강아지 집' },
+  chicken_coop: { name: '닭장', sprite: 'chicken_coop', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '닭장' },
+  rock_fall: { name: '바위 폭포', sprite: 'rock_fall', size: [2, 2], cost: 0, deco: true, showcase: true, unlock: 1, desc: '바위 폭포' },
+  koi_pond: { name: '잉어 연못', sprite: 'koi_pond', size: [2, 2], cost: 0, deco: true, showcase: true, unlock: 1, desc: '잉어 연못' },
+  birdhouse: { name: '새집', sprite: 'birdhouse', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '새집' },
+  swing: { name: '그네', sprite: 'swing', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '그네' },
+  string_lights: { name: '전구 기둥', sprite: 'string_lights', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '전구 기둥' },
+  double_lamp: { name: '쌍가로등', sprite: 'double_lamp', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '쌍가로등' },
+  brazier: { name: '화로', sprite: 'brazier', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '화로' },
+  mushroom_dark: { name: '파란 버섯', sprite: 'mushroom_dark', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '파란 버섯' },
+  mushroom_lamp: { name: '빛나는 버섯', sprite: 'mushroom_lamp', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '빛나는 버섯' },
+  picnic: { name: '피크닉', sprite: 'picnic', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '피크닉' },
+  tulip_box: { name: '튤립 화단', sprite: 'tulip_box', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '튤립 화단' },
+  signpost: { name: '이정표', sprite: 'signpost', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '이정표' },
+  bird_bath: { name: '새 물그릇', sprite: 'bird_bath', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '새 물그릇' },
+  snowman: { name: '눈사람', sprite: 'snowman', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '눈사람' },
+  pumpkins: { name: '호박 더미', sprite: 'pumpkins', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '호박 더미' },
+  hay_scarecrow: { name: '건초 허수아비', sprite: 'hay_scarecrow', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '건초 허수아비' },
+  harvest_cart: { name: '수확 수레', sprite: 'harvest_cart', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '수확 수레' },
+  maple: { name: '단풍나무', sprite: 'maple', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '단풍나무' },
+  cherry: { name: '벚나무', sprite: 'cherry', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '벚나무' },
+  birch: { name: '자작나무', sprite: 'birch', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '자작나무' },
+  topiary: { name: '동그란 화분 나무', sprite: 'topiary', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '동그란 화분 나무' },
+  knight_statue: { name: '기사 동상', sprite: 'knight_statue', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '기사 동상' },
+  clock_tower: { name: '시계탑', sprite: 'clock_tower', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '시계탑' },
+  windmill: { name: '풍차', sprite: 'windmill', size: [2, 2], cost: 0, deco: true, showcase: true, unlock: 1, desc: '풍차' },
+  water_pump: { name: '펌프', sprite: 'water_pump', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '펌프' },
+  gazebo: { name: '정자', sprite: 'gazebo', size: [2, 2], cost: 0, deco: true, showcase: true, unlock: 1, desc: '정자' },
+  lily_pond: { name: '연꽃 연못', sprite: 'lily_pond', size: [2, 2], cost: 0, deco: true, showcase: true, unlock: 1, desc: '연꽃 연못' },
+  foot_bridge: { name: '아치 다리', sprite: 'foot_bridge', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '아치 다리' },
+  rose_bench: { name: '장미 벤치', sprite: 'rose_bench', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '장미 벤치' },
+  fruit_stall: { name: '과일 수레', sprite: 'fruit_stall', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '과일 수레' },
+  flower_cart: { name: '꽃 수레', sprite: 'flower_cart', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '꽃 수레' },
+  barrel_stack: { name: '술통 더미', sprite: 'barrel_stack', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '술통 더미' },
+  shop_sign: { name: '간판 기둥', sprite: 'shop_sign', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '간판 기둥' },
+  hedge: { name: '산울타리', sprite: 'hedge', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '산울타리' },
+  rose_arch: { name: '장미 아치', sprite: 'rose_arch', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '장미 아치' },
+  stonewall2: { name: '돌담', sprite: 'stonewall2', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '돌담' },
+  picket_gate: { name: '흰 울타리 문', sprite: 'picket_gate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '흰 울타리 문' },
 } satisfies Record<string, BuildingDef>;
 
 export type Kind = keyof typeof CATALOG;
