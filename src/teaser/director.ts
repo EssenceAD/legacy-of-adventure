@@ -234,7 +234,7 @@ const CUTS: Cut[] = [
     enter: () => {
       stage.classList.add('dark');
       $('#teaser').classList.add('open');
-      el(`<div class="tlogo"><div class="ko">모험의 유산</div><div class="en">LEGACY OF ADVENTURE</div><p>당신의 이야기는, 다음 세대의 유산이 된다.</p><button class="bigbtn" id="tGo">${auto ? '시작하기' : '타이틀로'}</button></div>`);
+      el(`<div class="tlogo"><div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div><div class="en">LEGACY OF ADVENTURE</div><p>당신의 이야기는, 다음 세대의 유산이 된다.</p><button class="bigbtn" id="tGo">${auto ? '시작하기' : '타이틀로'}</button></div>`);
       $('#tGo').onclick = finish;
     },
   },

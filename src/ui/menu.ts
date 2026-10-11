@@ -93,10 +93,10 @@ function groups(): [string, Item[]][] {
 export function openCredits() {
   openWin(
     '만든 사람',
-    `<div class="credits"><p class="pn-title">모험의 유산</p>
+    `<div class="credits"><p class="pn-title">용사님, 체크인하실게요~</p><p class="sub">Legacy of Adventure</p>
     <p class="pn-h">몬스터 · 보스 · 이펙트</p><p>Ninja Adventure Asset Pack — pixel-boy (CC0)</p>
     <p class="pn-h">글꼴</p><p>Galmuri — quiple (SIL Open Font License)</p>
-    <p class="sub">그 밖의 그림 · 음악 · 코드는 모험의 유산 제작팀이 만들었어요</p></div>`,
+    <p class="sub">그 밖의 그림 · 음악 · 코드는 「용사님, 체크인하실게요~」 제작팀이 만들었어요</p></div>`,
   );
 }
 

@@ -1018,3 +1018,15 @@ html:not([data-size="phone"]) .cbloot{bottom:calc(env(safe-area-inset-bottom,0px
 .tbossbar span{text-align:center;font-size:15px;font-weight:700;color:#ffd36b;text-shadow:1px 1px 0 #140c18}
 .tbossbar i{display:block;height:9px;background:#2a1822;box-shadow:0 0 0 2px #140c18,0 0 0 3px #8a5a4a}
 .tbossbar u{display:block;height:100%;width:100%;background:linear-gradient(#ff7a5a,#d8392a);transition:width .25s steps(4)}
+/* ── 핫픽스 8 (2-5): 새 한글 제목 두 줄 「용사님, / 체크인하실게요~」 · 물결이 1px 통통 ── */
+.logo .ko{display:flex;flex-direction:column;align-items:center;line-height:1.05}
+.logo .ko .ko1{font-size:22px;line-height:26px}
+.logo .ko .ko2{font-size:38px;line-height:44px;white-space:nowrap}
+:is(.logo,.tlogo) .wave{display:inline-block;font-style:normal;background:inherit;-webkit-background-clip:text;background-clip:text;animation:tWave 1s steps(2) infinite}
+@keyframes tWave{0%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+.tlogo .ko{display:flex;flex-direction:column;align-items:center}
+.tlogo .ko .ko1{font-size:var(--f-big)}
+.tlogo .ko .ko2{white-space:nowrap}
+html:not([data-size="phone"]) .logo .ko .ko2{font-size:46px;line-height:52px}
+.logo .wave{background:none;color:#bfe4ff;-webkit-text-fill-color:#bfe4ff;margin-left:2px}
+.tlogo .wave{background:none;color:#bfe4ff;-webkit-text-fill-color:#bfe4ff}

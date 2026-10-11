@@ -1,6 +1,6 @@
 {
-  "name": "모험의 유산",
-  "short_name": "모험의 유산",
+  "name": "용사님, 체크인하실게요~",
+  "short_name": "용사님 체크인",
   "description": "쿼터뷰 도트 여관 마을 경영 — 원정 보내고, 전리품 받고, 장비 끼우고",
   "lang": "ko",
   "start_url": "./",
@@ -10,8 +10,23 @@
   "background_color": "#0d1435",
   "theme_color": "#07091a",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
