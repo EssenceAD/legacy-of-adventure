@@ -682,8 +682,12 @@ function showKeyCard(auto: boolean) {
 
 // ───────── 끝 ─────────
 
+/** HOTFIX17 §2: 결과 화면이 창(토벌)이라 #cbRes가 계속 숨어 있으면 매 프레임 finish가 불렸다 → 판(필드)당 한 번만 */
+let finishedField: object | null = null;
 function finish() {
   const f = F!;
+  if (finishedField === f) return;
+  finishedField = f;
   const res: CombatResult = {
     win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
     maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead,

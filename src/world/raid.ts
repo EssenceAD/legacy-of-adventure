@@ -56,8 +56,35 @@ function ensureDay() {
 }
 export const triesLeft = () => {
   ensureDay();
-  return R.triesPerDay - P.raid.tries;
+  return Math.max(0, R.triesPerDay - P.raid.tries);
 };
+
+/** HOTFIX17 §2: 토벌 한 판 = 시작할 때 도전 1 차감 + 판 번호. 남은 도전이 없으면 null */
+export function beginRaid(): number | null {
+  ensureDay();
+  if (P.raid.tries >= R.triesPerDay) return null;
+  P.raid.tries = Math.min(R.triesPerDay, P.raid.tries + 1);
+  P.raid.runSeq = (P.raid.runSeq ?? 0) + 1;
+  markDirty();
+  return P.raid.runSeq;
+}
+/** 시작했다가 판이 열리지 못했을 때 (정산 전이면 차감을 되돌린다) */
+export function cancelRaid(runId: number) {
+  if (P.raid.lastSettled === runId || P.raid.runSeq !== runId) return;
+  P.raid.tries = Math.max(0, P.raid.tries - 1);
+  P.raid.lastSettled = runId;
+  markDirty();
+}
+/** HOTFIX17 §2 복구: 이번 패치에서 한 번, 오늘 토벌 도전 횟수를 돌려준다 (그 뒤로도 하루 한도를 넘은 저장은 바로잡기) */
+export function repairRaidTries() {
+  ensureDay();
+  if (!P.raid.fix17) {
+    P.raid.fix17 = true;
+    P.raid.tries = 0;
+    markDirty();
+  } else if (P.raid.tries > R.triesPerDay) P.raid.tries = R.triesPerDay - 1;
+}
+let lastOut: RaidOutcome | null = null;
 
 /** 이번 주 보스 경보 (그 주에 처음 마을이 돌아갈 때 한 번): 화면 흔들림 + 대화창 */
 export function maybeAlarm() {
@@ -169,9 +196,13 @@ export interface RaidOutcome {
   record?: { ok: boolean; reason?: string };
 }
 
-export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'auto' | 'manual' | 'sweep', ex: RaidExpect): RaidOutcome {
-  ensureDay();
-  P.raid.tries++;
+export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'auto' | 'manual' | 'sweep', ex: RaidExpect, runId: number): RaidOutcome {
+  // HOTFIX17 §2: 같은 판을 두 번 정산하지 않는다 (도전 차감은 시작 때 beginRaid)
+  if (P.raid.lastSettled === runId && lastOut) {
+    trackEv('raid_settle', { runId, dup: true, mode });
+    return lastOut;
+  }
+  P.raid.lastSettled = runId;
   const b = t.boss;
   damage = Math.max(0, Math.round(damage));
   const applied = Math.min(damage, t.hpLeft);
@@ -250,7 +281,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   track('expeditionWin');
   markDirty();
-  return { damage, applied, killed, firstKill, rank, gold, mats, xp, token, personalBest, weekBest };
+  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, personalBest, weekBest };
+  return lastOut;
 }
 
 /** 랭킹용 기록 (주간 보스, 직접·자동 한 판만). 2차에서 서버로 */
