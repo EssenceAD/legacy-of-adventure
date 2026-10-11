@@ -522,7 +522,9 @@ function bindInput() {
   r.addEventListener('pointerup', up);
   r.addEventListener('pointercancel', up);
   const press = (id: string, fn: () => void) => {
-    const b = $(id);
+    // v0.10.1: 모드에 따라 없는 버튼(토벌엔 접기 없음)이면 건너뛴다 — 예전엔 여기서 끊겨 AUTO·포기·키보드가 안 붙었다
+    const b = document.querySelector<HTMLElement>(id);
+    if (!b) return;
     b.onpointerdown = (e) => {
       e.preventDefault();
       e.stopPropagation();
