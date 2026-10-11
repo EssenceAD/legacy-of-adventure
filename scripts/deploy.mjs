@@ -16,6 +16,10 @@ if (notes[0]?.version !== ver || !notes[0]?.items?.length) {
   console.error(`\n✗ 패치노트를 먼저 써 주세요: public/patchnotes.json 맨 위가 v${ver}이어야 해요 (지금 맨 위: v${notes[0]?.version ?? '없음'})`);
   process.exit(1);
 }
+// 핫픽스 10 §14: 꼭 받아야 하는 업데이트 — npm run deploy -- --force-update (기본은 아님)
+const force = process.argv.includes('--force-update');
+process.env.FORCE_UPDATE = force ? '1' : '';
+if (force) console.log('⚠ force 업데이트: 플레이어는 「조금 있다가」 없이 새로 시작해야 해요');
 // 자동 테스트 — 하나라도 실패하면 배포하지 않는다
 if (existsSync('tests')) run('npm test');
 run('npm run build');

@@ -29,7 +29,7 @@ function versionFiles(): Plugin {
     closeBundle() {
       const notes = existsSync(at('public/patchnotes.json')) ? JSON.parse(readFileSync(at('public/patchnotes.json'), 'utf8')) : [];
       const top = notes[0] ?? {};
-      writeFileSync(at(join(out, 'version.json')), JSON.stringify({ version: pkg.version, build: BUILD, at: new Date().toISOString(), title: top.version === pkg.version ? (top.title ?? '') : '' }));
+      writeFileSync(at(join(out, 'version.json')), JSON.stringify({ version: pkg.version, build: BUILD, at: new Date().toISOString(), title: top.version === pkg.version ? (top.title ?? '') : '', ...(process.env.FORCE_UPDATE === '1' ? { force: true } : {}) }));
       // 캐시 이름에 빌드 번호 → 배포할 때마다 바뀌어서 이름이 같은 그림도 새로 받는다
       const sw = readFileSync(at(join(out, 'sw.js')), 'utf8').replace('__BUILD__', BUILD.replace(/[^a-z0-9.]/gi, '-'));
       writeFileSync(at(join(out, 'sw.js')), sw);

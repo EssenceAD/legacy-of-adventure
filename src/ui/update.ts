@@ -94,30 +94,98 @@ function showBar() {
   bar.hidden = false;
 }
 
+// ───────── 핫픽스 10 §14: 새 버전 알림 창 (가운데 · 뒤 어둡게) ─────────
+//  「지금 다시 시작」 = applyUpdate · 「조금 있다가」 = 창 닫고 띠는 남김 → 10분 뒤 다시 창
+//  version.json의 force: true면 「조금 있다가」 없음 · ✕·Esc·뒤로로 못 닫음 (창 쌓기와 따로 노는 덮개)
+const LATER_MS = 10 * 60 * 1000;
+let popAt = 0;
+let popOn = false;
+
+async function popupHtml(v: { version: string; force?: boolean }) {
+  // 새 버전의 패치노트 (옛 목록 캐시 말고 서버에서 새로)
+  let lines: string[] = [];
+  try {
+    const r = await fetch(new URL(`patchnotes.json?t=${Date.now()}`, document.baseURI).href, { cache: 'no-store' });
+    const n = r.ok ? ((await r.json()) as PatchNote[]).find((x) => x.version === v.version) : null;
+    if (n) lines = [...n.items, ...n.fixes].slice(0, 3);
+  } catch {
+    /* 미리 보기 없이 */
+  }
+  return `<div class="updcard px"><p class="updt">🛎 새 버전이 나왔어요! <b>(v${esc(v.version.replace(/-beta$/, ''))})</b></p>
+    <p class="updm"><b>모모</b> 여관 수리가 끝났어요~ 다시 문 열어 주세요!</p>
+    ${lines.length ? `<ul class="updl">${lines.map((t) => `<li>${esc(t.replace(/\*\*/g, ''))}</li>`).join('')}</ul>` : ''}
+    ${v.force ? '<p class="updf">꼭 받아야 하는 업데이트예요 · 진행은 저장돼요</p>' : ''}
+    <div class="updb"><button class="bigbtn" id="updNow">지금 다시 시작</button>${v.force ? '' : '<button class="bigbtn ghost" id="updLater">조금 있다가</button>'}</div></div>`;
+}
+
+async function showPopup() {
+  if (!newer || popOn || busy()) return;
+  popOn = true;
+  const v = newer;
+  const el = document.createElement('div');
+  el.id = 'updPop';
+  el.innerHTML = await popupHtml(v);
+  (document.getElementById('view') ?? document.body).appendChild(el);
+  el.querySelector<HTMLElement>('#updNow')!.onclick = applyUpdate;
+  const later = el.querySelector<HTMLElement>('#updLater');
+  if (later)
+    later.onclick = () => {
+      el.remove();
+      popOn = false;
+      popAt = Date.now() + LATER_MS;
+      showBar();
+    };
+}
+
 export async function checkVersion() {
   if (APP_VERSION === 'dev' || import.meta.env.DEV) return;
   try {
     const r = await fetch(new URL(`version.json?t=${Date.now()}`, document.baseURI).href, { cache: 'no-store' });
     if (!r.ok) return;
-    const v = (await r.json()) as { version: string; build: string };
+    const v = (await r.json()) as { version: string; build: string; force?: boolean };
     if (!v.build || v.build === BUILD) return;
     newer = v;
   } catch {
     return;
   }
-  // 하루가 지났고 지금 바쁘지 않으면: 띠 없이 바로 새 버전으로
+  // 하루가 지났고 지금 바쁘지 않으면: 창 없이 바로 새 버전으로
   if (new Date().toDateString() !== bootDay && !busy()) return applyUpdate();
-  if (!busy()) showBar();
+  pump();
+}
+/** 바쁘지 않고 때가 됐으면 창 (전투·토벌·대화 중이면 끝난 뒤) */
+function pump() {
+  if (!newer || popOn || busy()) return;
+  if ((newer as { force?: boolean }).force || Date.now() >= popAt) void showPopup();
 }
 
-/** 전투가 끝나면 부른다: 미뤄 둔 띠를 이제 보여 준다 */
+/** 전투가 끝나면 부른다: 미뤄 둔 창을 이제 보여 준다 */
 export function afterBusy() {
-  if (newer && !busy()) showBar();
+  pump();
+}
+
+/** 시험용(개발 서버): version.json 대신 가짜 새 버전 */
+export function _fakeNewer(v: { version: string; build: string; force?: boolean }) {
+  newer = v;
+  popAt = 0;
+  pump();
 }
 
 export function initUpdate(isBusy: () => boolean) {
   busy = isBusy;
   addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void checkVersion());
-  setInterval(() => void checkVersion(), 10 * 60 * 1000);
+  setInterval(() => void checkVersion(), 5 * 60 * 1000);
   setTimeout(() => void checkVersion(), 15000);
+  // 바쁜 게 끝났는지 · 「조금 있다가」 10분이 지났는지
+  setInterval(pump, 2000);
+  // 알림 창이 떠 있으면 Esc가 뒤의 창을 닫지 않게 (창은 버튼으로만)
+  addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape' && document.getElementById('updPop')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
 }

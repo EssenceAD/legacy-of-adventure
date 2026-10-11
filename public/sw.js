@@ -20,10 +20,13 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   // 배경음악·마을 소리: 서비스워커 캐시에 넣지 않는다 (곡이 커서 · <audio>의 부분 요청이 깨지지 않게)
   if (/\/audio\/(bgm|amb)\//.test(new URL(req.url).pathname)) return;
+  // 핫픽스 10 §14: 새 버전 확인 · 패치노트는 늘 네트워크 그대로 (캐시 먼저면 옛 내용이 보인다)
+  if (/\/(version|patchnotes)\.json$/.test(new URL(req.url).pathname)) return;
   if (req.mode === 'navigate') {
     // 페이지: 네트워크 먼저, 오프라인이면 캐시
+    // 핫픽스 10 §14: 브라우저 HTTP 캐시(Pages max-age 10분)도 건너뛰고 서버에 확인 → 새로고침하면 진짜 새 index.html
     e.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));
