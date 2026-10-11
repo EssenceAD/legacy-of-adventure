@@ -1,5 +1,8 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { initPropCard } from './ui/propCard';
+import { proposeTalk } from './world/actors';
+import { initGoalPill } from './ui/goalPill';
 import { initStoryUI, playStory, tapYuan } from './ui/story';
 import { cycleLines } from './world/story';
 import { ripeCount } from './world/craft';
@@ -26,7 +29,7 @@ import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
-import { addObj, doorOf, landBounds, placing, rebuildPaths } from './world/town';
+import { addObj, capacity, doorOf, landBounds, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
@@ -585,6 +588,9 @@ async function boot() {
   initOwnerUi();
   // STORY_V1: 막 · 갈림길 · 엔딩
   initStoryUI();
+  // HOTFIX16: 단골 제안 손님 카드 · 오늘의 목표 알약
+  initPropCard();
+  initGoalPill();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu(), eval: () => openEval() });
@@ -709,7 +715,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
+  if (import.meta.env.DEV) Object.assign(window, { __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

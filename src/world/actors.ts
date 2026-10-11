@@ -7,7 +7,7 @@ import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
 import { sx, sy } from '../engine/iso';
-import { blankActor, gainXp, makeAdventurer, makeHero } from './adventurers';
+import { blankActor, gainXp, makeAdventurer, makeHero, powerOf } from './adventurers';
 import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
 import { orderPair } from '../data/chem';
 import { chemTalk, notifyChem } from './chemNews';
@@ -17,7 +17,7 @@ import { dueRuns, resolveRun } from './expeditions';
 import { bldSay, floatW, puff, puffAt, say } from './fx';
 import { unequip } from './items';
 import { addRep, dexAddGuest, heroCtx, heroReady, track } from './progress';
-import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run } from './state';
+import { earn, later, legendHooks, markDirty, P, pick, S, uiHooks, world, type Actor, type Building, type Run, type TalkChoice, type TalkLine } from './state';
 import { doorPose, doorWalkSeconds, hasDoor } from './doors';
 import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult } from './owner';
 import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, layoutHooks, nearestWalkable, walkable, bestOf } from './town';
@@ -594,14 +594,50 @@ function callWaitlist() {
 function propose(a: Actor, fast = false) {
   queueEvent(() => {
     if (!world.actors.includes(a) || a.leaving) return;
-    const regs = regularsCount();
-    uiHooks.talk(
-      [
-        ['@' + a.id, `${S.innName || '여관'}… 정말 마음에 들어요. 여기 눌러앉아도 될까요?`],
-        ['narr', `단골이 되면 원정에 보낼 수 있어요. (단골 ${regs}/${capacity()})`],
-      ],
-      undefined,
-      [
+    proposeTalk(a, fast);
+  }, 'prop' + a.id);
+}
+
+/** HOTFIX16 §1: 제안 대화 그리기 (ui가 손님 카드 · [자세히] · 대신 받기 확인을 붙인다) */
+export const proposeUi = {
+  show: (_a: Actor, lines: TalkLine[], choices: TalkChoice[], _again: () => void, _swap?: { weak: Actor; ok: () => void }) => uiHooks.talk(lines, undefined, choices),
+};
+/** 바꿔도 되는 가장 약한 단골 (영웅·원정 중·사냥 파티는 빼고) */
+export function weakestRegular(): Actor | null {
+  const regs = guestsOf().filter((x) => x.status === 'regular' && x.runId == null && !x.party && !x.leaving);
+  if (!regs.length) return null;
+  return regs.reduce((m, x) => (powerOf(x) < powerOf(m) ? x : m));
+}
+function accept(a: Actor, fast: boolean) {
+  a.status = 'regular';
+  if (fast) P.fastSlots = Math.max(0, P.fastSlots - 1);
+  addRep(CONFIG.reputation.newRegular);
+  ownerGain('regular');
+  floatW(a.x, a.y, 40, '단골 등록!', 'big');
+  markDirty();
+}
+/** HOTFIX16 §1: 가장 약한 단골 대신 받기 — 바뀐 단골은 대기 명단 맨 앞으로 (꽉 찼으면 가장 오래 기다린 사람이 빠진다) */
+export function swapRegular(a: Actor, weak: Actor, fast = false) {
+  P.waitlist = P.waitlist.filter((w) => w.id !== weak.id);
+  P.waitlist.unshift({ id: weak.id, kind: weak.kind, name: weak.name, lvl: weak.lvl, xp: weak.xp, race: weak.race, rarity: weak.rarity, face: weak.face, hair: weak.hair });
+  while (P.waitlist.length > G.waitlistMax) P.waitlist.pop();
+  weak.status = 'visitor';
+  sendAway(weak, true);
+  accept(a, fast);
+  uiHooks.toast(`${weak.name}: 자리 나면 다시 올게요! (단골 대기 ${P.waitlist.length}/${G.waitlistMax})`);
+}
+export function proposeTalk(a: Actor, fast = false) {
+  if (!world.actors.includes(a) || a.leaving) return;
+  const regs = regularsCount();
+  const full = regs >= capacity();
+  const weak = full ? weakestRegular() : null;
+  const lines: TalkLine[] = [
+    ['@' + a.id, `${S.innName || '여관'}… 정말 마음에 들어요. 여기 눌러앉아도 될까요?`],
+    ['narr', `단골이 되면 원정에 보낼 수 있어요. (단골 ${regs}/${capacity()})`],
+  ];
+  const choices: TalkChoice[] = weak
+    ? [{ label: `${weak.name} 대신 받기`, fn: () => swapRegular(a, weak, fast) }]
+    : [
         {
           label: '단골로 받기',
           fn: () => {
@@ -609,18 +645,12 @@ function propose(a: Actor, fast = false) {
               uiHooks.toast('단골 자리가 없어요 · 여관 레벨업이나 별채로 늘려요');
               return toWaitlist(a);
             }
-            a.status = 'regular';
-            if (fast) P.fastSlots = Math.max(0, P.fastSlots - 1);
-            addRep(CONFIG.reputation.newRegular);
-            ownerGain('regular');
-            floatW(a.x, a.y, 40, '단골 등록!', 'big');
-            markDirty();
+            accept(a, fast);
           },
         },
-        { label: '보내 주기', fn: () => sendAway(a, true) },
-      ],
-    );
-  }, 'prop' + a.id);
+      ];
+  choices.push({ label: '보내 주기', fn: () => sendAway(a, true) });
+  proposeUi.show(a, lines, choices, () => proposeTalk(a, fast), weak ? { weak, ok: () => swapRegular(a, weak, fast) } : undefined);
 }
 
 /** 단골이 되고 싶어 하는 기분 기준 (주인 말솜씨가 높을수록 낮다) */
