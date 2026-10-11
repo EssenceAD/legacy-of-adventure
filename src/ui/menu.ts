@@ -1,6 +1,7 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
 import { ACHIEVEMENTS } from '../data/achieve';
+import { enterPhoto } from './photo';
 import { autoSalvageHtml, bindAutoSalvage } from './bulkSalvage';
 import { CHAPTERS } from '../data/guide';
 import { CONFIG } from '../data/config';
@@ -73,6 +74,7 @@ function groups(): [string, Item[]][] {
       { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: achReady() > 0 },
       { icon: 'm_title', name: '칭호', open: () => openTitles() },
       { icon: 'm_album', name: '엔딩 앨범', open: () => openAlbum() },
+      { icon: 'm_album', name: '📷 사진 찍기', open: () => { closeWin(); enterPhoto(); } },
     ]],
     ['교류', [
       { icon: 'm_neighbor', name: '이웃', open: () => void openVillage() },

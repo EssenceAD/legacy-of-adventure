@@ -1,5 +1,6 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
+import { enterPhoto } from './photo';
 import { def, type Kind } from '../data/catalog';
 import { P } from '../engine/pixel';
 import * as game from '../game';
@@ -325,6 +326,8 @@ export function initHud() {
   $('#placeRot').onclick = rotatePlacement;
   $('#placeOk').onclick = confirmPlace;
   $('#vLike').onclick = game.likeNeighbor;
+  // PHOTO_SPEC: 이웃 마을 찍기
+  $('#vPhoto').onclick = () => enterPhoto();
   $('#vHome').onclick = game.goHome;
   $('#vNext').onclick = game.nextNeighbor;
 }

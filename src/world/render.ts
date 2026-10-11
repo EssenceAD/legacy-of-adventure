@@ -12,7 +12,7 @@ import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
-import { drawAmbient, drawLight, glow, NL } from './daynight';
+import { drawAmbient, drawLight, glow, NL, setPhotoNL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, groundFor, groundKey, signSpot, type Wild } from './ground';
 import { stars } from './progress';
@@ -121,10 +121,15 @@ export function orderThings<T extends { d: number; tx: number; ty: number; fw: n
 let orderKey = '';
 let orderCache: Thing[] = [];
 
+/** PHOTO_SPEC: 사진 모드 — 시간(밤 색조·노을)과 손님 보이기, 겹침 UI(이름판·별·팻말 글씨·어울림 선·배치) 빼기 */
+export const photoState = { on: false, time: 'now' as 'now' | 'morning' | 'sunset' | 'night', people: true };
+const PHOTO_NT: Record<string, number | null> = { now: null, morning: 0, sunset: 0.35, night: 1 };
 export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const { LW, LH, OX, OY } = view;
   const T = S.T;
-  const nt = S.nightT;
+  const pnt = photoState.on ? PHOTO_NT[photoState.time] : null;
+  const nt = pnt ?? S.nightT;
+  setPhotoNL(pnt);
   ensureGround(S.visiting ? S.visiting.id : '');
 
   // 1) 바닥 + 밤 색 한 번
@@ -196,7 +201,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     slots[last + 1].push(a);
   }
   for (let k = 0; k <= things.length; k++) {
-    for (const a of slots[k]) drawActor(ctx, a);
+    if (!photoState.on || photoState.people) for (const a of slots[k]) drawActor(ctx, a);
     const it = things[k];
     if (!it) break;
     if ('o' in it) {
@@ -244,6 +249,19 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalAlpha = 1;
   }
   drawAmbient(ctx, T, LW, LH);
+  // 사진: 노을은 주황빛 · 아침은 살짝 밝게
+  if (photoState.on && photoState.time === 'sunset') {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(255,170,110,.45)';
+    ctx.fillRect(0, 0, LW, LH);
+    ctx.globalCompositeOperation = 'source-over';
+  } else if (photoState.on && photoState.time === 'morning') {
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(255,240,210,.14)';
+    ctx.fillRect(0, 0, LW, LH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (photoState.on) return;
   drawStar(ctx, T);
   drawNamePlate(ctx, nt);
   // 땅 개편: 땅 넓히기 팻말 글씨 (팻말 그림 위)

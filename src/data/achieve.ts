@@ -4,7 +4,7 @@ export interface AchCtx {
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'photos';
 
 export interface AchDef {
   id: string;
@@ -21,6 +21,9 @@ const A = (id: string, name: string, desc: string, stat: AchStat, need: number, 
 
 export const ACHIEVEMENTS: AchDef[] = [
   // 원정 (6)
+  // PHOTO_SPEC
+  A('photo1', '찰칵!', '사진을 처음 찍어요', 'photos', 1, { gold: 100 }),
+  A('photo10', '마을 사진가', '사진 10장 찍기', 'photos', 10, { gold: 500, title: '마을 사진가' }),
   A('exp1', '첫 원정', '의뢰를 처음 보내요', 'expeditions', 1, { gold: 100 }),
   A('exp10', '게시판 단골', '의뢰 10번 보내기', 'expeditions', 10, { gold: 300 }),
   A('exp100', '의뢰 중개인', '의뢰 100번 보내기', 'expeditions', 100, { gold: 1500, title: '의뢰 중개인' }),

@@ -1255,3 +1255,16 @@ p.qtag.ok{color:#8fe08f}
 #starCard .sg i{display:block;height:100%;background:#ffd36b;transition:width 1.2s ease-out}
 #bDN{position:relative}
 #starMark{position:absolute;right:-3px;top:-5px;font-style:normal;font-size:12px;color:#ffd36b;text-shadow:1px 1px 0 #1c1018}
+
+/* PHOTO_SPEC: 사진 모드 — 마을 캔버스만 · 아래 얇은 도구 줄 · 틀 바깥은 어둡게 · 셔터 번쩍 */
+body.photo #view>*:not(#scene):not(#photoBar):not(#photoFrame):not(.photoflash):not(#win):not(#scrim):not(#dlg):not(#toast){display:none!important}
+#photoFrame{position:absolute;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.5);outline:1px dashed rgba(255,243,214,.6);z-index:20}
+#photoBar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:30;display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;padding:6px}
+#photoBar .pseg{display:flex;gap:2px}
+#photoBar button{border:0;background:#2a3060;color:#cfd6f5;padding:4px 7px;min-height:32px;font-size:var(--f-small);cursor:pointer}
+#photoBar button.on{background:#f2c447;color:#1c1018;font-weight:700}
+#photoBar .pact{display:flex;gap:6px;margin-left:auto}
+#photoBar .shot{font-size:20px;min-width:52px;background:#fff3d6;color:#1c1018}
+.photoflash{position:absolute;inset:0;background:#fff;z-index:50;pointer-events:none;animation:pflash .4s ease-out forwards}
+@keyframes pflash{from{opacity:.95}to{opacity:0}}
+#visitbar #vPhoto{border:0;background:none;font-size:18px;cursor:pointer}
