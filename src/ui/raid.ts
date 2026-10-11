@@ -18,7 +18,7 @@ import {
   canSweep, expectOf, raidCrew, rankOf, settle, submitRecord, triesLeft, wanderTarget, weeklyTarget, type RaidExpect, type RaidOutcome, type RaidTarget,
 } from '../world/raid';
 import { legendHooks, markDirty, P, type Actor } from '../world/state';
-import { $, $$, esc, fmt, nameTag, pct, pic } from './common';
+import { $, $$, esc, fmt, keepScroll, nameTag, pct, pic } from './common';
 import { mine } from '../net/server';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx } from './battle';
 import { closeWin, openWin, toast } from './windows';
@@ -87,7 +87,7 @@ export function openRaidPrep(t: RaidTarget) {
       (el.onclick = () => {
         const id = +el.dataset.id!;
         picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < R.partySize ? [...picked, id] : picked;
-        openRaidPrep(t);
+        keepScroll(() => openRaidPrep(t));
       }),
   );
   // 전투 2차: 자동 토벌은 소탕 역할 (전투 화면 없이 기대 피해의 70% · 보상도 70%)

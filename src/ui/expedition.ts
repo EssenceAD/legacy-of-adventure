@@ -20,7 +20,7 @@ import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
 import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
-import { $, $$, claimOrder, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
+import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
 
 const E = CONFIG.expedition;
@@ -147,7 +147,7 @@ function openParty(q: Quest, picked: number[] = []) {
       (b.onclick = () => {
         const id = +b.dataset.id!;
         const next = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < E.partyMax ? [...picked, id] : picked;
-        openParty(q, next);
+        keepScroll(() => openParty(q, next));
       }),
   );
   $('#pGo').onclick = () => {

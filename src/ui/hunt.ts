@@ -21,7 +21,7 @@ import {
 import { markDirty, P, type Actor } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
-import { $, $$, esc, fmt, itemCell, nameTag, pic } from './common';
+import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
 import { iconSrc } from './kit';
 import { closeWin, openWin, toast } from './windows';
 
@@ -136,7 +136,7 @@ function openHuntPrep(r: RegionId, s: number) {
         const id = +el.dataset.id!;
         picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < 3 ? [...picked, id] : picked;
         manualPick = true;
-        openHuntPrep(r, s);
+        keepScroll(() => openHuntPrep(r, s));
       }),
   );
   $('#hBack').onclick = () => openHunt(r);

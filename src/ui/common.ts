@@ -102,8 +102,11 @@ export function claimOrder<T>(items: T[], st: (x: T) => { ready: boolean; got: b
 export function keepScroll(fn: () => void) {
   const b = document.getElementById('winB');
   const top = b?.scrollTop ?? 0;
+  // 핫픽스 12 §4: 파티 목록(.plist)은 따로 스크롤된다 — 이것도 그대로
+  const lists = [...document.querySelectorAll<HTMLElement>('#winB .plist')].map((e) => e.scrollTop);
   fn();
   if (b) b.scrollTop = top;
+  document.querySelectorAll<HTMLElement>('#winB .plist').forEach((e, i) => (e.scrollTop = lists[i] ?? 0));
 }
 
 /** 창 안의 [data-end] 진행 막대·남은 시간을 1초마다 고친다 */
