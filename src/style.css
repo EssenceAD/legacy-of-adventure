@@ -1169,62 +1169,6 @@ p.qtag.ok{color:#8fe08f}
 .conp .cbar{height:8px;background:#3a3048;box-shadow:0 0 0 1px #1a1418}
 .conp .cbar i{display:block;height:100%;background:linear-gradient(#a8f080 0 25%,#6fd04b 25%)}
 .conp .ct{font-size:var(--f-big,18px);color:#fff3d6;text-align:center}
-
-/* ───────── UI_SKIN_SPEC: 창 재질 (양피지 · 코르크 · 나무 · 돌+금테) ─────────
-   무늬 있는 판은 repeat (stretch면 무늬가 늘어나 뭉개짐) · 정수 배율(--k) · 남색 창은 그대로 */
-#winIc{width:24px;height:24px;margin-right:6px;flex:none;image-rendering:pixelated}
-.win.px.skin-parchment{border-image:var(--ui-panel-parchment) 12 fill / calc(12px * var(--k)) / 0 repeat}
-.win.px.skin-wood{border-image:var(--ui-panel-wood) 12 fill / calc(12px * var(--k)) / 0 repeat}
-.win.px.skin-cork{border-image:var(--ui-panel-cork) 12 fill / calc(12px * var(--k)) / 0 repeat}
-.win.px.skin-stone{border-image:var(--ui-panel-stone) 12 fill / calc(12px * var(--k)) / 0 repeat}
-.win[class*="skin-"].px{padding:calc(4px * var(--k))}
-/* 제목 = 리본 (빨강 + 금실) */
-.win[class*="skin-"] .hd{border-image:var(--ui-title-ribbon) 6 fill / calc(6px * var(--k)) / 0 stretch}
-.win[class*="skin-"] .hd #winT{color:#fff3d6;text-shadow:1px 1px 0 #4a1010}
-/* 버튼: 주요 = 금 · 보조 = 창 재질 (양피지·코르크·나무 → 나무 · 돌 → 쇠) */
-.win[class*="skin-"] :is(.bigbtn,.qhd button,.irow button,.seg button,.menu button,.goal button):not([disabled]){border-image-source:var(--ui-btn-wood);color:var(--cream);text-shadow:1px 1px 0 #2a1408}
-.win.skin-stone :is(.bigbtn,.qhd button,.irow button,.seg button,.menu button,.goal button):not([disabled]){border-image-source:var(--ui-btn-iron)}
-.win[class*="skin-"] :is(.bigbtn:not(.ghost):not(.red):not(.sm),.goal button,.seg button.on):not([disabled]){border-image-source:var(--ui-btn-gold);color:#3a2414;text-shadow:none;font-weight:700}
-.win[class*="skin-"] :is(.bigbtn,.qhd button,.irow button,.seg button,.menu button,.goal button):active:not([disabled]){filter:brightness(.88)}
-/* 양피지: 어두운 글씨 · 그림자 없음 · 흐린 글 · 강조 */
-.skin-parchment #winB{color:#3a2414}
-.skin-parchment #winB *:not(button):not(button *){text-shadow:none}
-.skin-parchment #winB :is(p,div,span,li,dt,dd,label,b,strong,h2,h3):not(button *):not(.g):not(.good):not(.bad){color:#3a2414}
-.skin-parchment #winB :is(.sub,.note,small,em,.pn-date):not(button *){color:#66462a}
-.skin-parchment #winB :is(.g,.pn-title,.ledger-total,b.g):not(button *){color:#8c2828}
-.skin-parchment #winB .good:not(button *){color:#2f6b1f}
-.skin-parchment #winB .bad:not(button *){color:#a02020}
-.skin-parchment #winB .heart:not(button *){color:#a8285a}
-/* 양피지 위 남색 상자는 연한 종이 칸으로 */
-.skin-parchment #winB :is(.chemrow,.arow,.mrow,.mail,.dexrow,.goal,.ach,.chemnews>div,.stp,.qhd,.bar i,.rec,.pn,.pnl){background-color:rgba(122,90,56,.14);box-shadow:0 0 0 1px rgba(58,36,20,.35)}
-.skin-parchment #winB .dexrow i{background:#e8d4a8;color:#7a5a38;box-shadow:0 0 0 1px #7a5a38}
-.skin-parchment #winB .dexrow i.on{background:var(--c);color:#fff3d6}
-/* 양피지 탭 = 책갈피 */
-.skin-parchment .tab{border:0 solid transparent;border-image:var(--ui-tab-bookmark-off) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none;color:#5a3a20;text-shadow:none}
-.skin-parchment .tab.on{border-image-source:var(--ui-tab-bookmark-on);color:#3a2414;font-weight:700}
-/* 코르크 게시판: 의뢰 하나하나 = 압정 꽂은 의뢰서 카드 */
-.skin-cork #winB :is(.sub,.note,.qhd span,p):not(button *):not(.quest *):not(.raidcard *):not(.run *):not(.pity):not(.qlock){color:#2a1408;text-shadow:none}
-.skin-cork #winB .qhd b.g{color:#4a0e0e;text-shadow:none}
-.skin-cork .quest{position:relative;background:none;box-shadow:none;border:0 solid transparent;border-image:var(--ui-note-card) 8 fill / calc(8px * var(--k)) / 0 stretch;color:#3a2414;padding:calc(5px * var(--k)) 8px 6px;margin-top:8px}
-.skin-cork .quest::before{content:'';position:absolute;left:50%;top:calc(-5px * var(--k));width:calc(9px * var(--k));height:calc(11px * var(--k));margin-left:calc(-4.5px * var(--k));background:var(--ui-pin-red) 0 0 / 100% 100%;image-rendering:pixelated}
-.skin-cork .quest .qreg{color:#fff3d6;background:var(--rc);padding:2px 4px;text-shadow:1px 1px 0 rgba(0,0,0,.5);box-shadow:0 0 0 1px #3a2414;text-align:center}
-.skin-cork .quest :is(b,span){color:#3a2414}
-.skin-cork .quest small{color:#6a4a2a}
-.skin-cork .quest small.drop{color:#66462a}
-.skin-cork .quest small.g,.skin-cork .quest .g{color:#8c2828}
-.skin-cork .quest small.qtag{color:#8c2828}
-.skin-cork .quest em{color:#8c2828}
-/* 나무 · 돌: 밝은 글씨 + 1px 그림자 (흐린 글은 따뜻한 회색으로) */
-.skin-wood #winB :is(.sub,.note):not(button *){color:#e8d8b8;text-shadow:1px 1px 0 #1a0e06}
-.skin-stone #winB :is(.sub,.note):not(button *){color:#f0ead8;text-shadow:1px 1px 0 #10141c}
-.skin-wood #winB,.skin-stone #winB{text-shadow:1px 1px 0 rgba(0,0,0,.6)}
-/* 양피지 위 어두운 상자 → 종이 칸 (openWin이 배경이 어두운 상자에 .pbox를 붙인다) */
-.skin-parchment #winB .pbox{background:rgba(122,90,56,.14)!important;box-shadow:0 0 0 1px rgba(58,36,20,.35)!important;border-image-source:none!important;border-color:transparent!important}
-.skin-parchment #winB .pbox:is(.on,.sel,.cur,.ready){background:rgba(140,40,40,.16)!important;box-shadow:inset 3px 0 0 #8c2828,0 0 0 1px rgba(58,36,20,.45)!important}
-.skin-parchment #winB .pbox :is(p,div,span,li,b,strong,h2,h3):not(button *):not(.g):not(.good):not(.bad){color:#3a2414}
-/* 코르크: 잠긴 지역 · 전설 천장 줄은 작은 어두운 명패 */
-.skin-cork #winB :is(.qlock,.pity){background:rgba(28,16,24,.78);padding:4px 6px;box-shadow:0 0 0 1px #1c1018;color:#e8e0f0;text-shadow:none}
-.skin-cork #winB .pity b{color:#ffd36b}
 /* HOTFIX14 §4: 위쪽 HUD 줄의 빈 곳은 클릭을 막지 않는다 (별똥별·건물 클릭이 캔버스까지) */
 .top{pointer-events:none}
 .top>*:not(.sp){pointer-events:auto}
