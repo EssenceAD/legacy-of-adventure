@@ -67,7 +67,7 @@ export async function loadAssets(onProgress?: (p: number) => void) {
       makeFlipped(k);
       tick();
     }),
-    // 토벌전: 보스(지금은 멧돼지 왕 한 장 → 나머지는 색을 돌려 임시로) · 전투 배경 · 트로피
+    // 토벌전: 옛 보스 그림(지금은 심연의 눈만 씀 — 나머지는 핫픽스 8부터 Ninja Adventure 그림) · 전투 배경 · 트로피
     // 토벌전: 보스 5마리 · 지역별 전투 배경 (트로피·기념비는 meta.json 건물 그림으로 같이 불러온다)
     ...BOSSES.map((b) => loadImage(`${BASE}sprites/boss_${b.id}.png`).then((im) => (BOSS_IMG[b.id] = toCanvas(im)))),
     ...REGIONS.map((r) => loadImage(`${BASE}sprites/${r.id === 'forest' ? 'raid_bg' : 'raid_bg_' + r.id}.png`).then((im) => (RAID_BG[r.id] = im))),

@@ -53,7 +53,8 @@ export const CONFIG = {
   land: [
     { size: '6×6', from: 4, to: 10, cost: 0, opens: '여관 본관, 우물, 모닥불' },
     { size: '8×8', from: 3, to: 11, cost: 300, opens: '나무 자리' },
-    { size: '10×10', from: 2, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
+    // 핫픽스 8: 3단계를 뒤쪽(입구 반대편)으로 한 줄 넓힘 10×10 → 11×11 — 정문·건물 위치는 그대로, 옛 저장도 자동으로 넓어짐
+    { size: '11×11', from: 1, to: 12, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
     { size: '12×12', from: 1, to: 13, cost: 1600, opens: '객실 별채' },
     { size: '14×14', from: 0, to: 14, cost: 3000, opens: '온천, 최대 크기' },
   ],

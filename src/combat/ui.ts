@@ -12,7 +12,8 @@ import { digits, draw, labelsOut, loadFx, numsOut, sheets } from './draw';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
 import { afterBusy } from '../ui/update';
-import { loadMon } from './mon';
+import { flipOf, loadMon, whiteOf } from './mon';
+import { BOSS_IMG } from '../engine/assets';
 
 const C = CONFIG.combat;
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -57,7 +58,15 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     ids.add(opts.raid.look.id);
     ids.add(opts.raid.look.minion);
   }
-  await Promise.all([...[...ids].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx()]);
+  await Promise.all([...[...ids].filter((id) => !id.startsWith('old_')).map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx()]);
+  // 심연의 눈: 옛 그림 한 장으로 (모든 동작이 같은 그림 · 오른쪽을 보게 뒤집음)
+  if (ids.has('old_eye') && !sheets.old_eye && BOSS_IMG.eye) {
+    const im = BOSS_IMG.eye;
+    const r = flipOf(im);
+    const one = { row: 0, frames: 1, fps: 1, loop: true };
+    const fr = [{ r, l: im, w: whiteOf(r) }];
+    sheets.old_eye = { meta: { frameW: im.width, frameH: im.height, anchor: [Math.floor(im.width / 2), im.height - 1], anims: { idle: one, move: one, attack: one, charge: one, hurt: one, die: one } }, frames: { idle: fr, move: fr, attack: fr, charge: fr, hurt: fr, die: fr } };
+  }
   // 그림이 없으면 1차 코드 그림으로 (예비)
   if ([...ids].some((id) => !sheets[id])) await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;

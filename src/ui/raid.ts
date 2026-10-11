@@ -22,8 +22,8 @@ import { $, $$, esc, fmt, nameTag, pct, pic } from './common';
 import { mine } from '../net/server';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx } from './battle';
 import { closeWin, openWin, toast } from './windows';
-import { BOSSES } from '../data/bosses';
-import { RAID_LOOKS, type BossLook } from '../combat/mons';
+import { RAID_LOOK_OF, RAID_LOOKS, type BossLook } from '../combat/mons';
+import { abs } from './kit';
 import { closeCombat, startCombat } from '../combat/ui';
 
 const R = CONFIG.raid;
@@ -36,6 +36,9 @@ const CHARGE = 120;
 let picked: number[] = [];
 
 export function bossPic(b: BossDef): string {
+  // 핫픽스 8: 새 보스는 Ninja Adventure 얼굴(Faceset) · 심연의 눈은 옛 그림
+  const look = RAID_LOOK_OF[b.id];
+  if (look && look.startsWith('nb_')) return abs(`assets/mon/${look}/face.png`);
   const c = BOSS_IMG[b.id];
   return c ? c.toDataURL() : '';
 }
@@ -76,7 +79,7 @@ export function openRaidPrep(t: RaidTarget) {
       <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
       ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
     </div>
-    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 이번 주 모습: <b class="g">${esc(raidLook(t).name)}</b> · 직접 토벌만 랭킹 최고 기록에 도전해요</p>`,
+    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 토벌만 랭킹 최고 기록에 도전해요</p>`,
   );
   $$('.pm').forEach(
     (el) =>
@@ -698,12 +701,8 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
 
 /** 이번 주(떠돌이는 보스마다) 토벌 보스 그림 — 주간 4종을 주마다 돌린다 */
 export function raidLook(t: RaidTarget): BossLook {
-  if (t.kind === 'weekly') {
-    const [y, mo, da] = P.raid.week.split('-').map(Number);
-    const wk = Math.round(new Date(y, mo - 1, da).getTime() / (7 * 864e5));
-    return RAID_LOOKS[((wk % 4) + 4) % 4];
-  }
-  return RAID_LOOKS[Math.max(0, BOSSES.findIndex((b) => b.id === t.boss.id)) % 4];
+  const id = RAID_LOOK_OF[t.boss.id] ?? 'nb_racoon';
+  return RAID_LOOKS.find((l) => l.id === id) ?? RAID_LOOKS[0];
 }
 /** 필드 피해 → 토벌 피해 단위: 「자동으로 버틴 파티가 R.seconds 동안 넣는 필드 피해」를 기대 피해량에 맞춘다 */
 export const fieldExpect = (members: Actor[]) => members.reduce((s, m) => s + powerOf(m), 0) * CONFIG.combat.dmgK * CONFIG.combat.raidFieldDps * R.seconds;

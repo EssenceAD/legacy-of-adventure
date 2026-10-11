@@ -167,8 +167,8 @@ export const LEGENDS: LegendDef[] = [
   },
   {
     key: 'ryuka', name: '류카', title: '용의 딸', charm: '청록 머리 작은 뿔. 귀여운 용족', kind: 'dwarf', race: 'human', hair: '#40b0a8',
-    hint: '얼음 와이번이 쓰러진 날 용의 딸이 반짝이는 걸 찾으러 온대', rumor: '와이번을 잡고 유물을 가진 여관이 있다고 용의 딸이 꼬리를 흔들었대…',
-    rumorWhen: (c) => c.bossKills('wyvern') >= 1 && c.relicEver, rumorText: '얼음 와이번 처치 + 유물 등급 장비 획득',
+    hint: '붉은 텐구가 쓰러진 날 용의 딸이 반짝이는 걸 찾으러 온대', rumor: '텐구를 잡고 유물을 가진 여관이 있다고 용의 딸이 꼬리를 흔들었대…',
+    rumorWhen: (c) => c.bossKills('wyvern') >= 1 && c.relicEver, rumorText: '붉은 텐구 처치 + 유물 등급 장비 획득',
     bond: ['treasure'], bondText: '원정에서 보물(영웅 이상 장비) 얻기',
     request: { text: '유물 등급 장비 1개 보여 주기 (소모 안 됨)', event: 'showRelic', need: 1 },
     intro: ['우와아, 반짝이는 냄새! 여기 유물 있지? 있지?', '보여 줘! 만지기만 할게, 진짜로!'],

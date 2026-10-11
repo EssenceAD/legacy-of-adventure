@@ -60,7 +60,7 @@ function fill(s: string): string {
     .replace(/\{직업\}/g, () => CLASSES[pick([...GUEST_KINDS])].name)
     .replace(/\{아이템\}/g, () => item)
     .replace(/\{숫자\}/g, () => String(2 + ((Math.random() * 40) | 0)))
-    .replace(/\{보스\}/g, () => bossById(P.raid.bossId)?.name ?? '멧돼지 왕');
+    .replace(/\{보스\}/g, () => bossById(P.raid.bossId)?.name ?? '거대 너구리');
 }
 
 const log: Msg[] = [];

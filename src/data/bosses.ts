@@ -31,27 +31,28 @@ export interface BossDef {
 
 export const BOSSES: BossDef[] = [
   {
-    id: 'boar', name: '멧돼지 왕', region: 'forest', alarm: '숲에서 거대한 멧돼지 왕이 나타났다!',
-    power: 300, hp: 120000, patterns: ['돌진', '송곳니 찍기', '흙먼지', '포효'],
-    mat: '멧돼지 송곳니', trophy: '멧돼지 왕 머리', title: '숲의 왕을 쓰러뜨린 자',
+    // 핫픽스 8: 보이는 이름·설명·초상만 새 그림(Ninja Adventure)에 맞춤 — id·능력치·재료·트로피·칭호·기록은 그대로
+    id: 'boar', name: '거대 너구리', region: 'forest', alarm: '숲에서 집채만 한 너구리가 나타났다! 도토리 창고가 털린다!',
+    power: 300, hp: 120000, patterns: ['몸통 박치기', '배 찍기', '너구리 부르기', '포효'],
+    mat: '너구리 송곳니', trophy: '거대 너구리 꼬리', title: '숲의 왕을 쓰러뜨린 자',
     weak: ['knight', 'rogue'], resist: ['mage'], gold: 600,
   },
   {
-    id: 'mushroom', name: '버섯 거인', region: 'swamp', alarm: '늪에서 버섯 거인이 걸어 나왔다! 포자가 마을까지 날린다!',
-    power: 660, hp: 260000, patterns: ['몸통 박치기', '갓 내려치기', '독 포자', '분열'],
-    mat: '거인의 갓', trophy: '버섯 거인 갓', title: '늪의 포자를 걷어낸 자',
+    id: 'mushroom', name: '왕슬라임', region: 'swamp', alarm: '늪에서 왕슬라임이 솟아올랐다! 끈적한 점액이 마을까지 번진다!',
+    power: 660, hp: 260000, patterns: ['굴러오기', '내려 앉기', '분열', '점액 비'],
+    mat: '왕슬라임 젤리', trophy: '왕슬라임 왕관', title: '늪의 포자를 걷어낸 자',
     weak: ['mage', 'cleric'], resist: ['rogue'], gold: 1500,
   },
   {
-    id: 'golem', name: '폐광 골렘', region: 'mine', alarm: '폐광 깊은 곳에서 골렘이 깨어났다! 땅이 흔들린다!',
-    power: 1450, hp: 580000, patterns: ['굴러오기', '바위 주먹', '낙석', '단단해지기'],
-    mat: '골렘 핵', trophy: '골렘 주먹', title: '바위를 부순 자',
+    id: 'golem', name: '붉은 무사', region: 'mine', alarm: '폐광 깊은 곳에서 붉은 무사가 깨어났다! 쌍검 부딪는 소리가 울린다!',
+    power: 1450, hp: 580000, patterns: ['베어 들기', '칼날 회오리', '졸개 부르기', '기합'],
+    mat: '무사의 칼날 조각', trophy: '붉은 무사 투구', title: '바위를 부순 자',
     weak: ['dwarf', 'mage'], resist: ['rogue', 'knight'], gold: 3750,
   },
   {
-    id: 'wyvern', name: '얼음 와이번', region: 'ice', alarm: '협곡 위로 얼음 와이번이 날아올랐다! 하늘이 얼어붙는다!',
-    power: 3200, hp: 1280000, patterns: ['급강하', '꼬리 찍기', '얼음 숨결', '눈보라'],
-    mat: '와이번 비늘', trophy: '얼음 와이번 뿔', title: '하늘을 얼린 용을 잡은 자',
+    id: 'wyvern', name: '붉은 텐구', region: 'ice', alarm: '협곡 위로 붉은 텐구가 날아올랐다! 깃털 폭풍이 몰아친다!',
+    power: 3200, hp: 1280000, patterns: ['급강하', '깃털 폭풍', '까마귀 부르기', '변신'],
+    mat: '텐구 깃털', trophy: '텐구 가면', title: '하늘을 얼린 용을 잡은 자',
     weak: ['rogue', 'cleric'], resist: ['dwarf'], gold: 9400,
   },
   {

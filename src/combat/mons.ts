@@ -84,5 +84,9 @@ export const RAID_LOOKS: BossLook[] = [
   { id: 'nb_samurai', name: '붉은 무사', pats: ['베어 들기', '칼날 회오리', '졸개 부르기'], r: 0.8, minion: 'na_skull' },
   { id: 'nb_tengu', name: '붉은 텐구', pats: ['급강하', '깃털 폭풍', '까마귀 부르기'], r: 0.75, minion: 'na_owl2' },
   { id: 'nb_racoon', name: '거대 너구리', pats: ['몸통 박치기', '배 찍기', '너구리 부르기'], r: 0.7, minion: 'na_racoon' },
-  { id: 'nb_slime', name: '거대 슬라임', pats: ['굴러오기', '내려 앉기', '분열'], r: 0.75, minion: 'na_slime_green' },
+  { id: 'nb_slime', name: '왕슬라임', pats: ['굴러오기', '내려 앉기', '분열'], r: 0.75, minion: 'na_slime_green' },
+  // 심연의 눈: 새 그림 4종에 없어 옛 그림 한 장 그대로 (전투에서도 같은 그림)
+  { id: 'old_eye', name: '심연의 눈', pats: ['응시 돌진', '촉수 내려치기', '그림자 부르기'], r: 0.8, minion: 'na_spirit2' },
 ];
+/** 토벌 보스(옛 id) → 그림 (핫픽스 8: 주마다 돌리지 않고 보스마다 고정 — 이름·초상과 맞게) */
+export const RAID_LOOK_OF: Record<string, string> = { boar: 'nb_racoon', mushroom: 'nb_slime', golem: 'nb_samurai', wyvern: 'nb_tengu', eye: 'old_eye' };

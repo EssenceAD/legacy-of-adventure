@@ -24,7 +24,9 @@ import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { openBuild, toast, toastHtml } from './windows';
+import { openBuild, openLand, toast, toastHtml } from './windows';
+import { talk } from './dialogue';
+import { applyTidy, planTidy } from '../world/tidy';
 import { openGridMenu } from './menu';
 import { achReady, mailWaiting } from '../world/meta';
 
@@ -82,9 +84,33 @@ export function startPlace(kind: Kind, prop?: string) {
     const best = harmonySpot(pl);
     if (best) [pl.tx, pl.ty] = best;
   }
-  // 땅에 이 크기 빈자리가 하나도 없으면: 그냥 「못 놓아요」로 두지 않고 할 일을 알려 준다 (밤샘 봇이 여기서 막힘)
-  if (pl.tx == null) toast(`${d.name}을(를) 놓을 빈자리가 없어요 · 건물을 눌러 「옮기기」로 자리를 모으거나 땅을 넓혀요`);
+  // 핫픽스 8: 땅에 이 크기 빈자리가 하나도 없으면 모모의 자리 정리 도우미
+  if (pl.tx == null && !prop) return offerTidy(kind, pl);
   openPlace(pl);
+}
+
+/** 자리 정리 도우미: 1칸 장식을 가장자리로 모아 자리를 만들지 묻는다 · 그래도 안 되면 땅 넓히기 */
+function offerTidy(kind: Kind, pl: Placement) {
+  const plan = planTidy(kind);
+  if (!plan.spot) {
+    talk([['post', `${def(kind).name}을(를) 놓을 자리가 없어요. 장식을 다 옮겨도 모자라요 — 땅을 넓혀야 해요!`]], undefined, [
+      { label: '땅 넓히기', fn: () => openLand() },
+      { label: '직접 할게요', fn: () => openPlace(pl) },
+    ]);
+    return;
+  }
+  const warn = plan.broken ? ` (어울림 ${plan.broken}개가 풀려요)` : '';
+  talk([['post', `자리가 부족해요. 장식을 한쪽으로 정리해 드릴까요?${warn}`]], undefined, [
+    {
+      label: '정리하기',
+      fn: () => {
+        applyTidy(plan);
+        toast(`장식 ${plan.moves.length}개를 가장자리로 옮겼어요`);
+        startPlace(kind);
+      },
+    },
+    { label: '직접 할게요', fn: () => openPlace(pl) },
+  ]);
 }
 
 /** 어울림이 생기는 빈자리 (가장 좋은 곳) */

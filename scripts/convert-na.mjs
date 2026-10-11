@@ -76,6 +76,9 @@ for (const [id, dir, rows] of BOSSES) {
   const to = path.join(OUT_MON, id);
   fs.mkdirSync(to, { recursive: true });
   fs.writeFileSync(path.join(to, 'sheet.png'), PNG.sync.write(out));
+  // 핫픽스 8: 얼굴(초상) — 토벌 준비·결과·원정 게시판 카드
+  const face = path.join(RAW, 'Boss', dir, 'Faceset.png');
+  if (fs.existsSync(face)) fs.copyFileSync(face, path.join(to, 'face.png'));
   fs.writeFileSync(path.join(to, 'meta.json'), JSON.stringify({ frameW: W, frameH: H, anchor: [Math.floor(W / 2), foot], boss: true, source: `Ninja Adventure (CC0) ${dir}`, anims }, null, 1));
   console.log(id, `${W}×${H}`, Object.entries(anims).map(([k, a]) => `${k}${a.frames}`).join(' '));
 }
