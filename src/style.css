@@ -1187,3 +1187,9 @@ p.qtag.ok{color:#8fe08f}
 /* HOTFIX15: 약하게 = 1px 한 번 */
 #view.shake.low{animation:shakeLow .08s steps(2) 1}
 @keyframes shakeLow{0%{transform:translate(1px,0)}50%{transform:translate(-1px,0)}100%{transform:none}}
+
+/* HUNT_WORLD §1: 사냥 창 지역 색 띠 (지역 탭 아래 · 스테이지 칸 왼쪽) — 9-slice 판(fill) 위에 그리려고 가상 요소로 */
+.huntw .tab[data-r]{position:relative}
+.huntw .tab[data-r]::after{content:'';position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:var(--rc);pointer-events:none}
+.huntw .tab[data-r].locked::after{opacity:.35}
+.huntw .hmap .hst::before{content:'';position:absolute;left:4px;top:5px;bottom:5px;width:3px;background:var(--rc);pointer-events:none}
