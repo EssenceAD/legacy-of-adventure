@@ -1108,3 +1108,9 @@ html[data-size="phone"] .stat .r1{column-gap:6px}
 /* 핫픽스 11 §6-2: 「새 버전」 띠는 위쪽 버튼(소식·밤·메뉴·어울림·소리)을 가리지 않게 아래 독 바로 위로 */
 #updBar{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 86px + 4px);max-width:calc(100% - 24px);white-space:nowrap}
 html:not([data-size="phone"]) #updBar{bottom:calc(env(safe-area-inset-bottom,0px) + 132px + 4px)}
+/* 초상화 작업 §2: 대화창 이름표 옆 머리색 점 (같은 직업·종족 손님 구분) */
+#dName .hdot{display:inline-block;width:8px;height:8px;margin-left:6px;vertical-align:1px;box-shadow:0 0 0 1px var(--ink)}
+/* 초상화 작업: 원정 보고서 맨 위 파티 얼굴 */
+.repparty{display:flex;gap:10px;justify-content:center;margin:0 0 8px}
+.repparty span{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:var(--f-small)}
+.repparty img{width:56px;height:56px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--line)}

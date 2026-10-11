@@ -1,6 +1,7 @@
 // 대화창: 초상화 + 이름표 + 한 글자씩 타이핑 + ▼. Z/엔터/탭 = 다음, X = 건너뛰기(이름 짓기는 못 건너뜀)
 import { GUEST_KINDS, speakerName } from '../data/classes';
-import { pic } from './common';
+import { appearance } from '../world/adventurers';
+import { portrait } from './common';
 import { CONFIG } from '../data/config';
 import { PORTRAITS } from '../engine/assets';
 import { mcPortrait } from '../data/origins';
@@ -74,7 +75,7 @@ export function resolveSpeaker(who: string, nameTag?: string): { actor: Actor | 
   let actor: Actor | null = null;
   if (who.startsWith('@')) actor = all.find((a) => a.id === +who.slice(1)) ?? null;
   else if ((GUEST_KINDS as readonly string[]).includes(who) && nameTag) actor = all.find((a) => a.name === nameTag) ?? null;
-  if (actor) return { actor, port: pic(actor), name: actor.name };
+  if (actor) return { actor, port: portrait(actor), name: actor.name };
   return { actor: null, port: PORTRAITS[who] || '', name: nameTag ?? speakerName(who, S.innName) };
 }
 /** 대사 줄을 만들 때: 손님이면 '@id', 영웅·전설은 전용 초상화 키 */
@@ -91,7 +92,18 @@ function showLine() {
   const sp = me ? null : resolveSpeaker(who, nameTag);
   port.src = me ? myPort() : sp!.port;
   port.hidden = narr;
-  $('#dName').textContent = me && P.owner ? P.owner.name : sp!.name;
+  const dn = $('#dName');
+  dn.textContent = me && P.owner ? P.owner.name : sp!.name;
+  // 초상화 작업 §2: 같은 직업·종족 손님끼리 구분 — 이름표 옆 머리색 점 (이름표가 밝은 판이라 이름 색은 그대로)
+  const ac = me ? null : sp!.actor;
+  // 옛 손님은 hair가 저장돼 있지 않다 → 실제로 그려지는 머리색
+  const hair = ac ? (ac.hair ?? appearance(ac).def.hair) : null;
+  if (hair) {
+    const dot = document.createElement('i');
+    dot.className = 'hdot';
+    dot.style.background = hair;
+    dn.appendChild(dot);
+  }
   // 마주보기: 말하는 쪽만 밝게
   const duo = $('#dDuo');
   d.classList.toggle('duo', !!DQ.duo);

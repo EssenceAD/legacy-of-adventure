@@ -6,6 +6,7 @@ import { BOSSES } from '../data/bosses';
 import { REGIONS } from '../data/items';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
+import { GUEST_KINDS, RACES } from '../data/classes';
 import { canvas, hsl, hslToRgb } from './pixel';
 
 export interface SpriteMeta {
@@ -55,7 +56,9 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   }
   Object.assign(META, meta);
   const keys = Object.keys(meta);
-  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id), ...LEGENDS.map((l) => 'legend_' + l.key), ...JOBS.flatMap((j) => [mcPortrait(j, 'm'), mcPortrait(j, 'f')])];
+  const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id), ...LEGENDS.map((l) => 'legend_' + l.key), ...JOBS.flatMap((j) => [mcPortrait(j, 'm'), mcPortrait(j, 'f')]),
+    // 초상화 작업: 손님 초상화 20장 (직업 5 × 종족 4)
+    ...GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`))];
   let done = 0;
   const total = keys.length + ports.length + 1;
   const tick = () => onProgress?.(++done / total);

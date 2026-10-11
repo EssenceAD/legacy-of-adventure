@@ -16,7 +16,7 @@ import { bagSize, equip, itemPower, itemStat, unequip } from '../world/items';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
 import { track } from '../world/progress';
 import { speakerOf, talk } from './dialogue';
-import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, tabs } from './common';
+import { $, $$, bar, bindTabs, esc, fmt, itemCell, kindText, nameTag, pct, pic, portrait, tabs } from './common';
 import { dustLine } from './smith';
 import { closeWin, openWin, toast } from './windows';
 
@@ -95,7 +95,7 @@ function talkGuest(a: Actor) {
 export function showActor(a: Actor) {
   if (!a.id) {
     // 이웃 마을 구경꾼·npc
-    openWin(a.name, `<div class="who"><img class="port" src="${pic(a)}" alt=""><div><p class="sub">${kindText(a)} · ${doingText(a)}</p></div></div>`);
+    openWin(a.name, `<div class="who"><img class="port" src="${portrait(a)}" alt=""><div><p class="sub">${kindText(a)} · ${doingText(a)}</p></div></div>`);
     return;
   }
   const st = totalStats(a);
@@ -111,7 +111,7 @@ export function showActor(a: Actor) {
   const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
   openWin(
     a.name,
-    `<div class="who"><img class="port" src="${pic(a)}" alt=""><div>
+    `<div class="who"><img class="port" src="${portrait(a)}" alt=""><div>
       <p class="sub">${nameTag(a)} Lv.${a.lvl} ${kindText(a)}<br>${status} · ${doingText(a)}</p>
       ${bar('체력', a.hp, '#e0544a')}${bar('포만', a.food, '#e8a23a')}${bar('기분', a.mood, '#6fb04b')}
       ${bar('경험', a.xp, '#6f8fff', xpToNext(a.lvl))}

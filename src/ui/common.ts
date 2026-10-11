@@ -32,6 +32,15 @@ export function pic(a: Actor): string {
   return (PICS[key] = c.toDataURL());
 }
 
+/**
+ * 초상화 작업: 대화창·손님 정보 창에 쓰는 큰 얼굴 — 손님이면 직업×종족 일러스트 초상화 (g_직업_종족).
+ * 영웅·전설·NPC는 전용 초상화, 그림이 없으면 도트 얼굴(pic). 작은 목록 아이콘은 pic 그대로(마을 모습과 이어지게).
+ */
+export function portrait(a: Actor): string {
+  if (a.role || a.legendId || a.heroId) return pic(a);
+  return PORTRAITS[`g_${a.kind}_${a.race ?? 'human'}`] || pic(a);
+}
+
 /** 이름 + 희귀도 색 */
 export function nameTag(a: Actor) {
   const col = RARITY_INFO[a.rarity].color;

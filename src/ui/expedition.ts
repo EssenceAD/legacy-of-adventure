@@ -19,8 +19,8 @@ import { floatW } from '../world/fx';
 import { uiHooks } from '../world/state';
 import { dropChances, pityLimit } from '../world/items';
 import type { OfflineSummary } from '../world/offline';
-import { markDirty, P, S, world, type Quest, type Run, type TalkLine } from '../world/state';
-import { $, $$, claimOrder, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic } from './common';
+import { markDirty, P, S, world, type Actor, type Quest, type Run, type TalkLine } from '../world/state';
+import { $, $$, claimOrder, esc, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
 
 const E = CONFIG.expedition;
@@ -225,6 +225,13 @@ export function showReport(run: Run) {
 }
 
 /** 전리품 창 (게시판의 「보고서 보기」에서도) */
+/** 초상화 작업: 보고서 맨 위에 다녀온 파티 얼굴 (일러스트 초상화) */
+function partyRow(run: Run): string {
+  const ms = run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[];
+  if (!ms.length) return '';
+  return `<div class="repparty">${ms.map((a) => `<span><img src="${portrait(a)}" alt=""><small>${esc(a.name)}</small></span>`).join('')}</div>`;
+}
+
 function showLoot(run: Run) {
   const res = run.result;
   if (!res || run.claimed) return;
@@ -232,7 +239,7 @@ function showLoot(run: Run) {
   const items = res.items.map((it) => `<div class="loot">${itemCell(it)}<span style="color:${GRADE_INFO[it.grade].color}">${GRADE_INFO[it.grade].name} ${esc(it.name)}</span></div>`).join('');
   openWin(
     `원정 보고서 · ${reg.name}`,
-    `<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('')}</div>
+    `${partyRow(run)}<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('')}</div>
     <div class="rew">금화 <b class="g">+${fmt(res.gold)}</b> · 경험치 +${res.xp} · ${reg.mat} +${res.mats}</div>
     ${items}
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}

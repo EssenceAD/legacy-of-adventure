@@ -10,7 +10,7 @@ import { charFrames, onNewFrames } from './engine/sprites';
 import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
-import { arrive, enter, fastHooks, updActors } from './world/actors';
+import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pumpEvents } from './world/events';
@@ -567,6 +567,7 @@ async function boot() {
       __uiTalk: (lines: TalkLine[]) => talk(lines),
       __say: say,
       __fakeUpdate: _fakeNewer,
+      __chemTalk: queueChemTalk,
       __visual: () => ({ talk: isTalking(), tour: tour.on, spect: spectacles.length, burst: burstOn(), placing: !!placing.pl, grade: gradeAnim.on, idle: idleFor(), step: drawStep(isWinOpen()), saver: saverOn(), title: document.getElementById('winT')?.textContent }),
       __arrive: (status?: 'visitor' | 'passer') => arrive(makeAdventurer(0, 0, { day: S.day, status: status ?? 'visitor' })),
       __neighbors: NEIGHBORS,
