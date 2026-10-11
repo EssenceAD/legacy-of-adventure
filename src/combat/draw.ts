@@ -4,7 +4,7 @@ import { CONFIG } from '../data/config';
 import { IMG } from '../engine/assets';
 import { sx, sy, TH, TW } from '../engine/iso';
 import { frameAt, flipOf, whiteOf, type MonSheet } from './mon';
-import { GRADE_COLOR, screenDx, type Field, type Unit } from './field';
+import { GRADE_COLOR, quarterOf, screenDx, type Field, type Unit } from './field';
 
 const C = CONFIG.combat;
 export const sheets: Partial<Record<string, MonSheet>> = {};
@@ -250,6 +250,8 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     if (fx.kind === 'ring') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * p, (fx.r ?? 1) * (TH / 2) * p, null, p < 0.5 ? '#ffffff' : '#ffd36b');
     if (fx.kind === 'heal') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * Math.min(1, p * 2), (fx.r ?? 1) * (TH / 2) * Math.min(1, p * 2), 'rgba(120,255,140,.18)', '#8fe08f');
     if (fx.kind === 'boom') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * (0.4 + p * 0.6), (fx.r ?? 1) * (TH / 2) * (0.4 + p * 0.6), `rgba(255,160,60,${0.5 * (1 - p)})`, p < 0.6 ? '#ffd36b' : '#ff8a3a');
+    // 핫픽스 8 (2-7): 바닥에 깔리는 그림 이펙트(원 파동 등)는 캐릭터 아래
+    if (fx.kind === 'spr' && (fx.oy ?? 12) <= 2) fxDraw(ctx, fx.spr!, X, Y - (fx.oy ?? 0), p, fx.q ?? 0);
   }
 
   // 깊이 순서: 소품 · 유닛 · 금화
@@ -350,10 +352,26 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
       if (!ok) slash(ctx, X, Y - 12, fx.ax ?? 1, fx.ay ?? 0, Math.min(2, Math.floor(p * 3)), !!fx.big);
     }
     if (fx.kind === 'puff' && !fxDraw(ctx, 'smoke', X, Y - 10, p)) puff(ctx, X, Y - 8, p, !!fx.big);
+    // 신성 일격: 위에서 금빛 기둥이 내려꽂힌다 (바둑 점 · 반투명 없이)
+    if (fx.kind === 'spr' && fx.spr === 'holy' && p < 0.7) {
+      const top = Y - 60;
+      const bot = Y - 4 - Math.round((1 - Math.min(1, p * 3)) * 50);
+      for (let y = top; y < bot; y++)
+        for (let x = -2; x <= 2; x++) {
+          if (Math.abs(x) === 2 && (x + y) % 2) continue;
+          ctx.fillStyle = Math.abs(x) <= 0 ? '#ffffff' : Math.abs(x) === 1 ? '#fff3b0' : '#ffd36b';
+          ctx.fillRect(X + x, y, 1, 1);
+        }
+    }
+    if (fx.kind === 'spr' && (fx.oy ?? 12) > 2) fxDraw(ctx, fx.spr!, X, Y - (fx.oy ?? 12), p, fx.q ?? 0);
     if (fx.kind === 'ring' && (fx.r ?? 0) >= 1.5) fxDraw(ctx, 'smokering', X, Y, p);
   }
+  // 핫픽스 8 (2-7): 탄 그림 — 마법탄 · 화염구 · 화살 · 쿠나이 (날아가는 쪽으로 90° 단위 회전)
+  const PROJ_SPR: Record<string, string> = { bolt: 'p_energy', fire: 'p_fire', arrow: 'p_arrow', dagger: 'p_kunai' };
   for (const pj of f.proj) {
     const [X, Y] = W(pj.x, pj.y);
+    const ps = PROJ_SPR[pj.kind];
+    if (ps && fxDraw(ctx, ps, X, Y - 12, (pj.life * 6) % 1, quarterOf(pj.vx, pj.vy))) continue;
     const [TX, TY] = W(pj.x - pj.vx * 0.05, pj.y - pj.vy * 0.05);
     const col = pj.kind === 'fire' ? '#ff8a3a' : pj.kind === 'bolt' ? '#9ad0ff' : pj.kind === 'dagger' ? '#c8ff8a' : '#efe2c6';
     line(ctx, TX, TY - 12, X, Y - 12, pj.kind === 'fire' ? '#ffd36b' : 'rgba(255,255,255,.5)');
@@ -375,9 +393,23 @@ export const numsOut: { x: number; y: number; text: string; col: string; crit: b
 
 function drawAlly(ctx: CanvasRenderingContext2D, f: Field, u: Unit, W: (x: number, y: number) => [number, number]) {
   const cb = u.frames!.cb();
-  const [X, Y] = W(u.x, u.y);
+  const [X, Y0] = W(u.x, u.y);
+  // 핫픽스 8 (2-7): 도약 — 포물선으로 떠오르고 그림자가 작아진다
+  const jk = u.jump ? Math.min(1, u.jump.t / u.jump.dur) : 0;
+  const lift = u.jump ? Math.round(Math.sin(jk * Math.PI) * 16) : 0;
+  const Y = Y0;
+  // 잔상 3장 (그림자 찌르기)
+  if (u.trail?.length) {
+    const im = cb.atk[1];
+    for (const tr of u.trail) {
+      const [tx, ty] = W(tr.x, tr.y);
+      ctx.globalAlpha = Math.max(0, Math.min(0.45, tr.t));
+      ctx.drawImage(screenDx(u.ax, u.ay) < 0 ? flipOf(im) : im, tx - Math.round(im.width / 2), ty - im.height + 2);
+    }
+    ctx.globalAlpha = 1;
+  }
   // 발밑 그림자: 2톤 도트 타원 (알파 0/255)
-  dotShadow(ctx, X, Y, 7, 3);
+  dotShadow(ctx, X, Y, u.jump ? 4 : 7, u.jump ? 2 : 3);
   if (u === f.me) ellipse(ctx, X, Y, 9, 4, null, '#ffd36b');
   const up = u.ax + u.ay < -0.2;
   // 리마스터 프레임: 대기 3 · 걷기 6 · 공격 4(휘두르는 시간에 맞춰) · 구르기 4 · 시전 3 · 피격 · 쓰러짐 3
@@ -385,16 +417,32 @@ function drawAlly(ctx: CanvasRenderingContext2D, f: Field, u: Unit, W: (x: numbe
   if (u.dead) img = cb.die[Math.min(2, Math.floor(u.deadT * 5))];
   else if ((u.dodge ?? 0) > 0) img = cb.roll[Math.min(3, Math.floor((1 - (u.dodge ?? 0) / C.dodge.dur) * 4))];
   else if ((u.hurtT ?? 0) > 0) img = cb.hurt[0];
-  else if ((u.castAnim ?? 0) > 0) img = cb.cast[Math.min(2, Math.floor((1 - (u.castAnim ?? 0) / 0.3) * 3))];
+  else if ((u.castAnim ?? 0) > 0) img = cb.cast[Math.max(0, Math.min(2, Math.floor((1 - (u.castAnim ?? 0) / 0.3) * 3)))];
   else if ((u.swing ?? 0) > 0) img = cb.atk[Math.min(3, Math.floor((1 - (u.swing ?? 0) / (u.swingMax ?? C.combo.swing)) * 4))];
   else if (u.moving) img = (up ? cb.walkB : cb.walk)[Math.floor(u.t * 12) % 6];
   else img = (up ? cb.idleB : cb.idle)[Math.floor(u.t * 3) % 3];
-  const left = screenDx(u.ax, u.ay) < 0;
+  let left = screenDx(u.ax, u.ay) < 0;
+  // 회전 베기: 실제로 한 바퀴 (오른쪽 → 뒤 → 왼쪽 → 앞)
+  if ((u.spinT ?? 0) > 0) {
+    const ph = Math.floor((1 - (u.spinT ?? 0) / 0.4) * 8) % 4;
+    img = ph === 1 ? cb.idleB[0] : ph === 3 ? cb.idle[0] : cb.atk[2];
+    left = ph === 2;
+  }
   if (left) img = flipOf(img);
-  const y0 = Y - img.height + 2;
+  const y0 = Y - img.height + 2 - lift;
   ctx.globalAlpha = u.dead ? 0.6 : (u.inv ?? 0) > 0 && Math.floor(u.t * 30) % 2 ? 0.55 : 1;
   ctx.drawImage(u.flash > 0 ? whiteOf(img) : img, X - Math.round(img.width / 2), y0);
   ctx.globalAlpha = 1;
+  // 시전: 마법사·사제는 손(지팡이 끝)에 빛 · 사냥꾼은 활 당기기
+  if ((u.castAnim ?? 0) > 0 && (u.job === 'mage' || u.job === 'priest')) {
+    const hx = X + (left ? -7 : 7);
+    const hy = y0 + 8;
+    const on = Math.floor(u.t * 20) % 2;
+    ctx.fillStyle = u.job === 'mage' ? (on ? '#ffd36b' : '#ff8a3a') : on ? '#fff3b0' : '#ffd36b';
+    ctx.fillRect(hx - 1, hy - 1, 3, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(hx, hy, 1, 1);
+  }
   if ((u.taunt ?? 0) > 0) {
     ctx.fillStyle = '#ff7a5a';
     ctx.fillRect(X - 1, y0 - 6, 2, 4);
@@ -450,9 +498,28 @@ function drawMob(ctx: CanvasRenderingContext2D, m: Unit, W: (x: number, y: numbe
     ctx.fillRect(X + 2, Y - ay - 9, 1, 1);
   }
   if (m.stun > 0) {
+    // 기절 별 셋이 돈다
     ctx.fillStyle = '#ffd36b';
-    const k = Math.floor(m.t * 8) % 3;
-    ctx.fillRect(X - 4 + k * 3, Y - ay - 6, 1, 1);
+    for (let i = 0; i < 3; i++) {
+      const a = m.t * 6 + (i * Math.PI * 2) / 3;
+      ctx.fillRect(X + Math.round(Math.cos(a) * 5), Y - ay - 6 + Math.round(Math.sin(a) * 2), 1, 1);
+    }
+  }
+  // 핫픽스 8 (2-7): 도발 함성에 걸린 몹 머리 위 「!」
+  if ((m.alertT ?? 0) > 0 && !m.dead) {
+    ctx.fillStyle = '#140c18';
+    ctx.fillRect(X - 2, Y - ay - 14, 4, 8);
+    ctx.fillStyle = '#ff5a4a';
+    ctx.fillRect(X - 1, Y - ay - 13, 2, 4);
+    ctx.fillRect(X - 1, Y - ay - 8, 2, 1);
+  }
+  // 독 단검: 초록 거품
+  if (m.dot && !m.dead) {
+    const k = Math.floor(m.t * 6);
+    ctx.fillStyle = '#7ad06a';
+    for (let i = 0; i < 3; i++) ctx.fillRect(X - 3 + i * 3, Y - ay - 2 - ((k + i * 2) % 5), 2, 2);
+    ctx.fillStyle = '#c8ff8a';
+    ctx.fillRect(X - 3 + (k % 3) * 3, Y - ay - 3 - (k % 4), 1, 1);
   }
 }
 

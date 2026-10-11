@@ -288,6 +288,7 @@ function hud() {
   const cs = $('#cbCast');
   if (f.castT > 0) {
     if (cs.textContent !== f.castTxt) cs.textContent = f.castTxt;
+    cs.style.color = f.castColor ?? '#fff';
     cs.hidden = false;
   } else if (!cs.hidden) cs.hidden = true;
   // 필살기 컷인 띠 (0.5초)

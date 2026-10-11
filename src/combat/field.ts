@@ -100,6 +100,11 @@ export interface Unit {
   target?: Unit;
   dot?: { t: number; dps: number; tick: number };
   rooted?: number;
+  // 핫픽스 8 (2-7): 직업 모션 — 회전 베기 · 도약 · 잔상 · 도발 「!」
+  spinT?: number;
+  jump?: { t: number; dur: number; x0: number; y0: number; x1: number; y1: number; land: () => void };
+  trail?: { x: number; y: number; t: number }[];
+  alertT?: number;
 }
 export interface Proj {
   x: number;
@@ -113,7 +118,11 @@ export interface Proj {
   hit: Set<Unit>;
 }
 export interface Fx {
-  kind: 'slash' | 'puff' | 'ring' | 'heal' | 'boom' | 'trap';
+  kind: 'slash' | 'puff' | 'ring' | 'heal' | 'boom' | 'trap' | 'spr';
+  /** 핫픽스 8 (2-7): Ninja Adventure 이펙트 그림 · 90° 회전 수 · 바닥에서 띄울 높이(도트) */
+  spr?: string;
+  q?: number;
+  oy?: number;
   x: number;
   y: number;
   t: number;
@@ -195,6 +204,8 @@ export interface Field {
   /** 내가 쓴 스킬 이름 (아래 가운데 0.6초) */
   castTxt: string;
   castT: number;
+  /** 스킬 이름 색 (직업 색 · 보스 패턴은 붉게) */
+  castColor?: string;
   // ── 전투 2차 ──
   mode: 'hunt' | 'raid';
   /** 처치 목표 (채우면 정예/보스) · 지금까지 내보낸 수 */
@@ -218,7 +229,21 @@ export interface Field {
   /** 정예·보스 등장 알림 */
   banner: string;
   bannerT: number;
+  /** 핫픽스 8: 조금 뒤에 할 일 (사냥꾼 연속 사격 등) */
+  later?: { t: number; fn: () => void }[];
 }
+
+/** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
+export function quarterOf(ax: number, ay: number): number {
+  const sdx = screenDx(ax, ay);
+  const sdy = ((ax + ay) * TH) / 2;
+  return Math.abs(sdx) >= Math.abs(sdy) ? (sdx >= 0 ? 0 : 2) : sdy >= 0 ? 1 : 3;
+}
+/** 핫픽스 8 (2-7): 스킬 이름 직업 색 */
+export const CAST_COLOR: Record<string, string> = { knight: '#6aa8ff', warrior: '#ff6a5a', rogue: '#c07aff', mage: '#ffa040', priest: '#ffd36b', hunter: '#7ad06a' };
+/** 직업별 기본 공격 베기 그림 (원거리는 탄) */
+const JOB_CUT: Record<string, string> = { knight: 'cut', warrior: 'slashcurved', rogue: 'cutdouble', priest: 'spark' };
+const sprFx = (f: Field, spr: string, x: number, y: number, dur: number, o: Partial<Fx> = {}) => f.fx.push({ kind: 'spr', spr, x, y, t: 0, dur, ...o });
 
 // ───────── 좌표 ─────────
 
@@ -517,10 +542,13 @@ export function attack(f: Field, u: Unit) {
     f.proj.push({ x: u.x, y: u.y, vx: u.ax * sp, vy: u.ay * sp, life: 5.6 / sp, dmg: mult, owner: u, kind, hit: new Set() });
     return;
   }
-  // 근접: 앞쪽 부채꼴
+  // 근접: 앞쪽 부채꼴 — 핫픽스 8 (2-7): 직업마다 다른 베기 (기사 찌르기 · 전사 도끼 내리찍기 · 도적 쌍단검 · 사제 지팡이 빛)
   const range = J.range + (third ? 0.35 : 0);
   const arc = third ? Math.max(2.2, J.arc) : J.arc;
-  f.fx.push({ kind: 'slash', x: u.x + u.ax * 0.35, y: u.y + u.ay * 0.35, ax: u.ax, ay: u.ay, t: 0, dur: 0.15, big: third, owner: u });
+  const cut = JOB_CUT[u.job!];
+  if (cut) sprFx(f, cut, u.x + u.ax * 0.55, u.y + u.ay * 0.55, u.job === 'priest' ? 0.25 : 0.18, { q: quarterOf(u.ax, u.ay), oy: 12, big: third, owner: u });
+  else f.fx.push({ kind: 'slash', x: u.x + u.ax * 0.35, y: u.y + u.ay * 0.35, ax: u.ax, ay: u.ay, t: 0, dur: 0.15, big: third, owner: u });
+  if (u.job === 'warrior') shake(f, 1);
   for (const m of mobsAlive(f)) {
     const d = dist(u, m);
     if (d > range + m.r) continue;
@@ -558,6 +586,7 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
   if (u === f.me) {
     f.castTxt = SKILL_NAMES[u.job!][i];
     f.castT = 0.6;
+    f.castColor = CAST_COLOR[u.job!];
   }
   // 핫픽스 8 (2-8): 직업마다 다른 스킬 소리
   sfx(`skill_${u.job ?? 'warrior'}`, { vol: u === f.me ? 1 : C.allyVol });
@@ -569,37 +598,57 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
       u.vx += u.ax * 9;
       u.vy += u.ay * 9;
       for (const m of near(1.6, u.x + u.ax, u.y + u.ay)) hurtMob(f, m, P(1.4).dmg, u, { stun: 1, knock: 1.5, silent: true });
-      f.fx.push({ kind: 'slash', x: u.x + u.ax * 0.8, y: u.y + u.ay * 0.8, ax: u.ax, ay: u.ay, t: 0, dur: 0.18, big: true, owner: u });
+      // 방패 번쩍 (기절 별은 몹 머리 위에 따로)
+      sprFx(f, 'shield', u.x + u.ax * 0.8, u.y + u.ay * 0.8, 0.3, { oy: 12 });
       break;
     }
     case 'knight1':
       // 도발 함성: 주변 적이 나를 노림 · 3초 받는 피해 -40%
       u.taunt = 3;
       u.guard = 3;
-      for (const m of near(3.5)) m.target = u;
+      for (const m of near(3.5)) {
+        m.target = u;
+        m.alertT = 0.9;
+      }
+      // 몸 주위 붉은 원 파동
+      sprFx(f, 'circlered', u.x, u.y, 0.5, { oy: 2 });
       f.fx.push({ kind: 'ring', x: u.x, y: u.y, t: 0, dur: 0.5, r: 3, owner: u });
       break;
     case 'warrior0':
-      f.fx.push({ kind: 'ring', x: u.x, y: u.y, t: 0, dur: 0.3, r: 1.4, owner: u });
+      // 회전 베기: 실제로 한 바퀴 돌며
+      u.spinT = 0.4;
+      sprFx(f, 'circslash', u.x, u.y, 0.3, { oy: 10 });
       for (const m of near(1.4)) hurtMob(f, m, P(1.6).dmg, u, { crit: true, knock: 1.6, silent: true });
       break;
     case 'warrior1': {
       // 도약 내려찍기: 조준한 곳으로 점프
       const tg = t ?? { x: u.x + u.ax * 2, y: u.y + u.ay * 2 };
-      u.x = tg.x - u.ax * 0.5;
-      u.y = tg.y - u.ay * 0.5;
-      f.fx.push({ kind: 'boom', x: u.x, y: u.y, t: 0, dur: 0.35, r: 1.3 });
-      shake(f, 2);
-      for (const m of near(1.3)) hurtMob(f, m, P(2).dmg, u, { knock: 1.8, silent: true });
+      // 점프(그림자가 작아짐) → 착지하며 바위 가시 + 흙먼지
+      u.jump = {
+        t: 0, dur: 0.35, x0: u.x, y0: u.y, x1: tg.x - u.ax * 0.5, y1: tg.y - u.ay * 0.5,
+        land: () => {
+          sprFx(f, 'rockspike', u.x, u.y, 0.45, { oy: 14 });
+          f.fx.push({ kind: 'puff', x: u.x, y: u.y, t: 0, dur: 0.45, big: true });
+          shake(f, 2);
+          for (const m of near(1.3)) hurtMob(f, m, P(2).dmg, u, { knock: 1.8, silent: true });
+        },
+      };
+      u.inv = Math.max(u.inv ?? 0, 0.35);
       break;
     }
     case 'rogue0':
       // 그림자 찌르기: 적 등 뒤로 순간이동 후 치명타
       if (t) {
+        // 사라졌다가 적 뒤에서 (지나간 자리에 잔상 3장) + X자 베기
+        const [x0, y0] = [u.x, u.y];
+        const x1 = t.x - t.ax * 0.55;
+        const y1 = t.y - t.ay * 0.55;
+        u.trail = [1, 2, 3].map((k) => ({ x: x0 + ((x1 - x0) * k) / 4, y: y0 + ((y1 - y0) * k) / 4, t: 0.35 + k * 0.05 }));
         f.fx.push({ kind: 'puff', x: u.x, y: u.y, t: 0, dur: 0.3 });
-        u.x = t.x - t.ax * 0.55;
-        u.y = t.y - t.ay * 0.55;
+        u.x = x1;
+        u.y = y1;
         faceTo(u, t);
+        sprFx(f, 'cutx', t.x, t.y, 0.25, { oy: 12 });
         hurtMob(f, t, P(2.6).dmg * (1 / (P(1).crit ? 2 : 1)) * 2, u, { crit: true, silent: true });
       }
       break;
@@ -612,19 +661,24 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
       }
       break;
     case 'mage0':
+      // 화염구 → 맞으면 폭발 (탄 그림 p_fire · 폭발 explosion)
       f.proj.push({ x: u.x, y: u.y, vx: u.ax * 6, vy: u.ay * 6, life: 0.9, dmg: 2.2, owner: u, kind: 'fire', hit: new Set() });
       break;
     case 'mage1': {
       // 점멸: 조이스틱 방향(없으면 적 반대쪽)으로 순간이동
       const d = stickDir ?? (t ? norm(u.x - t.x, u.y - t.y) : [u.ax, u.ay]);
-      f.fx.push({ kind: 'puff', x: u.x, y: u.y, t: 0, dur: 0.3 });
+      // 반짝이로 흩어졌다가 → 앞에 다시 나타남
+      sprFx(f, 'spark', u.x, u.y, 0.35, { oy: 14 });
       u.x += d[0] * 2.4;
       u.y += d[1] * 2.4;
       u.inv = 0.3;
+      sprFx(f, 'spark', u.x, u.y, 0.35, { oy: 14 });
       break;
     }
     case 'priest0': {
-      // 치유의 빛: 나와 주변 아군 회복
+      // 치유의 빛: 지팡이를 하늘로 · 바닥에 금빛 원 · 아군 머리 위 초록 +숫자
+      u.castAnim = 0.5;
+      sprFx(f, 'circlegold', u.x, u.y, 0.6, { oy: 0 });
       f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.6, r: 2.5 });
       for (const a of f.allies)
         if (!a.dead && dist(a, u) <= 2.5) {
@@ -636,12 +690,23 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
     }
     case 'priest1':
       if (t) {
+        // 신성 일격: 적 머리 위에서 금빛 빛기둥이 내려꽂힘 + 기절
+        sprFx(f, 'holy', t.x, t.y, 0.35, { q: 1, oy: 16 });
         f.fx.push({ kind: 'boom', x: t.x, y: t.y, t: 0, dur: 0.3, r: 0.7 });
-        hurtMob(f, t, P(2.5).dmg, u, { stun: 0.6, crit: true, silent: true });
+        hurtMob(f, t, P(2.5).dmg, u, { stun: 0.8, crit: true, silent: true });
       }
       break;
     case 'hunter0':
-      for (let k = 0; k < 3; k++) f.proj.push({ x: u.x - u.ax * k * 0.3, y: u.y - u.ay * k * 0.3, vx: u.ax * 8, vy: u.ay * 8, life: 0.7 + k * 0.05, dmg: 1, owner: u, kind: 'arrow', hit: new Set() });
+      // 연속 사격: 화살 3발을 0.12초 간격으로
+      for (let k = 0; k < 3; k++)
+        (f.later ??= []).push({
+          t: k * 0.12,
+          fn: () => {
+            if (u.dead) return;
+            u.castAnim = 0.12;
+            f.proj.push({ x: u.x, y: u.y, vx: u.ax * 8, vy: u.ay * 8, life: 0.7, dmg: 1, owner: u, kind: 'arrow', hit: new Set() });
+          },
+        });
       break;
     case 'hunter1':
       f.fx.push({ kind: 'trap', x: u.x + u.ax * 1.2, y: u.y + u.ay * 1.2, t: 0, dur: 6, r: 0.6, owner: u });
@@ -860,6 +925,7 @@ function aiBoss(f: Field, m: Unit, t: Unit, dt: number) {
       (m as Unit & { curPat?: number }).curPat = p;
       f.castTxt = look.pats[p];
       f.castT = tl;
+      f.castColor = '#ff8a7a';
       return;
     }
     case 'tele': {
@@ -922,6 +988,12 @@ export function step(f: Field, dt: number) {
   // 화면 흔들림 · 숫자 · 연기는 히트스톱 중에도 흐른다
   f.shake = Math.max(0, f.shake - dt);
   f.castT = Math.max(0, f.castT - dt);
+  if (f.later?.length) {
+    for (const l of f.later) l.t -= dt;
+    const due = f.later.filter((l) => l.t <= 0);
+    f.later = f.later.filter((l) => l.t > 0);
+    for (const l of due) l.fn();
+  }
   for (const n of f.nums) n.t += dt;
   f.nums = f.nums.filter((n) => n.t < 0.6);
   if (f.ult > 0) {
@@ -966,8 +1038,26 @@ export function step(f: Field, dt: number) {
       }
       if (u.dot.t <= 0) u.dot = undefined;
     }
+    u.alertT = Math.max(0, (u.alertT ?? 0) - dt);
+    if (u.trail) {
+      for (const p of u.trail) p.t -= dt;
+      u.trail = u.trail.filter((p) => p.t > 0);
+    }
     if (u.team === 'ally') {
-      for (const k of ['swing', 'comboT', 'dodgeCd', 'inv', 'taunt', 'guard', 'atkAnim', 'castAnim', 'hurtT'] as const) u[k] = Math.max(0, (u[k] ?? 0) - dt);
+      for (const k of ['swing', 'comboT', 'dodgeCd', 'inv', 'taunt', 'guard', 'atkAnim', 'castAnim', 'hurtT', 'spinT'] as const) u[k] = Math.max(0, (u[k] ?? 0) - dt);
+      // 핫픽스 8: 도약 중엔 움직임·AI 없이 포물선으로 날아가 착지
+      if (u.jump) {
+        const j = u.jump;
+        j.t += dt;
+        const k = Math.min(1, j.t / j.dur);
+        u.x = j.x0 + (j.x1 - j.x0) * k;
+        u.y = j.y0 + (j.y1 - j.y0) * k;
+        if (k >= 1) {
+          u.jump = undefined;
+          j.land();
+        }
+        continue;
+      }
       u.cd = [Math.max(0, u.cd![0] - dt), Math.max(0, u.cd![1] - dt)];
       if ((u.dodge ?? 0) > 0) {
         u.dodge! -= dt;
@@ -1041,6 +1131,7 @@ export function step(f: Field, dt: number) {
       const h = powerHit(f, p.owner, p.dmg);
       if (p.kind === 'fire') {
         f.fx.push({ kind: 'boom', x: p.x, y: p.y, t: 0, dur: 0.35, r: 1.2 });
+        sprFx(f, 'explosion', p.x, p.y, 0.45, { oy: 14 });
         for (const n of mobsAlive(f)) if (Math.hypot(n.x - p.x, n.y - p.y) <= 1.2 + n.r) hurtMob(f, n, h.dmg, p.owner, { crit: h.crit, knock: 1.3 });
         p.life = 0;
         break;
@@ -1060,6 +1151,8 @@ export function step(f: Field, dt: number) {
         if (Math.hypot(m.x - fx.x, m.y - fx.y) < (fx.r ?? 0.6)) {
           m.rooted = 2;
           fx.t = fx.dur;
+          // 덩굴이 묶는다
+          sprFx(f, 'plant', m.x, m.y, 0.6, { oy: 10 });
           hurtMob(f, m, (fx.owner?.power ?? 50) * C.dmgK, fx.owner ?? f.me, { silent: true, knock: 0 });
         }
   stepFx(f, dt);
