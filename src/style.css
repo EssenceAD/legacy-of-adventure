@@ -1239,3 +1239,7 @@ p.qtag.ok{color:#8fe08f}
 .newreg span{color:#ffd36b;font-weight:700}
 .newreg b{font-size:var(--f-big);color:#fff3d6}
 .tab.locked{opacity:.6}
+
+/* HOTFIX15: 약하게 = 1px 한 번 */
+#view.shake.low{animation:shakeLow .08s steps(2) 1}
+@keyframes shakeLow{0%{transform:translate(1px,0)}50%{transform:translate(-1px,0)}100%{transform:none}}

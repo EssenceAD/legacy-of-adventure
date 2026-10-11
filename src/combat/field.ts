@@ -1,6 +1,7 @@
 // 전투 개편 1차: 쿼터뷰 필드 액션 — 상태와 규칙 (그리기는 draw.ts, 조작·화면은 ui.ts)
 //  좌표는 타일(마을과 같은 쿼터뷰). 주인공 1명 조종 + 동료 2명 AI. 몬스터: 다가오기 → 예고(빨간 범위 0.6초) → 공격 → 빈틈 0.8초
 import { CONFIG } from '../data/config';
+import { shakeParams } from '../engine/shake';
 import type { RegionId } from '../data/items';
 import { appearance, powerOf } from '../world/adventurers';
 import type { Actor } from '../world/state';
@@ -187,6 +188,8 @@ export interface Field {
   stop: number;
   shake: number;
   shakeAmp: number;
+  /** HOTFIX15: 흔들림 끔일 때 보스 충격 = 붉은 비네트 (남은 초) */
+  vign?: number;
   chem: number;
   /** 필살기 컷인 (0.5초 멈춤) */
   ult: number;
@@ -493,8 +496,14 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
   }
 }
 const shake = (f: Field, amp: number) => {
-  f.shake = C.shake.dur;
-  f.shakeAmp = Math.max(f.shake > 0 ? f.shakeAmp : 0, amp);
+  // HOTFIX15: 설정이 끔이면 화면은 그대로 — 보스급 충격만 가장자리 붉은 비네트 0.3초
+  const p = shakeParams(amp, C.shake.dur);
+  if (!p) {
+    if (amp >= C.shake.boss) f.vign = 0.3;
+    return;
+  }
+  f.shake = p.dur;
+  f.shakeAmp = Math.max(f.shake > 0 ? f.shakeAmp : 0, p.amp);
 };
 
 // ───────── 아군 행동 ─────────
@@ -1016,6 +1025,7 @@ const segDist = (px: number, py: number, x1: number, y1: number, x2: number, y2:
 export function step(f: Field, dt: number) {
   // 화면 흔들림 · 숫자 · 연기는 히트스톱 중에도 흐른다
   f.shake = Math.max(0, f.shake - dt);
+  if (f.vign) f.vign = Math.max(0, f.vign - dt);
   f.castT = Math.max(0, f.castT - dt);
   if (f.later?.length) {
     for (const l of f.later) l.t -= dt;

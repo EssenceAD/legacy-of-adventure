@@ -1,6 +1,7 @@
 // 전투 그리기: 논리 해상도(도트 1개 = 1px) 캔버스에 전부 같은 크기로 → 화면 캔버스에 정수배로 키운다
 //  바닥 타일 · 예고 범위 · 캐릭터/몬스터 · 슬래시 · 탄 · 연기 · 금화 · 도트 숫자 · 흔들림(정수 px)
 import { av } from '../engine/ver';
+import { shakeLv } from '../engine/shake';
 import { CONFIG } from '../data/config';
 import { IMG } from '../engine/assets';
 import { sx, sy, TH, TW } from '../engine/iso';
@@ -195,8 +196,17 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
   // 카메라: 주인공을 따라 (정수 px) + 흔들림
   const tx = sx(f.me.x, f.me.y);
   const ty = sy(f.me.x, f.me.y);
-  camX += (tx - LW / 2 - camX) * 0.18;
-  camY += (ty - LH * 0.52 - camY) * 0.18;
+  // HOTFIX15 §2: 흔들림 끔이면 카메라도 덜 출렁이게 — 화면 가운데 ±24px 안이면 안 움직이고, 따라가는 속도 0.18 → 0.08
+  if (shakeLv() === 'off') {
+    const dx = tx - LW / 2 - camX;
+    const dy = ty - LH * 0.52 - camY;
+    const DZ = 24;
+    if (Math.abs(dx) > DZ) camX += (dx - Math.sign(dx) * DZ) * 0.08;
+    if (Math.abs(dy) > DZ) camY += (dy - Math.sign(dy) * DZ) * 0.08;
+  } else {
+    camX += (tx - LW / 2 - camX) * 0.18;
+    camY += (ty - LH * 0.52 - camY) * 0.18;
+  }
   let ox = -Math.round(camX);
   let oy = -Math.round(camY);
   if (f.shake > 0) {
@@ -595,4 +605,15 @@ function puff(ctx: CanvasRenderingContext2D, X: number, Y: number, p: number, bi
     ctx.fillStyle = p < 0.4 ? '#ffffff' : '#c8c0d0';
     ctx.fillRect(Math.round(X + Math.cos(a) * r) - s, Math.round(Y + Math.sin(a) * r * 0.6) - s, s * 2, s * 2);
   }
+}
+
+/** HOTFIX15: 흔들림 끔일 때 보스 충격 — 화면 가장자리 붉은 비네트 (화면 전체는 움직이지 않음) */
+export function drawVignette(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: number) {
+  if (!f.vign) return;
+  const a = Math.min(1, f.vign / 0.3) * 0.55;
+  const g = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.75);
+  g.addColorStop(0, 'rgba(200,20,20,0)');
+  g.addColorStop(1, `rgba(200,20,20,${a})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, LW, LH);
 }
