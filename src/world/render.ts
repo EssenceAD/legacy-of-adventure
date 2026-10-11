@@ -5,13 +5,14 @@
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
 import { SMOKE } from '../data/catalog';
 import { plotLeft } from './craft';
+import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
-import { starAvailable } from './legends';
+import { showerOn, starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
 import { ground, ensureGround, groundFor, groundKey, signSpot, type Wild } from './ground';
@@ -340,52 +341,92 @@ export const signHit = (mx: number, my: number) => SIGN.on && Math.abs(mx - SIGN
 
 // ───────── 운명의 별: 오늘 아직 안 잡았으면 게임 속 밤하늘에 별똥별이 지나간다 (탭하면 인연 +1~10%) ─────────
 
-const STAR = { on: false, x: 0, y: 0, k: 0 };
 /**
- * HOTFIX14 §4: 예전엔 4초 동안 화면 맨 위(y 24~74)를 가로질러 — PC는 화면이 넓어 너무 빨랐고, 그 높이를 위쪽 HUD가 덮어 클릭이 캔버스에 안 왔다.
- *  이제 HUD·임무 카드 아래 띠(화면 높이 28~38%)를 일정한 속도(논리 px/초)로 지나간다 · 지나간 뒤 8초 쉼
+ * 별똥별 — HOTFIX14 §4: HUD 아래 띠(화면 높이 24~40%)를 일정한 속도로 · 누르는 순간 판정 · 반경 32
+ * STARFALL §1: 그날 밤 첫 별은 크게(꼬리 두 배 · 큰 반짝임) + 「슈욱」 · §2 유성우(토 21~24시): 별 3개가 엇갈려 지나가고 하늘이 남보라로
  */
+const STARS: { on: boolean; x: number; y: number; k: number; big: boolean }[] = [];
 const STAR_SPEED = 70;
 const STAR_GAP = 8;
+let bigKey = '';
+let curPass = -1;
+let curBig = false;
 function drawStar(ctx: CanvasRenderingContext2D, T: number) {
-  STAR.on = false;
+  STARS.length = 0;
+  const shower = showerOn();
+  if (shower) drawShowerSky(ctx, T);
   if (!starAvailable()) return;
   const dist = view.LW + 60;
   const travel = dist / STAR_SPEED;
-  const t = T % (travel + STAR_GAP);
-  if (t > travel) return;
-  const k = t / travel;
-  STAR.on = true;
-  STAR.k = k;
-  STAR.x = Math.round(view.LW + 30 - k * dist);
-  STAR.y = Math.round(view.LH * (0.28 + k * 0.1));
+  const period = travel + (shower ? 1 : STAR_GAP);
+  const n = shower ? 3 : 1;
+  // 그날 밤(실제 날짜 + 게임 날) 첫 지나감은 크게
+  const pass = Math.floor(T / period);
+  if (pass !== curPass) {
+    curPass = pass;
+    const key = `${S.day}|${new Date().toDateString()}`;
+    // 밤이 지나가던 중간에 시작됐으면 그 판은 건너뛰고, 처음부터 보이는 판을 크게
+    curBig = key !== bigKey && T % period < 1;
+    if (curBig) {
+      bigKey = key;
+      sfx('skill', { vol: 0.5 });
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const t = (T + (i * period) / n) % period;
+    if (t > travel) continue;
+    const k = t / travel;
+    const big = i === 0 && curBig;
+    const s = { on: true, k, big, x: Math.round(view.LW + 30 - k * dist), y: Math.round(view.LH * ([0.28, 0.24, 0.34][i] + k * 0.08)) };
+    STARS.push(s);
+    paintStar(ctx, s.x, s.y, T, big ? 2 : 1);
+  }
+}
+function paintStar(ctx: CanvasRenderingContext2D, x: number, y: number, T: number, z: number) {
   const p = P(ctx);
-  // 꼬리
-  for (let i = 0; i < 22; i++) {
-    ctx.globalAlpha = 1 - i / 22;
-    p.px(STAR.x + i * 2, STAR.y - i, i < 4 ? '#ffffff' : '#ffe08a');
-    if (i % 3 === 0) p.px(STAR.x + i * 2 + 1, STAR.y - i + 1, '#fff3c0');
+  const len = 22 * z;
+  for (let i = 0; i < len; i++) {
+    ctx.globalAlpha = 1 - i / len;
+    p.px(x + i * 2, y - i, i < 4 * z ? '#ffffff' : '#ffe08a');
+    if (z > 1 || i % 3 === 0) p.px(x + i * 2 + 1, y - i + 1, '#fff3c0');
   }
   ctx.globalAlpha = 1;
-  // 눌러 볼 대상이라는 게 보이게: 은은한 빛 + 큰 반짝임
-  const g = ctx.createRadialGradient(STAR.x, STAR.y, 0, STAR.x, STAR.y, 14);
+  const R = 14 * z;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
   g.addColorStop(0, 'rgba(255,240,180,.55)');
   g.addColorStop(1, 'rgba(255,240,180,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(STAR.x - 14, STAR.y - 14, 28, 28);
-  p.rect(STAR.x - 1, STAR.y - 1, 3, 3, '#fff8d0');
-  const arm = Math.sin(T * 12) > 0 ? 6 : 4;
+  ctx.fillRect(x - R, y - R, R * 2, R * 2);
+  p.rect(x - z, y - z, 1 + z * 2, 1 + z * 2, '#fff8d0');
+  const arm = (Math.sin(T * 12) > 0 ? 6 : 4) * z;
   for (let a = 2; a <= arm; a++) {
-    p.px(STAR.x - a, STAR.y, '#ffffff');
-    p.px(STAR.x + a, STAR.y, '#ffffff');
-    p.px(STAR.x, STAR.y - a, '#ffffff');
-    p.px(STAR.x, STAR.y + a, '#ffffff');
+    p.px(x - a, y, '#ffffff');
+    p.px(x + a, y, '#ffffff');
+    p.px(x, y - a, '#ffffff');
+    p.px(x, y + a, '#ffffff');
   }
 }
-/** 개발용: 별 위치 (논리 좌표 · 지나간 정도 0~1) */
-export const starInfo = () => ({ on: STAR.on, x: STAR.x, y: STAR.y, vis: STAR.k });
-/** 누른 곳이 별똥별 근처인가 (넉넉히 — 반경 32) */
-export const starHit = (mx: number, my: number) => STAR.on && Math.hypot(mx - STAR.x, my - STAR.y) < 32;
+/** 유성우 밤: 남보라 하늘 + 반짝이 (화면 위쪽 절반) */
+function drawShowerSky(ctx: CanvasRenderingContext2D, T: number) {
+  const g = ctx.createLinearGradient(0, 0, 0, view.LH * 0.6);
+  g.addColorStop(0, 'rgba(70,40,140,.5)');
+  g.addColorStop(1, 'rgba(70,40,140,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, view.LW, view.LH * 0.6);
+  const p = P(ctx);
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 97.3) % view.LW;
+    const y = (i * 53.7) % (view.LH * 0.5);
+    if (Math.sin(T * 3 + i * 1.7) > 0.3) p.px(Math.round(x), Math.round(y), i % 4 ? '#e8e0ff' : '#ffe08a');
+  }
+}
+/** 개발용: 첫 별 위치 (논리 좌표 · 지나간 정도 0~1) */
+export const starInfo = () => {
+  const s = STARS[0];
+  return { on: !!s, x: s?.x ?? 0, y: s?.y ?? 0, vis: s?.k ?? 0, big: !!s?.big, n: STARS.length };
+};
+/** 누른 곳이 별똥별(아무거나) 근처인가 (넉넉히 — 반경 32, 큰 별은 40) */
+export const starHit = (mx: number, my: number) => STARS.some((s) => Math.hypot(mx - s.x, my - s.y) < (s.big ? 40 : 32));
 
 /** 모닥불 불꽃 높이 (칸 중심에서 위로 px) — 불티·빛의 중심 */
 const FIRE_FLAME_Y = 12;

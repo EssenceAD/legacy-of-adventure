@@ -545,6 +545,8 @@ export const CONFIG = {
     failGauge: 50,
     /** 운명의 별: +1~10% (흔한 값일수록 무겁게) */
     starWeights: [30, 20, 14, 10, 8, 6, 4, 3, 3, 2],
+    /** STARFALL §2: 유성우 밤에 잡을 수 있는 별 수 */
+    showerCatches: 3,
     /** ★1→2, 2→3, 3→4, 4→5 에 필요한 인연의 증표 */
     tokenNeeds: [1, 2, 3, 4],
     /** ★ 하나당 전투력 + */

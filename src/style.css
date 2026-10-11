@@ -339,7 +339,10 @@ html:not([data-size="phone"]) #placebar{bottom:calc(env(safe-area-inset-bottom,0
 .lcard img{grid-row:1/5;width:48px;height:48px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink)}
 .lcard.on{color:var(--cream);box-shadow:inset 0 0 0 2px #f2c447,0 0 8px rgba(255,200,80,.35)}
 .lcard.rumor{color:#e8dcc0}
-.lgp.sil{filter:grayscale(1) brightness(.3) contrast(1.6) blur(1px)}.lgp.unk{filter:brightness(0);opacity:.35}
+.lgp.sil{filter:grayscale(1) brightness(.3) contrast(1.6) blur(1px)}
+/* STARFALL §3: 게이지 0·30·60·90% → 실루엣 밝기 네 단계 */
+.lgp.sil.b0{filter:grayscale(1) brightness(.06) contrast(1.6)}.lgp.sil.b1{filter:grayscale(1) brightness(.28) contrast(1.4)}.lgp.sil.b2{filter:grayscale(.6) brightness(.55) contrast(1.2)}.lgp.sil.b3{filter:grayscale(.2) brightness(.85)}
+.lcard small.cond{opacity:.7}.lgp.unk{filter:brightness(0);opacity:.35}
 .gauge{position:relative;height:12px;background:#0b0f26;box-shadow:0 0 0 2px var(--ink);margin-top:4px}.gauge i{display:block;height:100%;background:linear-gradient(90deg,#ff7aa8,#ffd36b)}
 .gauge em{position:absolute;left:4px;top:-1px;font-style:normal;font-size:var(--f-tiny);color:#fff;text-shadow:1px 1px 0 #000;white-space:nowrap}
 .raids{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
@@ -1230,3 +1233,15 @@ p.qtag.ok{color:#8fe08f}
 .storyw .stp,.albumw .steps .stp{grid-template-columns:1fr auto;width:100%}
 .ecard.t-story .sthumb,.sendc .sthumb{max-height:150px;object-fit:cover;object-position:center 60%}
 .ecard.t-story .sthumb{max-height:80px;width:100%}
+/* STARFALL §1: 별 잡기 카드 · 밤 버튼 옆 ★ */
+#starCard{position:absolute;left:50%;top:30%;transform:translateX(-50%);z-index:40;display:flex;gap:10px;align-items:center;padding:8px 12px;min-width:220px;pointer-events:none}
+#starCard.go{animation:starIn .35s steps(4)}
+@keyframes starIn{from{transform:translate(-50%,-14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+#starCard img.sil{width:56px;height:56px;image-rendering:pixelated;filter:grayscale(1) brightness(.3) contrast(1.6) blur(.6px);box-shadow:0 0 0 1px #ffe08a,0 0 8px rgba(255,224,138,.6)}
+#starCard small{display:block;color:#ffd36b}
+#starCard b{display:block;color:#fff3d6}
+#starCard em{font-style:normal;font-size:var(--f-small);color:#ffd36b}
+#starCard .sg{height:6px;margin:4px 0;background:#2a2340;box-shadow:0 0 0 1px #1c1018}
+#starCard .sg i{display:block;height:100%;background:#ffd36b;transition:width 1.2s ease-out}
+#bDN{position:relative}
+#starMark{position:absolute;right:-3px;top:-5px;font-style:normal;font-size:12px;color:#ffd36b;text-shadow:1px 1px 0 #1c1018}
