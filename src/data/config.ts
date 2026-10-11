@@ -393,6 +393,8 @@ export const CONFIG = {
       cabbage: { name: '양배추', minutes: 60, seed: 40, yield: 10 },
     } as Record<string, { name: string; minutes: number; seed: number; yield: number }>,
   },
+  /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
+  gifts: { sorryGold: 1000 },
   /** 핫픽스 12 §2: 역할 조합(탱·힐·딜) · 멘토 경험치 · 의뢰 조건 태그 */
   party: {
     rolePowerPct: 0.1,

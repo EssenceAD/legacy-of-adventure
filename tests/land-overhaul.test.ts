@@ -73,7 +73,7 @@ describe('옛 저장 옮기기 (v6 → v7)', () => {
       S.visiting = null as never;
       S.land = land;
       const r = placeLayout(nb.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl ?? 1, hue: null })), land);
-      expect(r).toEqual({ moved: 0, dropped: 0 });
+      expect(r).toMatchObject({ moved: 0, dropped: 0 });
       const cells = new Set<string>();
       for (const o of world.objs) {
         for (let y = o.ty; y < o.ty + o.fh; y++)

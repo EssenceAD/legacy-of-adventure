@@ -80,23 +80,44 @@ export interface LayoutEntry {
 }
 
 /** 같은 종류가 여러 개여도 되는 것 (별채·장식) */
-const MULTI = (k: Kind) => k === 'cottage' || !!def(k).deco;
+/** 여러 채 지어도 되는 것 (별채·장식). 나머지는 마을에 하나뿐 — 짓기·불러오기 규칙이 같아야 한다 (HOTFIX14 §1) */
+export const MULTI = (k: Kind) => k === 'cottage' || !!def(k).deco;
 
 /**
  * 배치표를 내 마을과 같은 규칙으로 놓는다: 발판 겹침 금지 · 땅 안 · 문 앞 1칸 비움 · 다른 건물 문 앞 막지 않기.
- * 어긋난 건물은 가장 가까운 빈자리로 옮기고, 그래도 없으면 뺀다. 같은 종류 중복(대장간 2개 등)도 뺀다.
- * 저장이 깨져 있거나 다른 유저 마을이 이상해도 화면은 안 깨지게. world.objs를 새로 채운다.
+ * 어긋난 건물은 가장 가까운 빈자리로 옮긴다. 저장이 깨져 있거나 다른 유저 마을이 이상해도 화면은 안 깨지게. world.objs를 새로 채운다.
+ * HOTFIX14 §1: 예전엔 같은 종류 둘째(온천 2채 등)와 자리 없는 건물을 「조용히」 버렸다 → 이제
+ *  · 같은 종류는 레벨 높은 것(같으면 공사 중 아닌 것, 그래도 같으면 먼저 지은 것)을 남기고 나머지는 removed 로 돌려준다 (부르는 쪽이 전액 환불)
+ *  · 큰 건물부터(발판 넓이 내림차순) 놓고 장식은 맨 마지막 → 장식이 건물 자리를 막지 않는다
+ *  · 그래도 자리가 없으면 removed 로 돌려준다 (버리지 않음)
  */
-export function placeLayout(entries: LayoutEntry[], land: number): { moved: number; dropped: number } {
+export function placeLayout(entries: LayoutEntry[], land: number): { moved: number; dropped: number; removed: { e: LayoutEntry; why: 'dupe' | 'nospace' }[] } {
   world.objs = [];
   const [lo, hi] = landBounds(land);
   const inL = (x: number, y: number) => x >= lo && x < hi && y >= lo && y < hi;
-  const seen = new Set<Kind>();
   let moved = 0;
   let dropped = 0;
-  // 여관·던전 먼저, 그다음 큰 건물, 장식은 마지막 (자리를 빼앗지 않게)
+  const removed: { e: LayoutEntry; why: 'dupe' | 'nospace' }[] = [];
+  // 같은 종류(하나뿐인 건물) 중복: 가장 좋은 하나만
+  const valid = entries.filter((e) => e && e.kind in CATALOG);
+  const keep = new Map<Kind, LayoutEntry>();
+  const better = (a: LayoutEntry, b: LayoutEntry) =>
+    a.lvl !== b.lvl ? a.lvl > b.lvl : !!a.extra?.con !== !!b.extra?.con ? !a.extra?.con : (a.extra?.builtAt ?? 0) <= (b.extra?.builtAt ?? 0);
+  for (const e of valid) {
+    if (MULTI(e.kind)) continue;
+    const k = keep.get(e.kind);
+    if (!k) keep.set(e.kind, e);
+    else if (better(e, k)) {
+      removed.push({ e: k, why: 'dupe' });
+      keep.set(e.kind, e);
+    } else removed.push({ e, why: 'dupe' });
+  }
+  const dupes = new Set(removed.map((r) => r.e));
+  dropped += dupes.size;
+  // 여관·던전 먼저, 그다음 큰 건물(발판 넓이 내림차순), 장식은 마지막 (자리를 빼앗지 않게)
+  const area = (e: LayoutEntry) => (e.extra?.fw && e.extra?.fh ? e.extra.fw * e.extra.fh : sizeFor(e.kind, e.lvl)[0] * sizeFor(e.kind, e.lvl)[1]);
   const order = (e: LayoutEntry) => (e.kind === 'inn' ? 0 : e.kind === 'dungeon' ? 1 : def(e.kind).deco ? 3 : 2);
-  const list = entries.filter((e) => e && e.kind in CATALOG).sort((a, b) => order(a) - order(b));
+  const list = valid.filter((e) => !dupes.has(e)).sort((a, b) => order(a) - order(b) || area(b) - area(a));
   const occupied = (x: number, y: number) => world.objs.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
   const fits = (e: LayoutEntry, tx: number, ty: number) => {
     // CONSTRUCTION_SPEC: 커지는 업그레이드 공사 중이면 새 발판 크기로
@@ -121,13 +142,6 @@ export function placeLayout(entries: LayoutEntry[], land: number): { moved: numb
     return true;
   };
   for (const e of list) {
-    if (!MULTI(e.kind)) {
-      if (seen.has(e.kind)) {
-        dropped++;
-        continue;
-      }
-      seen.add(e.kind);
-    }
     let spot: [number, number] | null = Number.isFinite(e.tx) && Number.isFinite(e.ty) && fits(e, e.tx, e.ty) ? [e.tx, e.ty] : null;
     // 가장 가까운 빈자리 (맨해튼 거리 순)
     for (let r = 1; !spot && r < N * 2; r++)
@@ -137,12 +151,13 @@ export function placeLayout(entries: LayoutEntry[], land: number): { moved: numb
       }
     if (!spot) {
       dropped++;
+      removed.push({ e, why: 'nospace' });
       continue;
     }
     if (spot[0] !== e.tx || spot[1] !== e.ty) moved++;
     addObj(e.kind, spot[0], spot[1], { ...e.extra, hue: e.hue, lvl: e.lvl, flip: !!e.flip });
   }
-  return { moved, dropped };
+  return { moved, dropped, removed };
 }
 
 /** 문 앞 칸: 발판 앞 왼쪽 면(y+) 가운데. 좌우 반전이면 앞 오른쪽 면(x+) 가운데 */
@@ -451,7 +466,10 @@ export function buildableKinds(): Kind[] {
     if (k.startsWith('trophy_') && !P.trophies.includes(k.slice(7))) return false;
     // 기념비는 손님·아이템·영웅 도감 중 하나를 100% 채웠을 때
     if (k === 'monument' && !monumentUnlocked()) return false;
-    return !d.fixed && !(d.unique && world.objs.some((o) => o.kind === k));
+    // HOTFIX14 §5: 선물 장식은 받은 게 있을 때만 (무료)
+    if (k === 'thanks_basket') return (P.meta.giftDeco?.[k] ?? 0) > 0;
+    // HOTFIX14 §1: 하나뿐인 건물(별채·장식 말고 전부)은 이미 있으면 못 지음 — 불러오기 규칙과 같게
+    return !d.fixed && !((d.unique || !MULTI(k)) && world.objs.some((o) => o.kind === k));
   });
 }
 

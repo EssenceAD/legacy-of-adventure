@@ -390,8 +390,12 @@ export function freshProgress() {
       /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
       slot5: false,
       slot5Seen: false,
-      /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 */
+      /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 · HOTFIX14 §5 선물로 받은 추가 횟수 */
       cheerDay: '',
+      cheerBonus: 0,
+      /** HOTFIX14 §5: 업데이트 선물을 받은 버전 · 선물 장식(무료로 놓기) */
+      giftVer: '',
+      giftDeco: {} as Record<string, number>,
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {
@@ -461,7 +465,9 @@ export interface Mail {
   from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
   title: string;
   body: string;
-  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string };
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string };
+  /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
+  ver?: string;
   at: number;
   claimed: boolean;
 }

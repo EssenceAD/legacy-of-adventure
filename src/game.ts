@@ -19,7 +19,7 @@ import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
-import { addObj, astar, blocksDoor, canPlace, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
+import { addObj, astar, blocksDoor, canPlace, MULTI, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
@@ -30,7 +30,10 @@ import { refreshNoticeDot } from './ui/notice';
 import { closeWin, isWinOpen, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
 import { track as trackEv } from './net/telemetry';
-import { refundOf, removeBuilding } from './world/demolish';
+import { refundOf, removeBuilding, spentOn } from './world/demolish';
+import { addMail } from './world/meta';
+declare const __APP_VERSION__: string;
+const APP_VER = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -236,6 +239,9 @@ function applySave(d: SaveData) {
     for (const o of world.objs) if (n > 0 && o.kind === k && !o.fromProp && !o.builtAt) (o.fromProp = true), n--;
   }
   if (import.meta.env.DEV && (fix.moved || fix.dropped)) console.warn('저장 배치 바로잡음', fix);
+  // HOTFIX14 §1: 정리된 건물은 전액 환불 (건설비 + 낸 레벨업 비용 + 진행 중 업그레이드 공사비) + 사과 금화 · 운영에서도 기록
+  if (fix.moved || fix.dropped) trackEv('layout_fix', { moved: fix.moved, dropped: fix.dropped, kinds: fix.removed.map((r) => `${r.e.kind}:${r.e.lvl}:${r.why}`).slice(0, 12), ver: APP_VER });
+  if (fix.removed.length) refundRemoved(fix.removed.map((r) => r.e));
   rebuildPaths();
   world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
   // 장비 주인 표시를 손님 쪽 기록에 맞춘다
@@ -313,6 +319,23 @@ export function expandLand(l: number) {
 
 // ───────── 건설 ─────────
 
+/** HOTFIX14 §1: 불러올 때 정리된 건물 — 전액 환불 편지 (+ 사과 금화 1,000) */
+function refundRemoved(list: { kind: Kind; lvl: number; extra?: Partial<Building> }[]) {
+  let gold = 0;
+  for (const e of list) {
+    if (e.extra?.fromProp) continue;
+    gold += spentOn({ kind: e.kind, lvl: e.lvl } as Building) + (e.extra?.con?.kind === 'up' ? e.extra.con.cost : 0);
+  }
+  const names = [...new Set(list.map((e) => def(e.kind).name))].join('·');
+  addMail({
+    from: 'system',
+    title: '모모의 편지 · 사라진 건물 미안해요',
+    body: `같은 건물(${names})이 두 채라 하나는 정리하고 ${fmt(gold)}골드 돌려드렸어요. 놓을 자리가 없던 건물도 같이 돌려드려요. 불편을 드려서 미안해요 — 사과의 뜻으로 1,000골드를 더 넣었어요!`,
+    reward: { gold: gold + CONFIG.gifts.sorryGold },
+  });
+  queueEvent(() => toast('우편함에 모모 편지가 왔어요 · 건물 정리 환불'), 'layoutRefund');
+}
+
 /** CONSTRUCTION_SPEC §6: 저장된 공사 → 건물 칸 (새 짓기는 아직 못 쓰는 상태, 커지는 업그레이드는 새 발판) */
 function conExtra(b: { kind: Kind; con?: Con }): Partial<Building> {
   const c = b.con;
@@ -330,6 +353,11 @@ export function placeBuilding(pl: Placement): boolean {
     toast('금화가 모자라요');
     return false;
   }
+  // HOTFIX14 §1: 하나뿐인 건물은 이미 있으면 못 지음
+  if (!pl.prop && !MULTI(pl.kind) && world.objs.some((o) => o.kind === pl.kind)) {
+    toast(`${d.name}은(는) 마을에 하나만 지을 수 있어요`);
+    return false;
+  }
   // CONSTRUCTION_SPEC §3: 동시 공사 수 (1칸 장식은 세지 않음)
   const [pw, ph] = sizeFor(pl.kind, 1);
   if (!(pw === 1 && ph === 1) && !slotFree()) {
@@ -341,7 +369,10 @@ export function placeBuilding(pl: Placement): boolean {
   // 땅 개편 §4: 첫 건설 초록 안내는 한 번
   P.buildTipSeen = true;
   landHint.firstBuild = false;
-  const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
+  // HOTFIX14 §5: 선물 장식은 하나 쓴다 (환불 없음)
+  const giftDeco = !pl.prop && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0 && d.cost === 0;
+  if (giftDeco) P.meta.giftDeco[pl.kind]--;
+  const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop || giftDeco ? { fromProp: true } : {}) });
   startNew(o);
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');

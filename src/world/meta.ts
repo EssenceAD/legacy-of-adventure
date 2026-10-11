@@ -4,6 +4,8 @@ import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
 import { evalTitles } from './evaluation';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
 import { CONFIG } from '../data/config';
+import { CATALOG } from '../data/catalog';
+import { track } from '../net/telemetry';
 import { HEROES, HERO_SETS } from '../data/heroes';
 import { REGIONS, type RegionId } from '../data/items';
 import { LEGENDS } from '../data/legends';
@@ -107,7 +109,7 @@ export function addMail(m: Omit<Mail, 'id' | 'at' | 'claimed'>) {
   markDirty();
 }
 export const mailWaiting = () => P.meta.mail.filter((m) => !m.claimed && hasReward(m)).length;
-const hasReward = (m: Mail) => !!(m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift);
+const hasReward = (m: Mail) => !!(m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco);
 export function claimMail(id: number): Mail['reward'] | null {
   const m = P.meta.mail.find((x) => x.id === id);
   if (!m || m.claimed) return null;
@@ -125,6 +127,11 @@ export function claimMail(id: number): Mail['reward'] | null {
     }
   }
   if (r.gift) P.gifts[r.gift] = (P.gifts[r.gift] ?? 0) + 1;
+  // HOTFIX14 §5
+  if (r.dustR) P.dust.r += r.dustR;
+  if (r.cheer) P.meta.cheerBonus = (P.meta.cheerBonus ?? 0) + r.cheer;
+  if (r.deco) P.meta.giftDeco[r.deco] = (P.meta.giftDeco[r.deco] ?? 0) + 1;
+  if (m.ver) track('gift_claim', { ver: m.ver });
   markDirty();
   return r;
 }
@@ -134,7 +141,7 @@ export function claimAllMail(): number {
   return n;
 }
 export const rewardLine = (r: Mail['reward']) =>
-  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '']
+  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '', r.dustR ? `푸른 가루 ${r.dustR}` : '', r.cheer ? `모모의 응원 ${r.cheer}회` : '', r.deco ? `${(CATALOG as Record<string, { name: string }>)[r.deco]?.name ?? '장식'} 1개` : '']
     .filter(Boolean)
     .join(' · ');
 
@@ -229,6 +236,18 @@ export function checkSlot5(login = false): boolean {
     uiHooks.toast('모모 편지: 원정 5번째 자리가 열렸어요!');
   } else uiHooks.talk([['post', '폐광까지 다녀오셨네요! 이제 원정에 다섯 명까지 데려갈 수 있어요~ 파티 창을 열어 봐요!']]);
   return true;
+}
+
+/**
+ * HOTFIX14 §5: 업데이트 선물 — 패치노트에 gift 가 있는 버전에서 처음 켜면 모모 편지 한 통 (버전당 한 번, 원래 하던 플레이어만)
+ */
+export function updateGift(ver: string, gift: Mail['reward'] | undefined, veteran: boolean) {
+  if (!gift || P.meta.giftVer === ver) return;
+  P.meta.giftVer = ver;
+  markDirty();
+  if (!veteran) return;
+  addMail({ from: 'system', title: '모모의 편지 · 업데이트 선물', body: '잦은 업데이트로 불편을 드렸어요. 늘 고마워요! 작은 선물을 담았어요~', reward: gift, ver });
+  uiHooks.toast('우편함에 업데이트 선물이 왔어요');
 }
 
 export function welcomeMail() {

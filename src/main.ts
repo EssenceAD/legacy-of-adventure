@@ -36,7 +36,7 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
-import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
+import { _fakeNewer, APP_VERSION, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
 import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
@@ -50,7 +50,7 @@ import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
-import { checkSlot5, dailyAttend, welcomeMail } from './world/meta';
+import { checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
 import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
@@ -148,6 +148,8 @@ function update(dt: number) {
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
       checkSlot5(true);
+      // HOTFIX14 §5: 업데이트 선물 (원래 하던 플레이어만 — 장부를 하나라도 받았거나 2일차 이상)
+      void loadPatchNotes().then((n) => updateGift(APP_VERSION, n.find((x) => x.version === APP_VERSION)?.gift, P.guide.claimed.length > 0 || S.day > 1));
       settleOfflineCons();
       if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }

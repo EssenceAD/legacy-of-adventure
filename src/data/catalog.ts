@@ -71,6 +71,7 @@ export const CATALOG = {
   // 3단계: 보스 첫 처치 트로피 (장식, 무료, 처치한 보스만). 그림은 보스 그림으로 코드에서 만든다
   // 베타 1장: 어울림 장식 (열리는 조건은 world/harmony.ts decoLock)
   bench: { name: '벤치', sprite: 'bench', size: [1, 1], cost: 60, deco: true, unlock: 1, desc: '앉아 쉬는 자리 · 어울림 재료' },
+  thanks_basket: { name: '감사 꽃바구니', sprite: 'flowerbed', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '업데이트 선물 · 보기만 해도 기분 좋아요' },
   flowerbed: { name: '꽃밭', sprite: 'flowerbed', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '꽃향기 · 어울림 재료' },
   barrels: { name: '술통 더미', sprite: 'barrels', size: [1, 1], cost: 120, deco: true, unlock: 1, desc: '주점 뒷마당 냄새 · 어울림 재료' },
   target: { name: '과녁', sprite: 'target', size: [1, 1], cost: 150, deco: true, unlock: 1, desc: '활 연습 · 어울림 재료' },

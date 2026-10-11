@@ -17,6 +17,8 @@ export interface PatchNote {
   title: string;
   items: string[];
   fixes: string[];
+  /** HOTFIX14 §5: 이 버전의 업데이트 선물 (있을 때만) */
+  gift?: { gold?: number; dust?: number; dustR?: number; cheer?: number; deco?: string };
 }
 
 let notes: PatchNote[] | null = null;

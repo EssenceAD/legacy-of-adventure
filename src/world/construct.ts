@@ -107,10 +107,12 @@ export function tapCon(o: Building, now = Date.now()): boolean {
 export const tapCapped = (o: Building) => !!o.con && o.con.cut + 1 > o.con.total * B().tapCapPct + 1e-9;
 
 /** 하루 1번 「모모의 응원」: 공사 하나 즉시 완성 */
-export const cheerReady = () => P.meta.cheerDay !== today();
+export const cheerReady = () => P.meta.cheerDay !== today() || (P.meta.cheerBonus ?? 0) > 0;
 export function cheerCon(o: Building): boolean {
   if (!o.con || !cheerReady()) return false;
-  P.meta.cheerDay = today();
+  // 오늘 몫을 먼저 쓰고, 이미 썼으면 선물로 받은 횟수에서
+  if (P.meta.cheerDay !== today()) P.meta.cheerDay = today();
+  else P.meta.cheerBonus = Math.max(0, (P.meta.cheerBonus ?? 0) - 1);
   finishCon(o);
   return true;
 }

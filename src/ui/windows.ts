@@ -5,8 +5,8 @@ import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
-import { S, type Building } from '../world/state';
-import { buildableKinds, landNeedFor, maxLevel, nextLevelCost } from '../world/town';
+import { S, world, type Building } from '../world/state';
+import { buildableKinds, landNeedFor, maxLevel, nextLevelCost , MULTI } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
@@ -371,11 +371,24 @@ export function openBuild() {
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
+  // HOTFIX14 §1: 이미 있는 하나뿐인 건물 — 회색 「이미 있어요 · Lv.N」 (누르면 그 건물로)
+  const owned = (Object.keys(CATALOG) as Kind[]).filter((k) => !MULTI(k) && !def(k).fixed && world.objs.some((o) => o.kind === k));
+  const ownedCard = (k: Kind) => {
+    const o = world.objs.find((x) => x.kind === k)!;
+    return `<button data-own="${k}" class="locked owned"><img src="${thumb(k)}" alt=""><b>${def(k).name}</b><small class="lock">이미 있어요 · Lv.${o.lvl}</small></button>`;
+  };
   // 건물 → 장식 (장식은 어울림 재료)
-  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
+  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + owned.filter((k) => k !== 'inn').map(ownedCard).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
   openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
-  $$('.cat button').forEach(
+  $$('.cat button[data-own]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const o = world.objs.find((x) => x.kind === b.dataset.own);
+        if (o) showObj(o);
+      }),
+  );
+  $$('.cat button[data-k]').forEach(
     (b) =>
       (b.onclick = () => {
         const k = b.dataset.k as Kind;
