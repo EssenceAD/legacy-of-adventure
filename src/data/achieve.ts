@@ -4,7 +4,7 @@ export interface AchCtx {
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv';
 
 export interface AchDef {
   id: string;
@@ -98,4 +98,7 @@ export const ACHIEVEMENTS: AchDef[] = [
   A('att7', '일주일 개근', '출석 7일', 'attend', 7, { gold: 500 }),
   A('att28', '한 달 개근', '출석 28일', 'attend', 28, { gold: 3000, title: '개근 여관주인' }),
   A('shop10', '단골 손님(상점)', '상점에서 10번 사기', 'shop', 10, { gold: 300 }),
+  // 땅 개편: 여관을 계속 키우는 맛
+  A('inn5', '종탑이 선 여관', '여관 본관 Lv.5', 'innLv', 5, { gold: 1500 }),
+  A('inn10', '전설의 여관', '여관 본관 Lv.10', 'innLv', 10, { gold: 8000, title: '전설의 여관주인' }),
 ];

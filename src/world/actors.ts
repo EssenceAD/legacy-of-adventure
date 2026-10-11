@@ -350,7 +350,9 @@ function goInside(a: Actor, o: Building) {
     if (a.kind === 'rogue') legendHooks.bond('serveRogue');
   }
   // 4단계: 요리(주점) · 계절 행사 · 유산 보너스
-  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * incomeMult(act) * incMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
+  // 땅 개편: 주점 레벨당 수입 +15% (Lv.2 = +15% … Lv.6 = +75%)
+  const lvMult = o.kind === 'tavern' ? 1 + CONFIG.upgrade.tavernIncomePerLevel * (o.lvl - 1) : 1;
+  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * lvMult * incomeMult(act) * incMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '+' + income);
@@ -428,7 +430,10 @@ function pullOut(a: Actor) {
 /** 짝 조합이 가까이서 쉬면 마주 보고 대사 + ♥. 처음 보는 짝이면 「새 케미 발견!」 */
 function chem(a: Actor): boolean {
   a.back = false;
-  if (Math.random() > A.chemChance) return false;
+  // 땅 개편: 주점 Lv.4부터 「단골 테이블」 — 케미 확률 ↑
+  const tav = findKind('tavern');
+  const chemP = A.chemChance * (tav && tav.lvl >= CONFIG.upgrade.tavernChemFrom ? CONFIG.upgrade.tavernChemMult : 1);
+  if (Math.random() > chemP) return false;
   const resting = (b: Actor) => b.st === 'idle' || b.st === 'sit';
   const o = world.actors.find(
     (b) => b !== a && !b.hidden && !b.party && !b.leaving && resting(b) && !b.role && Math.hypot(b.x - a.x, b.y - a.y) < A.chemDistance && pairOf(a, b),

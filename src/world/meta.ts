@@ -38,6 +38,7 @@ function stat(k: AchStat): number {
     case 'meals': return C.tavernMeals;
     case 'gold': return C.goldTotal;
     case 'land': return world.home?.land ?? S.land;
+    case 'innLv': return (world.home?.objs ?? world.objs).find((o) => o.kind === 'inn')?.lvl ?? 1;
     case 'stars': return stars();
     case 'ties5': return Object.values(P.ties).filter((t) => t.stage >= 5).length;
     case 'endings': return P.legacy.album.length;

@@ -21,9 +21,9 @@ import { def, type Kind } from './data/catalog';
 import { doorOf, placing } from './world/town';
 import { initChat } from './ui/chat';
 import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
-import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tickHud } from './ui/hud';
-import { initScreen, screen, setOnScreenChange } from './ui/screen';
-import { buildThumbs, initWindows, isWinOpen, openReport, showObj, toast, toastHtml } from './ui/windows';
+import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
+import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange } from './ui/screen';
+import { buildThumbs, initWindows, isWinOpen, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
 import { beginTour, initEvalUI, openEval, tickEval } from './ui/evaluation';
@@ -35,7 +35,7 @@ import { battleMusic, initSound, tickSound } from './ui/sound';
 import { _fakeNewer, APP_VERSION, initUpdate, openPatchNotes } from './ui/update';
 import { initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
-import { hasSave } from './save/save';
+import { hasSave, migrateFailed } from './save/save';
 import { combatOn, foldedTick } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
 import * as audioEngine from './audio/engine';
@@ -71,7 +71,7 @@ import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
 import { maybeAlarm } from './world/raid';
-import { starHit } from './world/render';
+import { landHint, signHit, starHit } from './world/render';
 import { floatW } from './world/fx';
 import { talk } from './ui/dialogue';
 import { NEIGHBORS } from './data/neighbors';
@@ -231,6 +231,14 @@ function tick(dt: number) {
   tickSound(dt);
   const t0 = performance.now();
   let t = t0;
+  // 땅 개편: 넓힌 뒤 카메라가 새 땅 가운데로 부드럽게
+  if (view.goal) {
+    const k = Math.min(1, dt * 3);
+    view.cam.x += (view.goal.x - view.cam.x) * k;
+    view.cam.y += (view.goal.y - view.cam.y) * k;
+    if (Math.abs(view.goal.x - view.cam.x) + Math.abs(view.goal.y - view.cam.y) < 0.5) view.goal = null;
+    clampCam();
+  }
   // 규칙은 고정 간격(30fps)으로
   acc = Math.min(acc + dt, 0.25);
   while (acc >= STEP) {
@@ -362,6 +370,8 @@ function tap(e: PointerEvent) {
     return;
   }
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
+  // 땅 개편: 땅 넓히기 팻말
+  if (!S.visiting && signHit(mx, my)) return openLand();
   // 운명의 별 (밤하늘 별똥별)
   if (starHit(mx, my)) {
     const msg = catchStar();
@@ -472,6 +482,13 @@ async function boot() {
   document.getElementById('tLetter')!.onclick = () => openReport();
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   game.resumeHooks.folded = () => void settleFolded();
+  // 땅 개편 §5: 땅에 맞춘 배율 — 넓히면 한 단계 멀어진다 · 처음(고른 배율 없음)엔 땅 크기에 맞춰
+  game.camHooks.fit = (expand) => {
+    const z = landZoom();
+    if (expand) {
+      if (z < S.zoom) setZoom(z);
+    } else if (!hasZoomPref() && z !== S.zoom) tempZoom(z);
+  };
   // 핫픽스 11 §5: 1분마다 성능 기록 한 줄 · §4: 폰에서 20분 넘게 하면 배터리 절약 안내 (계정당 1번)
   let perfPrev = { f: stats.frames, w: stats.work };
   let playMin = 0;
@@ -503,6 +520,8 @@ async function boot() {
   setBusy(() => combatOn() || teaserOn());
   // 밤샘 ④-3: 플레이 기록 (설정에서 끌 수 있음)
   initTelemetry(!hasSave());
+  // 땅 개편: 옛 저장을 새 땅으로 옮기지 못했으면 알린다 (원본은 .bak 에 남아 있다)
+  if (migrateFailed) setTimeout(() => toast('예전 저장을 새 땅으로 옮기지 못했어요 · 원본은 백업해 두었어요 · 모모에게 편지로 알려 주세요'), 1500);
   const ver = document.getElementById('tVer');
   if (ver) {
     ver.textContent = `v${APP_VERSION} · 패치노트`;
@@ -567,6 +586,7 @@ async function boot() {
       __uiTalk: (lines: TalkLine[]) => talk(lines),
       __say: say,
       __fakeUpdate: _fakeNewer,
+      __landHint: landHint,
       __chemTalk: queueChemTalk,
       __visual: () => ({ talk: isTalking(), tour: tour.on, spect: spectacles.length, burst: burstOn(), placing: !!placing.pl, grade: gradeAnim.on, idle: idleFor(), step: drawStep(isWinOpen()), saver: saverOn(), title: document.getElementById('winT')?.textContent }),
       __arrive: (status?: 'visitor' | 'passer') => arrive(makeAdventurer(0, 0, { day: S.day, status: status ?? 'visitor' })),

@@ -20,6 +20,7 @@ import { syncGuide } from './guide';
 import { autoTick } from '../world/hunt';
 import { iconSrc } from './kit';
 import { openHunt, unfoldHunt } from './hunt';
+import { landHint } from '../world/render';
 import { fitDay } from './dayfit';
 import { foldInfo } from '../combat/ui';
 import { openGuests } from './guests';
@@ -78,6 +79,8 @@ function openPlace(pl: Placement) {
 }
 
 export function startPlace(kind: Kind, prop?: string) {
+  // 땅 개편 §4: 처음 지을 때만 울타리 안 전체를 연한 초록으로
+  landHint.firstBuild = !PG.buildTipSeen;
   const d = def(kind);
   const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false, prop };
   suggestSpot(pl);

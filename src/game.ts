@@ -3,7 +3,7 @@ import { sfx } from './audio/sfx';
 import { def } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
-import { lookAt, N, sx, sy, view } from './engine/iso';
+import { camFor, lookAt, N, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
 import { addOwner, addPostman, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
@@ -11,12 +11,15 @@ import { settleNight } from './world/clock';
 import { clearEvents, queueEvent } from './world/events';
 import { ensureQuests } from './world/expeditions';
 import { clearBubbles, clearParts, floatW, puff, puffAt } from './world/fx';
+import { ground } from './world/ground';
+import { startFelling } from './world/felling';
+import { landHint } from './world/render';
 import { itemById } from './world/items';
 import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
-import { clearJobs, later, markDirty, P, resetProgress, S, world, type Building } from './world/state';
-import { addObj, astar, doorOf, findKind, landBounds, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
+import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
+import { addObj, astar, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, upgradeObj, type Placement } from './world/town';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
 import { sanitizeAlbum, sanitizeOwner } from './world/owner';
@@ -32,8 +35,23 @@ const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySele
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
 function resetCamera() {
-  view.cam.x = 0;
-  view.cam.y = 0;
+  landCamera(false);
+}
+
+/** 땅 개편 §5: 카메라 = 지금 땅 가운데 · 배율은 땅이 화면 짧은 변의 70~80% (넓히면 한 단계 멀어짐, 부드럽게 이동) */
+export const camHooks = { fit: (_expand: boolean) => {} };
+export function landCamera(expand = false) {
+  const [a, b] = landBounds();
+  const m = (a + b) / 2;
+  view.focus = { m, size: b - a };
+  const g = camFor(m);
+  if (expand) view.goal = g;
+  else {
+    view.cam.x = g.x;
+    view.cam.y = g.y;
+    view.goal = null;
+  }
+  camHooks.fit(expand);
 }
 
 function showHud(v: boolean) {
@@ -124,6 +142,9 @@ export function newGame() {
     for (const a of world.actors) if (a.st === 'in') leave(a);
     keeperExit(keeper);
     addOwner();
+    // 땅 개편 §4: 「보이는 만큼 지을 수 있다」 — 울타리를 따라 반짝이는 점이 한 바퀴 → 모모 한마디
+    landHint.fenceUntil = performance.now() + 2600;
+    queueEvent(() => later(2.6, () => talk([['post', '울타리 안은 전부 사장님 땅이에요! 숲을 베어 내면 더 넓어져요~']])));
     // 첫 원정 안내: 원정 버튼이 반짝이고, 30초짜리 「숲 입구 정찰」이 기다린다
     queueEvent(() =>
       talk([
@@ -265,9 +286,17 @@ export function expandLand(l: number) {
   if (stars() < need) return toast(`평판 ★${need}이 필요해요`);
   if (S.gold < cost) return toast('금화가 모자라요');
   S.gold -= cost;
+  // 땅 개편 §3: 새 범위 안의 나무를 기억해 두었다가 쓰러뜨린다 (바닥을 다시 그리면 사라지니까)
+  const [oldA] = landBounds();
+  const fallen = ground.wild.filter((w) => inLand(w.x, w.y, l) && !inLand(w.x, w.y));
   S.land = l;
   trackEv('land_up', { lv: l });
   rebuildPaths();
+  startFelling(fallen, oldA);
+  sfx('build');
+  // 처음 2단계로 넓혔을 때 모모 한마디
+  if (l === 2) later(2.3, () => uiHooks.talk([['post', '봐요, 숲이 땅이 됐어요! 다음은 ★2 모으면!']]));
+  landCamera(true);
   // 울타리를 따라 먼지
   const [a, b] = landBounds();
   for (let i = 0; i < 40; i++) {
@@ -293,6 +322,9 @@ export function placeBuilding(pl: Placement): boolean {
   }
   S.gold -= cost;
   if (pl.prop) P.harmony.moved.push(pl.prop);
+  // 땅 개편 §4: 첫 건설 초록 안내는 한 번
+  P.buildTipSeen = true;
+  landHint.firstBuild = false;
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { build: CONFIG.build.constructSeconds, flip: !!pl.flip, builtAt: Date.now(), ...(pl.prop ? { fromProp: true } : {}) });
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
@@ -315,8 +347,17 @@ export function placeBuilding(pl: Placement): boolean {
 export function upgrade(o: Building) {
   const cost = nextLevelCost(o);
   if (cost == null) return;
+  // 땅 개편: 레벨마다 필요한 땅 단계
+  const needL = landNeedFor(o);
+  if (needL > S.land) return toast(`땅 ${needL}단계가 필요해요`);
   if (S.gold < cost) return toast('금화가 모자라요');
-  if (!upgradeObj(o)) return toast('뒤쪽에 자리가 없어요 · 1칸 비워주세요');
+  if (!upgradeObj(o)) {
+    // 땅 개편: 커지면 문 자리가 바뀐다 — 문 앞이 막혔으면 그렇게 알려 준다
+    const [nw, nh] = sizeFor(o.kind, o.lvl + 1);
+    const [dx, dy] = doorOf({ tx: o.tx - (nw - o.fw), ty: o.ty - (nh - o.fh), fw: nw, fh: nh, flip: o.flip });
+    const atDoor = world.objs.find((x) => x !== o && dx >= x.tx && dx < x.tx + x.fw && dy >= x.ty && dy < x.ty + x.fh);
+    return toast(atDoor ? `커지면 문이 바뀌어요 · 새 문 앞의 ${def(atDoor.kind).name}을(를) 옮겨 주세요` : '뒤쪽에 자리가 없어요 · 1칸 비워주세요');
+  }
   S.gold -= cost;
   closeWin();
   rebuildPaths();

@@ -2,7 +2,7 @@
 import { CATALOG, def, START_TOWN, type Kind } from '../data/catalog';
 import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
-import { baseKey, FLIP, META } from '../engine/assets';
+import { FLIP, META } from '../engine/assets';
 import { N, sx, sy, TW } from '../engine/iso';
 import { P, S, world, type Building } from './state';
 import { monumentUnlocked } from './progress';
@@ -27,15 +27,23 @@ const inMap = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < N;
 // ───────── 건물 ─────────
 
 /** 종류·레벨·반전에 맞는 그림 키 (레벨 2부터 큰 그림) */
-export function spriteFor(kind: Kind, lvl: number, flip?: boolean): string | null {
+/** 그 레벨의 그림 단계 (없으면 기본 그림) */
+function stageFor(kind: Kind, lvl: number): { sprite: string | null; size: [number, number] } {
   const d = def(kind);
-  const s = lvl > 1 && d.up ? d.up.sprite : d.sprite;
+  const st = d.stages ?? (d.up ? [{ from: 2, sprite: d.up.sprite, size: d.up.size }] : []);
+  let cur: { sprite: string | null; size: [number, number] } = { sprite: d.sprite, size: d.size };
+  for (const s of st) if (lvl >= s.from) cur = s;
+  return cur;
+}
+export function spriteFor(kind: Kind, lvl: number, flip?: boolean): string | null {
+  const s = stageFor(kind, lvl).sprite;
   return s ? s + (flip ? FLIP : '') : null;
 }
 export function sizeFor(kind: Kind, lvl: number): [number, number] {
-  const d = def(kind);
-  return lvl > 1 && d.up ? d.up.size : d.size;
+  return stageFor(kind, lvl).size;
 }
+/** 땅 개편: 다음 레벨에 필요한 땅 단계 (없으면 0) */
+export const landNeedFor = (o: { kind: Kind; lvl: number }) => def(o.kind).needLand?.[o.lvl] ?? 0;
 
 export function addObj(kind: Kind, tx: number, ty: number, extra: Partial<Building> = {}): Building {
   const lvl = extra.lvl ?? 1;
@@ -148,7 +156,10 @@ export function capacity(objs = world.objs): number {
   const A = CONFIG.actors;
   const inn = objs.find((o) => o.kind === 'inn');
   // 공사 중인 별채는 아직 방이 아니다
-  return A.capBase + (inn ? inn.lvl * A.perInnLevel : 0) + objs.filter((o) => o.kind === 'cottage' && o.build === undefined).length * A.perCottage;
+  // 땅 개편: 여관 Lv.3까지 레벨당 +2, Lv.4부터 +1
+  const full = CONFIG.upgrade.innRoomsFullUntil;
+  const innRooms = inn ? Math.min(inn.lvl, full) * A.perInnLevel + Math.max(0, inn.lvl - full) : 0;
+  return A.capBase + innRooms + objs.filter((o) => o.kind === 'cottage' && o.build === undefined).length * A.perCottage;
 }
 
 // ───────── 점유 격자·길 ─────────
@@ -186,7 +197,7 @@ export function astar(sx0: number, sy0: number, gx: number, gy: number, free = f
   const sx = Math.max(0, Math.min(N - 1, Math.round(sx0)));
   const sy = Math.max(0, Math.min(N - 1, Math.round(sy0)));
   if (!inMap(gx, gy)) return null;
-  // 맵이 최대 14×14라 열린 목록에서 최솟값을 그냥 훑어서 고른다 (닫힌 칸은 다시 안 봄)
+  // 맵이 최대 24×24라 열린 목록에서 최솟값을 그냥 훑어서 고른다 (닫힌 칸은 다시 안 봄)
   const NN = N * N;
   const g = new Float32Array(NN).fill(Infinity);
   const came = new Int16Array(NN).fill(-1);
@@ -417,14 +428,17 @@ export const maxLevel = (k: Kind) => 1 + (def(k).levels?.length ?? (def(k).up ? 
 /** 레벨업. 그림이 커지는 레벨(첫 번째)은 앞 꼭짓점은 그대로, 뒤로 커진다. 뒤가 막혔으면 false */
 export function upgradeObj(o: Building, silent = false): boolean {
   if (nextLevelCost(o) == null) return false;
-  const up = def(o.kind).up;
-  if (!up || (o.sprite && baseKey(o.sprite) === up.sprite)) {
-    o.lvl++;
+  const lv = o.lvl + 1;
+  const [nw, nh] = sizeFor(o.kind, lv);
+  const sprite = spriteFor(o.kind, lv, o.flip);
+  if (nw === o.fw && nh === o.fh) {
+    // 발판 그대로 (그림만 바뀌거나 장식 단계)
+    Object.assign(o, { lvl: lv, sprite });
     return true;
   }
-  const nt = { kind: o.kind, tx: o.tx - (up.size[0] - o.fw), ty: o.ty - (up.size[1] - o.fh), fw: up.size[0], fh: up.size[1] };
+  const nt = { kind: o.kind, tx: o.tx - (nw - o.fw), ty: o.ty - (nh - o.fh), fw: nw, fh: nh };
   if (!silent && (!canPlace(nt, o) || blocksDoor(nt, o))) return false;
-  Object.assign(o, { tx: nt.tx, ty: nt.ty, fw: nt.fw, fh: nt.fh, sprite: up.sprite + (o.flip ? FLIP : ''), lvl: o.lvl + 1 });
+  Object.assign(o, { tx: nt.tx, ty: nt.ty, fw: nt.fw, fh: nt.fh, sprite, lvl: lv });
   return true;
 }
 

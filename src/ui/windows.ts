@@ -6,7 +6,7 @@ import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
 import { S, type Building } from '../world/state';
-import { buildableKinds, maxLevel, nextLevelCost } from '../world/town';
+import { buildableKinds, landNeedFor, maxLevel, nextLevelCost } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
@@ -467,7 +467,15 @@ export function showObj(o: Building) {
         ).join('')}</div>`
       : '';
   const grows = d.up && o.sprite && baseKey(o.sprite) !== d.up.sprite ? '더 큰 건물로 · ' : '';
-  const up = canUp && !S.visiting ? `<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${grows}${d.levelText ?? ''} (${fmt(cost!)} G)</button>` : '';
+  // 땅 개편: 다음 레벨에 무엇이 바뀌는지 한 줄 · 땅 단계가 모자라면 레벨업 대신 「땅 N단계 필요」
+  const note = d.levelNotes?.[o.lvl];
+  const needL = landNeedFor(o);
+  const landShort = canUp && needL > S.land;
+  const up = canUp && !S.visiting
+    ? landShort
+      ? `<button class="bigbtn ghost" id="upB" disabled>Lv.${o.lvl + 1} · 땅 ${needL}단계 필요</button><p class="note">${note ? `다음: ${esc(note)}` : ''}</p>`
+      : `${note ? `<p class="note uplv">Lv.${o.lvl + 1} → ${esc(note)}</p>` : ''}<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${note ? '레벨업' : grows + (d.levelText ?? '')} (${fmt(cost!)} G)</button>`
+    : '';
   openWin(
     d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
     `<p class="sub">${d.desc}</p>${S.visiting ? '' : objExtra.html(o)}${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,

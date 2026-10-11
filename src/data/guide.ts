@@ -88,7 +88,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c2_auto', title: '사냥 맡겨 두기', check: (c) => b(c.huntAutoUsed), place: 'hunt', reward: { gold: 80 }, line: '깬 스테이지는 「맡겨 두기」를 눌러 두게. 자네가 장부를 볼 동안에도 단골들이 마을에서 계속 사냥을 하지.' },
       { id: 'c2_hunt5', title: '사냥 1-5 돌파', check: (c) => n(c.huntBest('forest'), 5), place: 'hunt', reward: { gold: 200, dust: 30 }, line: '숲 입구 절반을 정리했군. 마을 사람들이 고마워할 걸세.' },
       { id: 'c2_reg', title: '단골 3명 모으기', check: (c) => n(c.regulars, 3), place: 'guests', reward: { gold: 150 }, line: '세 명이면 파티가 되지. 이제 진짜 여관이야.' },
-      { id: 'c2_land', title: '땅 2단계로 넓히기', check: (c) => n(c.land, 2), place: 'land', reward: { gold: 200 }, line: '울타리를 밀었군! 이제 여기는 오두막이 아니라 쉼터일세.' },
+      { id: 'c2_land', title: '땅 2단계로 넓히기', check: (c) => n(c.land, 2), place: 'land', reward: { gold: 200 }, line: '숲을 베어 내니 땅이 됐군! 울타리 안은 전부 자네가 지을 수 있는 땅이야.' },
     ],
   },
   {

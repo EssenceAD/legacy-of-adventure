@@ -14,7 +14,7 @@ import { isTalking, talk } from './dialogue';
 import { findKind } from '../world/town';
 import { hasSpot } from '../world/tidy';
 import { iconSrc, px, uiSrc } from './kit';
-import { openPlace, PLACE_BTN } from './nav';
+import { openPlace, PLACE_BTN, type Place } from './nav';
 import { isWinOpen } from './windows';
 
 let handTarget: string | null = null;
@@ -90,7 +90,11 @@ function playCut(then: () => void) {
 function onCard() {
   if (isTalking()) return;
   const m = currentMission();
-  if (!m) return;
+  if (!m) {
+    const g = growthGoal();
+    if (g) openPlace(g.place);
+    return;
+  }
   const pr = missionProgress(m);
   if (pr.done) {
     const lines = claimMission();
@@ -137,9 +141,35 @@ function waitNote(place: string): string {
 }
 
 /** 0.5초마다 (hud): 카드 글자 · 반짝 · 손가락 자리 */
+// ───────── 땅 개편 §11-3: 장부를 다 마친 뒤에도 카드가 비지 않게 — 성장 목표 (보상 없음 · 이루면 다음으로) ─────────
+const lvOf = (k: string) => findKind(k as never)?.lvl ?? 0;
+const GROWTH: { title: string; cur: () => number; need: number; place: Place }[] = [
+  { title: '여관 본관 Lv.5 만들기', cur: () => lvOf('inn'), need: 5, place: 'inn' },
+  { title: '땅 4단계로 넓히기', cur: () => S.land, need: 4, place: 'land' },
+  { title: '주점 Lv.4 만들기', cur: () => lvOf('tavern'), need: 4, place: 'tavern' },
+  { title: '온천 Lv.3 만들기', cur: () => lvOf('bath'), need: 3, place: 'build' },
+  { title: '여관 본관 Lv.8 만들기', cur: () => lvOf('inn'), need: 8, place: 'inn' },
+  { title: '땅 5단계로 넓히기', cur: () => S.land, need: 5, place: 'land' },
+  { title: '주점 Lv.6 만들기', cur: () => lvOf('tavern'), need: 6, place: 'tavern' },
+  { title: '여관 본관 Lv.10 만들기', cur: () => lvOf('inn'), need: 10, place: 'inn' },
+];
+export const growthGoal = () => GROWTH.find((g) => g.cur() < g.need) ?? null;
+
 export function syncGuide(force = false) {
   const card = $('#mission');
   const m = currentMission();
+  // 장부를 다 마쳤으면 성장 목표 카드
+  if (!m && S.started && !S.visiting && !document.querySelector('.battle, .cbt')) {
+    const g = growthGoal();
+    if (g) {
+      card.hidden = false;
+      card.classList.remove('done');
+      const html = `<img class="mi" src="${iconSrc('m_quest')}" alt=""><span><small>성장 목표</small><b>${esc(g.title)}</b><em>${Math.min(g.cur(), g.need)}/${g.need}</em></span>`;
+      if (card.innerHTML !== html) card.innerHTML = html;
+      hideHand();
+      return;
+    }
+  }
   // 전투 화면(토벌·사냥)이 떠 있으면 숨긴다
   if (!S.started || S.visiting || !m || document.querySelector('.battle, .cbt')) {
     card.hidden = true;
