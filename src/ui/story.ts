@@ -1,5 +1,6 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
 import { CONFIG } from '../data/config';
+import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { PORTRAITS } from '../engine/assets';
 import { getPref, setPref, writeSave } from '../save/save';
@@ -120,7 +121,17 @@ export function initStoryUI() {
         playAct(3);
       } else if (sq === 'ending:retire') Object.assign(P.story, { act: 3, letter: 2, route: 'retire', heir: 1 });
     }, 500);
-    Object.assign(window, { __story: { playAct, openLetter, playRetireEnding, newInn, queue } });
+    Object.assign(window, {
+      __story: {
+        playAct, openLetter, playRetireEnding, newInn, queue,
+        /** 시험용: 장부 전부 완료 */
+        ledgerAll: () => {
+          for (const m of MISSIONS) if (!P.guide.claimed.includes(m.id)) P.guide.claimed.push(m.id);
+          P.guide.idx = MISSIONS.length;
+          P.guide.cut = 99;
+        },
+      },
+    });
   }
   let last = performance.now();
   setInterval(() => {

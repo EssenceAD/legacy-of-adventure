@@ -44,6 +44,8 @@ export function initOwnerUi() {
   ownerHooks.duo = talkDuo;
   ownerHooks.partner = openPartner;
   ownerHooks.ending = playEnding;
+  // STORY_V1: 「새 여관 열기」 확인 뒤 유산 화면 (모듈이 서로 부르므로 init에서 잇는다)
+  storyUi.legacyCreate = () => openCreate('legacy', () => toast(`${P.owner!.name}${josa(P.owner!.name, '가')} ${S.innName || '여관'}의 새 주인이 되었어요 · ${P.legacy.gen}회차`));
   $('#bOwner').onclick = () => openOwner();
   syncOwnerButton();
 }
@@ -227,8 +229,7 @@ export function openOwner() {
   if (lg) lg.onclick = () => newInn();
 }
 
-/** STORY_V1: 「새 여관 열기」 확인 뒤 유산 화면 */
-storyUi.legacyCreate = () => openCreate('legacy', () => toast(`${P.owner!.name}${josa(P.owner!.name, '가')} ${S.innName || '여관'}의 새 주인이 되었어요 · ${P.legacy.gen}회차`));
+
 
 // ═════════════ 인연 목록 ═════════════
 
