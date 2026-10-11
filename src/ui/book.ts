@@ -1,5 +1,6 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { tokenNeed } from '../world/legends';
 import { heroCtx } from '../world/progress';
 import { CLASSES, GUEST_KINDS, RACE_NAME, RACES, RARITIES, RARITY_INFO } from '../data/classes';
 import { CONFIG } from '../data/config';
@@ -77,11 +78,14 @@ export function openDex(tab = dTab) {
     // 전설 14: ??? → 소문(실루엣·힌트·게이지) → 방문 → 동료
     const cards = LEGENDS.map((d) => {
       const st = P.legends[d.key];
-      const img = `<img class="lgp ${st ? (st.st === 'joined' ? '' : 'sil') : 'unk'}" src="${PORTRAITS['legend_' + d.key] ?? ''}" alt="">`;
-      if (!st) return `<div class="lcard">${img}<b>???</b><small>소문 조건: ${d.rumorText}${P.owner?.linked.includes(d.key) ? " <b class=\"g\">(옛 인연: 70%)</b>" : ""}</small></div>`;
+      // STARFALL §3: 못 만난 영웅은 검은 실루엣 · 게이지가 오를수록 0·30·60·90% 네 단계로 밝아진다
+      const lit = st && st.st !== 'joined' ? `b${Math.min(3, Math.floor((st.gauge ?? 0) / 30))}` : '';
+      const img = `<img class="lgp ${st ? (st.st === 'joined' ? '' : `sil ${lit}`) : 'unk'}" src="${PORTRAITS['legend_' + d.key] ?? ''}" alt="">`;
+      if (!st) return `<div class="lcard">${img}<b>???</b><small>${d.hint}</small><small class="cond">소문 조건: ${d.rumorText}${P.owner?.linked.includes(d.key) ? " <b class=\"g\">(옛 인연: 70%)</b>" : ""}</small></div>`;
       if (st.st === 'joined') {
         const a = (world.home?.actors ?? world.actors).find((x) => x.legendId === d.key);
-        return `<div class="lcard on">${img}<b>${d.title} ${d.name} <span class="g">${'★'.repeat(a?.stars ?? 1)}</span></b><small>${d.charm}</small><small>기술 ${d.skill.name} · 등록 +${Math.round(CONFIG.legends.dexBonus * 100)}%</small></div>`;
+        const need = tokenNeed(a?.stars ?? 1);
+        return `<div class="lcard on">${img}<b>${d.title} ${d.name} <span class="g">${'★'.repeat(a?.stars ?? 1)}</span></b><small>${need == null ? '★5 완성!' : `다음 별까지 증표 ${need} (가진 것 ${P.tokens})`}</small><small>${d.charm}</small><small>기술 ${d.skill.name} · 등록 +${Math.round(CONFIG.legends.dexBonus * 100)}%</small></div>`;
       }
       const g = st.gauge;
       return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · 오늘 밤 방문 ${g >= 100 ? '확정' : `${(g / CONFIG.legends.judgeDiv).toFixed(1)}%`}</em></div></div>`;

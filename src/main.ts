@@ -45,6 +45,7 @@ import { devAdvance as combatAdvance, devField as combatField, zoomInfo as comba
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
 import * as audioSfx from './audio/sfx';
+const sfx = audioSfx.sfx;
 import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
@@ -73,7 +74,8 @@ import { openDex, openGoals } from './ui/book';
 import { skipDone } from './world/guide';
 import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
-import { catchStar, checkRumors, dawnCheck, judgeNight, tickLegends } from './world/legends';
+import { catchStar, checkRumors, dawnCheck, judgeNight, showerLetter, starAvailable, tickLegends } from './world/legends';
+import { showStarCard, syncStarMark } from './ui/starfall';
 import { maybeAlarm } from './world/raid';
 import { landHint, signHit, starHit } from './world/render';
 import { floatW, puffAt } from './world/fx';
@@ -155,6 +157,8 @@ function update(dt: number) {
         if (g) updateGift(g.version, g.gift, P.guide.claimed.length > 0 || S.day > 1);
       });
       settleOfflineCons();
+      // STARFALL §2: 금요일이면 「내일 밤 유성우래요~」
+      showerLetter();
       if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
@@ -253,6 +257,13 @@ function tick(dt: number) {
   if (conAcc > 0.5 && S.started) {
     conAcc = 0;
     tickCons();
+    // STARFALL §1: 밤 버튼 옆 ★ · 별똥별이 처음 뜬 밤에 모모가 한 번 알려 준다
+    syncStarMark();
+    if (!P.meta.starHint && starAvailable() && !S.visiting) {
+      P.meta.starHint = true;
+      markDirty();
+      queueEvent(() => talk([['post', '사장님, 밤하늘 보세요! 별똥별을 누르면 전설 영웅과의 인연이 깊어진대요!']]), 'starHint');
+    }
   }
   tickSound(dt);
   const t0 = performance.now();
@@ -400,12 +411,13 @@ function bindInput() {
 
 /** 별 잡기: 글씨는 누른 자리(타일)에 — 예전엔 고정 타일 (7,5)라 넓어진 맵에선 숲 속에 떴다 */
 function catchStarAt(e: PointerEvent) {
-  const msg = catchStar();
-  if (!msg) return;
-  toast(msg);
+  const c = catchStar();
+  if (!c) return;
   const [fx, fy] = toTile(cv, e.clientX, e.clientY);
   floatW(fx, fy, 30, '★ 운명의 별!', 'big');
-  trackEv('star_catch', {});
+  sfx('rare');
+  showStarCard(c);
+  trackEv('star_catch', { key: c.key, add: c.add, shower: c.shower });
 }
 
 function tap(e: PointerEvent) {

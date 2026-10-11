@@ -13,6 +13,7 @@ import { queueEvent } from './events';
 import { dexBonus, heroCtx, stars, today } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
 import { entrance, bestOf } from './town';
+import { addMail } from './meta';
 import { addEmber, linkedGauge, linkedScale, meetLinked, tieRequestDone } from './owner';
 
 const L = CONFIG.legends;
@@ -107,12 +108,30 @@ onNightFlip((night) => night && judgeNight());
 
 // ───────── 운명의 별 ─────────
 
-/** 오늘 별을 아직 안 잡았고 소문 열린 영웅이 있으면, 밤하늘에 별똥별 */
-export const starAvailable = () => S.started && !S.visiting && S.night && P.starDay !== today() && LEGENDS.some((d) => P.legends[d.key]?.st === 'rumor');
+/**
+ * STARFALL §2: 「별이 쏟아지는 밤」 — 현실 토요일 21~24시(게임 밤과 상관없이). 하늘에 별똥별 여럿 · 하루 3번까지 · 게이지 2배
+ */
+export const showerOn = (d = new Date()) => d.getDay() === 6 && d.getHours() >= 21;
+/** 오늘 잡은 별 수 (옛 저장: 오늘 잡았으면 1) */
+export const starsCaught = () => (P.starDay === today() ? (P.starN ?? 1) : 0);
+export const starCap = () => (showerOn() ? CONFIG.legends.showerCatches : 1);
+/** 오늘 잡을 별이 남았고 소문 열린 영웅이 있으면, 밤하늘(유성우 땐 언제나)에 별똥별 */
+export const starAvailable = () => S.started && !S.visiting && (S.night || showerOn()) && starsCaught() < starCap() && LEGENDS.some((d) => P.legends[d.key]?.st === 'rumor');
 
-export function catchStar(): string | null {
+export interface StarCatch {
+  key: string;
+  title: string;
+  add: number;
+  from: number;
+  gauge: number;
+  shower: boolean;
+  msg: string;
+}
+export function catchStar(): StarCatch | null {
   if (!starAvailable()) return null;
+  const n = starsCaught();
   P.starDay = today();
+  P.starN = n + 1;
   const cands = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
   const d = cands[(Math.random() * cands.length) | 0];
   const w = L.starWeights;
@@ -122,10 +141,23 @@ export function catchStar(): string | null {
     add = i + 1;
     break;
   }
+  const shower = showerOn();
+  if (shower) add *= 2;
   const st = P.legends[d.key];
+  const from = st.gauge;
   st.gauge = Math.min(100, st.gauge + add);
   markDirty();
-  return `운명의 별! 「${d.title} ?」의 인연 +${add}% (${st.gauge}%)`;
+  return { key: d.key, title: d.title, add, from, gauge: st.gauge, shower, msg: `운명의 별! 「${d.title} ?」의 인연 +${add}% (${st.gauge}%)${shower ? ' · 유성우 2배!' : ''}` };
+}
+
+/** STARFALL §2: 금요일에 모모 예고 편지 (그 주에 한 번) */
+export function showerLetter(now = new Date()) {
+  if (now.getDay() !== 5) return;
+  const wk = `${now.getFullYear()}-${Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 864e5))}`;
+  if (P.meta.showerWeek === wk) return;
+  P.meta.showerWeek = wk;
+  markDirty();
+  addMail({ from: 'system', title: '모모의 편지 · 내일 밤 유성우래요~', body: '내일(토요일) 밤 9시부터 자정까지 별이 쏟아진대요! 그 시간엔 별똥별을 3번까지 잡을 수 있고, 인연도 두 배로 깊어진대요. 꼭 들러 주세요 ★', reward: {} });
 }
 
 // ───────── 방문 · 부탁 ─────────

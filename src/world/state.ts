@@ -343,6 +343,8 @@ export function freshProgress() {
     /** 마지막으로 밤 방문 판정을 한 실제 날짜, 운명의 별을 잡은 실제 날짜, 새벽 접속을 센 날짜 */
     legendDay: '',
     starDay: '',
+    /** STARFALL: 오늘 잡은 별 수 (유성우 밤엔 3번까지) */
+    starN: 0,
     dawnDay: '',
     /** 인연의 증표 */
     tokens: 0,
@@ -399,6 +401,9 @@ export function freshProgress() {
       cheerBonus: 0,
       /** HOTFIX14 §5: 업데이트 선물을 받은 버전 · 선물 장식(무료로 놓기) */
       giftVer: '',
+      /** STARFALL: 별똥별 첫 안내를 했나 · 유성우 예고 편지를 보낸 주 */
+      starHint: false,
+      showerWeek: '',
       /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
       sorryDupe: false,
       giftDeco: {} as Record<string, number>,
