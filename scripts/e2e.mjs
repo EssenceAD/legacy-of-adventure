@@ -203,7 +203,7 @@ async function run(size) {
         await talk();
         L('말 걸기');
       }
-    } else if (/1분 원정|장비/.test(m)) {
+    } else if (/1분 (원정|의뢰)|장비/.test(m)) {
       await click('#bExp', 900);
       if (await clickText('.quest', '1분', 900)) {
         await click('.pm:not([disabled])', 600);
