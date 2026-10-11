@@ -7,18 +7,20 @@ import { SMOKE } from '../data/catalog';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
 import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
-import { P } from '../engine/pixel';
+import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL } from './daynight';
 import { puff, updDrawParts } from './fx';
-import { ground, ensureGround, groundFor, groundKey, type Wild } from './ground';
+import { ground, ensureGround, groundFor, groundKey, signSpot, type Wild } from './ground';
+import { stars } from './progress';
+import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { doorOf, grid, groundVersion, inLand, placing, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, groundVersion, inLand, landBounds, placing, spriteOrigin, type Placement } from './town';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
@@ -146,6 +148,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.fillRect(0, 0, LW, LH);
     ctx.globalCompositeOperation = 'source-over';
   }
+  // 땅 개편: 넓히는 중 쓰러지는 나무 (바닥 다음 · 건물보다 먼저)
+  drawFelling(ctx, dt);
   const pl = placing.pl;
 
   // 2) 깊이 정렬: 건물·나무를 먼저 기존 키로 정렬하고,
@@ -213,6 +217,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
       const [bx, by] = objTL(o);
       for (const [x, y] of s) puff(bx + x - OX, by + y - OY, nt > 0.5 ? '#8a90b0' : '#ece6dc', 2 + Math.random() * 3, -7 - Math.random() * 4, 2.8, 1 + ((Math.random() * 2) | 0));
     }
+  // 땅 개편 §8: 땅보다 앞의 굽힌 숲 (건물·손님 다음 · 밤 색은 미리 물든 사본)
+  const fr = frontTinted();
+  if (fr) ctx.drawImage(fr, OX - ground.ox, OY - ground.oy);
   for (const o of world.objs)
     if (o.kind === 'fire' && Math.random() < dt * 6) {
       const X = sx(o.tx + 0.5, o.ty + 0.5);
@@ -237,6 +244,10 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   drawAmbient(ctx, T, LW, LH);
   drawStar(ctx, T);
   drawNamePlate(ctx, nt);
+  // 땅 개편: 땅 넓히기 팻말 글씨 (팻말 그림 위)
+  if (!S.visiting) drawSignLabel(ctx);
+  // 땅 개편 §4: 오프닝 뒤 울타리 반짝 한 바퀴
+  if (performance.now() < landHint.fenceUntil) drawFenceSparkle(ctx, 1 - (landHint.fenceUntil - performance.now()) / 2600);
   // 베타: 어울림 점선 (보기 토글 · 발견 연출)
   drawHarmonyLines(ctx);
   if (!S.visiting) {
@@ -246,6 +257,84 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
 }
+
+/** 앞 층 숲: 밤 색 단계(NL)나 바닥이 바뀔 때만 다시 물들인다 */
+let frontKey = '';
+let frontCv: HTMLCanvasElement | null = null;
+function frontTinted(): HTMLCanvasElement | null {
+  const src = ground.front;
+  if (!src) return null;
+  if (!NL) return src;
+  const key = ground.key + '|' + NL;
+  if (key === frontKey && frontCv) return frontCv;
+  frontKey = key;
+  if (!frontCv || frontCv.width !== src.width || frontCv.height !== src.height) frontCv = canvas(src.width, src.height);
+  const x = frontCv.getContext('2d')!;
+  x.globalCompositeOperation = 'source-over';
+  x.clearRect(0, 0, src.width, src.height);
+  x.drawImage(src, 0, 0);
+  x.globalCompositeOperation = 'multiply';
+  x.fillStyle = tintColor(NL / CONFIG.dayNight.tintSteps);
+  x.fillRect(0, 0, src.width, src.height);
+  x.globalCompositeOperation = 'destination-in';
+  x.drawImage(src, 0, 0);
+  x.globalCompositeOperation = 'source-over';
+  return frontCv;
+}
+
+/** 땅 개편 §4: 안내 상태 (game.ts가 켠다) — 울타리 반짝 · 첫 건설 초록 */
+export const landHint = { fenceUntil: 0, firstBuild: false };
+/** 울타리 둘레를 따라 반짝이는 점들이 한 바퀴 (f = 0~1) */
+function drawFenceSparkle(ctx: CanvasRenderingContext2D, f: number) {
+  const [a, b] = landBounds();
+  const L = b - a;
+  const at = (u: number): [number, number] => {
+    // 둘레 위 한 점 (u = 0~4L): 뒤 → 오른쪽 → 앞 → 왼쪽
+    if (u < L) return [a + u, a];
+    if (u < 2 * L) return [b, a + u - L];
+    if (u < 3 * L) return [b - (u - 2 * L), b];
+    return [a, b - (u - 3 * L)];
+  };
+  const p = P(ctx);
+  const head = f * 4 * L;
+  for (let k = 0; k < 4 * L * 2; k++) {
+    const u = k / 2;
+    if (u > head) break;
+    const [x, y] = at(u);
+    const X = Math.round(view.OX + sx(x, y));
+    const Y = Math.round(view.OY + sy(x, y)) - 3;
+    const tw = (k + Math.floor(S.T * 10)) % 3 === 0;
+    p.rect(X, Y, 2, 2, tw ? '#fff3b0' : '#ffd36b');
+  }
+  const [hx, hy] = at(Math.min(head, 4 * L - 0.01));
+  glow(ctx, view.OX + sx(hx, hy), view.OY + sy(hx, hy) - 3, 9, 0.5);
+}
+
+/** 땅 개편: 팻말 위 글씨 — 「땅 넓히기 800G」 또는 「★3 필요」 (탭 판정은 signHit) */
+const SIGN = { on: false, x: 0, y: 0 };
+function drawSignLabel(ctx: CanvasRenderingContext2D) {
+  SIGN.on = false;
+  const sg = signSpot();
+  if (!sg) return;
+  const next = S.land + 1;
+  const need = CONFIG.landStars[next - 1] ?? 0;
+  const txt = stars() < need ? `★${need} 필요` : `땅 넓히기 ${CONFIG.land[next - 1].cost}G`;
+  const X = Math.round(view.OX + sx(sg[0] + 0.5, sg[1] + 0.5));
+  const Y = Math.round(view.OY + sy(sg[0] + 0.5, sg[1] + 0.5) - 44);
+  ctx.font = '8px "Galmuri9"';
+  const w = Math.ceil(ctx.measureText(txt).width) + 6;
+  const p = P(ctx);
+  p.rect(X - (w >> 1), Y - 9, w, 11, '#3a2414');
+  p.rect(X - (w >> 1) + 1, Y - 8, w - 2, 9, '#f3d9a4');
+  ctx.fillStyle = '#3a2414';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(txt, X, Y);
+  ctx.textAlign = 'start';
+  Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
+}
+/** 탭한 곳이 팻말 근처인가 */
+export const signHit = (mx: number, my: number) => SIGN.on && Math.abs(mx - SIGN.x) < 22 && my > SIGN.y - 34 && my < SIGN.y + 26;
 
 // ───────── 운명의 별: 오늘 아직 안 잡았으면 게임 속 밤하늘에 별똥별이 지나간다 (탭하면 인연 +1~10%) ─────────
 
@@ -278,6 +367,80 @@ export const starHit = (mx: number, my: number) => STAR.on && Math.hypot(mx - ST
 
 /** 모닥불 불꽃 높이 (칸 중심에서 위로 px) — 불티·빛의 중심 */
 const FIRE_FLAME_Y = 12;
+
+/**
+ * 땅 개편: 레벨 장식 — 코드로 덧그린다 (건물 바로 다음에, 앞 건물·손님이 나중에 덮는다)
+ *  여관: Lv.3 문 옆 등불 · Lv.4 처마 등불 줄 · Lv.6 화분 · Lv.7 굴뚝 연기 하나 더 · Lv.9 석등 · Lv.10 깃발·금빛 간판
+ *  주점: Lv.3 테라스 등불 · Lv.5 술통 · Lv.6 깃발·금빛 간판
+ */
+function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, w: number) {
+  const L = o.lvl;
+  const inn = o.kind === 'inn';
+  const at = (tx: number, ty: number): [number, number] => [view.OX + sx(tx, ty), view.OY + sy(tx, ty)];
+  const left = at(o.tx, o.ty + o.fh);
+  const front = at(o.tx + o.fw, o.ty + o.fh);
+  const right = at(o.tx + o.fw, o.ty);
+  const door = at(o.tx + o.fw / 2, o.ty + o.fh);
+  const p = P(ctx);
+  const night = NL > 3;
+  const sprite = (k: string, X: number, Y: number) => {
+    const im0 = IMG[k];
+    if (!im0) return;
+    const im = tinted(im0, NL);
+    ctx.drawImage(im, Math.round(X - im.width / 2), Math.round(Y - im.height + 2));
+  };
+  const lantern = (X: number, Y: number) => {
+    p.rect(X, Y - 10, 1, 10, '#4a2f20');
+    p.rect(X - 1, Y - 13, 3, 3, night ? '#ffd36b' : '#e8a23a');
+    if (night) glow(ctx, X, Y - 12, 7, 0.35);
+  };
+  // 문 옆 등불 (여관·주점 Lv.3)
+  if (L >= 3 && (inn ? !o.sprite?.startsWith('inn8') : true)) {
+    lantern(Math.round(door[0] - 14), Math.round(door[1] + 4));
+    lantern(Math.round(door[0] + 10), Math.round(door[1] - 2));
+  }
+  // 처마 등불 줄 (여관 Lv.4): 왼쪽 모서리 → 앞 모서리, 살짝 처진 줄
+  if (inn && L >= 4) {
+    const n = 14;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const X = left[0] + (front[0] - left[0]) * t;
+      const Y = left[1] + (front[1] - left[1]) * t - 26 + Math.sin(t * Math.PI) * 3;
+      if (i % 2) continue;
+      const on = night || ((S.T * 2 + i) | 0) % 5 !== 0;
+      p.rect(Math.round(X), Math.round(Y), 2, 2, on ? (i % 4 ? '#ffd36b' : '#ff9f6b') : '#8a6a3a');
+      if (night) glow(ctx, X + 1, Y + 1, 4, 0.25);
+    }
+  }
+  // 화분 (여관 Lv.6): 앞쪽 두 모서리
+  if (inn && L >= 6) {
+    sprite('flower_pot', left[0] + 10, left[1] - 2);
+    sprite('flower_pot', front[0] - 4, front[1] - 6);
+  }
+  // 굴뚝 연기 하나 더 (여관 Lv.7)
+  if (inn && L >= 7 && Math.random() < 0.06) puff(x + w * 0.7 - view.OX, y + 30 - view.OY, '#d8d2c8', (Math.random() - 0.5) * 4, -8, 2.2, 3);
+  // 석등 (여관 Lv.9): 문 양옆
+  if (inn && L >= 9) {
+    sprite('stone_lantern', door[0] - 22, door[1] + 8);
+    sprite('stone_lantern', door[0] + 18, door[1]);
+    if (night) {
+      glow(ctx, door[0] - 22, door[1] - 22, 8, 0.4);
+      glow(ctx, door[0] + 18, door[1] - 30, 8, 0.4);
+    }
+  }
+  // 술통 (주점 Lv.5): 오른쪽 앞 면
+  if (!inn && L >= 5) sprite('barrels', (front[0] + right[0]) / 2 + 6, (front[1] + right[1]) / 2 + 4);
+  // 깃발 · 금빛 간판 (여관 Lv.10 · 주점 Lv.6)
+  if ((inn && L >= 10) || (!inn && L >= 6)) {
+    sprite('flagpole', right[0] - 6, right[1] + 2);
+    // 금빛 반짝임 (간판 자리 = 문 위)
+    for (let i = 0; i < 4; i++) {
+      const ph = (S.T * 1.5 + i * 0.37) % 1;
+      if (ph > 0.25) continue;
+      p.px(Math.round(door[0] - 8 + i * 5), Math.round(door[1] - 40 - i * 2), '#fff3b0');
+    }
+  }
+}
 
 /** 굴뚝 연기 자리 (반전 그림이면 x도 뒤집는다) */
 const SMOKE_CACHE: Record<string, [number, number][] | undefined> = {};
@@ -344,6 +507,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   } else ctx.drawImage(im, x, y);
   // 3) 이 건물을 그린 직후 창문 불빛
   drawLight(ctx, o.sprite, x, y);
+  // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
+  if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
   // 지붕 위 인원 숫자
   if (o.inside.length) {
     const X = x + im.width / 2;
@@ -407,6 +572,18 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
   // 1) 주변 어둡게
   ctx.fillStyle = `rgba(8,10,24,${PL.dim})`;
   ctx.fillRect(0, 0, view.LW, view.LH);
+  // 땅 개편 §4: 처음 지을 때 — 울타리 안 전체를 연한 초록으로 「여기 다 돼요」
+  if (landHint.firstBuild && !S.visiting) {
+    const [a, b] = landBounds();
+    ctx.fillStyle = 'rgba(140,230,120,0.16)';
+    ctx.beginPath();
+    ctx.moveTo(view.OX + sx(a, a), view.OY + sy(a, a));
+    ctx.lineTo(view.OX + sx(b, a), view.OY + sy(b, a));
+    ctx.lineTo(view.OX + sx(b, b), view.OY + sy(b, b));
+    ctx.lineTo(view.OX + sx(a, b), view.OY + sy(a, b));
+    ctx.closePath();
+    ctx.fill();
+  }
   // 2) 겹치는 건물은 빨갛게 깜빡
   const hit = new Set<Building>();
   for (let j = 0; j < pl.fh; j++)

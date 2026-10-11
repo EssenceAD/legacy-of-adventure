@@ -255,7 +255,7 @@ let lastPerf = 0;
 let skipped = false;
 let faded = false;
 let raf = 0;
-let saved: { land: number; night: boolean; nightT: number; innName: string; cam: [number, number]; zoom: number } | null = null;
+let saved: { land: number; night: boolean; nightT: number; innName: string; cam: [number, number]; zoom: number; focus: { m: number; size: number } } | null = null;
 let onDone: () => void = () => {};
 
 export const teaserOn = () => on;
@@ -322,7 +322,7 @@ export function playTeaser(isAuto: boolean, done: () => void) {
   on = true;
   auto = isAuto;
   onDone = done;
-  saved = { land: S.land, night: S.night, nightT: S.nightT, innName: S.innName, cam: [view.cam.x, view.cam.y], zoom: S.zoom };
+  saved = { land: S.land, night: S.night, nightT: S.nightT, innName: S.innName, cam: [view.cam.x, view.cam.y], zoom: S.zoom, focus: { ...view.focus } };
   S.innName = '솔바람 여관';
   void preloadTeaserField();
   $('#title').hidden = true;
@@ -360,6 +360,7 @@ function finish() {
     S.innName = saved.innName;
     S.zoom = saved.zoom;
     [view.cam.x, view.cam.y] = saved.cam;
+    view.focus = saved.focus;
   }
   teaserEnd();
   $('#title').hidden = false;

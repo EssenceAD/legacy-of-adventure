@@ -1,7 +1,7 @@
 // 화면 크기 3단계(폰·태블릿·넓은 화면) · 글자 크기 · 마을 캔버스 배율 (핫픽스 3)
 // <html data-size="phone|tablet|wide"> 와 CSS 변수(--f-*, --port)를 여기서 정한다.
 import { CONFIG } from '../data/config';
-import { N, TW } from '../engine/iso';
+import { TW, view } from '../engine/iso';
 import { getPref, setPref } from '../save/save';
 import { S } from '../world/state';
 import { snap } from './kit';
@@ -32,13 +32,31 @@ export function sizeClass(w: number, h: number): SizeClass {
 /** 지금 크기 구간에서 고를 수 있는 배율 */
 export const zoomsNow = () => (screen.size === 'phone' ? CONFIG.view.zooms : U.wideZooms);
 
-/** 마을(가로 N×TW)이 짧은 변의 fill 비율 안에 들어가는 가장 큰 정수 배율 (기기 픽셀) */
-export function autoZoom(): number {
+/**
+ * 땅 개편 §5: 지금 땅(가로 size×TW)이 화면 짧은 변의 70~80%를 채우는 정수 배율.
+ *  정수 배율이라 딱 맞지 않으면 75%에 가장 가까운 것 (95%를 넘지 않게) — 다 넘으면 가장 작은 배율(끌어서 둘러보기)
+ */
+function bestZoom(zs: number[], short: number, size: number): number {
+  let best = zs[0];
+  let bd = Infinity;
+  for (const z of zs) {
+    const r = (size * TW * z) / short;
+    if (r > 0.95) continue;
+    const d = Math.abs(r - 0.75);
+    if (d < bd) [bd, best] = [d, z];
+  }
+  return best;
+}
+/** PC·태블릿 (기기 픽셀 배율) */
+export function autoZoom(size = view.focus.size): number {
   const { w, h } = viewport();
-  const dev = Math.min(w, h) * devicePixelRatio;
-  const z = Math.floor((dev * U.fill[1]) / (N * TW));
-  const zs = U.wideZooms;
-  return Math.max(zs[0], Math.min(zs[zs.length - 1], z));
+  return bestZoom(U.wideZooms, Math.min(w, h) * devicePixelRatio, size);
+}
+/** 폰 (CSS 픽셀 배율) · 그 밖은 autoZoom */
+export function landZoom(size = view.focus.size): number {
+  if (screen.size !== 'phone') return autoZoom(size);
+  const { w, h } = viewport();
+  return bestZoom(CONFIG.view.zooms, Math.min(w, h), size);
 }
 
 const zoomKey = () => (screen.size === 'phone' ? 'zoom' : 'zoom-' + screen.size);
@@ -46,10 +64,12 @@ const zoomKey = () => (screen.size === 'phone' ? 'zoom' : 'zoom-' + screen.size)
 /** 크기 구간에 맞는 배율로 (사용자가 그 구간에서 고른 배율이 있으면 그것) */
 function pickZoom() {
   const zs = zoomsNow();
-  const def = screen.size === 'phone' ? CONFIG.view.defaultZoom : autoZoom();
+  const def = landZoom();
   const z = getPref<number>(zoomKey(), def);
   S.zoom = zs.includes(z) ? z : def;
 }
+/** 사용자가 이 크기 구간에서 배율을 고른 적이 있나 */
+export const hasZoomPref = () => getPref<number | null>(zoomKey(), null) !== null;
 export function saveZoom() {
   setPref(zoomKey(), S.zoom);
 }

@@ -17,6 +17,10 @@ export const view = {
   /** 정수 배율 (1·2·3) */
   SC: CONFIG.view.defaultZoom,
   cam: { x: 0, y: 0 },
+  /** 땅 개편: 카메라 기준 = 지금 땅 가운데(타일)와 크기 — 끌어 둘러볼 수 있는 범위도 여기서 */
+  focus: { m: N / 2, size: N },
+  /** 부드럽게 옮겨 갈 목표 (없으면 null) */
+  goal: null as null | { x: number; y: number },
   /** 월드 원점의 논리 좌표 (카메라 포함) */
   OX: 0,
   OY: 0,
@@ -42,11 +46,16 @@ export function resizeCanvas(cv: HTMLCanvasElement, host: HTMLElement, zoom: num
 
 /** 카메라가 마을 밖으로 너무 멀리 가지 않게 */
 export function clampCam() {
-  const lim = (N * TW) / 2;
+  // 땅 개편: 지금 땅 + 숲 2~3겹까지만 (그 바깥 텅 빈 초록은 안 보이게)
+  const { m, size } = view.focus;
+  const r = size / 2 + 3;
+  const cy0 = (m - N / 2) * TH;
   const c = view.cam;
-  c.x = Math.max(-lim, Math.min(lim, c.x));
-  c.y = Math.max(-N * TH * 0.6, Math.min(N * TH * 0.6, c.y));
+  c.x = Math.max(-r * TW * 0.5, Math.min(r * TW * 0.5, c.x));
+  c.y = Math.max(cy0 - r * TH * 0.5, Math.min(cy0 + r * TH * 0.5, c.y));
 }
+/** 땅 가운데가 화면 가운데에 오는 카메라 */
+export const camFor = (m: number) => ({ x: 0, y: (m - N / 2) * TH });
 
 /** 프레임마다: 맵 가운데(7,7)가 화면 가운데에 오도록 원점 계산 */
 export function updateOrigin() {

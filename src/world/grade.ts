@@ -33,7 +33,7 @@ export function stepGradeAnim(dt: number) {
 export const animF = () => (anim.on ? Math.min(1, anim.t / anim.dur) : 1);
 
 export interface Prop {
-  k: 'lamppost' | 'stonewall' | 'bench' | 'flowerbed' | 'banner' | 'stall' | 'fountain' | 'gate' | 'sign';
+  k: 'lamppost' | 'stonewall' | 'bench' | 'flowerbed' | 'banner' | 'stall' | 'fountain' | 'gate' | 'sign' | 'flagpole' | 'flower_pot' | 'stone_lantern';
   /** 발자국 왼쪽 위 칸 */
   x: number;
   y: number;
@@ -81,6 +81,12 @@ export function gradeProps(g = gradeNow()): Prop[] {
     // 도시: 마을 정문(아치)
     list.push(P('gate', ex, b + 1));
   }
+  // 땅 개편: 개간 대신 꾸밈 — 울타리 바로 바깥 공터 줄(뒤 1칸)에 등급마다 화분·석등·깃발
+  const [a] = landBounds();
+  const span = b - a;
+  if (g >= 1) list.push(P('flower_pot', a - 1, a + Math.floor(span * 0.3)), P('flower_pot', a + Math.floor(span * 0.3), a - 1));
+  if (g >= 2) list.push(P('stone_lantern', a - 1, a + Math.floor(span * 0.6)), P('stone_lantern', a + Math.floor(span * 0.6), a - 1));
+  if (g >= 3) list.push(P('flagpole', a - 1, a - 1));
   // 베타: 마을 안으로 옮긴 장식은 여기서 빠진다 (내 마을만)
   if (S.visiting) return list;
   return list.filter((p) => !PG.harmony.moved.includes(propKey(p)));

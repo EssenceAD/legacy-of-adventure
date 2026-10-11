@@ -132,7 +132,7 @@ export const BOSS_IMG: Record<string, HTMLCanvasElement> = {};
 /** 5단계: 사냥 몬스터 (assets/monsters/mob_*.png) · 마을 장식 (assets/props/*.png) */
 export const MOB_KEYS = ['slime', 'wolf', 'goblin', 'mushimp', 'frog', 'bat', 'kobold', 'iceimp', 'snowwolf', 'shadow'];
 export const MOB_IMG: Record<string, HTMLCanvasElement> = {};
-export const PROP_KEYS = ['lamppost', 'stonewall', 'bench', 'flowerbed', 'banner', 'stall', 'fountain', 'gate'];
+export const PROP_KEYS = ['lamppost', 'stonewall', 'bench', 'flowerbed', 'banner', 'stall', 'fountain', 'gate', 'flagpole', 'flower_pot', 'stone_lantern'];
 export const PROP_IMG: Record<string, HTMLCanvasElement> = {};
 /** 그림을 정해진 배율로 (가장 가까운 픽셀) — 지역 보스(x-10)는 토벌 보스 0.6배 */
 export function scaled(src: HTMLCanvasElement, k: number): HTMLCanvasElement {

@@ -3,7 +3,7 @@
 import { CLASSES } from '../data/classes';
 import { NEIGHBORS } from '../data/neighbors';
 import { BOSS_IMG, MOB_IMG, RAID_BG } from '../engine/assets';
-import { view } from '../engine/iso';
+import { camFor, view } from '../engine/iso';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { spawnExtras } from '../world/actors';
 import { blankActor } from '../world/adventurers';
@@ -46,8 +46,10 @@ export function village(g: number, night: boolean, opts: { bench?: boolean; keep
   }
   S.night = night;
   S.nightT = night ? 1 : 0;
+  // 땅 개편: 카메라는 그 단계 땅 가운데
+  view.focus = { m: (lo + hi) / 2, size: hi - lo };
   view.cam.x = 0;
-  view.cam.y = 0;
+  view.cam.y = camFor(view.focus.m).y;
 }
 
 // ───────── 작은 캔버스 (전투 · 보스 · 다락) ─────────

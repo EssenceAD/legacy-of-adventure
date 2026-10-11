@@ -1,9 +1,12 @@
 // 바닥 타일, 흙길, 울타리, 숲(야생 나무). 땅이나 길이 바뀔 때만 다시 그려 캐시한다.
 import { CONFIG } from '../data/config';
 import { BAYER, canvas, P, rng } from '../engine/pixel';
+import { IMG } from '../engine/assets';
+import { def } from '../data/catalog';
+import { world } from './state';
 import { N, sx, sy, TH, TW } from '../engine/iso';
 import { curLand, entrance, groundVersion, inLand, landBounds, pathT } from './town';
-import { gradeNow, outerRoad } from './grade';
+import { gradeFolk, gradeNow, gradeProps, outerRoad } from './grade';
 
 /** 맵 밖으로 숲을 몇 칸 더 그릴지 (배율 1에서도 화면이 비지 않게) */
 const M = CONFIG.UI_SCALE.groundRing;
@@ -11,7 +14,7 @@ const M = CONFIG.UI_SCALE.groundRing;
 export interface Wild {
   x: number;
   y: number;
-  k: 'pine' | 'tree';
+  k: 'pine' | 'tree' | 'sapling' | 'stump' | 'expand_sign';
 }
 
 export interface Ground {
@@ -20,12 +23,20 @@ export interface Ground {
   oy: number;
   key: string;
   wild: Wild[];
+  /** 땅 개편 §8: 땅보다 앞에 있는 굽힌 나무 (건물·손님 다음에 그린다) */
+  front?: HTMLCanvasElement | null;
 }
 export const ground: Ground = { c: null, ox: 0, oy: 0, key: '', wild: [] };
 /** 마을 등급이 바뀌는 연출 동안 앞뒤 두 장을 같이 쓴다 */
 const cache = new Map<string, Ground>();
 
-export const groundKey = (visitKey: string, g: number) => `${curLand()}|${groundVersion}|${visitKey}|g${g}`;
+export const groundKey = (visitKey: string, g: number) => `${curLand()}|${groundVersion}|${visitKey ? 'v:' + visitKey : ''}|g${g}`;
+/** 땅 개편: 땅 넓히기 팻말 칸 (최대 크기면 없음) */
+export function signSpot(): [number, number] | null {
+  if (curLand() >= CONFIG.land.length) return null;
+  const [a, b] = landBounds();
+  return [a - 1, Math.floor((a + b) / 2)];
+}
 /** 필요할 때만 다시 그린다 (등급마다 바닥이 다르다) */
 export function ensureGround(visitKey: string, g = gradeNow()) {
   const key = groundKey(visitKey, g);
@@ -58,10 +69,10 @@ function drawGround(g: number, key: string): Ground {
   const road = new Set(outerRoad(g).map(([x, y]) => `${x},${y}`));
   const isPath = (x: number, y: number) => (x >= 0 && y >= 0 && x < N && y < N && pathT.has(y * N + x)) || road.has(`${x},${y}`);
   const stone = g >= 2;
-  const [ga, gb] = landBounds();
-  /** 울타리 밖으로 개간된 폭 (등급마다 한 겹씩) */
-  const ring = 1 + g;
-  const cleared = (x: number, y: number) => !inLand(x, y) && x >= ga - ring && y >= ga - ring && x < gb + ring + (g >= 2 ? 2 : 0) && y < gb + ring + (g >= 2 ? 3 : 0);
+  // 땅 개편: 등급 개간(cleared) 삭제 — 풀밭 = 울타리 안 = 지을 수 있는 땅. 울타리 밖은 바로 숲
+  //  다음 단계 땅은 미리 보여 준다 (조금 밝은 숲 바닥 · 어린 나무 · 점선 테두리)
+  const st = curLand();
+  const nextIn = (x: number, y: number) => st < CONFIG.land.length && inLand(x, y, st + 1) && !inLand(x, y);
   for (let y = -M; y < N + M; y++)
     for (let x = -M; x < N + M; x++) {
       const X = ox + sx(x, y);
@@ -82,10 +93,10 @@ function drawGround(g: number, key: string): Ground {
       } else if (land) {
         a = v < 2 ? '#78b84a' : '#6fae45';
         b = '#5f9a3c';
-      } else if (g >= 1 && cleared(x, y)) {
-        // 개간된 바깥 땅
-        a = '#6aa244';
-        b = '#5a9038';
+      } else if (nextIn(x, y)) {
+        // 다음 단계 땅: 숲 바닥이지만 조금 밝게 (어린 나무가 자라는 곳)
+        a = v < 2 ? '#5e9448' : '#5a8e45';
+        b = '#4f8040';
       } else if (inMap) {
         a = '#58894a';
         b = '#4c7a42';
@@ -115,23 +126,45 @@ function drawGround(g: number, key: string): Ground {
       if (path && r() < 0.3) p.px(X + ((r() * 12 - 6) | 0), Y + 5 + ((r() * 6) | 0), '#e0bb83');
     }
 
+  // 다음 단계 땅 테두리: 연한 점선 (바닥에 굽는다)
+  if (st < CONFIG.land.length) {
+    const [na, nb] = landBounds(st + 1);
+    const dot = (x: number, y: number) => {
+      const X = (ox + sx(x, y)) | 0;
+      const Y = (oy + sy(x, y)) | 0;
+      p.rect(X, Y, 2, 1, '#cfe8a8');
+    };
+    const n = (nb - na) * 6;
+    for (let k = 0; k <= n; k++) {
+      if (k % 2) continue;
+      const t = na + ((nb - na) * k) / n;
+      dot(t, na);
+      dot(na, t);
+    }
+  }
+
   // 야생 나무: 울타리 밖. 바로 바깥 1칸(뒤쪽)·2칸(앞쪽)은 공터로 비운다
+  //  땅 개편: 숲은 빽빽하게 · 다음 단계 땅 안은 어린 나무 위주 · 등급 장식·마을 사람 자리는 비운다
   const [la, lb] = landBounds();
   const wr = rng(23);
   const wild: Wild[] = [];
+  const keep = new Set<string>();
+  for (const pr of gradeProps(g)) for (let j = -1; j <= pr.fh; j++) for (let i = -1; i <= pr.fw; i++) keep.add(`${pr.x + i},${pr.y + j}`);
+  for (const fk of gradeFolk(g)) keep.add(`${Math.floor(fk.x)},${Math.floor(fk.y)}`);
   for (let y = -M; y < N + M; y++)
     for (let x = -M; x < N + M; x++) {
       const v = wr();
-      const k = wr() < 0.6 ? 'pine' : 'tree';
+      const k0: Wild['k'] = wr() < 0.6 ? 'pine' : 'tree';
+      const k: Wild['k'] = nextIn(x, y) ? (wr() < 0.7 ? 'sapling' : k0) : k0;
       if (inLand(x, y)) continue;
       const back = x < la - 1 || y < la - 1;
       const frontGap = (x >= lb && x < lb + 2) || (y >= lb && y < lb + 2);
       const sideGap = x === la - 1 || y === la - 1;
       if (sideGap || (!back && frontGap && !(x >= lb + 2 || y >= lb + 2))) continue;
       if (isPath(x, y)) continue; // 던전 가는 길 위엔 나무 없음
-      if (g >= 1 && cleared(x, y)) continue; // 등급마다 한 겹씩 개간
+      if (keep.has(`${x},${y}`)) continue; // 등급 장식·마을 사람 자리
       const inMap = x >= 0 && y >= 0 && x < N && y < N;
-      if (v < (inMap ? 0.3 : 0.36)) wild.push({ x, y, k });
+      if (v < (nextIn(x, y) ? 0.45 : inMap ? 0.55 : 0.6)) wild.push({ x, y, k });
     }
 
   // 울타리 (땅 경계). 길이 울타리를 지나가는 자리는 비워 둔다(문)
@@ -197,5 +230,36 @@ function drawGround(g: number, key: string): Ground {
   rail(A, A, A, B, false, true); // 왼쪽 뒤 (x=A)
   rail(A, B, B, B, true, false); // 앞쪽 (y=B): 바깥은 y
   rail(B, A, B, B, false, false); // 오른쪽 앞 (x=B)
-  return { c, ox, oy, key, wild };
+  // 땅 개편 §8: 숲 굽기 — 울타리·길·장식에서 먼 나무는 바닥 그림에 미리 그린다 (매 프레임 정렬·그리기에서 뺀다)
+  //  남기는 것(움직이는 것과 겹칠 수 있는 나무): 울타리 2칸 안 · 다음 단계 땅(넓힐 때 쓰러짐) · 길·장식 옆
+  const near = (x: number, y: number) => {
+    const dx = Math.max(la - x, x - (lb - 1), 0);
+    const dy = Math.max(la - y, y - (lb - 1), 0);
+    if (Math.max(dx, dy) <= 2 || nextIn(x, y)) return true;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (isPath(x + i, y + j) || keep.has(`${x + i},${y + j}`)) return true;
+    return false;
+  };
+  //  고정 건물(던전) 둘레 2칸도 남긴다 (던전 앞뒤로 정렬돼야 해서)
+  for (const o of world.objs) if (def(o.kind).fixed) for (let j = -2; j < o.fh + 2; j++) for (let i = -2; i < o.fw + 2; i++) keep.add(`${o.tx + i},${o.ty + j}`);
+  const baked = wild.filter((w) => !near(w.x, w.y) && !keep.has(`${w.x},${w.y}`)).sort((p, q) => p.x + p.y - (q.x + q.y) || p.x - q.x);
+  const live = wild.filter((w) => !baked.includes(w));
+  // 뒤 층(바닥 그림에) = 땅보다 뒤·옆 · 앞 층(따로, 건물·손님 다음에 그림) = 땅보다 앞
+  const front = canvas(W, H);
+  const gx = c.getContext('2d')!;
+  const fx = front.getContext('2d')!;
+  let nFront = 0;
+  for (const w of baked) {
+    const im = IMG[w.k];
+    if (!im) continue;
+    const inFront = w.x >= lb || w.y >= lb;
+    if (inFront) nFront++;
+    (inFront ? fx : gx).drawImage(im, Math.round(ox + sx(w.x + 0.5, w.y + 0.5) - im.width / 2), Math.round(oy + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im.height + 3));
+  }
+  wild.length = 0;
+  wild.push(...live);
+
+  // 땅 넓히기 팻말 (울타리 왼쪽 뒤 가운데 바로 바깥) — 누르면 땅 넓히기 창
+  const sg = signSpot();
+  if (sg && !key.includes('|v:')) wild.push({ x: sg[0], y: sg[1], k: 'expand_sign' });
+  return { c, ox, oy, key, wild, front: nFront ? front : null };
 }
