@@ -311,6 +311,8 @@ export function freshProgress() {
       eventsSolved: 0,
       /** BUILDINGS_SPEC §1: 공사 톡톡 누른 수 */
       taps: 0,
+      /** PHOTO_SPEC: 찍은 사진 수 */
+      photos: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {
@@ -411,6 +413,8 @@ export function freshProgress() {
       giftVer: '',
       /** STARFALL: 별똥별 첫 안내를 했나 · 유성우 예고 편지를 보낸 주 */
       starHint: false,
+      /** PHOTO_SPEC: 첫 사진 모모 한마디 */
+      photoHint: false,
       showerWeek: '',
       /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
       sorryDupe: false,

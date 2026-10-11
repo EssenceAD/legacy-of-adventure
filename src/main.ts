@@ -81,6 +81,7 @@ import { afterLogin } from './ui/account';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, showerLetter, starAvailable, tickLegends } from './world/legends';
 import { showStarCard, syncStarMark } from './ui/starfall';
+import { capture as photoCapture, enterPhoto, exitPhoto, frameRect, photoFrozen, photoOn, photoScale, saveBlob } from './ui/photo';
 import { maybeAlarm } from './world/raid';
 import { landHint, signHit, starHit } from './world/render';
 import { floatW, puffAt } from './world/fx';
@@ -131,7 +132,7 @@ function update(dt: number) {
   S.time += dt;
   runJobs();
   t = mark('jobs', t);
-  updActors(dt);
+  if (!photoFrozen()) updActors(dt);
   t = mark('actors', t);
   const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid');
   tickDayNight(dt);
@@ -659,7 +660,10 @@ async function boot() {
   addEventListener('keydown', (e) => {
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (!S.started || S.visiting || isTalking() || isWinOpen() || combatOn() || teaserOn() || placing.pl || document.getElementById('raid')) return;
+    // PHOTO_SPEC: 사진 모드에선 P·Esc 로 나가기 (이웃 마을에서도)
+    if (photoOn() && (e.key === 'Escape' || actionOf(e.key, VILLAGE_ACTIONS) === 'photo')) return void exitPhoto();
+    if (!S.started || isTalking() || isWinOpen() || combatOn() || teaserOn() || placing.pl || document.getElementById('raid')) return;
+    if (S.visiting && actionOf(e.key, VILLAGE_ACTIONS) !== 'photo') return;
     const t = document.getElementById('title');
     if (t && !t.hidden && !t.classList.contains('out')) return;
     const a = actionOf(e.key, VILLAGE_ACTIONS);
@@ -669,6 +673,7 @@ async function boot() {
     if (a === 'board') return openBoard();
     if (a === 'hunt') return openHunt();
     if (a === 'menu') return openGridMenu();
+    if (a === 'photo') return photoOn() ? exitPhoto() : enterPhoto();
     if (a === 'chat') {
       openChat();
       (document.getElementById('chatv') as HTMLInputElement | null)?.focus();
@@ -765,6 +770,7 @@ async function boot() {
         r.openRaidPrep(w.weeklyTarget());
       },
       __power: powerOf,
+      __photo: { capture: photoCapture, frameRect, photoScale, saveBlob, enter: enterPhoto, exit: exitPhoto },
       __star: () => { const s = starInfo(); const r = cv.getBoundingClientRect(); return { ...s, cx: r.left + s.x * view.SC, cy: r.top + s.y * view.SC }; },
       __run: (sec: number) => {
         for (let i = 0; i < sec * 60; i++) tick(1 / 60);

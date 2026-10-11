@@ -12,7 +12,13 @@ export let NL = 0;
 
 export function blendNight(dt: number) {
   S.nightT += ((S.night ? 1 : 0) - S.nightT) * Math.min(1, dt * D.blendRate);
-  NL = Math.round(S.nightT * D.tintSteps);
+  NL = Math.round((photoNT ?? S.nightT) * D.tintSteps);
+}
+/** PHOTO_SPEC: 사진 모드 동안만 밤 정도를 덮어쓴다 (null = 원래 시간) */
+let photoNT: number | null = null;
+export function setPhotoNL(nt: number | null) {
+  photoNT = nt;
+  if (nt != null) NL = Math.round(nt * D.tintSteps);
 }
 
 export const onNightChange = onNightFlip;

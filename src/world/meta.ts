@@ -56,6 +56,7 @@ function stat(k: AchStat): number {
     case 'events': return C.eventsSolved ?? 0;
     case 'evalBest': return P.evaluation.best;
     case 'taps': return P.counters.taps ?? 0;
+    case 'photos': return P.counters.photos ?? 0;
   }
 }
 
