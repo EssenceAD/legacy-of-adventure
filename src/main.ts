@@ -1,5 +1,8 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { initOnboard, promiseTomorrow, tapFirstGuest } from './ui/onboard';
+import { funnel } from './net/funnel';
+import { dialogueHooks } from './ui/dialogue';
 import { decorInput, enterDecor, initDecor } from './ui/decor';
 import { highlightGo } from './ui/notice';
 import { setNight as setNightHL } from './world/daynight';
@@ -174,7 +177,8 @@ function update(dt: number) {
       settleOfflineCons();
       // STARFALL §2: 금요일이면 「내일 밤 유성우래요~」
       showerLetter();
-      if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
+      // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
+      if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
@@ -184,7 +188,8 @@ function update(dt: number) {
         tickLegends();
         maybeAlarm();
         dailyOwner();
-        if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
+        // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
+      if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
         void dailyStats();
         void checkLastWeek();
       }
@@ -593,6 +598,8 @@ function tap(e: PointerEvent) {
       if (S.visiting) return;
       openReport();
     } else if (best.role === 'owner') openOwner();
+    // ONBOARDING §2: 첫 손님은 누르면 체크인
+    else if (tapFirstGuest(best)) return;
     // STORY_V1: 후계자 유안 — 말을 걸면 엔딩
     else if (best.role === 'yuan') tapYuan();
     else showActor(best);
@@ -649,9 +656,13 @@ function bootFailed(loading: HTMLElement, err: unknown) {
 
 async function boot() {
   const loading = document.getElementById('loading')!;
+  const t0 = performance.now();
   await loadFonts();
+  // ONBOARDING §3: 진행 막대 + 팁 한 줄
+  const TIPS = ['손님을 누르면 체크인!', '모닥불 곁에 손님들이 모여요', '장부의 할 일을 따라가면 마을이 커져요', '밤하늘 별똥별을 눌러 보세요'];
+  const tip = TIPS[(Math.random() * TIPS.length) | 0];
   try {
-    await loadAssets((p) => (loading.textContent = `불러오는 중… ${Math.round(p * 100)}%`));
+    await loadAssets((p) => (loading.innerHTML = `<div class="lbar"><i style="width:${Math.round(p * 100)}%"></i></div><small>불러오는 중… ${Math.round(p * 100)}%</small><small class="tip">${tip}</small>`));
   } catch (err) {
     console.error(err);
     return bootFailed(loading, err);
@@ -662,6 +673,8 @@ async function boot() {
     /* 무시 */
   }
   loading.remove();
+  // ONBOARDING §0: 그림 로딩 끝
+  funnel('boot_ok', { loadMs: Math.round(performance.now() - t0) });
   // 밤 색조 캐시를 조금씩 미리 만든다 (건물·나무 그림 + 캐릭터 프레임)
   const frames = (Object.keys(CLASSES) as ClassKey[]).flatMap((k) => {
     const f = charFrames(k);
@@ -706,6 +719,9 @@ async function boot() {
   initStoryUI();
   // TOWN T2: 꾸미기 모드
   initDecor();
+  // ONBOARDING: 첫 손님·장부 1장 뒤 출신 고르기·내일 선물 (장부 hook 다음에)
+  initOnboard();
+  dialogueHooks.skip = (tag, i) => tag === 'opening' && funnel('opening_skip', { line: i });
   // HOTFIX18 §4: 「새로 생긴 것」 카드의 [해 보기]
   Object.assign(highlightGo, { decor: enterDecor, photo: enterPhoto, night: () => setNightHL(true), build: openBuild, village: () => openPlaceHL('village'), hunt: () => openHunt() });
   // HOTFIX16: 단골 제안 손님 카드 · 오늘의 목표 알약
@@ -753,6 +769,11 @@ async function boot() {
     perfPrev = { f: stats.frames, w: stats.work };
     if (!S.started) return;
     playMin++;
+    // ONBOARDING §0·§4: 5분 버팀 · 첫 세션이면 「내일 또 오시면 선물!」
+    if (playMin === 5) {
+      funnel('min5');
+      if ((P.meta.attend?.total ?? 0) <= 1) promiseTomorrow();
+    }
     const ua = navigator.userAgent;
     const kind = /iPhone|iPad|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop';
     trackEv('perf', { fps: Math.round((f / 60) * 10) / 10, workMs: Math.round((w / Math.max(1, f)) * 100) / 100, saver: saverOn(), dpr: Math.round(devicePixelRatio * 10) / 10, kind });
@@ -779,6 +800,7 @@ async function boot() {
     ver.onclick = () => void openPatchNotes();
   }
   document.getElementById('tStart')!.onclick = () => {
+    funnel('title_tap');
     if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?')) return;
     game.newGame();
   };
@@ -835,7 +857,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave,
+  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

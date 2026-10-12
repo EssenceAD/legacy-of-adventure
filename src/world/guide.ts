@@ -21,6 +21,7 @@ export function guideCtx(): GuideCtx {
   const regs = homeActors().filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero'));
   return {
     expeditions: C.expeditions,
+    checkins: Math.max(C.checkins ?? 0, C.expeditions > 0 || C.guestTalks > 0 ? 1 : 0),
     quickRuns: C.quickRuns,
     equippedRare: P.bag.some((it) => it.owner != null && it.grade !== 'n'),
     has: (k) => homeObjs().some((o) => o.kind === k && o.build === undefined),
@@ -133,4 +134,15 @@ export function skipDone(): number {
   }
   if (n) uiHooks.toast(`장부: 이미 해 둔 일 ${n}개를 완료했어요`);
   return n;
+}
+
+/**
+ * ONBOARDING §2: 1장을 「첫 목표 3개」로 바꾼 뒤 예전 저장 맞추기 — 이미 정찰·모닥불을 한 저장은 체크인도 한 것으로
+ *  (장 끝 연출·알림 없이 조용히) · 지금 임무 번호는 받은 목록으로 다시 센다
+ */
+export function migrateOnboarding() {
+  const c = P.guide.claimed;
+  if (!c.includes('c1_checkin') && (c.includes('c1_fire') || c.includes('c1_scout') || P.guide.legacy)) c.push('c1_checkin');
+  const i = MISSIONS.findIndex((m) => !c.includes(m.id));
+  P.guide.idx = i < 0 ? MISSIONS.length : i;
 }

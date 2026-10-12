@@ -1356,3 +1356,16 @@ body.decor #over .bub{display:none}
 body.decor #view:has(#win.on) #decorBar{display:none}
 /* BUILDUX §7: 자동 길 칸 툴팁 */
 #pathTip{position:fixed;z-index:61;padding:4px 8px;font-size:12px;color:var(--cream);pointer-events:none;max-width:240px}
+
+/* ONBOARDING §1: 여관 이름 추천 3개 */
+#namebox .sug{display:flex;gap:6px;justify-content:center;margin-top:6px;flex-wrap:wrap}
+#namebox .sug button{padding:5px 10px;border:0 solid transparent;border-image:var(--ui-btn) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;color:var(--cream);cursor:pointer}
+
+/* ONBOARDING §2: 첫 손님 위 손가락 */
+#obHand{position:absolute;z-index:6;width:calc(24px * var(--k1));height:calc(24px * var(--k1));image-rendering:pixelated;pointer-events:none;transform:translate(-30%,-100%)}
+
+/* ONBOARDING §3: 로딩 진행 막대 · 팁 */
+#loading .lbar{width:min(70vw,260px);height:8px;margin:0 auto 6px;background:#2a2340;box-shadow:0 0 0 2px #1c1018}
+#loading .lbar i{display:block;height:100%;background:#ffd36b;transition:width .2s}
+#loading small{display:block;text-align:center}
+#loading .tip{margin-top:10px;color:#9aa6d8}

@@ -78,6 +78,8 @@ export const CONFIG = {
     dungeonMin: 40,
     dungeonMax: 120,
   },
+  /** ONBOARDING: 첫 손님이 오기까지 · 체크인 금화 · 이틀째 선물 금화 */
+  onboard: { guestDelayMs: 2500, checkinGold: 60, day2Gold: 2000 },
   build: {
     /** 비계+먼지 시간 (초) — 예전 값 (CONSTRUCTION_SPEC 이후 안 씀) */
     constructSeconds: 2.2,

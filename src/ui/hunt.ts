@@ -1,5 +1,6 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
 import { battleMusic } from './sound';
+import { funnel } from '../net/funnel';
 import { themeOf } from '../combat/theme';
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
 import { CONFIG } from '../data/config';
@@ -564,6 +565,7 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   notePrep('hunt', partyPower(ms));
   trackEv('hunt_start', { stage: `${r}-${s}`, mode: auto ? 'auto' : 'manual' });
   P.hunt.folded = null;
+  funnel('first_hunt', { r, s });
   void startCombat(r, s, ms, auto, (res) => {
     const html = settleHunt(r, s, ms, res);
     showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
