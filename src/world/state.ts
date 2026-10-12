@@ -144,6 +144,10 @@ export interface LegendState {
   seen?: string[];
   /** 연속 막기 같은 한 판 기록 */
   best?: number;
+  /** HOTFIX24: 인연 게이지가 100%가 된 시각 (방문 대기 순서) */
+  full?: number;
+  /** HOTFIX24: 「내일 밤 들르겠대요」 편지를 보냈나 */
+  told?: boolean;
 }
 
 /** 토벌 한 판 기록 (2차에서 서버 랭킹으로 올린다) */

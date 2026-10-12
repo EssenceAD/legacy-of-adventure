@@ -629,6 +629,8 @@ export const CONFIG = {
     gaugeMax: 3,
     /** 밤 판정 확률(%) = 게이지 ÷ 이 값 */
     judgeDiv: 20,
+    /** HOTFIX24: 동시에 머무는 전설 최대 수 (인연 100%는 자리가 있으면 그날 밤 바로) */
+    maxVisiting: 2,
     /** 머무는 기간(실제 일), 실패하면 게이지 */
     visitDays: 3,
     failGauge: 50,

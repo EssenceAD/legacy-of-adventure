@@ -1,5 +1,6 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { visitText } from '../world/legends';
 import { diaryList, diaryOpen } from '../world/diary';
 import { mythicProgress } from '../world/mythic';
 import { MYTHIC, MYTHIC_HINT } from '../data/story/mythic';
@@ -95,7 +96,7 @@ export function openDex(tab = dTab) {
         return `<div class="lcard on">${img}<b>${d.title} ${d.name} <span class="g">${'★'.repeat(a?.stars ?? 1)}</span></b><small>${need == null ? '★5 완성!' : `다음 별까지 증표 ${need} (가진 것 ${P.tokens})`}</small><small>${d.charm}</small><small>기술 ${d.skill.name} · 등록 +${Math.round(CONFIG.legends.dexBonus * 100)}%</small></div>`;
       }
       const g = st.gauge;
-      return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · 오늘 밤 방문 ${g >= 100 ? '확정' : `${(g / CONFIG.legends.judgeDiv).toFixed(1)}%`}</em></div></div>`;
+      return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · ${st.st === 'visit' ? '방문 중' : visitText(d.key)}</em></div></div>`;
     }).join('');
     body = `<p class="sub">전설 ${Object.values(P.legends).filter((l) => l.st === 'joined').length}/${LEGENDS.length} · 인연의 증표 ${P.tokens}개</p><p class="note">소문이 열리면 인연 활동으로 게이지가 차요. 실제 날짜로 하루 한 번, 게임 속 밤 10시에 방문 판정(게이지÷${CONFIG.legends.judgeDiv}%) · 100%면 확정. 밤하늘의 별똥별을 누르면 +1~10%</p><div class="lcards">${cards}</div>`;
   } else if (tab === 6) {

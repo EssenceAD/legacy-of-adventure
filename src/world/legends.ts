@@ -86,23 +86,58 @@ export function bond(e: BondEvent, times = 1) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
     for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend'))));
+    if (st.gauge >= 100 && !st.full) st.full = Date.now();
     markDirty();
   }
 }
 
 // ───────── 밤 판정 (실제 날짜 하루 1번) ─────────
 
-/** 그날 처음 맞는 게임 속 밤(22시)에: 게이지 100% = 확정, 아니면 게이지÷20 % 확률. 한 번에 한 명 */
+/** HOTFIX24: 동시에 머무는 전설 수 · 인연 100% 대기열(100%가 된 순서) */
+export const visitingN = () => LEGENDS.filter((d) => P.legends[d.key]?.st === 'visit').length;
+export function fullQueue(): string[] {
+  const q = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor' && P.legends[d.key].gauge >= 100);
+  // 옛 저장은 100%가 된 시각이 없다 → 도감 순서로 (지금 시각을 붙여 두면 다음부터 그 순서)
+  for (const d of q) P.legends[d.key].full ??= Date.now() + LEGENDS.indexOf(d);
+  return q.sort((a, b) => P.legends[a.key].full! - P.legends[b.key].full!).map((d) => d.key);
+}
+/** 도감 문구: 오늘 밤 방문 확정 · 다음 방문: 내일 밤 · 대기 N번째 · 오늘 밤 방문 N% */
+export function visitText(key: string): string {
+  const st = P.legends[key];
+  if (!st || st.st !== 'rumor') return '';
+  if (st.gauge < 100) return `오늘 밤 방문 ${(st.gauge / L.judgeDiv).toFixed(1)}%`;
+  const pos = fullQueue().indexOf(key);
+  const slots = Math.max(0, L.maxVisiting - visitingN());
+  const judged = P.legendDay === today();
+  if (!judged && pos < slots) return '오늘 밤 방문 확정';
+  if (pos < slots) return '다음 방문: 내일 밤';
+  return `대기 ${pos - slots + 1}번째`;
+}
+
+/** 그날 처음 맞는 게임 속 밤(22시)에: 인연 100%는 자리(최대 2명)가 있으면 100%가 된 순서대로 바로 · 자리가 남으면 게이지÷20 % 확률로 한 명 */
 export function judgeNight() {
   if (S.visiting || !S.started) return;
   const day = today();
   if (P.legendDay === day) return;
   P.legendDay = day;
-  if (LEGENDS.some((d) => P.legends[d.key]?.st === 'visit')) return;
-  const cands = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
-  const sure = cands.find((d) => P.legends[d.key].gauge >= 100);
-  const pickd = sure ?? cands.find((d) => Math.random() * 100 < P.legends[d.key].gauge / L.judgeDiv);
-  if (pickd) visit(pickd.key);
+  let slots = Math.max(0, L.maxVisiting - visitingN());
+  const q = fullQueue();
+  while (slots > 0 && q.length) {
+    visit(q.shift()!);
+    slots--;
+  }
+  if (slots > 0) {
+    const pickd = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor' && P.legends[d.key].gauge < 100).find((d) => Math.random() * 100 < P.legends[d.key].gauge / L.judgeDiv);
+    if (pickd) visit(pickd.key);
+  }
+  // 자리가 없어 기다리는 전설이 있으면 모모 편지 한 줄
+  //  (내일 밤 자리가 날 때만 = 머무는 전설 중 24시간 안에 떠나는 사람이 있을 때 · 전설마다 한 번)
+  const freeSoon = LEGENDS.some((d) => P.legends[d.key]?.st === 'visit' && (P.legends[d.key].until ?? 0) < Date.now() + 864e5);
+  if (q.length && freeSoon && !P.legends[q[0]].told) {
+    P.legends[q[0]].told = true;
+    const d = legendByKey(q[0])!;
+    addMail({ from: 'system', title: '모모의 편지', body: `${d.title} ${d.name}${josa(d.name, '이')} 내일 밤 들르겠대요!`, reward: {} });
+  }
   markDirty();
 }
 onNightFlip((night) => night && judgeNight());
