@@ -1406,3 +1406,19 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 /* ECONOMY §2: 극의(+20) 장비 줄은 테두리가 반짝 */
 .irow.tr20{box-shadow:0 0 0 2px #ffd36b;animation:mglow 1.2s steps(2) infinite}
 .offl .warn{color:#ffb04a}
+
+/* SMITH §2·§3: 일괄 강화 · 일괄 제작 */
+.bulkw input[type=range]{width:100%}
+.bulkw .seg button.on{border-image-source:var(--ui-btn-primary);color:#3a2414}
+.bulkw .chk{display:flex;gap:6px;align-items:center;font-size:var(--f-small);margin:6px 0}
+.bprev{margin:8px 0;padding:6px 8px;background:rgba(0,0,0,.2);font-size:var(--f-small);line-height:1.5}
+.bpick{max-height:220px;overflow:auto}
+.blogs{display:flex;flex-direction:column;gap:2px;min-height:120px;font-size:var(--f-small)}
+.blog.ok{color:#ffd36b}.blog.no{color:#9aa6d8}
+.irow button.to{font-size:11px;padding:2px 6px;margin-right:4px}
+.crows{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.crow2{display:flex;gap:6px;align-items:center}
+.crow2 b{min-width:48px}
+.cmade{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.cm{display:flex;flex-direction:column;align-items:center;font-size:11px}
+.cm.best{box-shadow:0 0 0 2px #ffd36b}

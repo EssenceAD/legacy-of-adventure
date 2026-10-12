@@ -506,8 +506,6 @@ export function freshProgress() {
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
      */
-    /** ECONOMY §3: 영웅 동상에 세운 전설 · 불꽃놀이 횟수 */
-    luxury: { statue: '', shows: 0 },
     /** ECONOMY §1: 금화 출처 하루 집계 (날짜 · 출처별 합) */
     goldLog: { day: '', by: {} as Record<string, number> },
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */

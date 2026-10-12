@@ -1,5 +1,7 @@
 // 대장간 창(분해·강화·제작 탭 + 레벨) · 텃밭 창(심기·수확)
 import { CONFIG } from '../data/config';
+import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
+import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type RegionId, type Slot } from '../data/items';
 import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, transcendRate } from '../world/craft';
@@ -42,10 +44,10 @@ export function openSmith(o: Building, tab = smTab) {
         const bc = enhanceBossCost(it);
         const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
         const bossTxt = bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : '';
-        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span><button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
+        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, false)}" ${P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${nextGoal(it.enh, false)}까지</button>`}<button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
       })
       .join('');
-    body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요 · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
+    body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요 · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p><button class="bigbtn sm" id="bulkEnh">일괄 강화…</button><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
   } else if (tab === 3) {
     // ECONOMY §2: 초월 +11 ~ +20 (+10 장비만)
     const T = CONFIG.smith.transcend;
@@ -60,10 +62,10 @@ export function openSmith(o: Building, tab = smTab) {
           const short = S.gold < c.gold || (P.mats[it.region] ?? 0) < c.mats || (P.bossMats[c.boss.id] ?? 0) < c.bossMats || (P.dust[it.grade] ?? 0) < c.dust;
           const reg = REGIONS.find((r) => r.id === it.region)!;
           const need = max ? '극의에 닿았어요' : `금화 ${fmt(c.gold)} · ${reg.mat} ${c.mats}/${P.mats[it.region] ?? 0} · ${c.boss.mat} ${c.bossMats}/${P.bossMats[c.boss.id] ?? 0} · ${DUST_NAME[it.grade]} ${c.dust}/${fmt(P.dust[it.grade] ?? 0)}`;
-          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>성공 ${pct(transcendRate(it))}${it.tPity ? ` (실패 보너스 +${Math.round(it.tPity * 100)}%p)` : ''}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span><button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
+          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>성공 ${pct(transcendRate(it))}${it.tPity ? ` (실패 보너스 +${Math.round(it.tPity * 100)}%p)` : ''}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, true)}" ${short ? 'disabled' : ''}>+${nextGoal(it.enh, true)}까지</button>`}<button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
         })
         .join('');
-      body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(T.pity * 100)}%p</p><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
+      body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(T.pity * 100)}%p</p><button class="bigbtn sm" id="bulkTr">일괄 초월…</button><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
     }
   } else {
     const c = craftCost(craftRegion);
@@ -75,7 +77,8 @@ export function openSmith(o: Building, tab = smTab) {
     <div class="regs">${regs}</div>
     <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
     ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
-    <div class="btnrow">${SLOTS.map((s) => `<button class="bigbtn sm" data-s="${s}">${SLOT_NAME[s]} 만들기</button>`).join('')}</div>
+    <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
+    <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
     ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
   }
   openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작', '초월'], tab, 'smT')}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
@@ -119,14 +122,42 @@ export function openSmith(o: Building, tab = smTab) {
         openSmith(o);
       }),
   );
-  $$('.btnrow [data-s]').forEach(
+  // SMITH §3: 부위마다 1 · 5 · 최대 → 요약 카드
+  $$('[data-cs]').forEach(
     (b) =>
       (b.onclick = () => {
-        const r = craft(craftRegion, b.dataset.s as Slot);
-        if (typeof r === 'string') return toast(r);
-        toast(`${GRADE_INFO[r.grade].name} ${r.name} 완성!`);
-        openWin('제작 완료!', `<div class="idet">${itemCell(r)}<div><b style="color:${GRADE_INFO[r.grade].color}">${esc(r.name)}</b><small>세트 부위</small></div></div><button class="bigbtn sm" id="cOk">자세히</button>`);
-        $('#cOk').onclick = () => showItem(r, () => openSmith(o));
+        const slot = b.dataset.cs as Slot;
+        const n = b.dataset.n === 'max' ? craftMax(craftRegion) : +b.dataset.n!;
+        if (n <= 0) return toast(P.bag.filter((x) => x.owner == null).length >= bagSize() ? '가방이 꽉 찼어요 · 분해 탭에서 비워요' : '재료가 모자라요');
+        if (n === 1) {
+          const r = craft(craftRegion, slot);
+          if (typeof r === 'string') return toast(r);
+          toast(`${GRADE_INFO[r.grade].name} ${r.name} 완성!`);
+          openWin('제작 완료!', `<div class="idet">${itemCell(r)}<div><b style="color:${GRADE_INFO[r.grade].color}">${esc(r.name)}</b><small>세트 부위</small></div></div><button class="bigbtn sm" id="cOk">자세히</button>`);
+          $('#cOk').onclick = () => showItem(r, () => openSmith(o));
+          return;
+        }
+        const slots = Array.from({ length: n }, () => slot);
+        craftSummary(craftRegion, craftMany(craftRegion, slots), () => openSmith(o), slots);
+      }),
+  );
+  const cs = document.getElementById('cSet');
+  if (cs)
+    cs.onclick = () => {
+      const slots = missingSetSlots(craftRegion);
+      craftSummary(craftRegion, craftMany(craftRegion, slots), () => openSmith(o), slots);
+    };
+  // SMITH §2: 일괄 강화 · 일괄 초월 · 줄마다 「목표까지」
+  const be = document.getElementById('bulkEnh');
+  if (be) be.onclick = () => openBulkEnhance(() => openSmith(o), false);
+  const bt = document.getElementById('bulkTr');
+  if (bt) bt.onclick = () => openBulkEnhance(() => openSmith(o), true);
+  $$('[data-to]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const it = P.bag.find((x) => x.id === +b.dataset.to!)!;
+        toast(runToGoal(it, +b.dataset.g!));
+        openSmith(o);
       }),
   );
   const up = document.getElementById('smUp');
