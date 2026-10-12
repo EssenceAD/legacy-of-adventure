@@ -5,7 +5,7 @@ import { IMG } from '../engine/assets';
 import { def } from '../data/catalog';
 import { world } from './state';
 import { N, sx, sy, TH, TW } from '../engine/iso';
-import { curLand, entrance, groundVersion, inLand, landBounds, pathT } from './town';
+import { curLand, entrance, groundVersion, inLand, landBounds, paintOf, pathT } from './town';
 import { gradeFolk, gradeNow, gradeProps, outerRoad } from './grade';
 
 /** 맵 밖으로 숲을 몇 칸 더 그릴지 (배율 1에서도 화면이 비지 않게) */
@@ -86,7 +86,15 @@ function drawGround(g: number, key: string): Ground {
       const v = (x * 7 + y * 13) % 5;
       let a: string;
       let b: string;
-      if (path && stone) {
+      // TOWN T2: 칠한 칸 (길 재질 · 바닥 종류)
+      const pc = land ? paintOf(x, y) : undefined;
+      const PAL: Record<string, [string, string]> = {
+        stone: [(x + y) % 2 ? '#a9a49a' : '#b6b0a4', '#8c867c'], dirt: ['#c99a5e', '#b8864e'], brick: ['#b8644c', '#94483a'], deck: ['#b98a56', '#946a3e'],
+        step: [v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'], flower: [v < 2 ? '#7cbc4c' : '#72b247', '#5f9a3c'], sand: ['#e6d29a', '#d2ba80'], gravel: ['#a39e94', '#86817a'],
+        pond: ['#4a8ac4', '#3a76b0'],
+      };
+      if (pc && PAL[pc]) [a, b] = PAL[pc];
+      else if (path && stone) {
         // 돌길: 회색 돌 + 어두운 줄눈
         a = (x + y) % 2 ? '#a9a49a' : '#b6b0a4';
         b = '#8c867c';
@@ -114,6 +122,10 @@ function drawGround(g: number, key: string): Ground {
           const py = Y + j;
           p.px(px, py, BAYER[py & 3][(px + 64) & 3] < 3 ? b : a);
         }
+      }
+      if (pc) {
+        decoTile(p, pc, X, Y, x, y, r);
+        continue;
       }
       if (land && !path && r() < 0.35) p.px(X + ((r() * 16 - 8) | 0), Y + 4 + ((r() * 8) | 0), '#9ad860');
       // 오두막: 풀이 무성하다 (길 위까지 풀포기)
@@ -268,4 +280,70 @@ function drawGround(g: number, key: string): Ground {
   const sg = signSpot();
   if (sg && !key.includes('|v:')) wild.push({ x: sg[0], y: sg[1], k: 'expand_sign' });
   return { c, ox, oy, key, wild, front: nFront ? front : null };
+}
+
+/** TOWN T2: 칠한 칸 무늬 (칸 마름모 안 · X,Y = 마름모 위 꼭짓점) */
+function decoTile(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x: number, y: number, r: () => number) {
+  // 마름모 안의 점인가 (위 꼭짓점 기준 dx,dy)
+  const inside = (dx: number, dy: number) => dy >= 0 && dy < TH && Math.abs(dx) < (dy < TH / 2 ? dy + 1 : TH - dy) * 2;
+  if (pc === 'pond') {
+    // 이웃 칸이 연못이 아니면 그 변에 물가(밝은 테두리) — 이어 붙이면 저절로 한 연못
+    const edge = (nx: number, ny: number) => paintOf(nx, ny) !== 'pond';
+    const shore = '#d8eef6';
+    const sand = '#cdb582';
+    for (let j = 0; j < TH; j++) {
+      const hw = (j < TH / 2 ? j + 1 : TH - j) * 2;
+      for (const i of [-hw, -hw + 1, hw - 2, hw - 1]) {
+        const left = i < 0;
+        const top = j < TH / 2;
+        // 쿼터뷰(sx = (x−y)·TW/2): 위왼 변 = (x−1,y) · 위오른 변 = (x,y−1) · 아래왼 = (x,y+1) · 아래오른 = (x+1,y)
+        const nb = top ? (left ? edge(x - 1, y) : edge(x, y - 1)) : left ? edge(x, y + 1) : edge(x + 1, y);
+        if (nb) p.px(X + i, Y + j, top ? shore : sand);
+      }
+    }
+    if (r() < 0.6) p.rect(X - 4 + ((r() * 6) | 0), Y + 6 + ((r() * 3) | 0), 3, 1, '#9ccbea');
+    return;
+  }
+  if (pc === 'brick') {
+    // 가로 줄눈 4px마다 · 세로 줄눈은 줄마다 엇갈려
+    for (let j = 0; j < TH; j++)
+      for (let i = -16; i < 16; i++) {
+        if (!inside(i, j)) continue;
+        const band = (j / 4) | 0;
+        if (j % 4 === 3 || (i + band * 4 + 64) % 8 === 0) p.px(X + i, Y + j, '#7a3a2e');
+      }
+    return;
+  }
+  if (pc === 'deck') {
+    for (let j = 0; j < TH; j++) for (let i = -16; i < 16; i++) if (inside(i, j) && ((i + j * 2) & 7) === 0) p.px(X + i, Y + j, '#7a5432');
+    return;
+  }
+  if (pc === 'step') {
+    // 풀밭 위 둥근 징검돌 2개
+    for (const [cx, cy] of [[-5, 5], [5, 9]] as [number, number][]) {
+      p.rect(X + cx - 3, Y + cy, 6, 2, '#b6b0a4');
+      p.rect(X + cx - 2, Y + cy - 1, 4, 1, '#ccc6ba');
+      p.rect(X + cx - 3, Y + cy + 2, 6, 1, '#7c766c');
+    }
+    return;
+  }
+  if (pc === 'flower') {
+    const cols = ['#ff9fbf', '#ffd36b', '#ffffff', '#c890ff', '#ff7a6a'];
+    for (let n = 0; n < 9; n++) {
+      const i = (r() * 22 - 11) | 0;
+      const j = 2 + ((r() * 12) | 0);
+      if (!inside(i, j)) continue;
+      p.px(X + i, Y + j, cols[(r() * cols.length) | 0]);
+      p.px(X + i, Y + j + 1, '#4f8a34');
+    }
+    return;
+  }
+  if (pc === 'gravel' || pc === 'sand' || pc === 'stone' || pc === 'dirt') {
+    const dot = pc === 'gravel' ? '#6c6860' : pc === 'sand' ? '#f2e2b4' : pc === 'stone' ? '#7c766c' : '#e0bb83';
+    for (let n = 0; n < (pc === 'gravel' ? 8 : 4); n++) {
+      const i = (r() * 22 - 11) | 0;
+      const j = 2 + ((r() * 12) | 0);
+      if (inside(i, j)) p.px(X + i, Y + j, dot);
+    }
+  }
 }

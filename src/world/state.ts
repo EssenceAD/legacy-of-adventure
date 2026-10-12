@@ -472,6 +472,8 @@ export function freshProgress() {
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
      */
+    /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
+    decor: { autoPath: true, paint: {} as Record<string, string> },
     harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[], migrate: false },
     /**
      * 베타 3장 하루 마감 정산: 이번 날(자정까지) 모으는 중 · 지난 날들 · 아직 못 보여 준 정산 · 최고 수입

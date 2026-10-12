@@ -1,5 +1,7 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
+import { decorView, noteMove } from '../world/decor';
+import { HARMONIES } from '../data/harmony';
 import { enterPhoto } from './photo';
 import { def, type Kind } from '../data/catalog';
 import { P } from '../engine/pixel';
@@ -12,7 +14,7 @@ import { CONFIG } from '../data/config';
 import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
-import { blocksDoor, canPlace, gateOk, grid, inLand, landBounds, placing, suggestSpot, type Placement } from '../world/town';
+import { blocksDoor, canPlace, gateOk, grid, inLand, landBounds, placing, pondAt, suggestSpot, type Placement } from '../world/town';
 import { computeSets } from '../world/harmony';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
@@ -49,6 +51,7 @@ function whyNot(pl: Placement): string | null {
     for (let i = 0; i < pl.fw; i++) {
       const g = grid[pl.ty + j]?.[pl.tx + i];
       if (g && g !== ign) return '다른 건물과 겹쳐요';
+      if (pondAt(pl.tx + i, pl.ty + j)) return '연못 위엔 못 놓아요';
     }
   if (pl.kind === 'gate' && !gateOk(pl)) return '정문은 마을 입구 길 위에만 놓아요';
   if (!canPlace(pl, ign)) return '문 앞 칸이 막혀 있어요';
@@ -66,8 +69,18 @@ function placeText(pl: Placement) {
   $('#placeRot').toggleAttribute('disabled', !pl.sprite);
   $('#placeTxt').textContent = `${def(pl.kind).name}${pl.move || pl.prop ? ' 옮기기' : ''} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}`;
   const w = $('#placeWhy');
-  w.textContent = pl.why ?? '';
-  w.hidden = pl.ok;
+  // TOWN T2: 놓으면 생기는 어울림을 미리 (이름)
+  const hm = pl.ok ? harmonyHere(pl) : [];
+  w.textContent = pl.ok ? (hm.length ? `✨ 여기 놓으면 어울림: ${hm.join(' · ')}` : '') : pl.why ?? '';
+  w.hidden = !w.textContent;
+  w.classList.toggle('good', pl.ok);
+}
+/** 이 자리에 놓으면 이 장식이 들어가는 어울림 이름 */
+function harmonyHere(pl: Placement): string[] {
+  if (pl.tx == null || pl.ty == null || !def(pl.kind).deco) return [];
+  const ghost = { kind: pl.kind, tx: pl.tx, ty: pl.ty, fw: pl.fw, fh: pl.fh, lvl: 1, hue: null, inside: [], sprite: pl.sprite } as unknown as Building;
+  const objs = world.objs.filter((o) => o !== pl.move).concat(ghost);
+  return [...new Set(computeSets(objs).filter((x) => x.members.includes(ghost)).map((x) => HARMONIES.find((h) => h.id === x.id)?.name ?? ''))].filter(Boolean);
 }
 
 function openPlace(pl: Placement) {
@@ -179,7 +192,12 @@ export function cancelPlace() {
 function confirmPlace() {
   const pl = placing.pl;
   if (!pl || !pl.ok) return;
-  if (pl.move ? game.moveBuilding(pl) : game.placeBuilding(pl)) cancelPlace();
+  // TOWN T2: 꾸미기 모드에서 옮긴 것도 되돌리기에
+  const mv = pl.move ? { o: pl.move, tx: pl.move.tx, ty: pl.move.ty, flip: pl.move.flip } : null;
+  if (pl.move ? game.moveBuilding(pl) : game.placeBuilding(pl)) {
+    if (mv && decorView.on) noteMove(mv.o, mv.tx, mv.ty, mv.flip);
+    cancelPlace();
+  }
 }
 
 // ───────── 독 아이콘 (도트) ─────────

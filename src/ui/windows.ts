@@ -353,6 +353,8 @@ const thumb = (k: Kind) => THUMBS[k] ?? '';
 
 const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 'smith', garden: 'garden', cottage: 'cottage' };
 
+/** TOWN T2: 건설 창 「꾸미기 모드」 (ui/decor가 채운다) */
+export const buildHooks = { decor: () => {} };
 export function openBuild() {
   if (S.visiting) return;
   const card = (k: Kind) => {
@@ -377,8 +379,9 @@ export function openBuild() {
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
   // 건물 → 장식 (장식은 어울림 재료)
   const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
-  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
+  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
+  $('#toDecor').onclick = () => buildHooks.decor();
   $$('.cat button[data-k]').forEach(
     (b) =>
       (b.onclick = () => {

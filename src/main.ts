@@ -1,5 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { decorInput, initDecor } from './ui/decor';
+import { decorView } from './world/decor';
 import { initPropCard } from './ui/propCard';
 import { proposeTalk } from './world/actors';
 import { initGoalPill } from './ui/goalPill';
@@ -17,7 +19,7 @@ import { tour } from './world/evalTour';
 import { anim as gradeAnim } from './world/grade';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
-import { clampCam, resizeCanvas, scr, toLogical, toTile, updateOrigin, view } from './engine/iso';
+import { clampCam, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { settleOfflineCons } from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
@@ -29,7 +31,7 @@ import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
-import { addObj, capacity, doorOf, landBounds, placing, rebuildPaths } from './world/town';
+import { addObj, capacity, doorOf, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
@@ -361,6 +363,8 @@ function onGhost(clientX: number, clientY: number): boolean {
 const touches = new Map<number, { x: number; y: number }>();
 /** 핀치 기준 거리 — 이 비율을 넘을 때마다 배율을 한 단계 바꾼다 */
 let pinchBase = 0;
+/** TOWN T2: 꾸미기 붓질·범위 고르기 중 */
+let decorDrag = false;
 
 function pinchDist() {
   const [a, b] = [...touches.values()];
@@ -381,10 +385,25 @@ function bindInput() {
     }
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.size === 2) {
+      // TOWN T2: 꾸미기 붓질 중 두 번째 손가락이 닿으면 붓질을 끝내고 핀치
+      if (decorDrag) {
+        decorDrag = false;
+        decorInput.up();
+      }
       // 두 손가락: 드래그·탭 대신 핀치
       pinchBase = pinchDist();
       drag = null;
       moved = true;
+      return;
+    }
+    // TOWN T2: 꾸미기 모드(손 도구가 아닐 때)는 끌기 = 칠하기·범위 고르기·무리 옮기기
+    if (!placing.pl && decorInput.wants()) {
+      const [fx, fy] = toTile(cv, e.clientX, e.clientY);
+      decorDrag = true;
+      drag = null;
+      moved = true;
+      decorInput.down(fx, fy);
+      cv.setPointerCapture?.(e.pointerId);
       return;
     }
     drag = { x: e.clientX, y: e.clientY, cx: view.cam.x, cy: view.cam.y };
@@ -402,6 +421,11 @@ function bindInput() {
         pinchBase = pinchDist();
       }
       return;
+    }
+    if (decorDrag || (decorInput.wants() && e.pointerType === 'mouse')) {
+      const [fx, fy] = toTile(cv, e.clientX, e.clientY);
+      decorInput.move(fx, fy);
+      if (decorDrag) return;
     }
     if (!drag) return;
     const dx = e.clientX - drag.x;
@@ -422,6 +446,11 @@ function bindInput() {
   const end = (e: PointerEvent) => {
     touches.delete(e.pointerId);
     if (touches.size < 2) pinchBase = 0;
+    if (decorDrag) {
+      decorDrag = false;
+      decorInput.up();
+      return;
+    }
     const was = drag;
     drag = null;
     ghostDrag = false;
@@ -588,6 +617,8 @@ async function boot() {
   initOwnerUi();
   // STORY_V1: 막 · 갈림길 · 엔딩
   initStoryUI();
+  // TOWN T2: 꾸미기 모드
+  initDecor();
   // HOTFIX16: 단골 제안 손님 카드 · 오늘의 목표 알약
   initPropCard();
   initGoalPill();
@@ -715,7 +746,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
+  if (import.meta.env.DEV) Object.assign(window, { __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

@@ -202,6 +202,11 @@ export function capacity(objs = world.objs): number {
 
 // ───────── 점유 격자·길 ─────────
 
+/** TOWN T2: 칠한 칸 (이웃 구경 중엔 없음) — 연못은 걸을 수 없고 그 위엔 못 짓는다 · 길 재질 칸은 길 */
+export const paintOf = (x: number, y: number): string | undefined => (S.visiting ? undefined : P.decor?.paint?.[`${x},${y}`]);
+export const pondAt = (x: number, y: number) => paintOf(x, y) === 'pond';
+const PAINT_PATHS = new Set(['stone', 'dirt', 'brick', 'deck', 'step']);
+
 export let grid: (Building | null)[][] = [];
 /** 흙길 칸 (y*N+x). 땅 밖이어도 던전 가는 길은 여기에 들어간다 */
 export let pathT = new Set<number>();
@@ -224,6 +229,7 @@ function occ() {
 export function walkable(x: number, y: number, free = false): boolean {
   if (!inMap(x, y)) return false;
   if (!free && !inLand(x, y) && !pathT.has(y * N + x)) return false;
+  if (pondAt(x, y)) return false;
   const o = grid[y][x];
   return !o || o.kind === 'training' || o.kind === 'garden' || o.kind === 'gate';
 }
@@ -292,7 +298,10 @@ export function rebuildPaths() {
     const p = astar(d[0], d[1], hub[0], hub[1], free);
     if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x);
   };
+  // TOWN T2: 자동 길을 끄면 건물↔여관 길은 깔지 않는다 (던전 가는 숲길·칠한 길만)
+  const auto = S.visiting || P.decor?.autoPath !== false;
   for (const o of world.objs) {
+    if (!auto) break;
     if (o === inn || o.kind === 'dungeon') continue;
     if (def(o.kind).deco && o.kind !== 'board') continue;
     lay(o, false);
@@ -301,9 +310,11 @@ export function rebuildPaths() {
   if (dg) lay(dg, true);
   // 마을 입구 → 여관 문 (손님이 걸어 들어오는 길)
   const [ex, ey] = entrance();
-  const pe = astar(ex, ey, hub[0], hub[1]);
+  const pe = auto ? astar(ex, ey, hub[0], hub[1]) : null;
   if (pe) for (const [x, y] of pe) if (!grid[y][x] || grid[y][x]!.kind === 'gate') pathT.add(y * N + x);
-  pathT.add(hub[1] * N + hub[0]);
+  if (auto) pathT.add(hub[1] * N + hub[0]);
+  // TOWN T2: 칠한 길 (자동 길과 상관없이)
+  if (!S.visiting) for (const [k, c] of Object.entries(P.decor?.paint ?? {})) if (PAINT_PATHS.has(c)) { const [x, y] = k.split(',').map(Number); if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x); }
   layoutHooks.after();
 }
 
@@ -380,6 +391,7 @@ export function canPlace(o: { kind: Kind; tx: number | null; ty: number | null; 
       if (!inLand(x, y)) return false;
       const g = grid[y]?.[x];
       if (g && g !== ignore) return false;
+      if (pondAt(x, y)) return false;
     }
   if (o.kind === 'gate' && !gateOk(o)) return false;
   if (!def(o.kind).deco) {

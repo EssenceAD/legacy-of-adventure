@@ -1296,3 +1296,20 @@ html:not([data-size="phone"]) #goalPill{top:calc(env(safe-area-inset-top,0px) + 
 #goalPanel .gpr button{padding:4px 8px}
 #goalPanel .gpr button.rd{color:#ffd36b}
 #goalPanel .gall{margin-top:2px}
+
+/* TOWN T2: 꾸미기 모드 — 위 HUD·장부 카드·채팅·아래 메뉴를 숨기고 도구 줄 하나 */
+body.decor #hud > :not(#decorBar):not(#placebar):not(#toast) {display:none !important}
+#decorBar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:20;display:flex;flex-direction:column;gap:6px;padding:8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream)}
+#decorBar .dt,#decorBar .ds,#decorBar .dd{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+#decorBar button{padding:5px 8px;font-size:var(--f-small);border:0 solid transparent;border-image:var(--ui-btn) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;color:var(--cream);cursor:pointer;white-space:nowrap}
+#decorBar button.on{border-image-source:var(--ui-btn-primary);color:#3a2414;font-weight:700}
+#decorBar button[disabled]{opacity:.45}
+#decorBar .tl{flex:1;min-width:0}
+#decorBar .ex{margin-left:auto}
+#decorBar .hint{font-size:var(--f-small);color:#9aa6d8}
+#decorBar .pm{display:inline-block;width:12px;height:8px;margin-right:4px;vertical-align:middle;box-shadow:0 0 0 1px #1c1018}
+.pm-stone{background:#b6b0a4}.pm-dirt{background:#c99a5e}.pm-brick{background:repeating-linear-gradient(90deg,#b8644c 0 5px,#7a3a2e 5px 6px)}.pm-deck{background:repeating-linear-gradient(90deg,#b98a56 0 3px,#7a5432 3px 4px)}.pm-step{background:radial-gradient(circle at 30% 50%,#b6b0a4 0 2px,transparent 3px),radial-gradient(circle at 75% 50%,#b6b0a4 0 2px,transparent 3px),#6fae45}
+.pm-flower{background:radial-gradient(circle at 25% 40%,#ff9fbf 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,#ffd36b 0 1px,transparent 2px),#72b247}.pm-sand{background:#e6d29a}.pm-gravel{background:radial-gradient(circle at 30% 40%,#6c6860 0 1px,transparent 2px),#a39e94}.pm-pond{background:#4a8ac4}
+#placeWhy.good{color:#8fe08f}
+body.decor #view.placing #decorBar{display:none}
+body.decor #over .bub{display:none}

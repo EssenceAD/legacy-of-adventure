@@ -4,6 +4,7 @@
 // 3) 건물 하나를 그린 직후 그 건물의 창문 불빛 → 앞 건물이 나중에 그려지며 가린다
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
 import { SMOKE } from '../data/catalog';
+import { decorView } from './decor';
 import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
@@ -202,7 +203,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     slots[last + 1].push(a);
   }
   for (let k = 0; k <= things.length; k++) {
-    if (!photoState.on || photoState.people) for (const a of slots[k]) drawActor(ctx, a);
+    // TOWN T2: 꾸미기 모드는 손님을 숨긴다
+    if ((!photoState.on || photoState.people) && !decorView.on) for (const a of slots[k]) drawActor(ctx, a);
     const it = things[k];
     if (!it) break;
     if ('o' in it) {
@@ -275,8 +277,51 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     drawTourEmotes(ctx);
     drawSpectacleEmotes(ctx);
   }
+  // TOWN T2: 꾸미기 모드 — 격자·발판 · 붓 칸 · 고른 범위 · 옮기는 무리
+  if (decorView.on && !S.visiting) drawDecorOverlay(ctx);
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
+}
+
+function drawDecorOverlay(ctx: CanvasRenderingContext2D) {
+  const [a, b] = landBounds();
+  if (decorView.grid) {
+    // 칸 테두리 (울타리 안) · 건물·장식 발판은 옅은 노랑
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    for (let y = a; y < b; y++)
+      for (let x = a; x < b; x++) {
+        const X = Math.round(view.OX + sx(x, y));
+        const Y = Math.round(view.OY + sy(x, y));
+        ctx.fillRect(X, Y, 1, 1);
+        ctx.fillRect(X - 1, Y + TH / 2, 1, 1);
+      }
+    for (let x = a; x <= b; x++) isoLineA(ctx, x, a, x, b, 'rgba(255,255,255,0.12)');
+    for (let y = a; y <= b; y++) isoLineA(ctx, a, y, b, y, 'rgba(255,255,255,0.12)');
+    ctx.fillStyle = 'rgba(255,211,107,0.14)';
+    for (const o of world.objs) for (let j = 0; j < o.fh; j++) for (let i = 0; i < o.fw; i++) fillTile(ctx, o.tx + i, o.ty + j);
+  }
+  const s = decorView.sel;
+  if (s) {
+    ctx.fillStyle = 'rgba(120,190,255,0.22)';
+    for (let y = Math.min(s.y0, s.y1); y <= Math.max(s.y0, s.y1); y++) for (let x = Math.min(s.x0, s.x1); x <= Math.max(s.x0, s.x1); x++) fillTile(ctx, x, y);
+  }
+  const g = decorView.ghost;
+  ctx.fillStyle = g ? (g.ok ? 'rgba(111,208,75,0.45)' : 'rgba(255,74,74,0.45)') : 'rgba(120,190,255,0.5)';
+  for (const o of decorView.picked) for (let j = 0; j < o.fh; j++) for (let i = 0; i < o.fw; i++) fillTile(ctx, o.tx + i + (g?.dx ?? 0), o.ty + j + (g?.dy ?? 0));
+  const h = decorView.hover;
+  if (h) {
+    ctx.fillStyle = 'rgba(255,243,214,0.35)';
+    fillTile(ctx, h[0], h[1]);
+  }
+}
+/** 타일 좌표 두 점을 잇는 반투명 선 */
+function isoLineA(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, col: string) {
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(Math.round(view.OX + sx(x0, y0)) + 0.5, Math.round(view.OY + sy(x0, y0)) + 0.5);
+  ctx.lineTo(Math.round(view.OX + sx(x1, y1)) + 0.5, Math.round(view.OY + sy(x1, y1)) + 0.5);
+  ctx.stroke();
 }
 
 /** 앞 층 숲: 밤 색 단계(NL)나 바닥이 바뀔 때만 다시 물들인다 */
@@ -584,7 +629,11 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
     ctx.drawImage(im, -im.width / 2, -im.height);
     ctx.restore();
     o.pop = Math.max(0, o.pop - 0.04);
-  } else ctx.drawImage(im, x, y);
+  } else {
+    // TOWN T2: 이어지는 장식 — 뒤쪽 이웃 칸의 같은 장식과 띠로 잇는다 (가로·세로·모서리)
+    if (CONNECT[o.kind]) drawJoins(ctx, o, im, x, y);
+    ctx.drawImage(im, x, y);
+  }
   // 3) 이 건물을 그린 직후 창문 불빛
   drawLight(ctx, o.sprite, x, y);
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
@@ -907,4 +956,57 @@ function drawDoorDebug(ctx: CanvasRenderingContext2D, o: Building) {
   ctx.strokeStyle = '#ff00ff';
   ctx.lineWidth = 1;
   ctx.strokeRect(view.OX + r.x0 + 0.5, view.OY + r.y0 + 0.5, r.x1 - r.x0, r.y1 - r.y0);
+}
+
+// ───────── TOWN T2: 이어지는 장식 (산울타리·돌담·흰 울타리) ─────────
+
+/** 이어 그릴 장식 → 띠 높이(그림 높이 비율) */
+const CONNECT: Partial<Record<string, number>> = { hedge: 0.55, stonewall2: 0.5, picket_gate: 0.35 };
+const joinCols = new Map<string, [string, string, string]>();
+/** 그림에서 띠 색 (윗면 · 몸 · 아랫단) */
+function colsOf(sp: string): [string, string, string] {
+  let c = joinCols.get(sp);
+  if (c) return c;
+  const im = IMG[sp] as CanvasImageSource & { width: number; height: number };
+  const cv = document.createElement('canvas');
+  cv.width = im.width;
+  cv.height = im.height;
+  const g = cv.getContext('2d')!;
+  g.drawImage(im, 0, 0);
+  const at = (fy: number) => {
+    // 가운데 줄에서 투명이 아닌 첫 점
+    for (let dx = 0; dx < im.width / 2; dx++)
+      for (const sx2 of [im.width / 2 + dx, im.width / 2 - dx]) {
+        const d = g.getImageData(Math.floor(sx2), Math.floor(im.height * fy), 1, 1).data;
+        if (d[3] > 200) return `rgb(${d[0]},${d[1]},${d[2]})`;
+      }
+    return '#4f8a34';
+  };
+  c = [at(0.3), at(0.6), at(0.85)];
+  joinCols.set(sp, c);
+  return c;
+}
+function drawJoins(ctx: CanvasRenderingContext2D, o: Building, im: CanvasImageSource & { width: number; height: number }, x: number, y: number) {
+  const k = CONNECT[o.kind]!;
+  const [top, body, foot] = colsOf(baseKey(o.sprite!));
+  const H = Math.round(im.height * k);
+  const bx = x + im.width / 2;
+  const by = y + im.height - 4;
+  for (const [nx, ny] of [[o.tx - 1, o.ty], [o.tx, o.ty - 1]] as [number, number][]) {
+    const n = world.objs.find((q) => q.kind === o.kind && q.tx === nx && q.ty === ny);
+    if (!n) continue;
+    // 이웃은 화면에서 (−16,−8) 또는 (+16,−8)
+    const dir = nx < o.tx ? -1 : 1;
+    // 두 그림 사이 틈만 (양쪽 그림 몸통을 덮지 않게)
+    for (let t = 4; t <= 12; t++) {
+      const px = Math.round(bx + dir * t);
+      const py = Math.round(by - t / 2);
+      ctx.fillStyle = top;
+      ctx.fillRect(px, py - H, 1, 2);
+      ctx.fillStyle = body;
+      ctx.fillRect(px, py - H + 2, 1, H - 4);
+      ctx.fillStyle = foot;
+      ctx.fillRect(px, py - 2, 1, 2);
+    }
+  }
 }
