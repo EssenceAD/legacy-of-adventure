@@ -17,7 +17,7 @@ export const fishImg = (id: string, cls = 'fishic') => `<img class="${cls}" src=
 const WHERE_NAME: Record<FishWhere, string> = { pond: '마을 연못', sea: '등대 해안' };
 
 /** 진행 중인 한 판 */
-let cur: { c: Cast; t0: number; done: boolean; timers: number[] } | null = null;
+let cur: { c: Cast; t0: number; done: boolean; timers: number[]; shown?: number } | null = null;
 let lastWhere: FishWhere = 'pond';
 function stop() {
   if (cur) for (const t of cur.timers) clearTimeout(t);
@@ -108,25 +108,27 @@ function startCast(where: FishWhere) {
   const n = document.getElementById('fBaitN');
   if (n) n.textContent = String(baitLeft());
   setMsg('찌가 흔들린다…');
-  const run = { c, t0: performance.now(), done: false, timers: [] as number[] };
+  const run: NonNullable<typeof cur> = { c, t0: performance.now(), done: false, timers: [] };
   cur = run;
   run.timers.push(
     window.setTimeout(() => {
       if (cur !== run || run.done) return;
       st.classList.add('bite');
+      // 폰이 바빠 「!」가 늦게 떴으면 판정 창도 그만큼 뒤로 (보이는 순간부터 창 길이 그대로)
+      run.shown = (performance.now() - run.t0) / 1000;
+      run.timers.push(window.setTimeout(() => cur === run && !run.done && finish(false, 'late'), c.win * 1000 + 60));
       setMsg(`<b>${esc(biteLine())}</b>`);
       sfx('tap');
     }, c.bite * 1000),
   );
-  // 판정 창이 지나면 놓침 (조금 여유 — 실제 판정은 누른 시각으로)
-  run.timers.push(window.setTimeout(() => cur === run && !run.done && finish(false, 'late'), (c.bite + c.win) * 1000 + 60));
 }
 function tapStage() {
   const run = cur;
   if (!run || run.done) return;
   const t = (performance.now() - run.t0) / 1000;
   if (import.meta.env.DEV) (window as unknown as { __fishTap?: unknown }).__fishTap = { t, bite: run.c.bite, win: run.c.win };
-  finish(judge(run.c, t), t < run.c.bite ? 'early' : 'late');
+  const late = Math.max(0, (run.shown ?? run.c.bite) - run.c.bite);
+  finish(judge({ bite: run.c.bite, win: run.c.win + late }, t), t < run.c.bite ? 'early' : 'late');
 }
 function finish(ok: boolean, why: 'early' | 'late') {
   const run = cur;

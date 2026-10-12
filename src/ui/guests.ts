@@ -366,7 +366,7 @@ export function openBag() {
   const full = n >= bagSize();
   openWin(
     `가방 ${n}/${bagSize()}`,
-    `<p class="sub">${dustLine()}<br>재료 ${Object.entries(P.mats)
+    `<p class="sub">${dustLine()}${P.growth.charm || P.growth.whet ? ` · 🧿 부적 ${P.growth.charm} · 🪨 숫돌 ${P.growth.whet}` : ''}<br>재료 ${Object.entries(P.mats)
       .filter(([, v]) => v)
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>

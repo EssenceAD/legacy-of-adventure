@@ -3,7 +3,13 @@ import { CONFIG } from '../data/config';
 import { SLOTS, type RegionId, type Slot } from '../data/items';
 import { craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, transcend, transcendCost, transcendOpen, transcendRate } from './craft';
 import { bagSize, itemPower } from './items';
-import { P, S, type Item } from './state';
+import { P, S, world, type Item } from './state';
+import { favRank } from './growth';
+
+const favOf = (it: Item) => {
+  const o = it.owner == null ? null : (world.home?.actors ?? world.actors).find((a) => a.id === it.owner);
+  return o ? favRank(o) : 99;
+};
 
 const SM = () => CONFIG.smith;
 export type BulkTarget = 'equipped' | 'bag' | 'pick';
@@ -28,7 +34,8 @@ export function bulkItems(o: BulkOpts): Item[] {
     .filter((it) => it.enh < o.goal)
     .filter((it) => (o.target === 'equipped' ? it.owner != null : o.target === 'pick' ? (o.picked ?? []).includes(it.id) : true))
     .filter((it) => !(o.skipLocked && it.locked))
-    .sort((a, b) => Number(b.owner != null) - Number(a.owner != null) || itemPower(b) - itemPower(a));
+    // GROWTH §3-1: ★ 아끼는 영웅이 낀 장비 먼저
+    .sort((a, b) => favOf(a) - favOf(b) || Number(b.owner != null) - Number(a.owner != null) || itemPower(b) - itemPower(a));
 }
 
 /** 한 단계 올리는 기대 비용 (실패 확률 반영: 1 / 성공률 번) */
