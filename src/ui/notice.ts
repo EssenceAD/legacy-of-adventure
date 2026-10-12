@@ -33,6 +33,11 @@ export interface Highlight {
   go: HighlightGo;
 }
 export const HIGHLIGHTS: Record<string, Highlight[]> = {
+  '0.17.4-beta': [
+    { icon: '🌷', text: '새 장식 41종 — 둘레·정원·시장·나무·빛·동물… 땅 단계마다 열려요', label: '장식 보기', go: 'build' },
+    { icon: '✨', text: '특별 장식 8종 — 황금 분수 · 영웅 동상 · 축제 불꽃놀이', label: '구경하기', go: 'build' },
+    { icon: '📖', text: '장식 도감 — 10·20·41종 모으면 금화와 칭호', label: '구경하기', go: 'build' },
+  ],
   '0.17.3-beta': [
     { icon: '🏗️', text: '꾸미기 모드에서 꾹 눌러 들고 옮기기 · ✓✕↻ 버튼이 건물 옆에', label: '꾸며 보기', go: 'decor' },
     { icon: '📦', text: '보관함 — 철거 대신 넣어 두고 언제든 꺼내 놓기', label: '꾸며 보기', go: 'decor' },

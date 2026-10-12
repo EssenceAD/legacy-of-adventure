@@ -1,5 +1,6 @@
 // 성장 지표: 평판(★) · 도감(손님·아이템·케미·영웅) · 오늘의 목표 · 영웅 조건
 import { bestOf } from './town';
+import { openDrops, ownedDrops } from './decodrop';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals';
@@ -102,6 +103,8 @@ export const today = () => {
 export function goalAvailable(t: GoalTemplate): boolean {
   if (!t.needs) return true;
   const home = world.home ?? world;
+  // DECO_DROP §3: 아직 안 산 장식이 열려 있어야
+  if (t.needs === 'newDeco') return openDrops().some((k) => !ownedDrops().includes(k));
   if (t.needs === 'regulars2') return home.actors.filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero')).length >= 2;
   return home.objs.some((o) => o.kind === t.needs && o.build === undefined);
 }

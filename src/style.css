@@ -1356,3 +1356,23 @@ body.decor #over .bub{display:none}
 body.decor #view:has(#win.on) #decorBar{display:none}
 /* BUILDUX §7: 자동 길 칸 툴팁 */
 #pathTip{position:fixed;z-index:61;padding:4px 8px;font-size:12px;color:var(--cream);pointer-events:none;max-width:240px}
+
+/* DECO_DROP: 장식 묶음 탭 · NEW · 건설 버튼 배지 · 장식 도감 · 특별 장식 */
+.dgrp{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px}
+.dgrp button{padding:4px 8px;font-size:var(--f-small);border:0 solid transparent;border-image:var(--ui-btn) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;color:var(--cream);cursor:pointer}
+.dgrp button.on{border-image-source:var(--ui-btn-primary);color:#3a2414;font-weight:700}
+.newb{display:inline-block;margin-left:3px;padding:0 4px;background:#e0503c;color:#fff;font-size:10px;font-style:normal;line-height:14px;border-radius:7px;vertical-align:middle}
+.cat button .newb{position:absolute;top:2px;right:2px;margin:0}
+#bBuild{position:relative}
+#bBuild .nbadge{position:absolute;top:0;right:4px;min-width:16px;height:16px;padding:0 3px;background:#e0503c;color:#fff;font-size:10px;font-style:normal;line-height:16px;border-radius:8px;text-align:center}
+.dsteps{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.dstep{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--f-small)}
+.dstep.got{opacity:.6}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.dcell{display:flex;flex-direction:column;align-items:center;text-align:center;font-size:11px;padding:4px 2px;background:rgba(0,0,0,.18)}
+.dcell img{width:48px;height:40px;object-fit:contain;image-rendering:pixelated;filter:brightness(0) opacity(.45)}
+.dcell.on img{filter:none}
+.dcell small{color:#9aa6d8}
+#winB .lthumb{width:56px;height:40px;object-fit:contain;image-rendering:pixelated}
+.dstep button{white-space:nowrap;flex:none}
+.dstep button[disabled]{opacity:.45}

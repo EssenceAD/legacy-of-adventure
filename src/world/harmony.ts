@@ -2,6 +2,7 @@
 //  두(세) 건물·장식이 발자국 가장자리 기준 2칸 이내(대각선 포함)에 있으면 성립. 한 건물에 최대 3개, 같은 어울림은 한 건물에 한 번.
 //  같은 조합을 여러 벌 만들면 세트마다 따로 효과(건물 효과). 전역 효과는 조합마다 한 번.
 import { CONFIG, type HarmonyFx } from '../data/config';
+import { seasonLock } from './decodrop';
 import { def, type Kind } from '../data/catalog';
 import { HARMONIES, harmonyById, type HarmonyDef, type HarmonyPart } from '../data/harmony';
 import { hourNow } from './clock';
@@ -222,6 +223,9 @@ export function decoLock(k: Kind): string | null | 'hide' {
     case 'plaque_silver':
     case 'plaque_gold':
       return P.harmony.plaques.includes(k) ? null : 'hide';
+    // DECO_DROP §1: 계절 장식 (눈사람은 겨울에만 살 수 있다)
+    case 'snowman':
+      return seasonLock(k);
   }
   return null;
 }

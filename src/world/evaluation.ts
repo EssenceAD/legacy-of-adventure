@@ -186,7 +186,9 @@ export const tourDue = () =>
 export function judge(): EvalResult {
   const ev = P.evaluation;
   const parts = evalParts(ev.theme);
-  const score = Math.min(1000 + E.secretBonus, parts.reduce((s, p) => s + p.pts, 0) + ev.bonus);
+  // DECO_DROP §2: 뽐내기 장식 하나마다 +20
+  const lux = (world.home?.objs ?? world.objs).filter((o) => def(o.kind).luxury).length * 20;
+  const score = Math.min(1000 + E.secretBonus, parts.reduce((s, p) => s + p.pts, 0) + ev.bonus + lux);
   const tier = tierOf(score);
   trackEv('eval_result', { theme: ev.theme, score, tier });
   const miss = missHint(ev.theme, parts);

@@ -1,6 +1,7 @@
 // TOWN T2: 꾸미기 — 길 붓(재질 5) · 바닥(4 + 연못) · 자동 길 켜고 끄기 · 여러 장식 한 번에 옮기기 · 되돌리기 10단계
 //  칠한 칸은 P.decor.paint["x,y"] = 코드 (내 마을만 · 저장에 함께). 연못은 걸을 수 없고 그 위엔 못 짓는다
 import { def } from '../data/catalog';
+import { track as trackGoal } from './progress';
 import { patchTiles } from './ground';
 import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
@@ -149,6 +150,8 @@ export function endStroke() {
   };
   pushUndo({ label: s.label ?? (s.code ? `${PAINT_NAME[s.code]} 칠하기` : '지우기'), undo: () => (put(tiles), putNo(noB)), redo: () => (put(after), putNo(noA)) });
   trackEv('path_paint', { code: s.code ?? 'erase', n: tiles.size, auto: noB.size });
+  // DECO_DROP §3: 오늘의 목표 「길 10칸 칠하기」
+  if (s.code && isPathMat(s.code)) trackGoal('pathPaint', [...tiles.keys()].filter((k) => P.decor.paint[k] === s.code).length);
   trackEv('edit_action', { tool: s.label ? 'fill' : s.code ? (isPathMat(s.code) ? 'path' : 'ground') : 'erase', n: tiles.size + noB.size });
 }
 

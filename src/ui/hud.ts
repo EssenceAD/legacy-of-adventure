@@ -1,5 +1,6 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
+import { unseenDrops } from '../world/decodrop';
 import { canUndo, decorView, noteMove, undo } from '../world/decor';
 import { notePlace, takeOut } from '../world/store';
 import { N, sx, sy, toTile, view } from '../engine/iso';
@@ -651,6 +652,19 @@ export function tickHud() {
     syncGuide();
     // 메뉴 빨간 점: 받을 업적 · 우편
     $('#bMenu2 .ndot').hidden = !(achReady() + mailWaiting());
+    // DECO_DROP §3: 건설 버튼에 안 본 장식 수
+    const nn = S.visiting ? 0 : unseenDrops().length;
+    let nb = document.querySelector<HTMLElement>('#bBuild .nbadge');
+    if (!nb && nn) {
+      nb = document.createElement('i');
+      nb.className = 'nbadge';
+      $('#bBuild').appendChild(nb);
+    }
+    if (nb) {
+      nb.hidden = !nn;
+      const t = nn > 99 ? '99+' : `${nn}`;
+      if (nb.textContent !== t) nb.textContent = t;
+    }
     // 5단계: 자동 사냥 — 켜 있으면 30초마다 한 판
     // 핫픽스 10 (11-3): 판마다 토스트는 끄고 마을 줄 숫자만 · 장비를 얻었거나 레벨업일 때만 토스트
     const hr = autoTick();

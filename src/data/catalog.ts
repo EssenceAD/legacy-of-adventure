@@ -38,6 +38,8 @@ export interface BuildingDef {
   roofable?: boolean;
   /** TOWN T1: 이웃 쇼케이스 마을에만 (건설 목록엔 T5에서 땅·장부·평판·어울림 보상으로 연다) */
   showcase?: boolean;
+  /** DECO_DROP §2: 뽐내기 장식 (건설 창 「특별 장식」 탭 · 금화만 · 하나씩) */
+  luxury?: boolean;
   desc: string;
 }
 
@@ -101,6 +103,15 @@ export const CATALOG = {
   trophy_wyvern: { name: '텐구 가면', sprite: 'trophy_wyvern', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_eye: { name: '심연의 눈 조각', sprite: 'trophy_eye', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   monument: { name: '유산의 기념비', sprite: 'monument', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '도감 100% 보상 · 밤엔 책이 은은하게 빛나요' },
+  // DECO_DROP §2 (ECONOMY §3): 뽐내기 장식 8종 (asset_raw/luxury)
+  gold_fountain: { name: '황금 분수', sprite: 'gold_fountain', size: [2, 2], cost: 300000, deco: true, unique: true, luxury: true, unlock: 1, desc: '밤에 금빛으로 빛나요' },
+  hero_statue: { name: '영웅 동상', sprite: 'hero_statue', size: [1, 1], cost: 500000, deco: true, unique: true, luxury: true, unlock: 1, desc: '영입한 전설 영웅 하나를 골라 동상으로 (이름판)' },
+  rainbow_bridge: { name: '무지개 아치 다리', sprite: 'rainbow_bridge', size: [2, 1], cost: 800000, deco: true, unique: true, luxury: true, unlock: 1, desc: '밤엔 돌이 은은히 빛나요' },
+  grand_clock: { name: '대형 시계탑', sprite: 'grand_clock', size: [2, 2], cost: 1200000, deco: true, unique: true, luxury: true, unlock: 1, desc: '여섯 시간마다 종이 울려요' },
+  star_garden: { name: '별빛 정원', sprite: 'star_garden', size: [3, 3], cost: 2000000, deco: true, unique: true, luxury: true, unlock: 1, desc: '운명의 별 인연 +1%' },
+  dragon_fossil: { name: '용 뼈 화석', sprite: 'dragon_fossil', size: [3, 3], cost: 3000000, deco: true, unique: true, luxury: true, unlock: 1, desc: '별의 심연 10(보스)을 깨야 살 수 있어요' },
+  gold_sign: { name: '여관 금빛 간판', sprite: 'gold_sign', size: [1, 1], cost: 5000000, deco: true, unique: true, luxury: true, unlock: 1, desc: '금판에 여관 이름이 새겨져요' },
+  firework_stand: { name: '축제 불꽃', sprite: 'firework_stand', size: [1, 1], cost: 100000, deco: true, unique: true, luxury: true, unlock: 1, desc: '누르면 불꽃놀이 10초 (한 번에 100,000G)' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
   // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
   cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },
@@ -145,6 +156,10 @@ export const CATALOG = {
   stonewall2: { name: '돌담', sprite: 'stonewall2', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '돌담' },
   picket_gate: { name: '흰 울타리 문', sprite: 'picket_gate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '흰 울타리 문' },
 } satisfies Record<string, BuildingDef>;
+
+// DECO_DROP §1: 꾸미기 장식 41종 값·여는 땅 단계는 CONFIG.deco에서
+for (const [land, row] of Object.entries(CONFIG.deco.land)) for (const [k, cost] of Object.entries(row)) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { cost, unlock: +land });
+for (const [k, s] of Object.entries(CONFIG.deco.seasonal)) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { cost: s.cost, unlock: 1 });
 
 export type Kind = keyof typeof CATALOG;
 export const def = (k: Kind): BuildingDef => CATALOG[k];

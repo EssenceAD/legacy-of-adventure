@@ -1,12 +1,13 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { GROUPS, groupOf, markSeen, unseenDrops } from '../world/decodrop';
 import { putAway, storeWhy } from '../world/store';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
-import { P as PG, S, type Building } from '../world/state';
+import { P as PG, S, world, type Building } from '../world/state';
 import { buildableKinds, landNeedFor, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
@@ -430,15 +431,35 @@ export function openBuild() {
       const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
-  const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
+  // DECO_DROP §2: 뽐내기 장식은 「특별 장식」 탭에
+  const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide' && !def(k).luxury);
   // BUILDUX §1-8: 최근 놓은 장식 5개 바로가기
   const recent = (PG.decor.recent ?? []).filter((k) => kinds.includes(k as Kind)) as Kind[];
   const recentRow = recent.length ? `<p class="sub">최근 놓은 것</p><div class="cat recent">${recent.map(card).join('')}</div>` : '';
   // 건물 → 장식 (장식은 어울림 재료)
-  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
-  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${recentRow}<div class="cat">${items}</div>`);
+  // DECO_DROP §1: 장식은 묶음 탭(둘레·정원·시장·마을·나무·계절·빛·동물) · 안 본 장식은 NEW
+  const unseen = new Set<string>(unseenDrops());
+  const decoKinds = kinds.filter((k) => def(k).deco && k !== 'board');
+  const g = buildGroup !== '전체' && !decoKinds.some((k) => groupOf(k) === buildGroup) ? '전체' : buildGroup;
+  const gcount = (n: string) => decoKinds.filter((k) => groupOf(k) === n && unseen.has(k)).length;
+  const gtabs = `<div class="dgrp">${['전체', ...GROUPS()].filter((n) => n === '전체' || decoKinds.some((k) => groupOf(k) === n)).map((n) => `<button data-dg="${n}" class="${n === g ? 'on' : ''}">${n}${n !== '전체' && gcount(n) ? ` <i class="newb">${gcount(n)}</i>` : ''}</button>`).join('')}</div>`;
+  const decoCard = (k: Kind) => card(k).replace('<button data-k=', `<button data-g="${groupOf(k)}" ${g !== '전체' && groupOf(k) !== g ? 'hidden' : ''} data-k=`).replace('</b>', unseen.has(k) ? '</b><i class="newb">NEW</i>' : '</b>');
+  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + `</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요${unseen.size ? ` · <b class="g">새 장식 ${unseen.size}</b>` : ''}</p>${gtabs}<div class="cat deco">` + decoKinds.map(decoCard).join('');
+  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${recentRow}<div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
   $('#toDecor').onclick = () => buildHooks.decor();
+  $('#toLux').onclick = () => openLuxury();
+  // 묶음 탭: 창을 다시 그리지 않고 보이기만 바꾼다 (스크롤 그대로)
+  $$('.dgrp [data-dg]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        buildGroup = b.dataset.dg!;
+        $$('.dgrp [data-dg]').forEach((x) => x.classList.toggle('on', x === b));
+        $$('.cat.deco [data-k]').forEach((c) => (c.hidden = buildGroup !== '전체' && c.dataset.g !== buildGroup));
+      }),
+  );
+  // 본 장식은 다음부터 NEW가 아니다
+  markSeen([...unseen] as Kind[]);
   $$('.cat button[data-k]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -463,6 +484,35 @@ export function openBuild() {
         }
         closeWin();
         startPlace(k);
+      }),
+  );
+}
+
+/** DECO_DROP §1: 건설 창 장식 묶음 (기억) */
+let buildGroup = '전체';
+
+/** DECO_DROP §2: 「특별 장식」 — 금화만으로 사는 뽐내기 장식 (하나씩 · 마을 평가 가산점) */
+export function openLuxury() {
+  if (S.visiting) return;
+  const all = (Object.keys(CATALOG) as Kind[]).filter((k) => def(k).luxury);
+  const can = new Set(buildableKinds());
+  const rows = all
+    .map((k) => {
+      const d = def(k);
+      const own = world.objs.some((o) => o.kind === k);
+      const lock = k === 'dragon_fossil' && !can.has(k) && !own;
+      const poor = S.gold < d.cost;
+      const btn = own ? '<button disabled>있어요</button>' : lock ? '<button disabled>잠김</button>' : `<button data-lux="${k}" ${poor ? 'disabled' : ''}>${fmt(d.cost)} G</button>`;
+      return `<div class="irow lux"><img class="lthumb" src="${thumb(k)}" alt=""><span><b>${d.name}</b><small>${d.desc}</small></span>${btn}</div>`;
+    })
+    .join('');
+  openWin('특별 장식', `<p class="sub">금화만으로 사는 뽐내기 장식 · 하나씩 · 마을 평가에 하나마다 +20 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="ilist">${rows}</div><button class="bigbtn ghost" id="luxBack">건설로</button>`);
+  $('#luxBack').onclick = () => openBuild();
+  $$('[data-lux]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        closeWin();
+        startPlace(b.dataset.lux as Kind);
       }),
   );
 }

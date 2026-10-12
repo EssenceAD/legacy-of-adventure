@@ -508,8 +508,8 @@ export function upgradeObj(o: Building, silent = false): boolean {
 export function buildableKinds(): Kind[] {
   return (Object.keys(CATALOG) as Kind[]).filter((k) => {
     const d = def(k);
-    // TOWN T1: 쇼케이스 장식은 T5 전까지 건설 목록에 없음
-    if (d.showcase) return false;
+    // DECO_DROP §1: 쇼케이스 장식 41종도 건설 목록에 (땅 단계·값은 CONFIG.deco) · §2 용 뼈 화석은 별의 심연 10(보스)을 깬 뒤
+    if (k === 'dragon_fossil' && (P.hunt.best.abyss ?? 0) < 10 && !world.objs.some((o) => o.kind === k)) return false;
     // 트로피는 그 보스를 처치했을 때만
     if (k.startsWith('trophy_') && !P.trophies.includes(k.slice(7))) return false;
     // 기념비는 손님·아이템·영웅 도감 중 하나를 100% 채웠을 때

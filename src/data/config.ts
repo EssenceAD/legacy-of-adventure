@@ -208,6 +208,34 @@ export const CONFIG = {
   /** 모닥불 그림 (campfire.png): 프레임 넘김 간격, 칸 중심이 프레임 아래에서 몇 px 위인지 */
   fire: { frameSeconds: 0.15, baseFromBottom: 7 },
   /** 배치 미리보기 */
+  /**
+   * DECO_DROP §1: 꾸미기 장식 41종 — 땅 단계에 열림 · 값 (G). snowman은 겨울(12~2월)·축제 때만 살 수 있다 (산 건 계속)
+   * groups = 건설 창 장식 묶음 탭 (기존 장식도 함께) · book = 장식 도감 모으기 보상
+   */
+  deco: {
+    land: {
+      2: { hedge: 120, picket_gate: 150, tulip_box: 180, bird_bath: 200, signpost: 150, topiary: 220, birdhouse: 160 },
+      3: { stonewall2: 200, rose_arch: 400, rose_bench: 350, flower_cart: 500, fruit_stall: 600, barrel_stack: 250, shop_sign: 300, water_pump: 350, picnic: 400, double_lamp: 450, string_lights: 350, brazier: 400 },
+      4: { maple: 500, cherry: 600, birch: 450, pumpkins: 350, hay_scarecrow: 400, harvest_cart: 600, swing: 800, dog_house: 900, cat_crate: 800, chicken_coop: 1000, beehives: 1200, mushroom_dark: 700 },
+      5: { gazebo: 3000, lily_pond: 2500, koi_pond: 3500, rock_fall: 4000, foot_bridge: 2000, knight_statue: 2500, clock_tower: 5000, windmill: 6000, mushroom_lamp: 1500 },
+    } as Record<number, Record<string, number>>,
+    seasonal: { snowman: { cost: 1000, months: [12, 1, 2] } } as Record<string, { cost: number; months: number[] }>,
+    groups: {
+      둘레: ["hedge", "picket_gate", "stonewall2", "rose_arch", "gate"],
+      정원: ["flowerbed", "tulip_box", "bird_bath", "topiary", "rose_bench", "bench", "arbor", "lily_pond", "koi_pond", "rock_fall", "foot_bridge", "gazebo", "swing", "fountain", "well"],
+      시장: ["stall", "barrels", "flower_cart", "fruit_stall", "barrel_stack", "shop_sign", "harvest_cart", "picnic"],
+      마을: ["signpost", "water_pump", "statue", "knight_statue", "clock_tower", "windmill", "banner", "target", "board"],
+      나무: ["tree", "pine", "maple", "cherry", "birch", "mushroom_dark"],
+      계절: ["pumpkins", "hay_scarecrow", "snowman"],
+      빛: ["fire", "lamppost", "double_lamp", "string_lights", "brazier", "mushroom_lamp"],
+      동물: ["birdhouse", "dog_house", "cat_crate", "chicken_coop", "beehives"],
+    } as Record<string, string[]>,
+    book: [
+      { n: 10, gold: 3000, title: "" },
+      { n: 20, gold: 10000, title: "꾸밈의 손" },
+      { n: 41, gold: 50000, title: "마을 디자이너" },
+    ],
+  },
   placement: { dim: 0.3, ghostAlpha: 0.75, bobPx: 2, snapSeconds: 0.12, dragLiftPx: 40, longPressMs: 400 },
   /** 핫픽스 3: 화면 크기 3단계(짧은 변 기준)와 글자 크기 */
   UI_SCALE: {

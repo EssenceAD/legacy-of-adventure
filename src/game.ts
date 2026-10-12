@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { isDropKind, newAtLand, noteBought, ownedDrops } from './world/decodrop';
 import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
@@ -314,7 +315,11 @@ export function expandLand(l: number) {
   startFelling(fallen, oldA);
   sfx('build');
   // 처음 2단계로 넓혔을 때 모모 한마디
-  if (l === 2) later(2.3, () => uiHooks.talk([['post', '봐요, 숲이 땅이 됐어요! 다음은 ★2 모으면!']]));
+  // DECO_DROP §1: 새 장식이 들어왔다고 모모가 (건설 버튼엔 NEW)
+  const nd = newAtLand(l);
+  const ndLine: [string, string][] = nd ? [['post', `새 장식 ${nd}개가 들어왔어요! 건설 → 장식에서 봐요 🌷`]] : [];
+  if (l === 2) later(2.3, () => uiHooks.talk([['post', '봐요, 숲이 땅이 됐어요! 다음은 ★2 모으면!'], ...ndLine]));
+  else if (nd) later(2.3, () => uiHooks.talk(ndLine));
   landCamera(true);
   // 울타리를 따라 먼지
   const [a, b] = landBounds();
@@ -404,10 +409,16 @@ export function placeBuilding(pl: Placement): boolean {
   // HOTFIX14 §5: 선물 장식은 하나 쓴다 (환불 없음)
   const giftDeco = !pl.prop && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0 && d.cost === 0;
   if (giftDeco) P.meta.giftDeco[pl.kind]--;
+  // DECO_DROP §3: 처음 사는 장식 종류인가 (놓기 전에 본다)
+  const newDeco = isDropKind(pl.kind) && !ownedDrops().includes(pl.kind);
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(cost !== d.cost ? { paid: cost } : {}), ...(pl.prop || giftDeco ? { fromProp: true } : {}) });
   startNew(o);
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
+  // DECO_DROP §3: 오늘의 목표 — 장식 놓기 · 새 장식 1종
+  if (d.deco) track('decoPlace');
+  if (newDeco) track('decoNew');
+  noteBought(pl.kind);
   sfx('build');
   rebuildPaths();
   // BUILDUX §1-3: 놓는 순간 쿵 + 먼지

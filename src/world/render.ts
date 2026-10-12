@@ -3,7 +3,8 @@
 // 2) 깊이 순서대로 건물·나무·캐릭터를 "밤 색으로 미리 물든 그림"으로
 // 3) 건물 하나를 그린 직후 그 건물의 창문 불빛 → 앞 건물이 나중에 그려지며 가린다
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
-import { SMOKE } from '../data/catalog';
+import { def, SMOKE } from '../data/catalog';
+import { drawFireworks, statueName } from './luxury';
 import { decorView } from './decor';
 import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
@@ -286,6 +287,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     drawSpectacleEmotes(ctx);
   }
   // TOWN T2: 꾸미기 모드 — 격자·발판 · 붓 칸 · 고른 범위 · 옮기는 무리
+  // DECO_DROP §2: 불꽃놀이 (화면 위)
+  drawFireworks(ctx, view.LW, view.LH, dt);
   if (decorView.on && !S.visiting) drawDecorOverlay(ctx);
   // 배치 중: 마을을 살짝 어둡게 하고 발판·문 방향·유령 건물만 밝게 맨 위에
   if (pl && pl.tx != null && pl.ty != null) drawPlacement(ctx, pl);
@@ -660,6 +663,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   }
   // 3) 이 건물을 그린 직후 창문 불빛
   drawLight(ctx, o.sprite, x, y);
+  // DECO_DROP §2: 뽐내기 장식 — 밤 빛 · 동상 이름판 · 금빛 간판 여관 이름
+  if (def(o.kind).luxury) drawLuxury(ctx, o, x, y, im);
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
   if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
   // BUILDINGS_SPEC §3: 다 자란 텃밭 위 「수확!」
@@ -1033,4 +1038,40 @@ function drawJoins(ctx: CanvasRenderingContext2D, o: Building, im: CanvasImageSo
       ctx.fillRect(px, py - 2, 1, 2);
     }
   }
+}
+
+function drawLuxury(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {
+  const night = NL / CONFIG.dayNight.tintSteps;
+  const glow = ({ gold_fountain: '255,211,107', rainbow_bridge: '200,170,255', star_garden: '180,210,255', firework_stand: '255,160,90' } as Record<string, string>)[o.kind];
+  if (glow && night > 0.2) {
+    const cx = x + im.width / 2;
+    const cy = y + im.height * 0.55;
+    const r = Math.max(im.width, im.height) * 0.7;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, `rgba(${glow},${0.35 * night})`);
+    g.addColorStop(1, `rgba(${glow},0)`);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+  }
+  // 별빛 정원: 반짝이 점
+  if (o.kind === 'star_garden' && Math.random() < 0.3) {
+    ctx.fillStyle = '#fff3c0';
+    ctx.fillRect(Math.round(x + Math.random() * im.width), Math.round(y + im.height * (0.3 + Math.random() * 0.5)), 1, 1);
+  }
+  const text = o.kind === 'hero_statue' ? (S.visiting ? '' : statueName()) : o.kind === 'gold_sign' ? S.innName || '여관' : '';
+  if (!text) return;
+  ctx.font = '8px "Galmuri9"';
+  ctx.textAlign = 'center';
+  const tw = Math.ceil(ctx.measureText(text).width) + 6;
+  const X = Math.round(x + im.width / 2);
+  const Y = Math.round(y + im.height - (o.kind === 'gold_sign' ? im.height * 0.55 : 10));
+  ctx.fillStyle = '#5a3a10';
+  ctx.fillRect(X - tw / 2 - 1, Y - 9, tw + 2, 12);
+  ctx.fillStyle = '#e8b84a';
+  ctx.fillRect(X - tw / 2, Y - 8, tw, 10);
+  ctx.fillStyle = '#3a2408';
+  ctx.fillText(text, X, Y);
 }

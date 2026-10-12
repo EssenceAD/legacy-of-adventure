@@ -1,5 +1,6 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { bookSteps, claimBook, DROP_KINDS, groupOf, ownedDrops, seasonLock } from '../world/decodrop';
 import { tokenNeed } from '../world/legends';
 import { heroCtx } from '../world/progress';
 import { CLASSES, GUEST_KINDS, RACE_NAME, RACES, RARITIES, RARITY_INFO } from '../data/classes';
@@ -18,7 +19,8 @@ import { hintLv, hintText, partsText } from '../world/harmony';
 import { PORTRAITS } from '../engine/assets';
 import { $$, bindTabs, claimOrder, esc, fmt, keepScroll, pct, tabs } from './common';
 import { CHEM_TALKS_PER_DAY, chemUnread, readChemNews, title5, ultName5 } from '../world/chemNews';
-import { openWin, toast } from './windows';
+import { openWin, thumbOf, toast } from './windows';
+import { def } from '../data/catalog';
 import { openPlace, type Place } from './nav';
 
 let dTab = 0;
@@ -91,6 +93,17 @@ export function openDex(tab = dTab) {
       return `<div class="lcard rumor">${img}<b>${st.st === 'visit' ? `${d.title} ${d.name} (방문 중!)` : `${d.title} ?`}</b><small>${d.hint}</small><small>인연 활동: ${d.bondText}</small><div class="gauge"><i style="width:${g}%"></i><em>인연 ${g}% · 오늘 밤 방문 ${g >= 100 ? '확정' : `${(g / CONFIG.legends.judgeDiv).toFixed(1)}%`}</em></div></div>`;
     }).join('');
     body = `<p class="sub">전설 ${Object.values(P.legends).filter((l) => l.st === 'joined').length}/${LEGENDS.length} · 인연의 증표 ${P.tokens}개</p><p class="note">소문이 열리면 인연 활동으로 게이지가 차요. 실제 날짜로 하루 한 번, 게임 속 밤 10시에 방문 판정(게이지÷${CONFIG.legends.judgeDiv}%) · 100%면 확정. 밤하늘의 별똥별을 누르면 +1~10%</p><div class="lcards">${cards}</div>`;
+  } else if (tab === 6) {
+    // DECO_DROP §3: 장식 도감 — 가진 적 있으면 컬러, 없으면 실루엣 + 열리는 조건 · 10·20·41종 보상
+    const own = new Set<string>(ownedDrops());
+    const cells = DROP_KINDS.map((k) => {
+      const d = def(k);
+      const has = own.has(k);
+      const cond = seasonLock(k) ? '겨울에 열려요' : d.unlock > S.land ? `땅 ${d.unlock}단계` : `${d.cost.toLocaleString('ko-KR')} G`;
+      return `<div class="dcell ${has ? 'on' : ''}"><img src="${thumbOf(k)}" alt=""><b>${has ? esc(d.name) : '???'}</b><small>${has ? groupOf(k) : cond}</small></div>`;
+    }).join('');
+    const steps = bookSteps().map((b) => `<div class="dstep ${b.got ? 'got' : ''}"><span>${b.n}종 모으기 · 💰${b.gold.toLocaleString('ko-KR')}${b.title ? ` · 칭호 「${esc(b.title)}」` : ''}</span>${b.got ? '<button disabled>받음</button>' : `<button data-db="${b.i}" ${b.done ? '' : 'disabled'}>받기</button>`}</div>`).join('');
+    body = `<p class="sub">장식 ${own.size}/${DROP_KINDS.length}종 · 건설 → 장식에서 사요</p><div class="dsteps">${steps}</div><div class="dgrid">${cells}</div>`;
   } else if (tab === 5) {
     // 베타 1장: 어울림 24칸 — 발견한 것은 구성·효과, 아직은 ???와 힌트
     const cells = HARMONIES.map((h) => {
@@ -120,9 +133,17 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
+  $$('[data-db]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const r = claimBook(+b.dataset.db!);
+        if (r) toast(`장식 도감 보상 +💰${r.gold.toLocaleString('ko-KR')}${r.title ? ` · 칭호 「${r.title}」` : ''}`);
+        openDex(6);
+      }),
+  );
   $$('[data-rw]').forEach(
     (b) =>
       (b.onclick = () => {

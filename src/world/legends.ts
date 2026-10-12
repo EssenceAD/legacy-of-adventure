@@ -145,6 +145,8 @@ export function catchStar(): StarCatch | null {
   }
   const shower = showerOn();
   if (shower) add *= 2;
+  // DECO_DROP §2: 별빛 정원이 있으면 +1%
+  if ((world.home?.objs ?? world.objs).some((o) => o.kind === 'star_garden')) add += 1;
   const st = P.legends[d.key];
   const from = st.gauge;
   st.gauge = Math.min(100, st.gauge + add);
