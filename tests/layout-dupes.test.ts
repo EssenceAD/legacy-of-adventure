@@ -56,7 +56,9 @@ describe('같은 건물 여러 채 (막지 말고 허용)', () => {
     const b = buildableKinds();
     for (const k of ['bath', 'smith', 'tavern', 'training', 'garden', 'cottage']) expect(b).toContain(k);
     expect(b).not.toContain('inn');
-    expect(buildCost('bath')).toBe(Math.round(def('bath').cost * 1.5));
+    // TOWN T3: n번째 채 비용 = 1 · 1.5 · 2 · 2.5 배 (이 마을엔 온천이 이미 있다)
+    const n = world.objs.filter((o) => o.kind === 'bath').length;
+    expect(buildCost('bath')).toBe(Math.round(def('bath').cost * [1, 1.5, 2, 2.5][Math.min(n, 3)]));
     expect(buildCost('flowerbed')).toBe(def('flowerbed').cost);
   });
 });

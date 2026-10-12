@@ -30,7 +30,7 @@ import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
-import { addObj, astar, blocksDoor, buildCost, canPlace, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
+import { addObj, astar, blocksDoor, buildCost, canPlace, countKind, maxCopies, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, openingShort, syncOwnerButton } from './ui/owner';
@@ -406,6 +406,11 @@ export function placeBuilding(pl: Placement): boolean {
   const cost = pl.prop ? 0 : Math.round(buildCost(pl.kind) * (1 - coupon));
   if (S.gold < cost) {
     toast('금화가 모자라요');
+    return false;
+  }
+  // TOWN T3: 땅 단계별 최대 채수 (예전에 더 지어 둔 건 그대로)
+  if (!pl.prop && !SINGLE(pl.kind) && countKind(pl.kind) >= maxCopies(pl.kind)) {
+    toast(`${d.name}은(는) 지금 땅에서 ${maxCopies(pl.kind)}채까지 지을 수 있어요 · 땅을 넓히면 더`);
     return false;
   }
   // HOTFIX14 §1: 여관 본관·던전만 한 채

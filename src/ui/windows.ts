@@ -9,7 +9,7 @@ import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
 import { P as PG, S, world, type Building } from '../world/state';
-import { buildableKinds, landNeedFor, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
+import { buildableKinds, copyIncomeMult, landNeedFor, maxCopies, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
@@ -421,13 +421,17 @@ export function openBuild() {
       // 5단계: 장부 장 보상으로 여는 건물 (대장간 3장 · 텃밭·별채 5장)
       const gate = GATED[k];
       const noGuide = !!gate && !feature(gate);
-      const locked = d.unlock > S.land || noStar || noGuide || !!dl;
+      // TOWN T3: 몇 채까지 (다 지었으면 잠김 · 땅을 넓히면 더)
+      const cap = maxCopies(k);
+      const full = Number.isFinite(cap) && countKind(k) > 0 && countKind(k) >= cap;
+      const capMax = CONFIG.town.maxCopies[CONFIG.town.maxCopies.length - 1];
+      const locked = d.unlock > S.land || noStar || noGuide || !!dl || full;
       // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ · 「두 번째 온천」
       const cost = buildCost(k);
       const nth = MULTI(k) ? 0 : countKind(k);
       const poor = S.gold < cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
-      const why = dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
+      const why = full ? `${cap}/${cap}채${cap < capMax ? ' · 땅을 넓히면 더' : ''}` : dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
       const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(cost)} G</small>`;
       const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
@@ -477,6 +481,11 @@ export function openBuild() {
         }
         if (def(k).unlock > S.land) {
           toast(`땅을 ${def(k).unlock}단계까지 넓히면 지을 수 있어요`);
+          return;
+        }
+        // TOWN T3: 이미 최대 채수
+        if (countKind(k) > 0 && countKind(k) >= maxCopies(k)) {
+          toast(`${def(k).name}은(는) 지금 땅에서 ${maxCopies(k)}채까지예요${maxCopies(k) < CONFIG.town.maxCopies[CONFIG.town.maxCopies.length - 1] ? ' · 땅을 넓히면 더 지을 수 있어요' : ''}`);
           return;
         }
         if ((def(k).stars ?? 0) > stars()) {
@@ -595,8 +604,9 @@ export function showObj(o: Building) {
       : `${note ? `<p class="note uplv">Lv.${o.lvl + 1} → ${esc(note)}</p>` : ''}<button class="bigbtn" id="upB">Lv.${o.lvl + 1}/${maxLevel(o.kind)} · ${note ? '레벨업' : grows + (d.levelText ?? '')} (${fmt(cost!)} G)</button>`
     : '';
   openWin(
-    d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : ''),
-    `<p class="sub">${d.desc}</p>${S.visiting ? '' : objExtra.html(o)}${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
+    // TOWN T3: 「온천 (2/3채)」
+    d.name + (o.lvl > 1 ? ' Lv.' + o.lvl : '') + (!S.visiting && !MULTI(o.kind) && Number.isFinite(maxCopies(o.kind)) && maxCopies(o.kind) > 1 ? ` (${countKind(o.kind)}/${maxCopies(o.kind)}채)` : ''),
+    `<p class="sub">${d.desc}${!S.visiting && countKind(o.kind) > 1 && !MULTI(o.kind) ? ` · ${copyIncomeMult(o) < 1 ? '이 채는 수입 70% (가장 높은 레벨 한 채만 100%)' : '이 채가 대표 (수입 100%)'}` : ''}</p>${S.visiting ? '' : objExtra.html(o)}${showInside ? `<b class="g">안에 있는 손님</b><div class="inside">${inside}</div>` : ''}${roofs}${up}`,
   );
   $$('.roofs button').forEach(
     (b) =>

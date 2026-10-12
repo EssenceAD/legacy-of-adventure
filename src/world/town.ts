@@ -89,6 +89,19 @@ export const MULTI = (k: Kind) => k === 'cottage' || !!def(k).deco;
 export const SINGLE = (k: Kind) => k === 'inn' || k === 'dungeon' || !!def(k).fixed;
 /** 같은 종류 몇 채 (공사 중 포함) */
 export const countKind = (k: Kind, objs = world.objs) => objs.filter((o) => o.kind === k).length;
+/** TOWN T3: 지금 땅에서 이 건물을 몇 채까지 (별채·장식은 제한 없음 · 한 채뿐인 건물은 1) */
+export function maxCopies(k: Kind, land = S.land): number {
+  if (MULTI(k)) return Infinity;
+  if (SINGLE(k)) return 1;
+  const m = CONFIG.town.maxCopies;
+  return m[Math.max(0, Math.min(m.length - 1, land - 1))];
+}
+/** TOWN T3: 두 번째 채부터 수입 70% (가장 높은 레벨 한 채만 100%) */
+export function copyIncomeMult(o: Building, objs: Building[] = world.objs): number {
+  if (MULTI(o.kind) || SINGLE(o.kind)) return 1;
+  if (countKind(o.kind, objs) < 2) return 1;
+  return bestOf(o.kind, objs, true) === o ? 1 : CONFIG.town.copyIncome;
+}
 /** n번째 채 건설비 (첫 채 = 기본 · 두 번째부터 CONFIG.town.copyCost 배) */
 export function buildCost(k: Kind, objs = world.objs): number {
   const n = MULTI(k) ? 0 : countKind(k, objs);

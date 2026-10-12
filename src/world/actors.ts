@@ -1,5 +1,6 @@
 // 손님 상태기계: 욕구(체력·배고픔·기분)를 채우러 다닌다 · 입구로 도착/떠남 · 단골 제안 · 영웅 · 케미 · 원정 파티 걷기
 import { def, INSIDE_TEXT, type Act } from '../data/catalog';
+import { copyIncomeMult } from './town';
 import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
 import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
@@ -215,16 +216,16 @@ function choose(a: Actor) {
     if (a.status === 'passer') {
       // 지나가는 손님은 묵지 않는다: 주점·온천·텃밭만
       const day = byAct(['drink', 'bath', 'farm']);
-      if (day.length && r < A.dayBuildingChance) want = pick(day);
+      if (day.length && r < A.dayBuildingChance) want = nearestSame(a, pick(day), day);
     } else if (S.night) {
       const fire = blds.find((o) => o.kind === 'fire');
       const beds = blds.filter((o) => def(o.kind).act === 'sleep');
       if (fire && r < A.nightFireChance) want = fire;
-      else if (beds.length) want = pick(beds);
+      else if (beds.length) want = nearestSame(a, pick(beds), beds);
     } else if (r < A.dayBuildingChance) {
       const day = blds.filter((o) => def(o.kind).act !== 'fire');
       const nb = day.filter((o) => def(o.kind).act !== 'sleep');
-      want = nb.length && Math.random() < A.nonSleepChance ? pick(nb) : day.length ? pick(day) : null;
+      want = nb.length && Math.random() < A.nonSleepChance ? nearestSame(a, pick(nb), nb) : day.length ? nearestSame(a, pick(day), day) : null;
     }
   }
   if (want) {
@@ -367,7 +368,8 @@ function goInside(a: Actor, o: Building) {
   // 4단계: 요리(주점) · 계절 행사 · 유산 보너스
   // 땅 개편: 주점 레벨당 수입 +15% (Lv.2 = +15% … Lv.6 = +75%)
   const lvMult = o.kind === 'tavern' ? 1 + CONFIG.upgrade.tavernIncomePerLevel * (o.lvl - 1) : 1;
-  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * lvMult * incomeMult(act) * incMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
+  // TOWN T3: 같은 건물 두 번째 채부터 수입 70%
+  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * lvMult * incomeMult(act) * incMult(o) * copyIncomeMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
   if (income && !S.visiting) {
     earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '+' + income);
