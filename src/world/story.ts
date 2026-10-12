@@ -106,12 +106,15 @@ export function routeScores(): Record<RouteId, number> {
     town: townGrade() * 10 + P.harmony.found.length * 2,
     love: ties.filter((t) => t.stage >= 5).length * 20 + ties.filter((t) => t.stage === 4).length * 8,
     retire: storyDay() + st().goodDays * 2 + Math.floor((C.harvests ?? 0) / 5),
+    // STORY v3: 진 엔딩은 조건을 채운 회차에만 (맨 위로)
+    true: 0,
   };
 }
 /** 3막 편지의 선택지: 점수 높은 순 · 맨 위에 「지금 마음에 가장 가까워요」 */
 export function routeChoices(): { id: RouteId; score: number; top: boolean; open: boolean }[] {
   const sc = routeScores();
-  const ids = (Object.keys(ROUTES) as RouteId[]).sort((a, b) => sc[b] - sc[a]);
+  // 진 엔딩 「별지기」는 조건이 될 때만 갈림길에 나온다
+  const ids = (Object.keys(ROUTES) as RouteId[]).filter((id) => id !== 'true' || ROUTES.true.open).sort((a, b) => sc[b] - sc[a]);
   return ids.map((id, i) => ({ id, score: sc[id], top: i === 0, open: ROUTES[id].open }));
 }
 /** 루트 고르기 · 3막 안에서 한 번 다시 고를 수 있다 */
@@ -289,6 +292,10 @@ export function storyLines(src: SLine[]): StoryLine[] {
     let line: TalkLine;
     if (who === 'hero_oswin' || who.startsWith('hero_')) line = [who, t, undefined, HEROES.find((h) => 'hero_' + h.id === who)?.name ?? ''];
     else if (who === 'yuan') line = ['yuan', t, undefined, '유안'];
+    // STORY v2·v3: 전설 영웅 · 안내서 편집장 · 별지기
+    else if (who.startsWith('legend_')) line = [who, t, undefined, LEGENDS.find((l) => 'legend_' + l.key === who)?.name ?? ''];
+    else if (who === 'editor') line = ['editor', t, undefined, '여행자 안내서 편집장'];
+    else if (who === 'star') line = ['star', t, undefined, '별지기'];
     else if (who === '@fav') {
       const f = P.legacy.prevFav;
       const a = f ? (world.home?.actors ?? world.actors).find((x) => !x.role && x.name === f.name) : favActor();
@@ -373,6 +380,7 @@ export function startCycle(gifts: string[]): string[] {
   Object.assign(s, {
     act: 1, route: null, score: { hero: 0, legend: 0, town: 0, love: 0, retire: 0 }, seen: [], day0: S.day, actDay: {},
     letter: 0, changed: false, goodDays: 0, goodLast: P.daily.log[P.daily.log.length - 1]?.day ?? 0, heir: 0, readyDay: 0, playMin: 0,
+    base: {}, flags: {}, mythic: {},
   });
   const done: string[] = [];
   const L = P.legacy;

@@ -68,6 +68,8 @@ export const HARMONIES: HarmonyDef[] = [
   { id: 42, name: '등불 축제', parts: [{ k: K('string_lights'), n: 2 }, { k: K('double_lamp'), n: 2 }, { k: K('brazier') }], range: 4, zone: true, text: '밤 숙박 수입 +10%', hint: '전구 줄과 쌍가로등, 화로가 함께 밝히면…' },
   { id: 43, name: '풍차 언덕', parts: [{ k: K('windmill') }, { k: K('garden') }, { k: K('hay_scarecrow') }], range: 3, text: '수확량 +1', hint: '바람 도는 언덕 아래 밭과 허수아비…' },
   { id: 44, name: '시계탑 광장', parts: [{ k: K('clock_tower', 'grand_clock') }, { k: K('bench', 'rose_bench'), n: 2 }, { k: K('signpost') }], text: '새 손님 방문 +5% (전역)', hint: '시계탑 아래 벤치 둘과 이정표…' },
+  // STORY v2 사랑 루트: 「꽃길」
+  { id: 45, name: '꽃길', parts: [{ k: K('rose_arch') }, { k: K('rose_bench') }, { k: K('flowerbed', 'tulip_box') }], text: '기분 +5 · 짝 케미 경험치 ↑', hint: '장미 아치 아래 앉을 자리와 꽃밭이 있으면…' },
   { id: 24, name: '대문 앞 환영', parts: [{ k: K('gate') }, { k: K('lamppost'), n: 2 }], text: '새 손님 방문 +20% (전역)', hint: '큰 문 양옆에 불이 밝혀져 있으면 누구라도 들어오고 싶겠지…' },
 ];
 HARMONIES.sort((a, b) => a.id - b.id);

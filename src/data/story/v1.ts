@@ -56,7 +56,7 @@ export const ACT3_LETTER: { title: string; body: string[]; ask: string } = {
 };
 
 // ───────── 루트 ─────────
-export type RouteId = 'hero' | 'legend' | 'town' | 'love' | 'retire';
+export type RouteId = 'hero' | 'legend' | 'town' | 'love' | 'retire' | 'true';
 export const ROUTES: Record<RouteId, { name: string; pick: string; teaser: string; hint: string; open: boolean; goals?: { id: string; title: string; done: string }[]; pickLines?: SLine[] }> = {
   hero: {
     name: '용사의 여관', pick: '함께 싸워 온 단골들', open: false,
@@ -73,6 +73,11 @@ export const ROUTES: Record<RouteId, { name: string; pick: string; teaser: strin
   love: {
     name: '사랑이 시작된 여관', pick: '이곳에서 생긴 인연들', open: false,
     teaser: '누군가 마당 한쪽에 꽃 아치를 세우고 있다…', hint: '두 사람이 같은 불가에 앉아',
+  },
+  // STORY v3: 진 엔딩 — 조건(엔딩 5종 + 열쇠 조각 5)을 채운 회차에만 갈림길에 나온다 (목표·대사는 data/story/v3.ts)
+  true: {
+    name: '별지기', pick: '별지기에게', open: false,
+    teaser: '', hint: '다섯 갈래 길 끝에서',
   },
   retire: {
     name: '조용한 은퇴', pick: '오늘 같은 평범한 하루', open: true,

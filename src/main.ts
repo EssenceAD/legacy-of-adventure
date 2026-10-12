@@ -1,5 +1,6 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { trueStarLine } from './ui/story';
 import { flushGoldLog } from './world/economy';
 import * as raidW from './world/raid';
 import { putAway } from './world/store';
@@ -579,6 +580,11 @@ function catchStarAt(e: PointerEvent) {
   // STORY_V1: 2회차부터 첫 별에 모모의 기억 대사
   const cy = cycleLines('firstStar');
   if (cy) playStory(cy);
+  // STORY v3: 진 엔딩 뒤 — 모모 혼잣말 (하루 한 번)
+  else {
+    const tl = trueStarLine();
+    if (tl) playStory(tl);
+  }
 }
 
 function tap(e: PointerEvent) {

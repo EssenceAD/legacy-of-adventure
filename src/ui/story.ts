@@ -1,10 +1,13 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
 import { CONFIG } from '../data/config';
+import { TRUE_AFTER, TRUE_HINTS, TRUE_LETTER, TRUE_STAR_LINES } from '../data/story/v3';
+import { endsSeen, onPickRoute, routePreDone, routeTick, trueReady } from '../world/routes';
+import { openGoals, routeCard, routeCardText, routeCut, editorVisit, type RouteStoryApi } from './routes';
 import { PIONEER_CREDIT } from '../data/story/easter';
 import { clearOverlays } from './overlays';
 import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
-import { PORTRAITS } from '../engine/assets';
+import { PORTRAIT_IMGS, PORTRAITS } from '../engine/assets';
 import { getPref, setPref, writeSave } from '../save/save';
 import { blankActor } from '../world/adventurers';
 import { tour } from '../world/evalTour';
@@ -49,8 +52,13 @@ function fx(k: string) {
   } else if (k === 'ledger') {
     b.className = (b.className.includes('night') ? 'night ' : '') + 'ledger';
     b.innerHTML = `<img class="ledg" src="${iconSrc('m_quest')}" alt="">`;
-  } else if (k === 'photo') photoThumb();
+  } else if (k === 'photo' || k === 'photo_mine') photoThumb();
   else if (k === 'drop') storyFx.drop();
+  // STORY v2·v3 연출: 심연 · 별 · 부케 · 기둥 · 노래 · 셔터 · 별바다 · 접힘 · 반짝 글씨
+  else if (['abyss', 'stars', 'bouquet', 'pillar', 'song', 'shutter', 'starsea', 'fold', 'sparkle'].includes(k)) {
+    b.className = 'sfx-' + k;
+    b.innerHTML = k === 'stars' || k === 'starsea' ? '<i class="st1"></i><i class="st2"></i><i class="st3"></i>' : k === 'bouquet' ? '<i class="bq">💐</i>' : k === 'song' ? '<i class="nt">♪</i><i class="nt n2">♫</i>' : '';
+  }
 }
 /** 엔딩 사진: 사진 모드로 마을 한 장 → 앨범 썸네일 (이 기기에만) */
 let lastThumb = '';
@@ -78,6 +86,9 @@ export function playStory(src: SLine[], done?: () => void) {
   clearOverlays('story');
   // 유안 초상화 = 휴먼 기사 손님 초상화
   if (!PORTRAITS.yuan && PORTRAITS.g_knight_human) PORTRAITS.yuan = PORTRAITS.g_knight_human;
+  // STORY v3: 안내서 편집장 = 마법사 손님 초상화 · 별지기 = 얼굴 없이 빛나는 실루엣
+  if (!PORTRAITS.editor && PORTRAITS.g_mage_human) PORTRAITS.editor = PORTRAITS.g_mage_human;
+  if (!PORTRAITS.star) PORTRAITS.star = starPortrait();
   const sl = storyLines(src);
   if (!sl.length) return done?.();
   talkStory(
@@ -93,6 +104,22 @@ export function playStory(src: SLine[], done?: () => void) {
     },
   );
 }
+/** STORY v2·v3: 루트 화면(ui/routes)에 넘겨주는 것 */
+const api: RouteStoryApi = {
+  play: (l, d) => playStory(l, d),
+  openLetter: () => openLetter(),
+  endRoute: (r, cut) => {
+    lastThumb = '';
+    playStory(cut, () => {
+      const res = finishStory(r);
+      if (lastThumb) setPref('storyThumb.' + res.id, lastThumb);
+      const mem = res.mem >= 0 ? MEMORIES[res.mem] : null;
+      const card = () => endingCard(res.id, res.pts, res.first, r);
+      if (mem) playStory([['narr', `기억 조각을 얻었다 — ${mem.title}`], ...mem.lines], card);
+      else card();
+    });
+  },
+};
 function banner(text: string) {
   const b = document.createElement('div');
   b.className = 'gradeban';
@@ -148,9 +175,11 @@ export function initStoryUI() {
     const dt = Math.min(5, (now - last) / 1000);
     last = now;
     if (document.hidden) return;
-    const l = storyTick(dt);
+    const l = storyTick(dt) ?? routeTick();
     if (l) queue.push(l);
     if (busy()) return;
+    // STORY v3: 마을 루트 앞 셋을 마치면 편집장이 찾아온다
+    if (P.story.route === 'town' && !P.story.flags?.visit && routePreDone('town') && !queue.length) return editorVisit(api);
     syncYuan();
     const to = nextAct();
     if (to) return playAct(to);
@@ -167,7 +196,7 @@ function playAct(to: 2 | 3) {
   const pre = to === 3 ? cycleLines('act3') ?? [] : [];
   playStory([...pre, ...cut.lines], () => {
     banner(cut.banner);
-    if (to === 3) setTimeout(openLetter, 2700);
+    if (to === 3) setTimeout(() => (trueReady() && !P.story.seen.includes('trueLetter') ? (P.story.seen.push('trueLetter'), playStory(TRUE_LETTER, openLetter)) : openLetter()), 2700);
   });
 }
 
@@ -184,7 +213,9 @@ export function openLetter() {
   $('#sPick').onclick = () => openRoutes();
 }
 function openRoutes() {
-  const ch = routeChoices();
+  ROUTES.true.open = trueReady();
+  const ch = routeChoices().filter((c) => c.id !== 'true' || trueReady());
+  ch.sort((a, b) => Number(b.id === 'true') - Number(a.id === 'true'));
   openWin(
     '갈림길',
     `<p class="sub">${esc(fill(ACT3_LETTER.ask))}</p>
@@ -202,6 +233,7 @@ function openRoutes() {
         const id = b.dataset.route as RouteId;
         const err = pickRoute(id);
         if (err) return toast(err);
+        onPickRoute(id);
         closeWin();
         const pre = cycleLines('routePick') ?? [];
         playStory([...pre, ...(ROUTES[id].pickLines ?? [])], () => {
@@ -213,6 +245,7 @@ function openRoutes() {
 }
 /** 장부 「갈림길」 장: 은퇴 목표 넷 */
 export function openRouteGoals() {
+  if (P.story.route && P.story.route !== 'retire') return openGoals(api);
   const gs = retireGoals();
   const s = P.story;
   openWin(
@@ -237,6 +270,7 @@ export function storyCard(): { label: string; title: string; em: string; done: b
   const s = P.story;
   if (!s.act || S.visiting) return null;
   if (s.letter === 1) return { label: '모모의 편지', title: fill(ACT3_LETTER.title), em: '눌러서 답하기', done: true, go: openLetter };
+  if (s.route && s.route !== 'retire' && s.heir < 2) return routeCard(api);
   if (s.route === 'retire' && s.heir < 2) {
     const gs = retireGoals();
     const n = gs.filter((g) => g.done).length;
@@ -287,12 +321,12 @@ export function playRetireEnding() {
   });
 }
 const hm = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`);
-function endingCard(id: string, pts: number, first: boolean) {
+function endingCard(id: string, pts: number, first: boolean, route: RouteId = 'retire') {
   const c = P.legacy.cards[id];
   const thumb = getPref<string>('storyThumb.' + id, '');
   openWin(
     '엔딩',
-    `<div class="sendc">${thumb ? `<img class="sthumb" src="${thumb}" alt="">` : ''}<small>엔딩 ${storyEndCount()}/5</small><b>${esc(STORY_END.retire.name)}</b><p>${esc(fill(STORY_END.retire.card))}</p></div>
+    `<div class="sendc">${thumb ? `<img class="sthumb" src="${thumb}" alt="">` : ''}<small>엔딩 ${storyEndCount()}/6</small><b>${esc(ROUTES[route].name)}</b><p>${esc(fill(route === 'retire' ? STORY_END.retire.card : routeCardText(route)))}</p></div>
     <div class="acc"><div>플레이 시간<b>${hm(c?.playMin ?? 0)}</b></div><div>운영 일수<b>${c?.day ?? 0}일</b></div><div>단골<b>${c?.regulars ?? 0}명</b></div><div>가장 친했던 단골<b>${esc(c?.fav ?? '—')}</b></div>
     <div>얻은 유산 포인트<b class="g">+${pts}${first ? ' (처음 본 엔딩 +' + CONFIG.story.legacyFirst + ')' : ''}</b></div><div>모은 유산 포인트<b>${fmt(P.legacy.pts)}</b></div></div>
     <div class="btnrow" id="sEndBtns"><button class="bigbtn" id="sAlbum">엔딩 앨범에 담기</button></div>`,
@@ -300,7 +334,7 @@ function endingCard(id: string, pts: number, first: boolean) {
   );
   setWinLock(true);
   $('#sAlbum').onclick = () => {
-    toast(`엔딩 앨범에 담았어요 (${storyEndCount()}/5)`);
+    toast(`엔딩 앨범에 담았어요 (${storyEndCount()}/6)`);
     $('#sEndBtns').innerHTML = '<button class="bigbtn" id="sNew">새 여관 열기</button><button class="bigbtn ghost" id="sStay">이 마을에 조금 더 머물기</button>';
     $('#sNew').onclick = () => {
       setWinLock(false);
@@ -365,7 +399,10 @@ export function bindMemoryRow() {
 }
 /** 회차 시작 컷: 2회차부터 버나드의 기억 대사 · 모모 · 옛 단골 (오프닝 앞부분 자리) */
 export function playCycleOpening(gifts: string[], done: () => void) {
-  const lines: SLine[] = [...openingCycle(), ...(cycleLines('momoFirstTalk') ?? []), ...(gifts.includes('fav') ? cycleLines('prevFavArrive') ?? [] : [])];
+  // STORY v3: 진 엔딩을 본 뒤 첫 회차엔 TRUE_AFTER 한 번 (OPENING_CYCLE 대신)
+  const after = P.legacy.album.includes('story_true') && !P.legacy.trueAfterSeen;
+  if (after) P.legacy.trueAfterSeen = true;
+  const lines: SLine[] = [...(after ? TRUE_AFTER : openingCycle()), ...(cycleLines('momoFirstTalk') ?? []), ...(gifts.includes('fav') ? cycleLines('prevFavArrive') ?? [] : [])];
   playStory(lines, done);
 }
 
@@ -382,10 +419,15 @@ export function storyAlbumHtml(): string {
     }
     return `<div class="acell"><span class="silh">?</span><small>${esc(ROUTES[r].hint)}</small></div>`;
   });
-  cells.push('<div class="acell"><span class="silh">?</span><small>???</small></div>');
+  // STORY v3: 진 엔딩 칸 — 보기 전엔 본 엔딩 수에 따라 힌트
+  if (P.legacy.album.includes('story_true') && P.legacy.cards.story_true) cells.push(`<button class="acell seen" data-se="story_true"><div class="ecard t-story"><b>${esc(ROUTES.true.name)}</b><small>다시 보기</small></div></button>`);
+  else {
+    const n = endsSeen();
+    cells.push(`<div class="acell"><span class="silh">?</span><small>${esc(TRUE_HINTS[n <= 1 ? 0 : n <= 3 ? 1 : n === 4 ? 2 : 3])}</small></div>`);
+  }
   const n = Math.min(P.legacy.mem || 0, MEMORIES.length);
   const mems = MEMORIES.map((m, i) => (i < n ? `<button class="stp" data-mem="${i}"><span><b>${esc(m.title)}</b></span><em>›</em></button>` : `<div class="stp lock"><span><b>???</b><small>엔딩을 보면 하나씩</small></span></div>`)).join('');
-  return `<div class="qhd"><b class="g">이야기</b><span class="note">${storyEndCount()}/5</span></div><div class="album">${cells.join('')}</div>
+  return `<div class="qhd"><b class="g">이야기</b><span class="note">${storyEndCount()}/6</span></div><div class="album">${cells.join('')}</div>
     <div class="qhd"><b class="g">기억</b><span class="note">${n}/${MEMORIES.length}</span></div><div class="steps">${mems}</div>`;
 }
 export function bindStoryAlbum(back: () => void) {
@@ -393,7 +435,8 @@ export function bindStoryAlbum(back: () => void) {
     (b) =>
       (b.onclick = () => {
         closeWin();
-        playStory([...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]], back);
+        const r = (b.dataset.se ?? 'story_retire').slice(6) as RouteId;
+        playStory(r === 'retire' ? [...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]] : routeCut(r), back);
       }),
   );
   $$('[data-mem]').forEach((b) => (b.onclick = () => readMemory(+b.dataset.mem!, true, back)));
@@ -403,4 +446,43 @@ function readMemory(i: number, fromAlbum: boolean, back?: () => void) {
   if (!m) return;
   closeWin();
   playStory([['narr', m.title], ...m.lines], fromAlbum ? back : undefined);
+}
+
+/** STORY v3: 진 엔딩 뒤 별똥별을 잡을 때 모모 혼잣말 (하루 한 번) */
+export function trueStarLine(): SLine[] | null {
+  if (!P.legacy.album.includes('story_true')) return null;
+  const k = 'trueStar:' + S.day;
+  if (P.story.seen.includes(k)) return null;
+  P.story.seen.push(k);
+  return [TRUE_STAR_LINES[Math.floor(Math.random() * TRUE_STAR_LINES.length)]];
+}
+
+/** 별지기 초상화: 모모 초상화 모양을 금빛으로 채운 실루엣 + 둘레 빛 */
+function starPortrait(): string {
+  const src = PORTRAIT_IMGS.find((im) => /portraits\/post\.png/.test(im.src));
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#0c0a1e';
+  g.fillRect(0, 0, 64, 64);
+  const r = g.createRadialGradient(32, 30, 4, 32, 30, 34);
+  r.addColorStop(0, 'rgba(255,240,180,0.55)');
+  r.addColorStop(1, 'rgba(255,240,180,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  if (src && src.complete && src.naturalWidth) {
+    const t = document.createElement('canvas');
+    t.width = t.height = 64;
+    const x = t.getContext('2d')!;
+    x.drawImage(src, 0, 0, 64, 64);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = '#fff3c0';
+    x.fillRect(0, 0, 64, 64);
+    g.drawImage(t, 0, 0);
+  }
+  for (let i = 0; i < 14; i++) {
+    g.fillStyle = i % 3 ? '#ffd36b' : '#ffffff';
+    g.fillRect((Math.random() * 64) | 0, (Math.random() * 64) | 0, 1, 1);
+  }
+  return c.toDataURL();
 }

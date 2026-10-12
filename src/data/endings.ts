@@ -1,6 +1,8 @@
 // 4단계 엔딩 36개: 모험 24(동료마다) + 여관 5 + 진짜 6(출신마다) + 홀로 1
 // 본 엔딩은 엔딩 앨범에 남고, 처음 볼 때 영구 「유산 보너스」가 쌓인다.
 import type { GuestKind } from './classes';
+import { ROUTE_LEGEND, ROUTE_TOWN, ROUTE_TRUE } from './story/v3';
+import { ROUTE_HERO, ROUTE_LOVE } from './story/v2';
 import { ENDINGS as STORY_END, ROUTES } from './story/v1';
 
 export type LegacyBonus =
@@ -264,4 +266,12 @@ export const ENDINGS: EndingDef[] = [
 // STORY_V1: 루트 엔딩 (v1은 조용한 은퇴만 · 다시 보기는 엔딩 컷 그대로)
 ENDINGS.push({ id: 'story_retire', type: 'story', title: STORY_END.retire.name, hint: ROUTES.retire.hint, lines: [STORY_END.retire.card], bonus: { k: 'mood', v: 0.05 } });
 
+// STORY v2·v3: 루트 엔딩 (용사 · 사랑 · 전설 · 마을) + 진 엔딩 「별지기」
+ENDINGS.push(
+  { id: 'story_hero', type: 'story', title: ROUTES.hero.name, hint: ROUTES.hero.hint, lines: [ROUTE_HERO.card], bonus: { k: 'power', v: 0.03 } },
+  { id: 'story_love', type: 'story', title: ROUTES.love.name, hint: ROUTES.love.hint, lines: [ROUTE_LOVE.card], bonus: { k: 'mood', v: 0.05 } },
+  { id: 'story_legend', type: 'story', title: ROUTES.legend.name, hint: ROUTES.legend.hint, lines: [ROUTE_LEGEND.card], bonus: { k: 'rep', v: 0.05 } },
+  { id: 'story_town', type: 'story', title: ROUTES.town.name, hint: ROUTES.town.hint, lines: [ROUTE_TOWN.card], bonus: { k: 'gold', v: 0.03 } },
+  { id: 'story_true', type: 'story', title: ROUTES.true.name, hint: ROUTES.true.hint, lines: [ROUTE_TRUE.card], bonus: { k: 'xp', v: 0.05 } },
+);
 export const endingById = (id: string) => ENDINGS.find((e) => e.id === id);

@@ -482,6 +482,8 @@ export const CONFIG = {
    * 명세의 「5일차≈5시간 · 16일차≈16시간」 감에 맞춰 일수를 늘렸다 (실제 시간 ≈ 일수 × 24분)
    */
   story: {
+    /** STORY v2/v3 루트 숫자: 전설 루트 전설 수 · 연회 요리 · 결혼식 금화·요리 · 「꽃길」 어울림 번호 · 진 엔딩 열쇠 조각 수 */
+    routes: { legendCount: 8, feastMeals: 30, wedGold: 100000, wedMeals: 20, loveHarmony: 45, trueShards: 5 },
     /** 막 전환: 장부 몇 장 · 이 회차 운영 며칠째 이상 · 영웅 수 */
     act2: { chapters: 3, day: 12 },
     act3: { chapters: 7, day: 40, heroes: 1 },
@@ -815,6 +817,7 @@ export const CONFIG = {
       42: { incKind: 'inn', inc: 0.1, night: true },
       43: { harvest: 1 },
       44: { arrive: 0.05 },
+      45: { mood: 5, talkBond: 1 },
     } as Record<number, HarmonyFx>,
   },
   /**

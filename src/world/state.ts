@@ -478,7 +478,9 @@ export function freshProgress() {
      */
     legacy: { gen: 1, seen: [] as string[], album: [] as string[], cards: {} as Record<string, EndingCard>, prev: null as PrevOwner | null, letterDay: '',
       /** STORY_V1 §5: 유산 포인트 · 모은 기억 조각 수 · 옛 저장에 포인트·기억을 한 번 채웠나 · 지난 회차 가장 친했던 단골 (이름·직업·종족) */
-      pts: 0, mem: 0, v14: false, prevFav: null as null | { name: string; kind: string; race?: string } },
+      pts: 0, mem: 0, v14: false, prevFav: null as null | { name: string; kind: string; race?: string },
+      /** MYTHIC · STORY v2/v3 (회차를 넘어 남는다): 신화로 깨어날 전설 · 별지기의 열쇠 조각 · 진 엔딩 뒤 오프닝 봄 · 부케 받은 사람(겹치지 않게) */
+      mythicSeeds: [] as string[], shards: [] as string[], trueAfterSeen: false, bouquetSeen: [] as string[] },
     /**
      * STORY_V1: 막 · 고른 루트 · 루트 점수(보이지 않게) · 이 회차에 본 대사 · 이 회차 시작 일차 · 막이 오른 일차
      * 회차를 넘어 남는 것(회차 = legacy.gen · 엔딩 = legacy.album · 유산 포인트 · 기억)은 legacy에 있다
@@ -501,7 +503,13 @@ export function freshProgress() {
       readyDay: 0,
       /** 이 회차 플레이 시간 (분) */
       playMin: 0,
+      /** STORY v2/v3: 루트를 고른 때의 기준값(요리·사진) · 루트 사건(최종 토벌·고백·결혼식·연회·편집장·사진·그 밤) · 신화 부탁 진행 */
+      base: {} as Record<string, number>,
+      flags: {} as Record<string, number>,
+      mythic: {} as Record<string, { prog?: number; done?: boolean; met?: boolean; heart?: boolean }>,
     },
+    /** STORY v2: 손님 일기 (직업_종족 → 열린 장 수) */
+    diaries: {} as Record<string, number>,
     /**
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
