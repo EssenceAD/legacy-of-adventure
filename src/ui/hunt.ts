@@ -134,7 +134,9 @@ function openHuntPrep(r: RegionId, s: number) {
   const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id));
   // 직접 고친 파티가 아니면, 빈자리는 돌아온 단골 중 가장 센 순서로 채운다
-  if (!manualPick) for (const a of crew) if (picked.length < max && !picked.includes(a.id)) picked.push(a.id);
+  // PARTY §3: 4번째 자리가 막 열렸으면 그 칸은 비워 둔다 (반짝 · 직접 채워 보게)
+  const fill = max > 3 && !P.meta.party4Seen ? 3 : max;
+  if (!manualPick) for (const a of crew) if (picked.length < fill && !picked.includes(a.id)) picked.push(a.id);
   const ms = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const rec = recPower(r, s);
   const pw = ms.length ? partyPower(ms) : 0;

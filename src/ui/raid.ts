@@ -59,7 +59,8 @@ export function openRaidPrep(t: RaidTarget) {
   const max = huntPartyMax();
   const crew = raidCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id)).slice(0, max);
-  if (!picked.length) picked = crew.slice(0, max).map((a) => a.id);
+  // PARTY §3: 4번째 자리가 막 열렸으면 그 칸은 비워 둔다 (반짝)
+  if (!picked.length) picked = crew.slice(0, max > 3 && !P.meta.party4Seen ? 3 : max).map((a) => a.id);
   const members = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const b = t.boss;
   const ex = expectOf(members, b);
