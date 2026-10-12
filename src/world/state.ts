@@ -5,6 +5,18 @@ import type { ClassKey, Race, Rarity, Face } from '../data/classes';
 import type { Grade, OptKey, RegionId, Slot, StatKey, WeaponKind } from '../data/items';
 import type { Neighbor } from '../data/neighbors';
 
+/** BUILDUX §2-3: 보관함에 넣어 둔 건물·장식 (레벨·색·방향 그대로) */
+export interface StoredObj {
+  kind: Kind;
+  lvl: number;
+  hue: number | null;
+  flip: boolean;
+  plots?: Building['plots'];
+  builtAt?: number;
+  paid?: number;
+  fromProp?: boolean;
+}
+
 export interface Building {
   kind: Kind;
   tx: number;
@@ -473,7 +485,8 @@ export function freshProgress() {
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
      */
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
-    decor: { autoPath: true, paint: {} as Record<string, string> },
+    /** BUILDUX: store = 보관함 · recent = 최근 놓은 장식 5개 · hintSeen = 첫 진입 안내 봄 */
+    decor: { autoPath: true, paint: {} as Record<string, string>, store: [] as StoredObj[], recent: [] as string[], hintSeen: false, round: {} as Record<string, number>, noPath: {} as Record<string, number> },
     harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[], migrate: false },
     /**
      * 베타 3장 하루 마감 정산: 이번 날(자정까지) 모으는 중 · 지난 날들 · 아직 못 보여 준 정산 · 최고 수입

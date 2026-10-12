@@ -4,7 +4,7 @@ import { def } from '../data/catalog';
 import { patchTiles } from './ground';
 import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
-import { canPlace, inLand, rebuildPaths, spriteFor } from './town';
+import { canPlace, inLand, pathT, rebuildPaths, spriteFor } from './town';
 import { track as trackEv } from '../net/telemetry';
 
 export const PATH_MATS = ['stone', 'dirt', 'brick', 'deck', 'step'] as const;
@@ -28,23 +28,40 @@ export function paintedPaths(): [number, number][] {
   return out;
 }
 
-// ───────── 되돌리기 (10단계 · 이번 접속 동안) ─────────
+// ───────── 되돌리기 · 다시 하기 (BUILDUX §2-6: 20단계 · 이번 접속 동안 · 묶음 동작은 1단계) ─────────
 
-type Undo = { label: string; undo: () => void };
+export type Undo = { label: string; undo: () => void; redo: () => void };
 const undos: Undo[] = [];
-export const UNDO_MAX = 10;
+const redos: Undo[] = [];
+export const UNDO_MAX = 20;
 export const canUndo = () => undos.length > 0;
+export const canRedo = () => redos.length > 0;
 export const undoLabel = () => undos[undos.length - 1]?.label ?? '';
-function pushUndo(u: Undo) {
+export const redoLabel = () => redos[redos.length - 1]?.label ?? '';
+/** 새 동작을 되돌리기에 쌓는다 (다시 하기는 비운다) */
+export function pushUndo(u: Undo) {
   undos.push(u);
+  redos.length = 0;
   while (undos.length > UNDO_MAX) undos.shift();
 }
 export function undo(): string | null {
   const u = undos.pop();
   if (!u) return null;
   u.undo();
+  redos.push(u);
   rebuildPaths();
   markDirty();
+  trackEv('edit_undo', { what: u.label.slice(0, 20) });
+  return u.label;
+}
+export function redo(): string | null {
+  const u = redos.pop();
+  if (!u) return null;
+  u.redo();
+  undos.push(u);
+  rebuildPaths();
+  markDirty();
+  trackEv('edit_redo', { what: u.label.slice(0, 20) });
   return u.label;
 }
 
@@ -52,26 +69,53 @@ export function undo(): string | null {
 
 const occupied = (x: number, y: number) => world.objs.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
 /** 이 칸을 칠할 수 있나 (null = 지우기). 연못은 건물·장식이 없는 칸에만 */
+/** BUILDUX §7: 자동으로 깔린 길 칸 (칠한 길 아님) */
+export const isAutoPath = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < N && pathT.has(y * N + x) && !isPathMat(paintAt(x, y));
 export function paintWhy(x: number, y: number, code: PaintCode | null): string | null {
   if (S.visiting) return '이웃 마을은 꾸밀 수 없어요';
+  // 지우개는 울타리 밖 자동 길(의뢰·던전 가는 길)도 지울 수 있다
+  if (code === null && isAutoPath(x, y)) return null;
   if (x < 0 || y < 0 || x >= N || y >= N || !inLand(x, y)) return '울타리 안에만 칠할 수 있어요';
   if (code === 'pond' && occupied(x, y)) return '건물·장식이 있는 칸엔 연못을 못 만들어요';
   return null;
 }
 /** 한 번의 붓질(누르고 떼기까지) = 되돌리기 한 단계 */
-let stroke: { tiles: Map<string, string | undefined>; code: PaintCode | null } | null = null;
-export function beginStroke(code: PaintCode | null) {
-  stroke = { tiles: new Map(), code };
+let stroke: { tiles: Map<string, string | undefined>; no: Map<string, boolean>; code: PaintCode | null; label?: string } | null = null;
+export function beginStroke(code: PaintCode | null, label?: string) {
+  stroke = { tiles: new Map(), no: new Map(), code, label };
+}
+/** BUILDUX §7: 「여기엔 자동 길을 깔지 마」 표시 바꾸기 (붓질 중이면 되돌리기에 묶는다) */
+function setNo(k: string, on: boolean) {
+  const no = (P.decor.noPath ??= {});
+  if (!!no[k] === on) return false;
+  if (stroke && !stroke.no.has(k)) stroke.no.set(k, !!no[k]);
+  if (on) no[k] = 1;
+  else delete no[k];
+  return true;
 }
 /** 칸 하나 칠하기 (붓질 중이면 한 단계로 묶는다) · 바뀌었으면 true */
 export function paintTile(x: number, y: number, code: PaintCode | null): boolean {
   if (paintWhy(x, y, code)) return false;
   const k = `${x},${y}`;
   const prev = P.decor.paint[k];
+  // BUILDUX §7: 자동 길 칸을 지우면 기억해 두고 다시 깔지 않는다 · 길을 칠하면 그 기억은 지운다
+  if (code === null && !prev && isAutoPath(x, y)) {
+    setNo(k, true);
+    pathT.delete(y * N + x);
+    if (stroke) patchTiles([[x, y]]);
+    else {
+      rebuildPaths();
+      markDirty();
+    }
+    return true;
+  }
+  if (code && isPathMat(code)) setNo(k, false);
   if ((prev ?? null) === code) return false;
   if (stroke && !stroke.tiles.has(k)) stroke.tiles.set(k, prev);
   if (code) P.decor.paint[k] = code;
   else delete P.decor.paint[k];
+  // BUILDUX §3-3: 지우거나 재질을 바꾸면 둥근 모서리도 풀린다
+  if (P.decor.round?.[k] && (!code || !isPathMat(code))) delete P.decor.round[k];
   // HOTFIX19 §1: 붓질 중엔 그 칸(+둘레)만 덧그리고, 길 다시 계산·저장은 손을 뗀 뒤 한 번
   if (stroke) patchTiles([[x, y]]);
   else {
@@ -83,26 +127,35 @@ export function paintTile(x: number, y: number, code: PaintCode | null): boolean
 export function endStroke() {
   const s = stroke;
   stroke = null;
-  if (!s || !s.tiles.size) return;
+  if (!s || (!s.tiles.size && !s.no.size)) return;
   rebuildPaths();
   markDirty();
   const tiles = s.tiles;
-  pushUndo({
-    label: s.code ? `${PAINT_NAME[s.code]} 칠하기` : '지우기',
-    undo: () => {
-      for (const [k, v] of tiles) {
-        if (v) P.decor.paint[k] = v;
-        else delete P.decor.paint[k];
-      }
-    },
-  });
-  trackEv('path_paint', { code: s.code ?? 'erase', n: tiles.size });
+  const noB = s.no;
+  const noA = new Map([...noB.keys()].map((k) => [k, !!P.decor.noPath?.[k]] as const));
+  const putNo = (m: Map<string, boolean>) => {
+    const no = (P.decor.noPath ??= {});
+    for (const [k, v] of m) {
+      if (v) no[k] = 1;
+      else delete no[k];
+    }
+  };
+  const after = new Map([...tiles.keys()].map((k) => [k, P.decor.paint[k]] as const));
+  const put = (m: Map<string, string | undefined>) => {
+    for (const [k, v] of m) {
+      if (v) P.decor.paint[k] = v;
+      else delete P.decor.paint[k];
+    }
+  };
+  pushUndo({ label: s.label ?? (s.code ? `${PAINT_NAME[s.code]} 칠하기` : '지우기'), undo: () => (put(tiles), putNo(noB)), redo: () => (put(after), putNo(noA)) });
+  trackEv('path_paint', { code: s.code ?? 'erase', n: tiles.size, auto: noB.size });
+  trackEv('edit_action', { tool: s.label ? 'fill' : s.code ? (isPathMat(s.code) ? 'path' : 'ground') : 'erase', n: tiles.size + noB.size });
 }
 
 export function setAutoPath(on: boolean) {
   const prev = autoPathOn();
   P.decor.autoPath = on;
-  pushUndo({ label: on ? '자동 길 켜기' : '자동 길 끄기', undo: () => (P.decor.autoPath = prev) });
+  pushUndo({ label: on ? '자동 길 켜기' : '자동 길 끄기', undo: () => (P.decor.autoPath = prev), redo: () => (P.decor.autoPath = on) });
   rebuildPaths();
   markDirty();
 }
@@ -145,15 +198,23 @@ export function moveGroup(group: Building[], dx: number, dy: number): string | n
     o.tx += dx;
     o.ty += dy;
   }
-  pushUndo({ label: `장식 ${group.length}개 옮기기`, undo: () => before.forEach(([o, x, y]) => ((o.tx = x), (o.ty = y))) });
+  pushUndo({
+    label: `장식 ${group.length}개 옮기기`,
+    undo: () => before.forEach(([o, x, y]) => ((o.tx = x), (o.ty = y))),
+    redo: () => before.forEach(([o, x, y]) => ((o.tx = x + dx), (o.ty = y + dy))),
+  });
   rebuildPaths();
   markDirty();
   trackEv('deco_move_group', { n: group.length });
+  trackEv('edit_action', { tool: 'move_group', n: group.length });
   return null;
 }
 /** 하나씩 옮긴 것도 되돌리기에 (꾸미기 모드에서 옮기기 창을 쓸 때) */
 export function noteMove(o: Building, tx: number, ty: number, flip: boolean | undefined) {
-  pushUndo({ label: `${def(o.kind).name} 옮기기`, undo: () => ((o.tx = tx), (o.ty = ty), (o.flip = flip), (o.sprite = spriteFor(o.kind, o.lvl, flip))) });
+  const [nx, ny, nf] = [o.tx, o.ty, o.flip];
+  const set = (x: number, y: number, f: boolean | undefined) => ((o.tx = x), (o.ty = y), (o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
+  pushUndo({ label: `${def(o.kind).name} 옮기기`, undo: () => set(tx, ty, flip), redo: () => set(nx, ny, nf) });
+  trackEv('edit_action', { tool: 'move', n: 1 });
 }
 
 // ───────── 꾸미기 모드 화면 상태 (render가 읽는다) ─────────
@@ -169,6 +230,9 @@ export const decorView = {
   /** HOTFIX19 §2: 붓·바닥·지우개를 들면 건물·장식·나무를 반투명으로 (토글 · 기본 켬) */
   fade: false,
   fadeOn: true,
+  /** BUILDUX §3-2: 직선 길 미리보기 칸 */
+  preview: [] as [number, number][],
+  previewOk: true,
 };
 /** 고른 장식 모두 좌우 반전 (발판이 정사각형이라 자리는 그대로) */
 export function flipGroup(group: Building[]): string | null {
@@ -178,7 +242,78 @@ export function flipGroup(group: Building[]): string | null {
     o.flip = !o.flip;
     o.sprite = spriteFor(o.kind, o.lvl, o.flip);
   }
-  pushUndo({ label: `장식 ${group.length}개 반전`, undo: () => before.forEach(([o, f]) => ((o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)))) });
+  const setF = (o: Building, f: boolean) => ((o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
+  pushUndo({ label: `장식 ${group.length}개 반전`, undo: () => before.forEach(([o, f]) => setF(o, f)), redo: () => before.forEach(([o, f]) => setF(o, !f)) });
+  trackEv('edit_action', { tool: 'flip', n: group.length });
   markDirty();
   return null;
+}
+
+// ───────── BUILDUX §3: 직선 길 · 모서리 둥글게 · 채우기 ─────────
+
+/** 시작 → 끝을 ㄱ자로 (가로 먼저, 그다음 세로) */
+export function elbowTiles(a: [number, number], b: [number, number]): [number, number][] {
+  const out: [number, number][] = [];
+  const sx = Math.sign(b[0] - a[0]);
+  const sy = Math.sign(b[1] - a[1]);
+  for (let x = a[0]; ; x += sx) {
+    out.push([x, a[1]]);
+    if (x === b[0] || !sx) break;
+  }
+  if (sy) for (let y = a[1] + sy; ; y += sy) {
+    out.push([b[0], y]);
+    if (y === b[1]) break;
+  }
+  return out.slice(0, 200);
+}
+/** 여러 칸을 한 번에 (되돌리기 1단계) · 칠한 칸 수 */
+export function paintMany(tiles: [number, number][], code: PaintCode | null, label?: string): number {
+  beginStroke(code, label);
+  let n = 0;
+  for (const [x, y] of tiles) if (paintTile(x, y, code)) n++;
+  endStroke();
+  return n;
+}
+/** 닫힌 영역 채우기: 누른 칸과 같은 바닥(또는 빈 풀밭)으로 이어진 칸 — 건물·울타리·다른 칠에서 멈춘다 */
+export const FILL_MAX = 400;
+export function fillTiles(x0: number, y0: number): [number, number][] | null {
+  if (!inLand(x0, y0) || occupied(x0, y0)) return [];
+  const want = paintAt(x0, y0) ?? null;
+  const seen = new Set<string>([`${x0},${y0}`]);
+  const out: [number, number][] = [];
+  const q: [number, number][] = [[x0, y0]];
+  while (q.length) {
+    const [x, y] = q.shift()!;
+    out.push([x, y]);
+    if (out.length > FILL_MAX) return null;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const k = `${nx},${ny}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (!inLand(nx, ny) || occupied(nx, ny) || (paintAt(nx, ny) ?? null) !== want) continue;
+      q.push([nx, ny]);
+    }
+  }
+  return out;
+}
+/** 같은 길 칸을 한 번 더 누르면: 모서리 둥글게 → 한 번 더 = 지우기 (동물의 숲) · 무엇을 했는지 */
+export function tapCycle(x: number, y: number): 'round' | 'erase' | null {
+  const k = `${x},${y}`;
+  const code = P.decor.paint[k] as PaintCode | undefined;
+  if (!code || !isPathMat(code)) return null;
+  const round = (P.decor.round ??= {});
+  if (!round[k]) {
+    round[k] = 1;
+    pushUndo({ label: '모서리 둥글게', undo: () => delete (P.decor.round ??= {})[k], redo: () => ((P.decor.round ??= {})[k] = 1) });
+    rebuildPaths();
+    markDirty();
+    trackEv('edit_action', { tool: 'round', n: 1 });
+    return 'round';
+  }
+  beginStroke(null, '길 지우기');
+  paintTile(x, y, null);
+  endStroke();
+  return 'erase';
 }

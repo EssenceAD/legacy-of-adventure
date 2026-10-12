@@ -34,8 +34,9 @@ const settle = async () => {
   }
 };
 const xy = (x, y) => p.evaluate(([x, y]) => window.__decor.xy(x, y), [x, y]);
-const tool = (t) => p.evaluate((t) => document.querySelector(`#decorBar [data-tool="${t}"]`).click(), t);
-const act = (a) => p.evaluate((a) => document.querySelector(`#decorBar [data-act="${a}"]`).click(), a);
+// BUILDUX: 위 탭은 data-tab · 지우개·자동 길은 길 탭 안에
+const tool = (t) => p.evaluate((t) => { const q = (s) => document.querySelector(`#decorBar ${s}`); if (t === 'erase') { if (!q('[data-tool="erase"]')) q('[data-tab="path"]').click(); if (!q('[data-tool="erase"]').classList.contains('on')) q('[data-tool="erase"]').click(); return; } q(`[data-tab="${t}"]`).click(); }, t);
+const act = (a) => p.evaluate((a) => { const q = () => document.querySelector(`#decorBar [data-act="${a}"]`); if (!q()) document.querySelector('#decorBar [data-tab="path"]').click(); q().click(); }, a);
 /** 칸 목록을 따라 끌기 (손가락 하나) */
 async function stroke(tiles) {
   const pts = [];
@@ -81,7 +82,7 @@ await W(900);
 const first = await p.evaluate(() => ({
   on: document.body.classList.contains('decor'), bar: !!document.querySelector('#decorBar'),
   hud: ['.top', '#mission', '.dk', '#chatlog'].filter((s) => { const e = document.querySelector(s); return e && e.checkVisibility(); }),
-  tools: [...document.querySelectorAll('#decorBar [data-tool]')].map((b) => b.textContent),
+  tools: [...document.querySelectorAll('#decorBar [data-tab]')].map((b) => b.textContent),
 }));
 ok(first.on && first.bar && first.hud.length === 0 && first.tools.length === 5, `꾸미기 모드 첫 화면: 도구 ${first.tools.join(' · ')} · 보이는 HUD ${JSON.stringify(first.hud)}`);
 await p.evaluate(([x, y]) => window.__game.focusTile?.(x + 2, y + 2), [sx, sy]);

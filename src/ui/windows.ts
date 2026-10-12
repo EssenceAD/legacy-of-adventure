@@ -1,11 +1,12 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { putAway, storeWhy } from '../world/store';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
-import { S, type Building } from '../world/state';
+import { P as PG, S, type Building } from '../world/state';
 import { buildableKinds, landNeedFor, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
@@ -304,8 +305,7 @@ export function appendMoveButton(o: Building) {
   b.id = 'moveB';
   b.textContent = '옮기기 · 방향 바꾸기 ↻';
   b.onclick = () => {
-    // CONSTRUCTION_SPEC §3: 공사 중엔 못 옮김 (철거하면 공사 취소 + 환불)
-    if (o.con) return toast('공사 중이에요 · 다 지은 뒤에 옮길 수 있어요');
+    // BUILDUX §2-2: 옮기기는 언제나 무료 · 공사 중이어도 (공사는 그대로 이어진다)
     closeWin();
     startMove(o);
   };
@@ -326,9 +326,23 @@ function appendRemoveButton(o: Building) {
   const b = document.createElement('button');
   b.className = 'bigbtn sm ghost rmbtn';
   b.id = 'rmB';
-  b.textContent = '철거하기';
-  b.onclick = () => openRemoveConfirm(o);
+  // BUILDUX §2-3: 철거 대신 「넣어 두기」 — 레벨·색 그대로 보관함에 · 금화로 돌려받는 철거는 보관함 안에서만
+  const why = storeWhy(o);
+  b.textContent = '📦 넣어 두기';
+  b.onclick = () => {
+    if (why) {
+      // 공사 중: 넣어 둘 순 없고, 공사 취소(환불 철거)는 예전처럼
+      if (o.con) return openRemoveConfirm(o);
+      return toast(why);
+    }
+    const name = def(o.kind).name;
+    if (putAway([o])) {
+      closeWin();
+      toast(`📦 ${name}을(를) 보관함에 넣었어요 · 꾸미기 모드 「보관함」에서 꺼내요`);
+    }
+  };
   $('#winB').appendChild(b);
+  if (why && o.con) b.textContent = '공사 취소 (철거)';
 }
 
 /** 받침 있으면 「을」 */
@@ -392,7 +406,9 @@ const thumb = (k: Kind) => THUMBS[k] ?? '';
 const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 'smith', garden: 'garden', cottage: 'cottage' };
 
 /** TOWN T2: 건설 창 「꾸미기 모드」 (ui/decor가 채운다) */
-export const buildHooks = { decor: () => {} };
+export const buildHooks = { decor: () => {}, redraw: () => {} };
+/** BUILDUX: 보관함 등에서 쓰는 건설 썸네일 */
+export const thumbOf = (k: Kind) => thumb(k);
 export function openBuild() {
   if (S.visiting) return;
   const card = (k: Kind) => {
@@ -415,9 +431,12 @@ export function openBuild() {
       return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide');
+  // BUILDUX §1-8: 최근 놓은 장식 5개 바로가기
+  const recent = (PG.decor.recent ?? []).filter((k) => kinds.includes(k as Kind)) as Kind[];
+  const recentRow = recent.length ? `<p class="sub">최근 놓은 것</p><div class="cat recent">${recent.map(card).join('')}</div>` : '';
   // 건물 → 장식 (장식은 어울림 재료)
   const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + '</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요</p><div class="cat">' + kinds.filter((k) => def(k).deco && k !== 'board').map(card).join('');
-  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p><div class="cat">${items}</div>`);
+  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${recentRow}<div class="cat">${items}</div>`);
   $('#toLand').onclick = openLand;
   $('#toDecor').onclick = () => buildHooks.decor();
   $$('.cat button[data-k]').forEach(

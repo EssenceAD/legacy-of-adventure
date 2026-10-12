@@ -410,9 +410,20 @@ export function placeBuilding(pl: Placement): boolean {
   if (pl.kind === 'fire') track('buildFire');
   sfx('build');
   rebuildPaths();
+  // BUILDUX §1-3: 놓는 순간 쿵 + 먼지
+  o.pop = 1;
+  puffAt(o, '#c9bfa8', 12);
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
   return true;
+}
+/** BUILDUX: 보관함에서 꺼내 놓은 순간 (쿵 + 먼지) */
+export function thud(o: Building) {
+  o.pop = 1;
+  puffAt(o, '#fff3b0', 12);
+  sfx('build');
+  floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '쿵!', 'big');
+  afterLayoutChange();
 }
 
 // ───────── CONSTRUCTION_SPEC: 공사 완성 연출 ─────────

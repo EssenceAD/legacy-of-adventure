@@ -33,6 +33,11 @@ export interface Highlight {
   go: HighlightGo;
 }
 export const HIGHLIGHTS: Record<string, Highlight[]> = {
+  '0.17.3-beta': [
+    { icon: '🏗️', text: '꾸미기 모드에서 꾹 눌러 들고 옮기기 · ✓✕↻ 버튼이 건물 옆에', label: '꾸며 보기', go: 'decor' },
+    { icon: '📦', text: '보관함 — 철거 대신 넣어 두고 언제든 꺼내 놓기', label: '꾸며 보기', go: 'decor' },
+    { icon: '📏', text: '직선 길 · 둥근 모서리 · 바닥 채우기 · 자동 길도 지우개로', label: '길 그리기', go: 'decor' },
+  ],
   '0.17.1-beta': [
     { icon: '🎨', text: '꾸미기 모드 — 길을 직접 그리고, 연못·꽃밭 바닥, 장식 여러 개 한 번에 옮기기', label: '꾸며 보기', go: 'decor' },
     { icon: '🏘️', text: '이웃 마을 다섯 곳이 새 단장 — 정자·풍차·벚나무 장식 구경', label: '구경 가기', go: 'village' },

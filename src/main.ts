@@ -4,7 +4,7 @@ import { decorInput, enterDecor, initDecor } from './ui/decor';
 import { highlightGo } from './ui/notice';
 import { setNight as setNightHL } from './world/daynight';
 import { openPlace as openPlaceHL } from './ui/nav';
-import { decorView } from './world/decor';
+import { decorView, UNDO_MAX } from './world/decor';
 import { initPropCard } from './ui/propCard';
 import { proposeTalk } from './world/actors';
 import { initGoalPill } from './ui/goalPill';
@@ -22,7 +22,7 @@ import { tour } from './world/evalTour';
 import { anim as gradeAnim } from './world/grade';
 import { CLASSES, type ClassKey } from './data/classes';
 import { charFrames, onNewFrames } from './engine/sprites';
-import { clampCam, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
+import { clampCam, N, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { settleOfflineCons } from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
@@ -34,13 +34,13 @@ import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
-import { addObj, capacity, doorOf, landBounds, pathT, placing, rebuildPaths } from './world/town';
+import { addObj, capacity, doorOf, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
 import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
-import { initHud, movePlacement, setOnZoom, setZoom, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
-import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange } from './ui/screen';
+import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
+import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
@@ -374,8 +374,76 @@ function pinchDist() {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/** BUILDUX §2-1: 꾸미기 모드에서 꾹 누르기(0.4초) = 들기 */
+let lpTimer = 0;
+/** BUILDUX §1-5: 들고 끄는 중 마지막 손가락 자리 (가장자리 자동 스크롤) */
+let lastPtr: [number, number] | null = null;
+let edgeRaf = 0;
+function edgeLoop() {
+  cancelAnimationFrame(edgeRaf);
+  const step = () => {
+    if (!ghostDrag || !lastPtr || !placing.pl) return;
+    const r = cv.getBoundingClientRect();
+    const E = 44;
+    const [x, y] = lastPtr;
+    const vx = x < r.left + E ? -1 : x > r.right - E ? 1 : 0;
+    const vy = y < r.top + E + 40 ? -1 : y > r.bottom - E - 160 ? 1 : 0;
+    if (vx || vy) {
+      view.cam.x += (vx * 5) / view.SC;
+      view.cam.y += (vy * 5) / view.SC;
+      clampCam();
+      if (drag) {
+        // 끌기 기준도 같이 밀어 카메라가 손가락을 따라 되돌아가지 않게
+        drag.cx = view.cam.x;
+        drag.cy = view.cam.y;
+      }
+      const [fx, fy] = toTile(cv, x, y - CONFIG.placement.dragLiftPx);
+      movePlacement(fx, fy);
+    }
+    edgeRaf = requestAnimationFrame(step);
+  };
+  edgeRaf = requestAnimationFrame(step);
+}
+/** 꾹 누른 칸의 건물·장식을 든다 */
+function liftAt(clientX: number, clientY: number): boolean {
+  const [fx, fy] = toTile(cv, clientX, clientY);
+  const o = grid[Math.floor(fy)]?.[Math.floor(fx)];
+  if (!o || def(o.kind).fixed || S.visiting) return false;
+  startMove(o);
+  ghostDrag = true;
+  moved = true;
+  lastPtr = [clientX, clientY];
+  navigator.vibrate?.(15);
+  edgeLoop();
+  return true;
+}
+
 function bindInput() {
+  // BUILDUX §5: 오른쪽 클릭 = 취소 (배치 · 꾸미기 끌기)
+  cv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (placing.pl) cancelPlace(true);
+    else if (decorView.on) decorInput.cancel();
+  });
+  // BUILDUX §5: 마우스 휠 줌 (마을)
+  let wheelAcc = 0;
+  cv.addEventListener(
+    'wheel',
+    (e) => {
+      if (!S.started || combatOn()) return;
+      e.preventDefault();
+      wheelAcc += e.deltaY;
+      if (Math.abs(wheelAcc) < 80) return;
+      const zs = zoomsNow();
+      const i = zs.indexOf(S.zoom);
+      const n = zs[Math.max(0, Math.min(zs.length - 1, i + (wheelAcc < 0 ? 1 : -1)))];
+      wheelAcc = 0;
+      if (n != null && n !== S.zoom) setZoom(n);
+    },
+    { passive: false },
+  );
   cv.addEventListener('pointerdown', (e) => {
+    if (e.button === 2) return;
     // HOTFIX14 §4: 운명의 별은 누르는 순간에 판정 (떼는 사이 별이 지나가거나 드래그로 바뀌지 않게)
     if (!placing.pl && touches.size === 0) {
       const [mx, my] = toLogical(cv, e.clientX, e.clientY);
@@ -400,19 +468,31 @@ function bindInput() {
       return;
     }
     // TOWN T2: 꾸미기 모드(손 도구가 아닐 때)는 끌기 = 칠하기·범위 고르기·무리 옮기기
-    if (!placing.pl && decorInput.wants()) {
+    if (!placing.pl && decorInput.wants(e.shiftKey)) {
       const [fx, fy] = toTile(cv, e.clientX, e.clientY);
       decorDrag = true;
       drag = null;
       moved = true;
-      decorInput.down(fx, fy, e.clientX, e.clientY);
+      decorInput.down(fx, fy, e.clientX, e.clientY, e.shiftKey);
       cv.setPointerCapture?.(e.pointerId);
       return;
     }
     drag = { x: e.clientX, y: e.clientY, cx: view.cam.x, cy: view.cam.y };
     moved = false;
     ghostDrag = onGhost(e.clientX, e.clientY);
+    if (ghostDrag) {
+      lastPtr = [e.clientX, e.clientY];
+      edgeLoop();
+    }
     cv.setPointerCapture?.(e.pointerId);
+    // BUILDUX §2-1: 꾸미기 모드(손 도구)에서 0.4초 꾹 = 들기 (밖에서는 손님 누르기와 겹치므로 안 함)
+    clearTimeout(lpTimer);
+    if (decorView.on && !placing.pl && touches.size === 1) {
+      const [x0, y0] = [e.clientX, e.clientY];
+      lpTimer = window.setTimeout(() => {
+        if (drag && !moved && decorView.on && !placing.pl) liftAt(x0, y0);
+      }, CONFIG.placement.longPressMs);
+    }
   });
   cv.addEventListener('pointermove', (e) => {
     if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -434,6 +514,8 @@ function bindInput() {
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > CONFIG.view.dragThreshold) moved = true;
+    if (moved && !ghostDrag) clearTimeout(lpTimer);
+    if (ghostDrag) lastPtr = [e.clientX, e.clientY];
     if (moved && ghostDrag) {
       // 건물이 손가락보다 살짝 위에 따라와서 손에 가리지 않게
       const [fx, fy] = toTile(cv, e.clientX, e.clientY - CONFIG.placement.dragLiftPx);
@@ -454,9 +536,11 @@ function bindInput() {
       decorInput.up();
       return;
     }
+    clearTimeout(lpTimer);
     const was = drag;
     drag = null;
     ghostDrag = false;
+    lastPtr = null;
     if (moved || !was || e.type === 'pointercancel') return;
     tap(e);
   };
@@ -751,7 +835,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj,
+  if (import.meta.env.DEV) Object.assign(window, { __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

@@ -5,7 +5,7 @@ import { IMG } from '../engine/assets';
 import { def } from '../data/catalog';
 import { world } from './state';
 import { N, sx, sy, TH, TW } from '../engine/iso';
-import { curLand, entrance, groundVersion, inLand, landBounds, paintOf, pathT } from './town';
+import { curLand, entrance, groundVersion, inLand, landBounds, paintOf, pathT, roundOf } from './town';
 import { gradeFolk, gradeNow, gradeProps, outerRoad } from './grade';
 
 /** 맵 밖으로 숲을 몇 칸 더 그릴지 (배율 1에서도 화면이 비지 않게) */
@@ -283,7 +283,35 @@ function drawGround(g: number, key: string): Ground {
 }
 
 /** TOWN T2: 칠한 칸 무늬 (칸 마름모 안 · X,Y = 마름모 위 꼭짓점) */
+const ROUNDABLE = new Set(['stone', 'dirt', 'brick', 'deck']);
+/** BUILDUX §3-3: 둥근 모서리 — 길이 아닌 두 변이 만나는 꼭짓점을 풀밭으로 오목하게 깎는다 */
 function decoTile(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x: number, y: number, r: () => number) {
+  decoTile0(p, pc, X, Y, x, y, r);
+  if (!ROUNDABLE.has(pc) || !roundOf(x, y)) return;
+  const path = (nx: number, ny: number) => ROUNDABLE.has(paintOf(nx, ny) ?? '') || pathT.has(ny * N + nx);
+  // 변: 위왼 (x−1,y) · 위오른 (x,y−1) · 아래왼 (x,y+1) · 아래오른 (x+1,y)
+  const ul = !path(x - 1, y);
+  const ur = !path(x, y - 1);
+  const dl = !path(x, y + 1);
+  const dr = !path(x + 1, y);
+  const H = TH / 2;
+  for (let j = 0; j < TH; j++) {
+    const hw = (j < H ? j + 1 : TH - j) * 2;
+    for (let i = -hw; i < hw; i++) {
+      const u = (i + 0.5) / (TW / 2);
+      const v = (j + 0.5 - H) / H;
+      // 꼭짓점에서의 거리 t (0 = 꼭짓점), 가로로 벗어난 정도 w
+      const cut = (t: number, w: number) => t + w * 0.7 < 0.5;
+      let c = false;
+      if (ul && ur) c ||= cut(1 + v, Math.abs(u));
+      if (dl && dr) c ||= cut(1 - v, Math.abs(u));
+      if (ur && dr) c ||= cut(1 - u, Math.abs(v));
+      if (ul && dl) c ||= cut(1 + u, Math.abs(v));
+      if (c) p.px(X + i, Y + j, BAYER[(Y + j) & 3][(X + i + 64) & 3] < 3 ? '#5f9a3c' : (x * 7 + y * 13) % 5 < 2 ? '#78b84a' : '#6fae45');
+    }
+  }
+}
+function decoTile0(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x: number, y: number, r: () => number) {
   // 마름모 안의 점인가 (위 꼭짓점 기준 dx,dy)
   const inside = (dx: number, dy: number) => dy >= 0 && dy < TH && Math.abs(dx) < (dy < TH / 2 ? dy + 1 : TH - dy) * 2;
   if (pc === 'pond') {

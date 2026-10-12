@@ -86,40 +86,46 @@ for (const [name, opt] of Object.entries(DEV)) {
   const tw = await p.evaluate(() => 0);
   void tw;
 
-  // ① 철거 → 그만두기 → 그대로
+  // BUILDUX §2-3: ① 「📦 넣어 두기」 → 보관함 (금화 그대로) · ② 보관함 안에서만 팔기(환불 철거) — 두 번 눌러야
   ok(await tapBuilding('tavern'), '주점을 눌러 창이 열림');
-  const t0 = await title();
-  ok(await vis('#rmB'), '「철거하기」 버튼 보임 (옮기기 아래)');
-  const geo = await p.evaluate(() => { const m = document.querySelector('#moveB'), r = document.querySelector('#rmB'); return { next: m?.nextElementSibling === r, h: r?.getBoundingClientRect().height, css: r && getComputedStyle(r).minHeight }; });
-  ok(geo.next && geo.h >= 40, '옮기기 바로 아래 · 높이 40px 이상 ' + JSON.stringify(geo));
-  await p.locator('#rmB').click();
-  await W(150);
-  ok((await title()) === '철거', '확인 화면(같은 창 · 쌓기)');
-  ok(await p.evaluate(() => document.querySelector('#rmOk').disabled), '철거 버튼은 처음엔 잠김');
-  await p.screenshot({ path: `${OUT}/${name}_confirm.png` });
-  for (const s of ['#rmOk', '#rmNo']) ok((await reachable(s)) === 'ok', `${s} 화면 안 · 안 가림 (${await reachable(s)})`);
+  ok(await vis('#rmB'), '「📦 넣어 두기」 버튼 보임 (옮기기 아래)');
+  const geo = await p.evaluate(() => { const m = document.querySelector('#moveB'), r = document.querySelector('#rmB'); return { next: m?.nextElementSibling === r, h: r?.getBoundingClientRect().height, txt: r?.textContent }; });
+  ok(geo.next && geo.h >= 40 && /넣어 두기/.test(geo.txt), '옮기기 바로 아래 · 높이 40px 이상 ' + JSON.stringify(geo));
   const before = await count('tavern');
   const g0 = await gold();
-  await p.locator('#rmNo').click();
-  await W(400);
-  ok((await title()) === t0 && (await count('tavern')) === before && (await gold()) === g0, '그만두기 → 건물 창으로 돌아오고 그대로');
-  // ← 뒤로 = 취소
+  const st0 = await p.evaluate(() => window.__P.decor.store.length);
   await p.locator('#rmB').click();
-  await W(300);
-  await p.locator('#winBack').click();
   await W(400);
-  ok((await title()) === t0 && (await count('tavern')) === before, '← 뒤로 = 취소');
-  // ② 철거 → 0.5초 → 철거
-  await p.locator('#rmB').click();
-  await W(650);
-  await p.screenshot({ path: `${OUT}/${name}_confirm_ready.png` });
-  const expect = await p.evaluate(() => +document.querySelector('.rmgold').textContent.replace(/[^0-9]/g, ''));
-  await p.locator('#rmOk').click();
-  await W(400);
+  ok((await count('tavern')) === before - 1 && (await gold()) === g0, '넣어 두기: 주점이 사라지고 금화는 그대로');
+  ok((await p.evaluate(() => window.__P.decor.store.length)) === st0 + 1, '보관함 +1 (레벨 그대로)');
+  ok(!(await winOn()), '창 닫힘 ' + (await title()));
   await p.screenshot({ path: `${OUT}/${name}_after.png` });
-  ok((await count('tavern')) === before - 1, '주점이 사라짐');
-  ok((await gold()) === g0 + expect && expect > 0, `금화 +${expect} (${g0} → ${await gold()})`);
-  ok(!(await winOn()), '창 닫힘');
+  // 보관함에서 팔기
+  await p.evaluate(() => document.querySelector('#bBuild').click());
+  await W(500);
+  await p.evaluate(() => document.querySelector('#toDecor').click());
+  await W(600);
+  await p.evaluate(() => document.querySelector('#decorHint')?.click());
+  await p.evaluate(() => document.querySelector('#decorBar [data-act="store"]').click());
+  await W(500);
+  ok((await title()) === '보관함', '보관함 창');
+  const sell = '#winB .irow:last-child [data-sell]';
+  for (const s2 of [sell]) ok((await reachable(s2)) === 'ok', `팔기 버튼 화면 안 (${await reachable(s2)})`);
+  await p.locator(sell).click();
+  await W(300);
+  ok((await p.evaluate(() => window.__P.decor.store.length)) === st0 + 1 && /정말 팔기/.test(await p.locator(sell).textContent()), '팔기는 한 번 더 눌러야 (실수 방지)');
+  await p.screenshot({ path: `${OUT}/${name}_confirm.png` });
+  const expect = +(await p.locator(sell).textContent()).replace(/[^0-9]/g, '');
+  const g1 = await gold();
+  await p.locator(sell).click();
+  await W(400);
+  // 손님 수입이 계속 들어오니 차이는 「적어도 환불액」 · 1초 수입보다 크게 벗어나지 않게
+  ok((await gold()) - g1 >= expect && (await gold()) - g1 < expect + 100 && expect > 0, `금화 +${expect} (${g1} → ${await gold()})`);
+  ok((await p.evaluate(() => window.__P.decor.store.length)) === st0, '보관함에서 빠짐');
+  await p.evaluate(() => document.querySelector('#winX').click());
+  await W(300);
+  await p.evaluate(() => document.querySelector('#decorBar [data-act="exit"]').click());
+  await W(300);
   // ③ 여관 창엔 철거 버튼 없음 + 안내
   ok(await tapBuilding('inn'), '여관 본관을 눌러 창이 열림');
   ok(!(await vis('#rmB')) && (await vis('.rmno')), '여관: 철거 버튼 없음 · 「이 건물은 철거할 수 없어요」');

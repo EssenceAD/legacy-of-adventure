@@ -1298,7 +1298,7 @@ html:not([data-size="phone"]) #goalPill{top:calc(env(safe-area-inset-top,0px) + 
 #goalPanel .gall{margin-top:2px}
 
 /* TOWN T2: 꾸미기 모드 — 위 HUD·장부 카드·채팅·아래 메뉴를 숨기고 도구 줄 하나 */
-body.decor #hud > :not(#decorBar):not(#placebar):not(#toast) {display:none !important}
+body.decor #hud > :not(#decorBar):not(#placebar):not(#toast):not(#ghostBtns):not(#undoSnack) {display:none !important}
 #decorBar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:20;display:flex;flex-direction:column;gap:6px;padding:8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream)}
 #decorBar .dt,#decorBar .ds,#decorBar .dd{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 #decorBar button{padding:5px 8px;font-size:var(--f-small);border:0 solid transparent;border-image:var(--ui-btn) 4 fill / calc(4px * var(--k1)) / 0 stretch;background:none;color:var(--cream);cursor:pointer;white-space:nowrap}
@@ -1324,3 +1324,35 @@ body.decor #over .bub{display:none}
 /* SMITH §1: 다시 그린 뒤 방금 누른 줄 반짝 */
 #winB .flash{animation:rowFlash .5s ease-out}
 @keyframes rowFlash{0%{background:rgba(255,211,107,.45)}100%{background:transparent}}
+
+/* BUILDUX §1-4: 고스트 옆에 붙어 다니는 ✓ / ✕ / ↻ · 이유·어울림 말풍선 */
+#ghostBtns{position:fixed;left:0;top:0;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;will-change:transform}
+#ghostBtns .pbtns{display:flex;gap:10px;pointer-events:auto}
+#ghostBtns .pbtns button{width:52px;height:52px;border:0;border-radius:50%;font-size:22px;font-weight:700;color:#fff;box-shadow:0 0 0 3px var(--ink),0 3px 0 3px rgba(0,0,0,.35);cursor:pointer;background:#4a5070}
+#ghostBtns #placeOk{background:#3f8a3a}#ghostBtns #placeNo{background:#7a2a30}
+#ghostBtns #placeOk[disabled],#ghostBtns #placeRot[disabled]{background:#4a4e60;color:#9aa0b8}
+#ghostTag{margin:0;padding:3px 8px;background:#2a1a24;color:#ffb0b0;font-size:13px;box-shadow:0 0 0 2px var(--ink);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+#ghostTag.good{color:#fff3b0}
+#placebar .pbtns{display:none}
+/* 놓은 뒤 「↶ 되돌리기」 */
+#undoSnack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 100px);z-index:7;display:flex;gap:10px;align-items:center;padding:6px 8px 6px 12px;font-size:var(--f-ui);white-space:nowrap}
+#undoSnack button{border:0;padding:8px 12px;min-height:40px;background:#4a5070;color:#fff;box-shadow:0 0 0 2px var(--ink);cursor:pointer;font-size:var(--f-ui)}
+/* BUILDUX §4: 꾸미기 첫 진입 안내 (꾹 → 끌기 → ✓) */
+#decorHint{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:30;padding:12px 16px;text-align:center;color:var(--cream);font-size:var(--f-ui);cursor:pointer}
+#decorHint p{margin:6px 0 2px}
+#decorHint small{color:#9aa6d8}
+#decorHint .dh-stage{position:relative;width:180px;height:70px;margin:0 auto}
+#decorHint .dh-b{position:absolute;left:20px;top:22px;width:28px;height:28px;background:#c9935a;box-shadow:0 0 0 2px #1c1018;animation:dhB 3s infinite}
+#decorHint .dh-f{position:absolute;left:26px;top:34px;font-style:normal;font-size:26px;animation:dhF 3s infinite}
+#decorHint .dh-ok{position:absolute;right:6px;top:18px;width:30px;height:30px;line-height:30px;border-radius:50%;background:#3f8a3a;color:#fff;font-style:normal;font-weight:700;opacity:0;animation:dhOk 3s infinite}
+@keyframes dhB{0%,25%{transform:none}30%{transform:translateY(-8px)}60%,100%{transform:translate(100px,-8px)}}
+@keyframes dhF{0%{transform:none}25%{transform:scale(.85)}30%{transform:translateY(-2px)}60%{transform:translate(100px,-2px)}75%,100%{transform:translate(118px,-14px)}}
+@keyframes dhOk{0%,62%{opacity:0}70%,100%{opacity:1}}
+/* 보관함 */
+#winB .sthumb{width:48px;height:28px;object-fit:contain;image-rendering:pixelated}
+#winB [data-sell].red{background:#7a2a30;color:#fff}
+#decorBar .ds .sw{display:inline-flex;align-items:center}
+/* 꾸미기 모드에서 창이 열리면 도구 줄을 잠깐 숨긴다 (창 아래 버튼을 가리지 않게) */
+body.decor #view:has(#win.on) #decorBar{display:none}
+/* BUILDUX §7: 자동 길 칸 툴팁 */
+#pathTip{position:fixed;z-index:61;padding:4px 8px;font-size:12px;color:var(--cream);pointer-events:none;max-width:240px}

@@ -208,7 +208,7 @@ export const CONFIG = {
   /** 모닥불 그림 (campfire.png): 프레임 넘김 간격, 칸 중심이 프레임 아래에서 몇 px 위인지 */
   fire: { frameSeconds: 0.15, baseFromBottom: 7 },
   /** 배치 미리보기 */
-  placement: { dim: 0.3, ghostAlpha: 0.75, bobPx: 2, snapSeconds: 0.12, dragLiftPx: 40 },
+  placement: { dim: 0.3, ghostAlpha: 0.75, bobPx: 2, snapSeconds: 0.12, dragLiftPx: 40, longPressMs: 400 },
   /** 핫픽스 3: 화면 크기 3단계(짧은 변 기준)와 글자 크기 */
   UI_SCALE: {
     /** 짧은 변이 이 이상이면 태블릿 */

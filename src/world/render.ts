@@ -327,6 +327,11 @@ function drawDecorOverlay(ctx: CanvasRenderingContext2D) {
           for (let k = 2; k < TH; k += 3) ctx.fillRect(X - 10 + k, Y + k, 6, 1);
         }
   }
+  // BUILDUX §3-2: 직선 길 미리보기 (ㄱ자)
+  if (decorView.preview.length) {
+    ctx.fillStyle = decorView.previewOk ? 'rgba(255,211,107,0.55)' : 'rgba(255,74,74,0.45)';
+    for (const [x, y] of decorView.preview) fillTile(ctx, x, y);
+  }
   const h = decorView.hover;
   if (h) {
     ctx.fillStyle = 'rgba(255,243,214,0.55)';

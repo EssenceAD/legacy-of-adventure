@@ -1,6 +1,9 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
-import { decorView, noteMove } from '../world/decor';
+import { canUndo, decorView, noteMove, undo } from '../world/decor';
+import { notePlace, takeOut } from '../world/store';
+import { N, sx, sy, toTile, view } from '../engine/iso';
+import { track as trackEv } from '../net/telemetry';
 import { HARMONIES } from '../data/harmony';
 import { enterPhoto } from './photo';
 import { def, type Kind } from '../data/catalog';
@@ -14,7 +17,8 @@ import { CONFIG } from '../data/config';
 import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
-import { blocksDoor, canPlace, gateOk, grid, inLand, landBounds, placing, pondAt, suggestSpot, type Placement } from '../world/town';
+import { blocksDoor, buildCost, canPlace, gateOk, grid, inLand, landBounds, placing, pondAt, suggestSpot, type Placement } from '../world/town';
+import type { StoredObj } from '../world/state';
 import { computeSets } from '../world/harmony';
 import type { Building } from '../world/state';
 import { openNotices } from './notice';
@@ -30,7 +34,7 @@ import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { openBuild, openLand, toast, toastHtml } from './windows';
+import { buildHooks, openBuild, openLand, toast, toastHtml } from './windows';
 import { talk } from './dialogue';
 import { applyTidy, planTidy } from '../world/tidy';
 import { openGridMenu } from './menu';
@@ -67,13 +71,21 @@ function check(pl: Placement) {
 function placeText(pl: Placement) {
   $('#placeOk').toggleAttribute('disabled', !pl.ok);
   $('#placeRot').toggleAttribute('disabled', !pl.sprite);
-  $('#placeTxt').textContent = `${def(pl.kind).name}${pl.move || pl.prop ? ' 옮기기' : ''} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}`;
+  const verb = pl.move || pl.prop ? ' 옮기기' : pl.store ? ' 꺼내 놓기' : pl.chain ? ' 이어 놓기' : '';
+  $('#placeTxt').textContent = `${def(pl.kind).name}${verb} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}${pl.chain && pl.ok ? ' · ✕로 끝내요' : ''}`;
   const w = $('#placeWhy');
   // TOWN T2: 놓으면 생기는 어울림을 미리 (이름)
   const hm = pl.ok ? harmonyHere(pl) : [];
   w.textContent = pl.ok ? (hm.length ? `✨ 여기 놓으면 어울림: ${hm.join(' · ')}` : '') : pl.why ?? '';
   w.hidden = !w.textContent;
   w.classList.toggle('good', pl.ok);
+  // BUILDUX §1-1·§4: 고스트 옆 말풍선 — 빨강이면 이유, 초록이면 어울림
+  const tag = $('#ghostTag');
+  if (tag) {
+    tag.textContent = pl.ok ? (hm.length ? `✨ ${hm.join(' · ')}` : '') : pl.why ?? '';
+    tag.hidden = !tag.textContent;
+    tag.classList.toggle('good', pl.ok);
+  }
 }
 /** 이 자리에 놓으면 이 장식이 들어가는 어울림 이름 */
 function harmonyHere(pl: Placement): string[] {
@@ -83,13 +95,134 @@ function harmonyHere(pl: Placement): string[] {
   return [...new Set(computeSets(objs).filter((x) => x.members.includes(ghost)).map((x) => HARMONIES.find((h) => h.id === x.id)?.name ?? ''))].filter(Boolean);
 }
 
-function openPlace(pl: Placement) {
+function openPlace(pl: Placement, focus = true) {
   placing.pl = pl;
   check(pl);
   $('#placebar').hidden = false;
   $('#view').classList.add('placing');
   placeText(pl);
-  if (pl.tx != null) game.focusTile(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
+  // BUILDUX §1-7: 화면 가운데 근처에 찾은 자리면 카메라는 그대로 (화면 밖일 때만 비춘다)
+  if (pl.tx != null && focus && !onScreen(pl)) game.focusTile(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
+  ghostLoop();
+}
+
+// ───────── BUILDUX §1: 화면 가운데 근처 자리 · 따라다니는 ✓/✕/↻ · 이어 놓기 ─────────
+
+const scene = () => document.getElementById('scene') as HTMLCanvasElement | null;
+/** 타일 → 화면(client) 좌표 */
+function tileXY(x: number, y: number): [number, number] {
+  const r = scene()!.getBoundingClientRect();
+  return [r.left + (view.OX + sx(x, y)) * view.SC, r.top + (view.OY + sy(x, y)) * view.SC];
+}
+function onScreen(pl: Placement): boolean {
+  if (!scene() || pl.tx == null) return false;
+  const [X, Y] = tileXY(pl.tx + pl.fw / 2, pl.ty! + pl.fh / 2);
+  return X > 40 && X < innerWidth - 40 && Y > 90 && Y < innerHeight - 260;
+}
+/** 화면 가운데(조금 위) 타일 */
+function viewCenterTile(): [number, number] | null {
+  const cv = scene();
+  if (!cv) return null;
+  const r = cv.getBoundingClientRect();
+  const [fx, fy] = toTile(cv, r.left + r.width / 2, r.top + r.height * 0.42);
+  return [Math.floor(fx), Math.floor(fy)];
+}
+/** 화면 가운데에서 가장 가까운 놓을 수 있는 자리 (큰 건물은 가장자리·이웃에 붙는 자리를 조금 더 좋게) */
+function nearViewSpot(pl: Placement, from = viewCenterTile(), maxR = 9): [number, number] | null {
+  if (!from) return null;
+  const big = !def(pl.kind).deco && pl.fw * pl.fh >= 4;
+  const deco = def(pl.kind).deco && pl.kind !== 'gate';
+  let best: [number, number] | null = null;
+  let bs = 1e9;
+  for (let y = from[1] - maxR; y <= from[1] + maxR; y++)
+    for (let x = from[0] - maxR; x <= from[0] + maxR; x++) {
+      if (x < 0 || y < 0 || x >= N || y >= N) continue;
+      const t = { ...pl, tx: x - Math.floor((pl.fw - 1) / 2), ty: y - Math.floor((pl.fh - 1) / 2) };
+      if (!canPlace(t, pl.move) || blocksDoor(t, pl.move)) continue;
+      let sc = Math.hypot(x - from[0], y - from[1]);
+      if (big) {
+        let touch = 0;
+        for (let i = -1; i <= t.fw; i++) for (const j of [-1, t.fh]) touch += !inLand(t.tx + i, t.ty + j) || grid[t.ty + j]?.[t.tx + i] ? 1 : 0;
+        sc -= touch * 0.35;
+      }
+      if (deco) {
+        const ghost = { kind: pl.kind, tx: t.tx, ty: t.ty, fw: pl.fw, fh: pl.fh, lvl: 1, hue: null, inside: [], sprite: pl.sprite } as unknown as Building;
+        if (sc < 5 && computeSets(world.objs.concat(ghost)).some((s) => s.members.includes(ghost))) sc -= 2;
+      }
+      if (sc < bs) {
+        bs = sc;
+        best = [t.tx, t.ty];
+      }
+    }
+  return best;
+}
+
+/** 이어 놓기 대상: 1칸짜리 순수 장식 (모닥불·게시판처럼 기능이 있는 것·정문은 하나씩) */
+const chainable = (k: Kind) => {
+  const d = def(k);
+  return !!d.deco && d.size[0] === 1 && d.size[1] === 1 && !d.act && !d.levels && !d.unique && k !== 'board';
+};
+
+/** 고스트 옆에 붙어 다니는 ✓/✕/↻ (배치 막대의 버튼을 옮겨 온다 · id 그대로) */
+let ghostRaf = 0;
+function ghostLoop() {
+  cancelAnimationFrame(ghostRaf);
+  const box = $('#ghostBtns');
+  const step = () => {
+    const pl = placing.pl;
+    if (!pl || !box) {
+      if (box) box.hidden = true;
+      return;
+    }
+    if (pl.tx != null && scene()) {
+      // 발판 앞 꼭짓점(아래) 밑에 · 화면 아래 막대와 겹치면 고스트 위로
+      const [fx, fy] = tileXY(pl.tx + pl.fw, pl.ty! + pl.fh);
+      const [, topY] = tileXY(pl.tx, pl.ty!);
+      const w = box.offsetWidth || 180;
+      const h = box.offsetHeight || 56;
+      const bottomLimit = innerHeight - 250;
+      let y = fy + 10;
+      if (y + h > bottomLimit) y = topY - h - 70 * view.SC;
+      const x = Math.max(8, Math.min(innerWidth - w - 8, fx - w / 2));
+      box.style.transform = `translate(${Math.round(x)}px, ${Math.round(Math.max(64, y))}px)`;
+      box.hidden = false;
+    }
+    ghostRaf = requestAnimationFrame(step);
+  };
+  step();
+}
+
+/** 놓은 뒤 몇 초 동안 「↶ 되돌리기」 (꾸미기 모드 밖에서도 실수 바로잡기 1번) */
+let snackT = 0;
+function undoSnack(text: string) {
+  let el = document.getElementById('undoSnack');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'undoSnack';
+    el.className = 'px';
+    document.getElementById('view')!.appendChild(el);
+  }
+  el.innerHTML = `<span>${esc(text)}</span><button id="snackUndo">↶ 되돌리기</button>`;
+  el.hidden = false;
+  (el.querySelector('#snackUndo') as HTMLElement).onclick = () => {
+    const l = canUndo() ? undo() : null;
+    if (l) toast(`되돌렸어요 · ${l}`);
+    el!.hidden = true;
+    game.syncHud();
+  };
+  clearTimeout(snackT);
+  snackT = window.setTimeout(() => (el!.hidden = true), 5000);
+}
+
+/** 보관함에서 꺼내 놓기 */
+export function startTakeOut(s: StoredObj) {
+  const d = def(s.kind);
+  const pl: Placement = { kind: s.kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false, flip: s.flip, store: s };
+  const near = nearViewSpot(pl, viewCenterTile(), 14);
+  if (near) [pl.tx, pl.ty] = near;
+  else suggestSpot(pl);
+  if (pl.tx == null) return toast('놓을 자리가 없어요 · 땅을 넓히거나 다른 걸 넣어 두세요');
+  openPlace(pl);
 }
 
 export function startPlace(kind: Kind, prop?: string) {
@@ -97,11 +230,16 @@ export function startPlace(kind: Kind, prop?: string) {
   landHint.firstBuild = !PG.buildTipSeen;
   const d = def(kind);
   const pl: Placement = { kind, sprite: d.sprite, fw: d.size[0], fh: d.size[1], tx: null, ty: null, ok: false, prop };
-  suggestSpot(pl);
-  // 베타: 장식은 어울림이 생기는 자리를 먼저 권한다 (아직 못 찾은 어울림이면 더)
-  if (d.deco && kind !== 'gate') {
-    const best = harmonySpot(pl);
-    if (best) [pl.tx, pl.ty] = best;
+  // BUILDUX §1-7: 화면 가운데에서 가장 가까운 놓을 수 있는 자리 (정문은 입구 자리)
+  const near = kind === 'gate' ? null : nearViewSpot(pl);
+  if (near) [pl.tx, pl.ty] = near;
+  else {
+    suggestSpot(pl);
+    // 베타: 장식은 어울림이 생기는 자리를 먼저 권한다 (아직 못 찾은 어울림이면 더)
+    if (d.deco && kind !== 'gate') {
+      const best = harmonySpot(pl);
+      if (best) [pl.tx, pl.ty] = best;
+    }
   }
   // 핫픽스 8: 땅에 이 크기 빈자리가 하나도 없으면 모모의 자리 정리 도우미
   if (pl.tx == null && !prop) return offerTidy(kind, pl);
@@ -168,7 +306,8 @@ export function movePlacement(fx: number, fy: number) {
   pl.ty = ty;
   pl.snapT = S.T;
   check(pl);
-  if (!pl.ok) sfx('place_bad');
+  // BUILDUX §1-3: 칸이 바뀔 때마다 「톡」 (못 놓는 칸은 낮은 소리)
+  sfx(pl.ok ? 'tap' : 'place_bad');
   placeText(pl);
 }
 
@@ -183,21 +322,76 @@ export function rotatePlacement() {
   placeText(pl);
 }
 
-export function cancelPlace() {
+/** 배치 끝내기 · byUser = ✕·오른쪽 클릭·Esc (BUILDUX §6: edit_cancel) */
+export function cancelPlace(byUser = false) {
+  const pl = placing.pl;
+  if (byUser && pl && !pl.chain) trackEv('edit_cancel', { kind: pl.kind, move: !!pl.move });
   placing.pl = null;
   $('#placebar').hidden = true;
+  const gb = document.getElementById('ghostBtns');
+  if (gb) gb.hidden = true;
   $('#view').classList.remove('placing');
+  buildHooks.redraw();
 }
 
 function confirmPlace() {
   const pl = placing.pl;
   if (!pl || !pl.ok) return;
-  // TOWN T2: 꾸미기 모드에서 옮긴 것도 되돌리기에
-  const mv = pl.move ? { o: pl.move, tx: pl.move.tx, ty: pl.move.ty, flip: pl.move.flip } : null;
-  if (pl.move ? game.moveBuilding(pl) : game.placeBuilding(pl)) {
-    if (mv && decorView.on) noteMove(mv.o, mv.tx, mv.ty, mv.flip);
-    cancelPlace();
+  // 보관함에서 꺼내 놓기 (무료)
+  if (pl.store) {
+    const o = takeOut(pl.store, pl.tx!, pl.ty!, !!pl.flip);
+    if (o) {
+      game.thud(o);
+      cancelPlace();
+      undoSnack(`${def(o.kind).name}을(를) 꺼내 놓았어요`);
+    }
+    return;
   }
+  // TOWN T2: 꾸미기 모드에서 옮긴 것도 되돌리기에 (BUILDUX: 밖에서 옮긴 것도)
+  const mv = pl.move ? { o: pl.move, tx: pl.move.tx, ty: pl.move.ty, flip: pl.move.flip } : null;
+  const gold0 = S.gold;
+  if (pl.move ? game.moveBuilding(pl) : game.placeBuilding(pl)) {
+    if (mv) noteMove(mv.o, mv.tx, mv.ty, mv.flip);
+    if (!pl.move && !pl.prop) {
+      const o = world.objs[world.objs.length - 1];
+      notePlace(o, gold0 - S.gold);
+      // BUILDUX §1-8: 최근 놓은 장식
+      if (def(pl.kind).deco) PG.decor.recent = [pl.kind, ...(PG.decor.recent ?? []).filter((k) => k !== pl.kind)].slice(0, 5);
+      // BUILDUX §1-6: 장식은 ✕를 누를 때까지 다음 칸에 이어서
+      if (chainable(pl.kind)) return chainNext(pl);
+    }
+    cancelPlace();
+    if (!decorView.on) undoSnack(pl.move ? `${def(pl.kind).name}을(를) 옮겼어요` : `${def(pl.kind).name}을(를) 놓았어요`);
+  }
+}
+
+/** 이어 놓기: 방금 놓은 칸 옆 빈칸으로 같은 장식 고스트 (금화가 모자라면 멈춤) */
+function chainNext(prev: Placement) {
+  const cost = buildCost(prev.kind);
+  if (S.gold < cost) {
+    cancelPlace();
+    toast('금화가 모자라 이어 놓기를 멈췄어요');
+    return;
+  }
+  const pl: Placement = { kind: prev.kind, sprite: prev.sprite, fw: prev.fw, fh: prev.fh, tx: null, ty: null, ok: false, flip: prev.flip, chain: true };
+  // 오른쪽 → 아래 → 왼쪽 → 위 → 가까운 곳
+  for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const t = { ...pl, tx: prev.tx! + dx, ty: prev.ty! + dy };
+    if (canPlace(t) && !blocksDoor(t)) {
+      [pl.tx, pl.ty] = [t.tx, t.ty];
+      break;
+    }
+  }
+  if (pl.tx == null) {
+    const near = nearViewSpot(pl, [prev.tx!, prev.ty!], 6);
+    if (near) [pl.tx, pl.ty] = near;
+  }
+  if (pl.tx == null) {
+    cancelPlace();
+    toast('근처에 빈칸이 없어 이어 놓기를 멈췄어요');
+    return;
+  }
+  openPlace(pl, false);
 }
 
 // ───────── 독 아이콘 (도트) ─────────
@@ -340,7 +534,20 @@ export function initHud() {
     const zs = zoomsNow();
     setZoom(zs[(zs.indexOf(S.zoom) + 1) % zs.length]);
   };
-  $('#placeNo').onclick = cancelPlace;
+  // BUILDUX §1-4: ✓/✕/↻ 를 고스트 옆으로 (id 그대로) · 이유·어울림 말풍선
+  const gb = document.createElement('div');
+  gb.id = 'ghostBtns';
+  gb.hidden = true;
+  gb.innerHTML = '<p id="ghostTag" hidden></p>';
+  gb.appendChild($('#placebar .pbtns'));
+  $('#placebar').parentElement!.appendChild(gb);
+  $('#placeNo').textContent = '✕';
+  $('#placeRot').textContent = '↻';
+  $('#placeOk').textContent = '✓';
+  $('#placeNo').setAttribute('aria-label', '취소');
+  $('#placeRot').setAttribute('aria-label', '좌우 반전');
+  $('#placeOk').setAttribute('aria-label', '확정');
+  $('#placeNo').onclick = () => cancelPlace(true);
   $('#placeRot').onclick = rotatePlacement;
   $('#placeOk').onclick = confirmPlace;
   $('#vLike').onclick = game.likeNeighbor;

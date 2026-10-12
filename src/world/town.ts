@@ -4,7 +4,7 @@ import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
 import { FLIP, META } from '../engine/assets';
 import { N, sx, sy, TW } from '../engine/iso';
-import { P, S, world, type Building } from './state';
+import { P, S, world, type Building, type StoredObj } from './state';
 import { monumentUnlocked } from './progress';
 
 // ───────── 땅 ─────────
@@ -204,6 +204,8 @@ export function capacity(objs = world.objs): number {
 
 /** TOWN T2: 칠한 칸 (이웃 구경 중엔 없음) — 연못은 걸을 수 없고 그 위엔 못 짓는다 · 길 재질 칸은 길 */
 export const paintOf = (x: number, y: number): string | undefined => (S.visiting ? undefined : P.decor?.paint?.[`${x},${y}`]);
+/** BUILDUX §3-3: 모서리를 둥글린 길 칸 */
+export const roundOf = (x: number, y: number): boolean => !S.visiting && !!P.decor?.round?.[`${x},${y}`];
 export const pondAt = (x: number, y: number) => paintOf(x, y) === 'pond';
 const PAINT_PATHS = new Set(['stone', 'dirt', 'brick', 'deck', 'step']);
 
@@ -273,8 +275,8 @@ export function astar(sx0: number, sy0: number, gx: number, gy: number, free = f
       if (!inMap(nx, ny)) continue;
       const nk = ny * N + nx;
       if (closed[nk] || (nk !== goal && !walkable(nx, ny, free))) continue;
-      // 흙길 칸을 선호
-      const ng = g[k] + 1 + (pathT.has(nk) ? -0.4 : 0);
+      // 흙길 칸을 선호 · BUILDUX §7: 길을 깔 때는 유저가 지운 칸(noPath)을 돌아간다
+      const ng = g[k] + 1 + (pathT.has(nk) ? -0.4 : 0) + (avoidNo?.has(nk) ? 8 : 0);
       if (ng < g[nk]) {
         g[nk] = ng;
         came[nk] = k;
@@ -286,9 +288,12 @@ export function astar(sx0: number, sy0: number, gx: number, gy: number, free = f
 }
 
 /** 격자를 새로 만들고 흙길을 다시 깐다 (각 문 → 여관 문). 던전 가는 길은 땅 밖이어도 깐다. */
+/** BUILDUX §7: 길을 다시 깔 때만 쓰는 「지운 칸」 (손님 걷기엔 영향 없음) */
+let avoidNo: Set<number> | null = null;
 export function rebuildPaths() {
   grid = occ();
   pathT = new Set();
+  avoidNo = new Set(S.visiting ? [] : Object.keys(P.decor?.noPath ?? {}).map((k) => { const [x, y] = k.split(',').map(Number); return y * N + x; }));
   const inn = findKind('inn');
   groundVersion++;
   if (!inn) return;
@@ -313,6 +318,9 @@ export function rebuildPaths() {
   const pe = auto ? astar(ex, ey, hub[0], hub[1]) : null;
   if (pe) for (const [x, y] of pe) if (!grid[y][x] || grid[y][x]!.kind === 'gate') pathT.add(y * N + x);
   if (auto) pathT.add(hub[1] * N + hub[0]);
+  // 돌아갈 수 없어 지나간 지운 칸도 그리지 않는다 (지운 그대로 보이게)
+  for (const k of avoidNo) pathT.delete(k);
+  avoidNo = null;
   // TOWN T2: 칠한 길 (자동 길과 상관없이)
   if (!S.visiting) for (const [k, c] of Object.entries(P.decor?.paint ?? {})) if (PAINT_PATHS.has(c)) { const [x, y] = k.split(',').map(Number); if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x); }
   layoutHooks.after();
@@ -376,6 +384,10 @@ export interface Placement {
   why?: string;
   /** 칸이 바뀐 순간 (톡 튕기는 연출) */
   snapT?: number;
+  /** BUILDUX §2-3: 보관함에서 꺼내 놓는 중 (무료) */
+  store?: StoredObj;
+  /** BUILDUX §1-6: 같은 장식을 이어서 놓는 중 */
+  chain?: boolean;
 }
 
 /** 지금 배치 모드 (null이면 아님) */
