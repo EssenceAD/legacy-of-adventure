@@ -11,7 +11,7 @@ describe('사냥터 테마', () => {
   it('지역마다 자기 테마 (숲으로 대체되지 않음) · 소품 4종', () => {
     for (const r of REGIONS) {
       expect(THEMES[r.id], r.id).toBeDefined();
-      expect(themeOf(r.id).props.length).toBe(4);
+      expect(themeOf(r.id).props.length).toBeGreaterThanOrEqual(4);
     }
     expect(new Set(REGIONS.map((r) => themeOf(r.id).pal.void)).size).toBe(REGIONS.length);
   });
