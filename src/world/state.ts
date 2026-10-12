@@ -337,6 +337,9 @@ export function freshProgress() {
       taps: 0,
       /** PHOTO_SPEC: 찍은 사진 수 */
       photos: 0,
+      /** MYTHIC: 토벌 보스 처치 · 밤 출발 의뢰 성공 */
+      raidKills: 0,
+      nightWins: 0,
     },
     /** 토벌전: 이번 주 보스(월요일 교체) · 누적 체력 · 하루 도전 · 떠돌이 보스 · 기록 */
     raid: {

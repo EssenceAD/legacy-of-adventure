@@ -1,5 +1,6 @@
 // 5단계 2장: 사냥 — 지역별 10스테이지(x-10 = 지역 보스). 파밍 → 강해짐 → 다음 스테이지
 // 깬 스테이지는 자동 사냥으로 반복, 꺼져 있어도 가장 높은 스테이지 기준 방치 보상(방치 상한 안에서, 원정과 합산)
+import { mythicHuntWin } from './mythic';
 import { BOSSES } from '../data/bosses';
 import { buffOf } from './facilities';
 import { CONFIG } from '../data/config';
@@ -113,6 +114,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
 
 /** 스테이지 돌파 (직접·자동 전투 한 판) */
 export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true): HuntReward {
+  // MYTHIC 바엘 부탁: 별의 심연 x-10을 바엘과 함께
+  mythicHuntWin(r, s, members);
   const key = `${r}-${s}`;
   const first = !P.hunt.firstClear.includes(key);
   if (first) P.hunt.firstClear.push(key);

@@ -1,5 +1,6 @@
 // 이웃 마을: 실제 유저 마을(villages.snapshot) + 예시 마을. 그릴 때 핫픽스 4 배치 검사(placeLayout)를 그대로 거친다.
 import type { Kind } from '../data/catalog';
+import { mythicHeart } from '../world/mythic';
 import { CATALOG } from '../data/catalog';
 import { NEIGHBORS, type Neighbor } from '../data/neighbors';
 import * as game from '../game';
@@ -111,6 +112,7 @@ export async function likeReal(v: Neighbor): Promise<boolean> {
     return false;
   }
   v.like = r;
+  if (r !== before) mythicHeart(v.uid!);
   if (r === before) {
     toast('오늘은 이미 좋아요를 남겼어요 · 내일 또 와 주세요');
     return false;

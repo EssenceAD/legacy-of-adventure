@@ -1,5 +1,8 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { diaryList, diaryOpen } from '../world/diary';
+import { mythicProgress } from '../world/mythic';
+import { MYTHIC, MYTHIC_HINT } from '../data/story/mythic';
 import { PIONEERS } from '../data/story/easter';
 import { PIONEER_IDS } from '../world/easter';
 import { bookSteps, claimBook, DROP_KINDS, groupOf, ownedDrops, seasonLock } from '../world/decodrop';
@@ -52,7 +55,7 @@ export function openDex(tab = dTab) {
         ).join('')}</div>`,
     ).join('');
     body = `<p class="sub">손님 도감 ${P.dex.guests.length}/${GUEST_DEX_TOTAL} · 칸마다 전투력 +${pct(CONFIG.dex.guestCellPct, 1)}</p>
-      <p class="note">종족 × 직업(${GUEST_KINDS.map((k) => CLASSES[k].name).join('·')}) × 희귀도(평범·특별·전설)</p><div class="dexg">${grid}</div>${rewardsRow('guests')}`;
+      <p class="note">종족 × 직업(${GUEST_KINDS.map((k) => CLASSES[k].name).join('·')}) × 희귀도(평범·특별·전설)</p><div class="dexg">${grid}</div>${rewardsRow('guests')}${diaryBlock()}`;
   } else if (tab === 1) {
     const grades: Grade[] = ['n', 'r', 'e', 'l'];
     const grid = REGIONS.map(
@@ -106,6 +109,20 @@ export function openDex(tab = dTab) {
     }).join('');
     const steps = bookSteps().map((b) => `<div class="dstep ${b.got ? 'got' : ''}"><span>${b.n}종 모으기 · 💰${b.gold.toLocaleString('ko-KR')}${b.title ? ` · 칭호 「${esc(b.title)}」` : ''}</span>${b.got ? '<button disabled>받음</button>' : `<button data-db="${b.i}" ${b.done ? '' : 'disabled'}>받기</button>`}</div>`).join('');
     body = `<p class="sub">장식 ${own.size}/${DROP_KINDS.length}종 · 건설 → 장식에서 사요</p><div class="dsteps">${steps}</div><div class="dgrid">${cells}</div>`;
+  } else if (tab === 7) {
+    // MYTHIC: 신화 9명 — 씨앗 전엔 실루엣 · 씨앗이면 「다음 여관에서」 · 만나면 칭호·스킬·부탁·열쇠 조각
+    const seeds = P.legacy.mythicSeeds ?? [];
+    const cells = MYTHIC.map((m) => {
+      const L = LEGENDS.find((l) => l.key === m.key);
+      const st = P.story.mythic?.[m.key];
+      if (st?.met) {
+        const [n, goal] = mythicProgress(m.key);
+        return `<div class="mcell met"><b>${esc(L?.name ?? m.key)} · ${esc(m.title)}</b><small>✦ ${esc(m.skill.name)} — ${esc(m.skill.desc)}</small><small>${st.done ? '✓ ' : ''}부탁: ${esc(m.request.text)} (${Math.min(n, goal)}/${goal})</small>${st.done ? `<small class="g">열쇠 조각 「${esc(m.shard)}」</small>` : ''}</div>`;
+      }
+      if (seeds.includes(m.key)) return `<div class="mcell seed"><b>${esc(L?.name ?? m.key)}</b><small>기억의 씨앗 · 다음 여관에서 신화로 찾아와요</small></div>`;
+      return `<div class="mcell"><b>${esc(L?.name ?? '???')}</b><small>???</small></div>`;
+    }).join('');
+    body = `<p class="sub">신화 ${MYTHIC.filter((m) => P.story.mythic?.[m.key]?.met).length}/${MYTHIC.length} · 열쇠 조각 ${(P.legacy.shards ?? []).length}개</p><p class="note">${esc(MYTHIC_HINT)}</p><div class="mgrid">${cells}</div>`;
   } else if (tab === 5) {
     // 베타 1장: 어울림 24칸 — 발견한 것은 구성·효과, 아직은 ???와 힌트
     const cells = HARMONIES.map((h) => {
@@ -139,7 +156,7 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
   $$('[data-db]').forEach(
@@ -259,4 +276,11 @@ export function openLedger(tab = lTab) {
 function ago(t: number): string {
   const m = Math.floor((Date.now() - t) / 60000);
   return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+}
+
+/** STORY v2: 손님 일기 (서재 Lv3+) — 펼친 장만 */
+function diaryBlock(): string {
+  const ds = diaryList();
+  if (!diaryOpen() && !ds.length) return '<p class="note">서재 Lv3부터 단골들의 「손님 일기」를 모을 수 있어요</p>';
+  return `<h4>손님 일기 ${ds.length}권</h4>${ds.length ? ds.map((d) => `<details class="diary"><summary>${esc(d.title)} <small>${d.pages.length}/${d.total}장</small></summary>${d.pages.map((p, i) => `<p><b>${i + 1}.</b> ${esc(p)}</p>`).join('')}</details>`).join('') : '<p class="note">단골끼리 케미가 오르면 일기가 한 장씩 나와요</p>'}`;
 }

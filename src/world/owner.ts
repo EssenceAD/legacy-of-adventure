@@ -1,5 +1,6 @@
 // 4단계: 여관 주인(나) · 인연(호감도) · 방랑의 불씨 · 엔딩 · 유산
 import { sfx } from '../audio/sfx';
+import { keepMythicSeeds, mythicSeedMoment } from './mythic';
 import { grantLegacy } from './story';
 // 주인 능력치는 전투력에 「주인 보너스 최대 +15%」로만 들어가고, 인연 단계는 그 영웅 전투력 +2%/단계.
 // 다른 world 모듈이 import해도 꼬이지 않게: state · data · events · clock · progress만 쓴다. 창은 ownerHooks로.
@@ -328,6 +329,8 @@ export function tieEvent(id: string) {
   };
   let choices: TalkChoice[];
   if (next === 5) {
+    // MYTHIC: 전설과 인연 5 → 다음 여관에서 신화로
+    mythicSeedMoment(id);
     choices = (['lover', 'comrade'] as const).map((rel) => ({
       label: rel === 'lover' ? '연인이 되자' : '평생의 전우가 되자',
       fn: () => {
@@ -625,6 +628,7 @@ export function inheritLegacy(name: string, gender: Gender, job: Job, origin: st
   const o = P.owner!;
   P.legacy.prev = { name: o.name, job: o.job, gender: o.gender, origin: o.origin, ending: o.ended ?? '', linked: [...o.linked] };
   P.legacy.gen++;
+  keepMythicSeeds();
   P.ties = {};
   createOwner(name, gender, job, origin);
 }

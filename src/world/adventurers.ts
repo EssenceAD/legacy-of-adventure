@@ -1,5 +1,6 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
 import { sfx } from '../audio/sfx';
+import { mythicStat } from './mythic';
 import { CAMEO_DEF } from './easter';
 import { libraryXp } from './facilities';
 import {
@@ -140,7 +141,8 @@ export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
   const m0 = 1 + dexBonus() + heroStarBonus() + ownerBonus() + legacyPower(a);
   // 전설 영웅: ★ 하나 오를 때마다 +8%
   const legend = a.legendId ? 1 + CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
-  const rest = legend * (1 + bondTierBonus(a)) * chemMult;
+  // MYTHIC: 신화 영웅 능력치 ×1.15
+  const rest = legend * (1 + bondTierBonus(a)) * chemMult * mythicStat(a);
   return (items) => {
     let gear = 0;
     for (const it of items) for (const k of STATS) gear += gearStat(a, it, k);

@@ -217,6 +217,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
     P.raid.hpLeft = Math.max(0, P.raid.hpLeft - applied);
     killed = P.raid.hpLeft <= 0 && !P.raid.killed;
     if (killed) {
+      P.counters.raidKills = (P.counters.raidKills ?? 0) + 1;
       P.raid.killed = true;
       P.raid.weeksKilled++;
     }

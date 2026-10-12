@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { bestOf } from './town';
+import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
 import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
@@ -140,10 +141,10 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   let power = 0;
   for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
   // BUILDINGS_SPEC §3: 힘의 물약
-  power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')));
+  power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')) * mythicAtk(members, q.region));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut());
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut() + mythicTimeCut(members));
   return {
     power,
     chem,
@@ -208,7 +209,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()));
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)));
+  // MYTHIC 루나 부탁: 밤에 출발한 의뢰 성공
+  if (win && nightStart(run.start)) P.counters.nightWins = (P.counters.nightWins ?? 0) + 1;
   tieRun(members);
   const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
   const levelUps: string[] = [];
@@ -413,4 +416,10 @@ export function powerTips(members: Actor[]): Tip[] {
     }
   }
   return tips.sort((p, q) => q.gain - p.gain).slice(0, 3);
+}
+
+/** 밤(20~04시)에 출발했나 */
+function nightStart(t: number): boolean {
+  const h = new Date(t).getHours();
+  return h >= 20 || h < 4;
 }

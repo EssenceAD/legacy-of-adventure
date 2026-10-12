@@ -1,5 +1,7 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
 import { CONFIG } from '../data/config';
+import { diaryTick } from '../world/diary';
+import { mythicEndLines, mythicTick } from '../world/mythic';
 import { TRUE_AFTER, TRUE_HINTS, TRUE_LETTER, TRUE_STAR_LINES } from '../data/story/v3';
 import { endsSeen, onPickRoute, routePreDone, routeTick, trueReady } from '../world/routes';
 import { openGoals, routeCard, routeCardText, routeCut, editorVisit, type RouteStoryApi } from './routes';
@@ -110,7 +112,7 @@ const api: RouteStoryApi = {
   openLetter: () => openLetter(),
   endRoute: (r, cut) => {
     lastThumb = '';
-    playStory(cut, () => {
+    playStory([...cut.slice(0, -1), ...mythicEndLines(), ...cut.slice(-1)], () => {
       const res = finishStory(r);
       if (lastThumb) setPref('storyThumb.' + res.id, lastThumb);
       const mem = res.mem >= 0 ? MEMORIES[res.mem] : null;
@@ -175,7 +177,7 @@ export function initStoryUI() {
     const dt = Math.min(5, (now - last) / 1000);
     last = now;
     if (document.hidden) return;
-    const l = storyTick(dt) ?? routeTick();
+    const l = storyTick(dt) ?? routeTick() ?? mythicTick() ?? diaryTick();
     if (l) queue.push(l);
     if (busy()) return;
     // STORY v3: 마을 루트 앞 셋을 마치면 편집장이 찾아온다
@@ -310,7 +312,7 @@ export function playRetireEnding() {
   if (P.story.heir !== 1 || isTalking()) return;
   closeWin();
   lastThumb = '';
-  playStory([...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]], () => {
+  playStory([...STORY_END.retire.cut, ...mythicEndLines(), ['narr', PIONEER_CREDIT]], () => {
     const r = finishStory('retire');
     if (lastThumb) setPref('storyThumb.' + r.id, lastThumb);
     syncYuan();

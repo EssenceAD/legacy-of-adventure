@@ -1,6 +1,7 @@
 // 전투 개편 1차: 쿼터뷰 필드 액션 — 상태와 규칙 (그리기는 draw.ts, 조작·화면은 ui.ts)
 //  좌표는 타일(마을과 같은 쿼터뷰). 주인공 1명 조종 + 동료 2명 AI. 몬스터: 다가오기 → 예고(빨간 범위 0.6초) → 공격 → 빈틈 0.8초
 import { CONFIG } from '../data/config';
+import { mythicAtk, mythicDef, mythicHeal } from '../world/mythic';
 import { buffOf } from '../world/facilities';
 import { shakeParams } from '../engine/shake';
 import type { RegionId } from '../data/items';
@@ -291,7 +292,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
     const max = Math.round(C.hpBase + a.lvl * C.hpPerLv);
     return {
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
-      actor: a, job, power: powerOf(a) * rm * (1 + buffOf('power')), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
+      actor: a, job, power: powerOf(a) * rm * (1 + buffOf('power')) * mythicAtk(members.slice(0, 3), region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
     };
   };
@@ -476,7 +477,7 @@ function killMob(f: Field, m: Unit) {
 function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
   if (u.dead || (u.inv ?? 0) > 0) return;
   // BUILDINGS_SPEC §3: 돌피부 물약 — 받는 피해 −15%
-  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')));
+  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
   u.hp -= dmg;
   u.flash = 1 / 30 + 0.001;
   u.hurtT = 0.22;
@@ -702,7 +703,7 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
       f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.6, r: 2.5 });
       for (const a of f.allies)
         if (!a.dead && dist(a, u) <= 2.5) {
-          const h = Math.round(a.max * 0.3);
+          const h = Math.round(a.max * 0.3 * mythicHeal(f.allies.map((x) => x.actor!).filter(Boolean)));
           a.hp = Math.min(a.max, a.hp + h);
           f.nums.push({ x: a.x, y: a.y, text: '+' + h * 10, crit: false, heal: true, t: 0, dx: 0 });
         }
