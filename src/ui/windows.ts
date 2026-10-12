@@ -1,5 +1,6 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { landReqs, landWhy } from '../world/landreq';
 import { GROUPS, groupOf, markSeen, unseenDrops } from '../world/decodrop';
 import { putAway, storeWhy } from '../world/store';
 import { sfx } from '../audio/sfx';
@@ -526,7 +527,8 @@ export function openLand() {
       const st = i + 1;
       const need = CONFIG.landStars[i] ?? 0;
       const right = st === S.land ? '현재' : st < S.land ? '완료' : `${fmt(L.cost)}G`;
-      const req = st > S.land && need ? ` · <span class="${stars() >= need ? 'good' : 'bad'}">평판 ★${need}</span>` : '';
+      // LAND2: 다음 단계 조건을 줄줄이 (됐으면 초록 · 아니면 빨강)
+      const req = st === S.land + 1 ? landReqs(st).filter((r) => !/^금화/.test(r.text)).map((r) => ` · <span class="${r.ok ? 'good' : 'bad'}">${r.text}</span>`).join('') : st > S.land && need ? ` · <span class="${stars() >= need ? 'good' : 'bad'}">평판 ★${need}</span>` : '';
       return `<button class="stp ${st === S.land ? 'cur' : ''}" data-l="${st}" ${st !== S.land + 1 ? 'disabled' : ''}><span style="grid-column:1/3"><b>${st}단계 · ${L.size}칸</b><small>${L.opens}${req}</small></span><em>${right}</em></button>`;
     })
     .join('');
@@ -537,14 +539,9 @@ export function openLand() {
       (b.onclick = () => {
         const l = +b.dataset.l!;
         if (l !== S.land + 1) return;
-        const cost = CONFIG.land[l - 1].cost;
-        const need = CONFIG.landStars[l - 1] ?? 0;
-        if (stars() < need) {
-          toast(`평판 ★${need}이 필요해요 · 오늘의 목표에서 평판을 확인해요`);
-          return;
-        }
-        if (S.gold < cost) {
-          toast(`금화가 모자라요 (${fmt(cost)}G 필요)`);
+        const why = landWhy(l);
+        if (why) {
+          toast(why);
           return;
         }
         closeWin();

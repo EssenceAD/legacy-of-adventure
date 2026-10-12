@@ -515,7 +515,10 @@ function bindInput() {
       const r = pinchDist() / pinchBase;
       const P = CONFIG.view.pinchStep;
       if (r > P || r < 1 / P) {
-        setZoom(S.zoom + (r > 1 ? 1 : -1));
+        // 핀치: 배율 목록에서 한 칸씩 (×0.5 포함)
+        const zs = zoomsNow();
+        const i = zs.indexOf(S.zoom);
+        setZoom(zs[Math.max(0, Math.min(zs.length - 1, (i < 0 ? 0 : i) + (r > 1 ? 1 : -1)))]);
         pinchBase = pinchDist();
       }
       return;

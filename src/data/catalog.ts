@@ -216,7 +216,8 @@ export const INSIDE_TEXT: Partial<Record<Act, string>> = {
 /** 새 게임 시작 배치 (땅 1단계) */
 // 땅 개편: 맵 24 · 1단계 땅 [14,22). 옛 (6,4)·(5,8)에 +12 · 던전은 1단계 땅 밖 오른쪽 뒤 (맵 안에 들어가게)
 export const START_TOWN: [Kind, number, number][] = [
-  ['inn', 18, 16],
-  ['dungeon', 21, 10],
-  ['well', 17, 20],
+  // LAND2: 맵 32 · +8
+  ['inn', 26, 24],
+  ['dungeon', 29, 18],
+  ['well', 25, 28],
 ];

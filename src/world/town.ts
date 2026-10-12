@@ -444,7 +444,8 @@ export function suggestSpot(pl: Placement) {
       if (canPlace(pl) && !blocksDoor(pl)) return;
     }
   }
-  const mid = N / 2;
+  // LAND2: 맵 가운데가 아니라 땅 가운데에서 가깝게
+  const mid = (a + b) / 2;
   // 핫픽스 8: 큰 건물(장식 아님)은 가장자리·다른 건물에 붙여서 — 가운데부터 놓으면 땅이 조각나 나중 건물(대장간 3×3)이 들어갈 자리가 사라진다
   if (!def(pl.kind).deco && pl.fw * pl.fh >= 4) {
     let best: [number, number] | null = null;

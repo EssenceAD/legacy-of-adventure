@@ -20,8 +20,10 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     .map((e) => [e[0] as Kind, Number(e[1]), Number(e[2]), Number(e[3]) || 1, typeof e[4] === 'number' ? e[4] : null, !!e[5]] as Neighbor['layout'][number]);
   if (!layout.some((e) => e[0] === 'inn')) return null;
   // 땅 개편 전(v1, 맵 14) 마을: 내 저장과 같은 규칙으로 좌표를 옮긴다
-  if ((s.v ?? 1) < 2) {
-    const k = bigMapShift(Number(s.land) || 1);
+  // LAND2: v1(맵 14) → v7 옮김 + 8 · v2(맵 24) → +8
+  const ver = s.v ?? 1;
+  if (ver < 3) {
+    const k = (ver < 2 ? bigMapShift(Number(s.land) || 1) : 0) + CONFIG.v7.shift;
     for (const e of layout) {
       e[1] += k;
       e[2] += k;
@@ -33,7 +35,7 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     name: (s.innName || '이름 없는 여관').slice(0, 12),
     // GUEST_SPEC §2: 주인 이름이 없으면(게스트) 「○○ 여관 주인」
     owner: (s.owner || '').slice(0, 8),
-    land: Math.max(1, Math.min(5, Math.floor(Number(s.land) || 1))),
+    land: Math.max(1, Math.min(CONFIG.land.length, Math.floor(Number(s.land) || 1))),
     like: r.likes ?? 0,
     repHero: s.repHero ?? null,
     grade: Math.max(0, Math.min(4, Math.floor(Number(s.grade) || 0))),

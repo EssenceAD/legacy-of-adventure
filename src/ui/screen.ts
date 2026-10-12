@@ -30,7 +30,8 @@ export function sizeClass(w: number, h: number): SizeClass {
 }
 
 /** 지금 크기 구간에서 고를 수 있는 배율 */
-export const zoomsNow = () => (screen.size === 'phone' ? CONFIG.view.zooms : U.wideZooms);
+/** LAND2: 폰에서 기기 픽셀 2배 이상이면 ×0.5 (논리 1px = 기기 1px · 도트 그대로) — 손으로만 고른다 (자동 배율은 그대로) */
+export const zoomsNow = () => (screen.size === 'phone' ? (devicePixelRatio >= 2 ? [0.5, ...CONFIG.view.zooms] : CONFIG.view.zooms) : U.wideZooms);
 
 /**
  * 땅 개편 §5: 지금 땅(가로 size×TW)이 화면 짧은 변의 70~80%를 채우는 정수 배율.

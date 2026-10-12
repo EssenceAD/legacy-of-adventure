@@ -33,6 +33,9 @@ export interface Highlight {
   go: HighlightGo;
 }
 export const HIGHLIGHTS: Record<string, Highlight[]> = {
+  '0.17.7-beta': [
+    { icon: '🗺️', text: '땅 6·7단계 — 30×30까지 넓혀요 (재료·장부 7장 필요)', label: '땅 보기', go: 'build' },
+  ],
   '0.17.4-beta': [
     { icon: '🌷', text: '새 장식 41종 — 둘레·정원·시장·나무·빛·동물… 땅 단계마다 열려요', label: '장식 보기', go: 'build' },
     { icon: '✨', text: '특별 장식 8종 — 황금 분수 · 영웅 동상 · 축제 불꽃놀이', label: '구경하기', go: 'build' },

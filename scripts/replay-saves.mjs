@@ -2,6 +2,7 @@
 //  비교: 건물 수 · 아이템 수 · 금화(우편함의 받을 금화 포함) · 영웅(영입) 수 · 땅 단계 — 불러오기 전(저장 JSON) vs 후(게임 안)
 //  플레이 기록은 끄고(telemetry false) · 로그인 없이 · 저장은 그 브라우저 안에서만
 //  실행: node scripts/replay-saves.mjs <저장 폴더>
+//  LAND2: BASE=<옛 빌드 주소> SHIFT=8 이면 같은 저장을 옛 빌드에서도 불러와 건물마다 자리(+SHIFT)·레벨·공사 상태까지 그대로인지 본다
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,6 +16,31 @@ const heroesOf = (s) => {
   const dex = s.progress?.dex?.heroes ?? {};
   return Object.values(dex).filter((h) => h?.recruited).length + Object.values(s.progress?.legends ?? {}).filter((l) => l?.st === 'joined').length;
 };
+/** 저장 하나를 그 빌드로 불러와 상태를 읽는다 */
+async function loadIn(url, raw) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.addInitScript((save) => {
+    try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
+    localStorage.clear();
+    localStorage.setItem('legacy-of-adventure-save', save);
+    localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
+    localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
+    localStorage.setItem('legacy-of-adventure-telemetry', 'false');
+  }, raw);
+  const p = await ctx.newPage();
+  try {
+    await p.goto(url, { waitUntil: 'networkidle' });
+    await p.waitForFunction(() => !!window.__S, null, { timeout: 20000 });
+    await p.waitForTimeout(1200);
+    await p.locator('#tCont').click({ timeout: 8000 });
+    await p.waitForTimeout(3000);
+    return await p.evaluate(() => (window.__world.home?.objs ?? window.__world.objs).map((o) => [o.kind, o.tx, o.ty, o.lvl, o.con ? o.con.kind + ':' + o.con.to : '', o.build === undefined ? 0 : 1]));
+  } finally {
+    await ctx.close();
+  }
+}
+const BASE = process.env.BASE;
+const SHIFT = Number(process.env.SHIFT ?? 0);
 for (const f of files) {
   const raw = fs.readFileSync(path.join(dir, f), 'utf8');
   const s = JSON.parse(raw);
@@ -58,6 +84,20 @@ for (const f of files) {
     if (after.land < before.land) lost.push(`땅 ${before.land}→${after.land}`);
   }
   if (errs.length) lost.push('에러: ' + errs.join(' | '));
+  // LAND2: 옛 빌드와 건물마다 비교 (자리 +SHIFT · 레벨 · 공사 상태)
+  if (BASE && after) {
+    try {
+      const [o0, o1] = [await loadIn(BASE, raw), await loadIn(process.env.URL ?? 'http://localhost:4190/', raw)];
+      const key = (o, k) => [o[0], o[1] + k, o[2] + k, o[3], o[4], o[5]].join('|');
+      const a = o0.map((o) => key(o, SHIFT)).sort();
+      const c = o1.map((o) => key(o, 0)).sort();
+      const miss = a.filter((x, i) => x !== c[i]);
+      if (a.length !== c.length || miss.length) lost.push(`자리·레벨·공사 다름 ${miss.length}개: ${miss.slice(0, 3).join(' ; ')}`);
+      else rows.push(`  ↳ ${f}: 건물 ${a.length}개 모두 자리 +${SHIFT} · 레벨 · 공사 상태 그대로`);
+    } catch (e) {
+      lost.push('비교 실패: ' + String(e).slice(0, 100));
+    }
+  }
   if (lost.length) fail++;
   rows.push(`${lost.length ? '✗' : '✓'} ${f} v${s.version} · 건물 ${before.buildings}→${after?.buildings ?? '?'} · 아이템 ${before.items}→${after?.items ?? '?'} · 금화 ${before.gold}→${after?.gold ?? '?'}${after?.mailGold ? `(+우편 ${after.mailGold})` : ''} · 영웅 ${before.heroes}→${after?.heroes ?? '?'} · 땅 ${before.land}→${after?.land ?? '?'}${lost.length ? '  ← ' + lost.join(', ') : ''}`);
   await ctx.close();

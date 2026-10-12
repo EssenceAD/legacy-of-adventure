@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { landWhy, payLand } from './world/landreq';
 import { decoCoupon, useDecoCoupon } from './world/easter';
 import { clearOverlays } from './ui/overlays';
 import { isDropKind, newAtLand, noteBought, ownedDrops } from './world/decodrop';
@@ -13,7 +14,7 @@ import { repairRaidTries } from './world/raid';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
-import { camFor, lookAt, N, sx, sy, view } from './engine/iso';
+import { camFor, lookAt, sx, sy, view } from './engine/iso';
 import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
 import { addOwner, addPostman, afterLayoutChange, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
@@ -317,11 +318,10 @@ export function replayOpening() {
 // ───────── 땅 ─────────
 
 export function expandLand(l: number) {
-  const cost = CONFIG.land[l - 1].cost;
-  const need = CONFIG.landStars[l - 1] ?? 0;
-  if (stars() < need) return toast(`평판 ★${need}이 필요해요`);
-  if (S.gold < cost) return toast('금화가 모자라요');
-  S.gold -= cost;
+  // LAND2: 금화 · 재료 · 보스 재료 · 평판 · 장부 장
+  const why = landWhy(l);
+  if (why) return toast(why);
+  payLand(l);
   // 땅 개편 §3: 새 범위 안의 나무를 기억해 두었다가 쓰러뜨린다 (바닥을 다시 그리면 사라지니까)
   const [oldA] = landBounds();
   const fallen = ground.wild.filter((w) => inLand(w.x, w.y, l) && !inLand(w.x, w.y));
@@ -345,7 +345,7 @@ export function expandLand(l: number) {
     const [x, y] = side === 0 ? [a + t * (b - a), a] : side === 1 ? [a, a + t * (b - a)] : side === 2 ? [a + t * (b - a), b] : [b, a + t * (b - a)];
     puff(sx(x, y), sy(x, y), '#efe2c6', (Math.random() - 0.5) * 30, -10 - Math.random() * 15, 1, 3);
   }
-  floatW(N / 2, N / 2, 40, '땅이 넓어졌어요!', 'big');
+  { const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2, 40, '땅이 넓어졌어요!', 'big'); }
   toast(`${l}단계 · ${CONFIG.land[l - 1].size} — ${CONFIG.land[l - 1].opens}`);
   markDirty();
 }
@@ -628,7 +628,7 @@ export async function likeNeighbor() {
   if (!v) return;
   // 실제 유저 마을: 서버 (마을당 하루 한 번)
   if (v.uid) {
-    if (await likeReal(v)) floatW(N / 2, N / 2 - 1, 60, '♥ 좋아요!', 'heart');
+    if (await likeReal(v)) { const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
     updateLike();
     return;
   }
@@ -637,7 +637,7 @@ export async function likeNeighbor() {
   set.add(v.id);
   setPref('liked', [...set]);
   updateLike();
-  floatW(N / 2, N / 2 - 1, 60, '♥ 좋아요!', 'heart');
+  { const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
 }
 
 export function goHome() {

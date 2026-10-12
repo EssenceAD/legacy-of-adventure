@@ -11,7 +11,7 @@ const viaStorage = (d: unknown) => {
 };
 
 describe('저장 마이그레이션', () => {
-  it('지금 저장 버전은 7 (땅 개편)', () => expect(CONFIG.save.version).toBe(7));
+  it('지금 저장 버전은 8 (LAND2)', () => expect(CONFIG.save.version).toBe(8));
   for (const v of [2, 3, 4, 5, 6]) {
     it(`v${v} → 최신: 금화·손님·영웅 그대로`, () => {
       const old = load(v);

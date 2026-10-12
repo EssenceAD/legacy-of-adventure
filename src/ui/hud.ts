@@ -493,7 +493,8 @@ function zoomLabel() {
 /** 배율 바꾸기 (버튼·핀치 공용). 정수 배율만 */
 export function setZoom(z: number) {
   const zs = zoomsNow();
-  z = Math.max(zs[0], Math.min(zs[zs.length - 1], Math.round(z)));
+  // LAND2: 폰 ×0.5 — 가장 가까운 배율로
+  z = zs.reduce((b, v) => (Math.abs(v - z) < Math.abs(b - z) ? v : b), zs[0]);
   if (z === S.zoom) return;
   S.zoom = z;
   saveZoom();
@@ -504,7 +505,8 @@ export function setZoom(z: number) {
 /** 잠깐만 배율 바꾸기 (마을 등급 연출의 줌아웃 — 저장하지 않는다) */
 export function tempZoom(z: number) {
   const zs = zoomsNow();
-  z = Math.max(zs[0], Math.min(zs[zs.length - 1], Math.round(z)));
+  // LAND2: 폰 ×0.5 — 가장 가까운 배율로
+  z = zs.reduce((b, v) => (Math.abs(v - z) < Math.abs(b - z) ? v : b), zs[0]);
   if (z === S.zoom) return;
   S.zoom = z;
   zoomLabel();

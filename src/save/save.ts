@@ -1,7 +1,7 @@
 // 저장: 지금은 localStorage. 모양은 처음부터 서버에 그대로 올릴 수 있게
 // v2 = {version, land, buildings[{kind,tx,ty,lvl,hue,plots}], gold, day, clock, adventurers[...], innName, ledger, progress}
 // v1(1단계) 저장은 migrate()가 v2로 옮긴다: 손님은 모두 단골로, 밤 여부는 시계로.
-import { CATALOG, START_TOWN, type Kind } from '../data/catalog';
+import { CATALOG, type Kind } from '../data/catalog';
 import { CLASS_RACES, GUEST_KINDS, RACES, RARITIES, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { freshProgress, P, S, world, type Actor, type Building, type IncomeKind, type Progress } from '../world/state';
@@ -107,6 +107,8 @@ export function readSave(): SaveData | null {
     const d = JSON.parse(raw);
     // 땅 개편(v7) 전 저장: 좌표를 옮기기 전에 원본을 한 번 남겨 둔다 (옮기다 실패해도 되살릴 수 있게)
     if (d && typeof d.version === 'number' && d.version < 7 && !localStorage.getItem(CONFIG.save.key + '.bak')) localStorage.setItem(CONFIG.save.key + '.bak', raw);
+    // LAND2(v8): 맵 32로 좌표를 옮기기 전 원본을 따로 한 번 (.bak7)
+    if (d && typeof d.version === 'number' && d.version < 8 && !localStorage.getItem(CONFIG.save.key + '.bak7')) localStorage.setItem(CONFIG.save.key + '.bak7', raw);
     const out = validate(migrate(d));
     if (!out && d && typeof d.version === 'number') migrateFailed = true;
     return out;
@@ -118,18 +120,19 @@ export function readSave(): SaveData | null {
 /** 땅 개편: 옛 저장(맵 14) 좌표 → 새 맵(24). dx = dy = 22 − 옛 땅 앞쪽 가장자리 */
 export function bigMapShift(land: number): number {
   const st = Math.min(CONFIG.land.length, Math.max(1, Math.floor(land) || 1));
-  return CONFIG.land[st - 1].to - CONFIG.oldLandTo[st - 1];
+  // v7(맵 24) 기준 그대로 (LAND2 뒤에도 이 단계는 바뀌지 않게)
+  return CONFIG.v7.landTo - CONFIG.oldLandTo[st - 1];
 }
 function moveToBigMap(d: any): any {
   const k = bigMapShift(num(d.land, 1));
-  const N = CONFIG.map.size;
+  const N = CONFIG.v7.mapSize;
   const buildings = (Array.isArray(d.buildings) ? d.buildings : []).map((b: any) => {
     if (!b || !Number.isFinite(b.tx) || !Number.isFinite(b.ty)) return b;
     const sz = b.kind in CATALOG ? CATALOG[b.kind as keyof typeof CATALOG].size : [1, 1];
     // 고정 건물(던전)이 맵 밖으로 나가면(1단계 저장) 새 게임 던전 자리로
     if (b.tx + k + sz[0] > N || b.ty + k + sz[1] > N) {
-      const home = START_TOWN.find(([kk]) => kk === b.kind);
-      if (home) return { ...b, tx: home[1], ty: home[2] };
+      // v7 때의 새 게임 던전 자리 (LAND2 뒤 START_TOWN은 +8이라 쓰지 않는다)
+      if (b.kind === 'dungeon') return { ...b, tx: CONFIG.v7.dungeon[0], ty: CONFIG.v7.dungeon[1] };
       return { ...b, tx: Math.min(N - sz[0], b.tx + k), ty: Math.min(N - sz[1], b.ty + k) };
     }
     return { ...b, tx: b.tx + k, ty: b.ty + k };
@@ -140,6 +143,25 @@ function moveToBigMap(d: any): any {
     ? { ...d.progress.harmony, moved: moved.map((key: string) => String(key).replace(/@(-?\d+),(-?\d+)$/, (_m: string, x: string, y: string) => `@${+x + k},${+y + k}`)) }
     : d.progress?.harmony;
   return { ...d, buildings, adventurers, progress: d.progress ? { ...d.progress, ...(harmony ? { harmony } : {}) } : d.progress };
+}
+
+/** LAND2(v7→v8): 맵 24 → 32 · 모든 칸 좌표 +8 (건물·공사 원래 자리·손님·옮긴 등급 장식·칠한 칸·둥근 모서리·지운 자동 길) */
+const shiftKey = (k: string, n: number) => k.replace(/^(-?\d+),(-?\d+)$/, (_m, x: string, y: string) => `${+x + n},${+y + n}`);
+const shiftMap = (o: unknown, n: number) => (o && typeof o === 'object' && !Array.isArray(o) ? Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [shiftKey(k, n), v])) : o);
+export function moveToV8(d: any): any {
+  const k = CONFIG.v7.shift;
+  const buildings = (Array.isArray(d.buildings) ? d.buildings : []).map((b: any) => {
+    if (!b || !Number.isFinite(b.tx) || !Number.isFinite(b.ty)) return b;
+    const con = b.con && Array.isArray(b.con.from) ? { ...b.con, from: [b.con.from[0] + k, b.con.from[1] + k] } : b.con;
+    return { ...b, tx: b.tx + k, ty: b.ty + k, ...(con ? { con } : {}) };
+  });
+  const adventurers = (Array.isArray(d.adventurers) ? d.adventurers : []).map((a: any) => (a && Number.isFinite(a.x) && Number.isFinite(a.y) ? { ...a, x: a.x + k, y: a.y + k } : a));
+  const pr = d.progress;
+  if (!pr || typeof pr !== 'object') return { ...d, buildings, adventurers };
+  const moved = pr.harmony?.moved;
+  const harmony = Array.isArray(moved) ? { ...pr.harmony, moved: moved.map((key: string) => String(key).replace(/@(-?\d+),(-?\d+)$/, (_m: string, x: string, y: string) => `@${+x + k},${+y + k}`)) } : pr.harmony;
+  const decor = pr.decor && typeof pr.decor === 'object' ? { ...pr.decor, paint: shiftMap(pr.decor.paint, k), round: shiftMap(pr.decor.round, k), noPath: shiftMap(pr.decor.noPath, k) } : pr.decor;
+  return { ...d, buildings, adventurers, progress: { ...pr, ...(harmony ? { harmony } : {}), ...(decor ? { decor } : {}) } };
 }
 
 /**
@@ -178,6 +200,8 @@ export function migrate(d: any): any {
   if (d.version === 5) d = { ...d, version: 6, progress: { ...(d.progress ?? {}), harmony: { ...(d.progress?.harmony ?? {}), migrate: true } } };
   // v6 → v7 땅 개편: 맵 14 → 24. 옛 마을을 새 땅의 앞쪽(입구) 가장자리에 맞춰 옮긴다 — 같은 단계여도 뒤·옆이 넓어진 모양
   if (d.version === 6) d = { ...moveToBigMap(d), version: 7 };
+  // v7 → v8 LAND2: 맵 24 → 32 · 모든 좌표 +8 (땅 6·7단계가 뒤·옆으로 커질 자리)
+  if (d.version === 7) d = { ...moveToV8(d), version: 8 };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }

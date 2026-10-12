@@ -25,7 +25,8 @@ export function villageSnapshot() {
   const objs = world.home?.objs ?? world.objs;
   return {
     // v2 = 땅 개편(맵 24) 좌표. v1(맵 14)은 보는 쪽(toNeighbor)에서 옮긴다
-    v: 2,
+    // v3 = LAND2(맵 32) 좌표. v1·v2는 보는 쪽(toNeighbor)에서 옮긴다
+    v: 3,
     land: world.home?.land ?? S.land,
     innName: S.innName,
     // GUEST_SPEC §2: 게스트는 주인 이름 대신 「○○ 여관 주인」(보는 쪽에서)

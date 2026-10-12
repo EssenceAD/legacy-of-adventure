@@ -29,8 +29,8 @@ export interface HarmonyFx {
 
 export const CONFIG = {
   map: {
-    /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 (땅 22 + 앞쪽 입구 여유 2) */
-    size: 24,
+    /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) */
+    size: 32,
     tileW: 32,
     tileH: 16,
   },
@@ -61,13 +61,18 @@ export const CONFIG = {
   },
   // 땅 개편 (v0.10): 앞쪽(입구) 가장자리 to=22 는 단계가 바뀌어도 그대로, 뒤쪽(입구 반대)으로 커진다
   //  단계 수 5 · 비용 · 열리는 것 · 평판 별 조건은 그대로. 옛 저장은 OLD_LAND_TO 기준으로 좌표를 옮긴다 (save.ts v7)
+  //  LAND2 (v8): 맵 32 · 모든 좌표 +8 (앞쪽 가장자리 22 → 30) · 6·7단계는 재료·보스 재료·장부 장도 필요
   land: [
-    { size: '8×8', from: 14, to: 22, cost: 0, opens: '여관 본관, 우물, 모닥불' },
-    { size: '11×11', from: 11, to: 22, cost: 300, opens: '나무 자리' },
-    { size: '14×14', from: 8, to: 22, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
-    { size: '18×18', from: 4, to: 22, cost: 1600, opens: '객실 별채' },
-    { size: '22×22', from: 0, to: 22, cost: 3000, opens: '온천, 최대 크기' },
-  ],
+    { size: '8×8', from: 22, to: 30, cost: 0, opens: '여관 본관, 우물, 모닥불' },
+    { size: '11×11', from: 19, to: 30, cost: 300, opens: '나무 자리' },
+    { size: '14×14', from: 16, to: 30, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
+    { size: '18×18', from: 12, to: 30, cost: 1600, opens: '객실 별채' },
+    { size: '22×22', from: 8, to: 30, cost: 3000, opens: '온천' },
+    { size: '26×26', from: 4, to: 30, cost: 500000, opens: '더 넓은 마을 · 큰 뽐내기 장식(3×3) 자리', mats: { forest: 100, swamp: 100 }, chapter: 7 },
+    { size: '30×30', from: 0, to: 30, cost: 2000000, opens: '최대 크기', mats: { mine: 150, ice: 150, abyss: 150 }, bossMats: { eye: 3 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
+  ] as { size: string; from: number; to: number; cost: number; opens: string; mats?: Partial<Record<'forest' | 'swamp' | 'mine' | 'ice' | 'abyss', number>>; bossMats?: Record<string, number>; chapter?: number; starsAlt?: { stars: number; abyss: number } }[],
+  /** LAND2: v7(맵 24) 때 값 — 옛 저장 옮기기(v6→v7)는 이 값으로, 그다음 v7→v8에서 +8 */
+  v7: { mapSize: 24, landTo: 22, dungeon: [21, 10] as [number, number], shift: 8 },
   /** 땅 개편 전(맵 14) 단계별 앞쪽 가장자리 — 옛 저장 좌표 옮기기용 (dx = dy = 22 - 이 값) */
   oldLandTo: [10, 11, 12, 13, 14],
   economy: {
@@ -274,7 +279,7 @@ export const CONFIG = {
   },
   /** 땅 넓히기에 필요한 평판 별 (단계 1~5) */
   // 핫픽스 8: 땅 4단계 ★3 → ★2 (장부 4장 대장간 자리가 없을 때 땅을 넓힐 수 있게)
-  landStars: [0, 1, 2, 2, 4],
+  landStars: [0, 1, 2, 2, 4, 5, 6],
   /** 꺼져 있던 동안 (방치) */
   offline: {
     /** 이만큼(현실 시간)까지만 쌓인다 */
@@ -913,7 +918,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 7,
+    version: 8,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },
