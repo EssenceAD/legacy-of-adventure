@@ -15,6 +15,7 @@ import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type
 import { track } from '../net/telemetry';
 import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
+import { partySpecial, rollUnique } from './uniques';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -80,7 +81,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const EC = CONFIG.economy;
   const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold);
   const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult);
-  const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult);
+  // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
+  const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult) + (mult >= 1 ? partySpecial(members, 'matPlus') : 0);
   S.gold += g;
   S.ledger.dungeon += g;
   gotGold(g, 'hunt');
@@ -134,14 +136,22 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
   P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
   const out = reward(r, s, members, first, mult, dropItem);
+  bossUnique(r, s, out);
   markDirty();
   return out;
+}
+/** GROWTH §3-4: 지역 사냥 보스(x-10) 0.5% 고유 장비 */
+function bossUnique(r: RegionId, s: number, out: HuntReward) {
+  if (!isBoss(s)) return;
+  const u = rollUnique(r, CONFIG.growth.unique.hunt);
+  if (u) out.items.push(u);
 }
 /** 소탕: 깬 스테이지만 · 전투 없이 기본 70% · 첫 돌파 보상 없음 */
 export function sweepStage(r: RegionId, s: number, members: Actor[]): HuntReward | null {
   if (s > best(r)) return null;
   P.counters.huntClears++;
   const out = reward(r, s, members, false, CONFIG.combat.sweep);
+  bossUnique(r, s, out);
   markDirty();
   return out;
 }

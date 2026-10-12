@@ -22,6 +22,8 @@ import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST }
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
 import { gotGold, legendHooks, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
 import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
+import { addCharm, mealGold } from './growth';
+import { partySpecial, rollUniqueAny } from './uniques';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -235,7 +237,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)));
+  // GROWTH: 고유 효과 「밤에 끝난 원정 금화 +15%」 · 물고기 요리 (원정 금화 +)
+  const nightG = S.night ? partySpecial(members, 'nightGold') / 100 : 0;
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()));
   // MYTHIC 루나 부탁: 밤에 출발한 의뢰 성공
   if (win && nightStart(run.start)) P.counters.nightWins = (P.counters.nightWins ?? 0) + 1;
   tieRun(members);
@@ -249,7 +253,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
-  const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5));
+  const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
   P.mats[q.region] += mats;
   const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
   const items = [];
@@ -280,6 +284,19 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     legendHooks.req('lunaTreasure');
   }
   if (win && tg >= 3) legendHooks.req('longRunWin');
+  // GROWTH §3-3·§3-4: 고지역 2시간 이상 원정 → 강화 보호 부적 10% · 고지역 8시간 원정 → 고유 장비 0.3%
+  const GG = CONFIG.growth;
+  if (win && !q.tutorial && r >= GG.charm.highRegion && q.tier >= GG.charm.expTier && Math.random() < GG.charm.expChance) {
+    addCharm(1);
+    extra.push(['narr', '보물 상자 바닥에서 「강화 보호 부적」을 찾았다!']);
+  }
+  if (win && !q.tutorial && r >= GG.unique.expRegion && q.tier >= GG.unique.expTier) {
+    const u = rollUniqueAny(q.region, GG.unique.exp);
+    if (u) {
+      items.push(u);
+      extra.push(['narr', `전설로만 듣던 「${u.name}」${josa(u.name, '이')} 모습을 드러냈다!`]);
+    }
+  }
   if (win) {
     const wb = maybeWander(q.region);
     if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (24시간 동안 토벌 가능)`]);

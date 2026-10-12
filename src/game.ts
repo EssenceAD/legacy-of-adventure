@@ -35,6 +35,7 @@ import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } f
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, openingShort, syncOwnerButton } from './ui/owner';
 import { sanitizeAlbum, sanitizeOwner } from './world/owner';
+import { sanitizeGrowth } from './world/growth';
 import { sanitizeRegions2 } from './world/regions2';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
@@ -256,6 +257,8 @@ function applySave(d: SaveData) {
   sanitizeAlbum();
   // REGIONS2: 새 지역 칸 · 길잡이 별 기록 (있는 값은 그대로)
   sanitizeRegions2();
+  // GROWTH: 아끼는 영웅·소모품·낚시 칸 (옛 저장엔 없음 → 기본값)
+  sanitizeGrowth();
   // 저장이 어긋나 있어도(겹침·땅 밖) 같은 배치 검사로 바로잡아 그린다
   const fix = placeLayout(
     d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}), ...(b.paid ? { paid: b.paid } : {}), ...conExtra(b) } })),

@@ -1,5 +1,6 @@
 // 케미 본편: 두 손님 사이의 친밀도(1~5단계) · 숨은 짝 발견 · 파티 배율
 import { CONFIG } from '../data/config';
+import { guestChemMult } from './growth';
 import { mythicChemXp } from './mythic';
 import { diaryOnChem } from './diary';
 import { matchPair, pairById, type ChemPair, type Who } from '../data/chem';
@@ -36,7 +37,7 @@ export function addBond(a: Actor, b: Actor, xp: number): BondGain | null {
   const discovered = !P.dex.chem.includes(pair.id);
   if (discovered) P.dex.chem.push(pair.id);
   // MYTHIC 레온: 케미 상승 +30%
-  bond.xp += xp * mythicChemXp([a, b]);
+  bond.xp += xp * mythicChemXp([a, b]) * guestChemMult(a, b);
   let levelUp: number | null = null;
   while (bond.lv < 5 && bond.xp >= C.levels[bond.lv]) {
     bond.lv++;

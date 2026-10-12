@@ -15,6 +15,9 @@ import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type RaidReco
 import { addEmber, ownerGain, raidDmgMult, tieRaid } from './owner';
 import { feature } from './guide';
 import { track as trackEv } from '../net/telemetry';
+import { addCharm } from './growth';
+import { rollUnique } from './uniques';
+import type { Item } from './state';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -198,6 +201,9 @@ export interface RaidOutcome {
   mats: number;
   xp: number;
   token: boolean;
+  /** GROWTH §3-3: 주간 참여 보상 강화 보호 부적 · §3-4 처치 1% 고유 장비 */
+  charm?: boolean;
+  items?: Item[];
   personalBest: boolean;
   weekBest: boolean;
   record?: { ok: boolean; reason?: string };
@@ -252,10 +258,18 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   // 이번 주 참여 보상: 인연의 증표 1개
   let token = false;
+  let charm = false;
   if (!P.raid.joined && t.kind === 'weekly') {
     P.raid.joined = true;
     P.tokens++;
     token = true;
+    addCharm(1);
+    charm = true;
+  }
+  const items: Item[] = [];
+  if (killed) {
+    const u = rollUnique(b.region, CONFIG.growth.unique.raid);
+    if (u) items.push(u);
   }
   let personalBest = false;
   let weekBest = false;
@@ -290,7 +304,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   track('expeditionWin');
   markDirty();
-  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, personalBest, weekBest };
+  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, charm, items, personalBest, weekBest };
   return lastOut;
 }
 

@@ -124,6 +124,11 @@ export const CATALOG = {
   gold_brush: { name: '황금 붓', sprite: 'gold_brush', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '마을의 붓 · 근처 길이 은은히 반짝 · 꾸미기 모드에서 누르면 길 붓' },
   red_helmet: { name: '붉은 무사의 투구', sprite: 'red_helmet', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '붉은 밤의 무사 · 밤엔 등불 · 토벌 금화 +3%' },
   pinwheel_light: { name: '바람개비 등대', sprite: 'pinwheel_light', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '첫 바람 · 바람개비가 빙글빙글 · 의뢰 시간 −3%' },
+  // GROWTH §4: 물고기 박제 (낚시 창 「박제하기」로 받아 무료로 놓기)
+  fish_firefly: { name: '반딧불 물고기 박제', sprite: 'fish_firefly', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 물속의 반딧불' },
+  fish_kingkoi: { name: '왕관 쓴 황금 잉어 박제', sprite: 'fish_kingkoi', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 연못의 왕' },
+  fish_lanternfish: { name: '등대 초롱아귀 박제', sprite: 'fish_lanternfish', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 밤바다의 초롱' },
+  fish_starwhale: { name: '아기 별고래 박제', sprite: 'fish_starwhale', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 등에 별이 박힌 아기 고래' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
   // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
   cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },

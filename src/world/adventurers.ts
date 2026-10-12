@@ -1,4 +1,5 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
+import { specialSum } from './uniques';
 import { sfx } from '../audio/sfx';
 import { mythicStat } from './mythic';
 import { CAMEO_DEF } from './easter';
@@ -106,7 +107,11 @@ export function baseStats(a: Actor): Record<StatKey, number> {
 /** 기본 + 장비 */
 export function totalStats(a: Actor): Record<StatKey, number> {
   const o = baseStats(a);
-  for (const it of equippedItems(a)) for (const k of STATS) o[k] += gearStat(a, it, k);
+  const items = equippedItems(a);
+  for (const it of items) for (const k of STATS) o[k] += gearStat(a, it, k);
+  // GROWTH §3-4 고유 효과 「모든 능력치 +5%」
+  const all = specialSum(a, 'allStat', items);
+  if (all) for (const k of STATS) o[k] = Math.round(o[k] * (1 + all / 100));
   return o;
 }
 
@@ -146,7 +151,9 @@ export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
   return (items) => {
     let gear = 0;
     for (const it of items) for (const k of STATS) gear += gearStat(a, it, k);
-    return Math.round((base + gear) * (m0 + optSumOf(a, items, 'atkPct') / 100) * rest);
+    // GROWTH §3-4 고유 효과 「모든 능력치 +5%」
+    const all = items.some((it) => it.uid) ? 1 + specialSum(a, 'allStat', items) / 100 : 1;
+    return Math.round((base + gear) * all * (m0 + optSumOf(a, items, 'atkPct') / 100) * rest);
   };
 }
 

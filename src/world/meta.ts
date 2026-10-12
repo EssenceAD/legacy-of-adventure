@@ -7,6 +7,7 @@ import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
 import { evalTitles } from './evaluation';
 import { GIFT_KEYS, GIFTS, type GiftKey } from '../data/bonds';
 import { CONFIG } from '../data/config';
+import { FISH } from '../data/story/fish';
 import { CATALOG } from '../data/catalog';
 import { track } from '../net/telemetry';
 import { HEROES, HERO_SETS } from '../data/heroes';
@@ -62,6 +63,10 @@ function stat(k: AchStat, d?: AchDef): number {
     case 'photos': return P.counters.photos ?? 0;
     case 'regFirst': return d?.region && regionFirstDone(d.region) ? 1 : 0;
     case 'regGuide': return d?.region && regionGuideDone(d.region) ? 1 : 0;
+    // GROWTH §4
+    case 'fishN': return Object.values(P.growth.fish.rec).reduce((s, r) => s + r.n, 0);
+    case 'fishKinds': return FISH.filter((x) => (P.growth.fish.rec[x.id]?.n ?? 0) > 0).length;
+    case 'fishLegend': return FISH.filter((x) => x.grade === 'l' && (P.growth.fish.rec[x.id]?.n ?? 0) > 0).length;
   }
 }
 
@@ -196,6 +201,8 @@ export interface ShopItem {
   desc: string;
   can?: () => boolean;
   give: () => void;
+  /** GROWTH §3-3 증표 상점: 금화 대신 인연의 증표로 산다 */
+  tokens?: number;
 }
 const regionMats = (r: RegionId, n: number, cost: number): ShopItem => ({
   id: 'mat_' + r, name: `${REGIONS.find((x) => x.id === r)!.mat} ×${n}`, icon: 'cur_seed', cost, desc: '세트 제작 재료', can: () => regionUnlocked(REGIONS.findIndex((x) => x.id === r)),
@@ -213,6 +220,8 @@ export const SHOP_POOL: ShopItem[] = [
 /** 고정 품목 */
 export const SHOP_FIXED: ShopItem[] = [
   { id: 'seed', name: '씨앗 꾸러미', icon: 'cur_seed', cost: 150, desc: '주점 채소 +5 (식사 품질)', give: () => (P.pantry += 5) },
+  // GROWTH §3-3: 증표 상점 — 강화 보호 부적 (실패해도 단계가 안 떨어짐)
+  { id: 'charm', name: '강화 보호 부적', icon: 'cur_token', cost: 0, tokens: CONFIG.growth.charm.tokenCost, desc: '+7~+10 강화 실패 때 단계 하락을 막아요 (인연의 증표)', give: () => (P.growth.charm += 1) },
 ];
 export function ensureShop() {
   const sh = P.meta.shop;
@@ -232,8 +241,11 @@ export function buyShop(id: string): string | null {
   if (!it) return '없는 물건이에요';
   const daily = SHOP_POOL.includes(it);
   if (daily && P.meta.shop.bought.includes(id)) return '오늘은 다 팔렸어요 (내일 새로 들어와요)';
-  if (S.gold < it.cost) return '금화가 모자라요';
-  S.gold -= it.cost;
+  if (it.tokens) {
+    if (P.tokens < it.tokens) return '인연의 증표가 모자라요';
+    P.tokens -= it.tokens;
+  } else if (S.gold < it.cost) return '금화가 모자라요';
+  else S.gold -= it.cost;
   it.give();
   if (daily) P.meta.shop.bought.push(id);
   P.counters.shopBuys++;

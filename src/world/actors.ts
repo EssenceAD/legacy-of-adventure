@@ -1,4 +1,5 @@
 // 손님 상태기계: 욕구(체력·배고픔·기분)를 채우러 다닌다 · 입구로 도착/떠남 · 단골 제안 · 영웅 · 케미 · 원정 파티 걷기
+import { hasSpecial } from './uniques';
 import { def, INSIDE_TEXT, type Act } from '../data/catalog';
 import { copyIncomeMult } from './town';
 import { cycleLines, storyLines } from './story';
@@ -853,7 +854,9 @@ function tickGuests(dt: number) {
     if (a.runId != null) continue;
     a.food = clamp(a.food + NE.foodPerHour * gh);
     const low = (a.hp < NE.lowBelow ? 1 : 0) + (a.food < NE.lowBelow ? 1 : 0);
-    a.mood = clamp(a.mood + (low * NE.moodLowNeedPerHour + (crowded ? NE.moodCrowdedPerHour : 0)) * gh);
+    const dm = (low * NE.moodLowNeedPerHour + (crowded ? NE.moodCrowdedPerHour : 0)) * gh;
+    // GROWTH §3-4 「첫 단골의 단추」: 낀 단골은 기분이 잘 안 떨어짐 (떨어지는 양 절반)
+    a.mood = clamp(a.mood + (dm < 0 && hasSpecial(a, 'regularMood') ? dm * 0.5 : dm));
   }
   hourAcc += gh;
   if (hourAcc < 1) return;

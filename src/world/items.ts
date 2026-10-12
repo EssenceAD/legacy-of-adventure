@@ -12,6 +12,7 @@ import {
 import { canvas, dk, lt, P as Paint } from '../engine/pixel';
 import { P, pick, S, world, type Actor, type Item, type ItemOpt } from './state';
 import { dexAddItem } from './progress';
+import { brag, checkSet3 } from './growth';
 
 const I = CONFIG.items;
 const E = CONFIG.expedition;
@@ -112,6 +113,8 @@ export function addToBag(it: Item): 'ok' | 'salvaged' | 'full' {
   }
   P.bag.push(it);
   if (S.started) sfx(['e', 'l', 'a'].includes(it.grade) ? 'rare' : 'item');
+  // GROWTH §3-5: 유물은 [알림] 자랑 (고유 장비는 grantUnique가 따로)
+  if (S.started && it.grade === 'a' && !it.uid) brag('relic', it);
   return 'ok';
 }
 
@@ -138,6 +141,8 @@ export function equip(a: Actor, it: Item) {
   a.equip[it.slot] = it.id;
   it.owner = a.id;
   it.isNew = false;
+  // GROWTH §3-5: 세트 3부위 첫 완성 자랑
+  if (it.set && S.started) checkSet3(a);
 }
 
 export function unequip(a: Actor, slot: Slot) {

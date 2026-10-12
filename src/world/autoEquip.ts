@@ -4,6 +4,7 @@ import { SLOTS, type Slot } from '../data/items';
 import { powerCalc, powerOf } from './adventurers';
 import { equip, gearStat, itemById, unequip } from './items';
 import { P, world, type Actor, type Item } from './state';
+import { favRank, isFav } from './growth';
 
 export type Gear = Partial<Record<Slot, Item>>;
 const listOf = (g: Gear): Item[] => SLOTS.map((s) => g[s]).filter((x): x is Item => !!x);
@@ -98,7 +99,8 @@ export function recommendEquip(a: Actor, take = false): { changed: number; gain:
  */
 export function autoEquipAll(): { people: number; gain: number } {
   const who = equipTargets();
-  const order = who.slice().sort((x, y) => +!!(y.heroId || y.legendId) - +!!(x.heroId || x.legendId) || y.lvl - x.lvl || powerOf(y) - powerOf(x) || x.id! - y.id!);
+  // GROWTH §3-1: ★ 아끼는 영웅이 맨 먼저 (★끼리는 ★한 순서)
+  const order = who.slice().sort((x, y) => favRank(x) - favRank(y) || +!!(y.heroId || y.legendId) - +!!(x.heroId || x.legendId) || y.lvl - x.lvl || powerOf(y) - powerOf(x) || x.id! - y.id!);
   const before = new Map(who.map((a) => [a, powerOf(a)]));
   const snap = new Map(who.map((a) => [a, { ...a.equip }]));
   const total0 = [...before.values()].reduce((s, v) => s + v, 0);
@@ -156,4 +158,62 @@ export function upgradeFor(items: Item[], also: Actor[] = []): { a: Actor; it: I
     }
   }
   return best;
+}
+
+// ───────── GROWTH §3-1: 「가장 좋은 걸로 입히기」 · 「누가 끼면 좋을까」 ─────────
+
+export interface BestPlan {
+  gear: Gear;
+  /** 부위별: 바뀌는 장비 · 그 칸만 바꿨을 때 전투력 차이 · 빼 오는 손님 */
+  slots: { slot: Slot; from: Item | undefined; to: Item; gain: number; taker: Actor | null }[];
+  before: number;
+  after: number;
+}
+/** 가방 + ★ 아닌 단골이 낀 것까지 비교 (★끼리는 서로 안 뺏음 · 잠금·원정 중 장비는 그대로) */
+export function bestPlan(a: Actor): BestPlan {
+  const calc = powerCalc(a);
+  const cur = SLOTS.map((s) => itemById(a.equip?.[s])).filter((x): x is Item => !!x);
+  const before = calc(cur);
+  const pool = P.bag.filter((it) => {
+    if (it.owner == null || it.owner === a.id) return true;
+    const o = homeActors().find((x) => x.id === it.owner);
+    return !!o && !isFav(o);
+  });
+  const { gear, power } = bestGear(a, pool, true);
+  if (power <= before) return { gear: {}, slots: [], before, after: before };
+  const slots: BestPlan['slots'] = [];
+  for (const s of SLOTS) {
+    const to = gear[s];
+    const from = itemById(a.equip?.[s]);
+    if (!to || to.id === from?.id) continue;
+    const gain = calc([...cur.filter((x) => x.slot !== s), to]) - before;
+    const taker = to.owner != null && to.owner !== a.id ? homeActors().find((x) => x.id === to.owner) ?? null : null;
+    slots.push({ slot: s, from, to, gain, taker });
+  }
+  return { gear, slots, before, after: power };
+}
+/** 미리보기대로 끼운다 (바뀐 칸 수 · 전투력 차이) */
+export function applyBest(a: Actor, plan: BestPlan): { changed: number; gain: number } {
+  const before = powerOf(a);
+  let n = 0;
+  for (const x of plan.slots) {
+    if (x.to.locked && x.to.owner !== a.id) continue;
+    equip(a, x.to);
+    n++;
+  }
+  return { changed: n, gain: powerOf(a) - before };
+}
+/** 장비 상세: 이 장비를 끼면 전투력이 가장 오르는 손님 상위 n명 */
+export function whoWears(it: Item, n = 3): { a: Actor; gain: number }[] {
+  const out: { a: Actor; gain: number }[] = [];
+  for (const a of equipTargets()) {
+    if (it.owner === a.id) continue;
+    const old = itemById(a.equip?.[it.slot]);
+    if (old?.locked) continue;
+    const calc = powerCalc(a);
+    const cur = SLOTS.map((s) => itemById(a.equip?.[s])).filter((x): x is Item => !!x);
+    const g = calc([...cur.filter((x) => x.slot !== it.slot), it]) - calc(cur);
+    if (g > 0) out.push({ a, gain: g });
+  }
+  return out.sort((p, q) => q.gain - p.gain || favRank(p.a) - favRank(q.a)).slice(0, n);
 }

@@ -567,6 +567,8 @@ export function buildableKinds(): Kind[] {
     if (k === 'monument' && !monumentUnlocked()) return false;
     // HOTFIX14 §5: 선물 장식은 받은 게 있을 때만 (무료)
     if (k === 'thanks_basket') return (P.meta.giftDeco?.[k] ?? 0) > 0;
+    // GROWTH §4: 물고기 박제는 박제해서 받은 게 있을 때만 (무료)
+    if (k.startsWith('fish_')) return (P.meta.giftDeco?.[k] ?? 0) > 0;
     // HOTFIX14 §1: 한 채뿐인 건물(여관 본관·던전)과 unique 장식만 이미 있으면 못 지음 — 나머지는 여러 채 (두 번째부터 비용 ↑)
     return !d.fixed && !((d.unique || SINGLE(k)) && world.objs.some((o) => o.kind === k));
   });

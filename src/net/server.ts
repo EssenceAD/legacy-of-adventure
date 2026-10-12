@@ -424,9 +424,10 @@ export async function sendChat(body: string): Promise<string | null> {
 }
 
 /** [알림]: 문장은 서버가 만든다 */
-export async function postNotice(kind: 'legend' | 'boss_kill' | 'rank1', arg: string) {
-  if (!sb || !me.profile) return;
-  await sb.rpc('post_notice', { p_kind: kind, p_arg: arg });
+export async function postNotice(kind: 'legend' | 'boss_kill' | 'rank1' | 'brag', arg: string): Promise<boolean> {
+  if (!sb || !me.profile) return false;
+  const { error } = await sb.rpc('post_notice', { p_kind: kind, p_arg: arg });
+  return !error;
 }
 
 export const blocked = new Set<string>();

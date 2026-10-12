@@ -1,4 +1,5 @@
 // 전설 영웅 14명 (3단계 8장): 소문 → 인연 게이지 → 밤 판정(실제 날짜 하루 1번) → 방문 → 부탁 → 영입 → 증표로 ★
+import { specialSum } from './uniques';
 import { sfx } from '../audio/sfx';
 // 다른 모듈은 legendHooks.bond / legendHooks.req 로만 알린다 (import가 꼬이지 않게).
 import { CONFIG } from '../data/config';
@@ -84,7 +85,7 @@ export function bond(e: BondEvent, times = 1) {
   for (const d of LEGENDS) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
-    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend'))));
+    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend') + starBondBonus())));
     if (st.gauge >= 100 && !st.full) st.full = Date.now();
     markDirty();
   }
@@ -357,3 +358,10 @@ export const legendsJoined = () => LEGENDS.filter((d) => P.legends[d.key]?.st ==
 
 legendHooks.bond = (e, n) => bond(e as BondEvent, n);
 legendHooks.req = (e, n, tag) => req(e as RequestEvent, n, tag);
+
+/** GROWTH §3-4 「별지기의 일기장」: 마을 손님 중 누가 끼고 있으면 전설 인연 게이지 +20% */
+function starBondBonus(): number {
+  let v = 0;
+  for (const a of world.home?.actors ?? world.actors) if (a.id && !a.role && a.equip) v = Math.max(v, specialSum(a, 'starBond'));
+  return v / 100;
+}

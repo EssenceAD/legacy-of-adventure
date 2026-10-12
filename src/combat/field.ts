@@ -19,6 +19,7 @@ import { addToBag, makeItem, optSum, rollGrade } from '../world/items';
 import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
+import { partySpecial, specialSum } from '../world/uniques';
 
 const C = CONFIG.combat;
 export type Job = 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';
@@ -117,6 +118,12 @@ export interface Unit {
   /** REGIONS2 세트: 치명타 확률 + · 받는 피해 − (0~1) */
   critAdd?: number;
   dmgCut?: number;
+  /** GROWTH §3-4 고유 효과: 공격 속도 + · 한 번 일어나기(체력 비율) · 적마다 첫 공격 1초 멈춤 · 튕김 확률 · (적) 이미 멈췄나 */
+  spd?: number;
+  revive?: number;
+  stunFirst?: boolean;
+  bounce?: number;
+  firstHit?: boolean;
 }
 export interface Proj {
   x: number;
@@ -297,6 +304,8 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   const N = C.field;
   // 핫픽스 12 §2-2: 탱·힐·딜이 고루 있으면 전투력 ×1.10
   const rm = roleMult(members.slice(0, 3));
+  // GROWTH §3-4 고유 효과 「파티 전원 받는 피해 −N%」
+  const partyCut = partySpecial(members.slice(0, 3), 'partyHp');
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
     const { key, def } = appearance(a);
@@ -305,7 +314,8 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
       actor: a, job, power: powerOf(a) * rm * (1 + buffOf('power')) * mythicAtk(members.slice(0, 3), region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
-      critAdd: optSum(a, 'critPct') / 100, dmgCut: Math.min(0.5, optSum(a, 'dmgCut') / 100),
+      critAdd: (optSum(a, 'critPct') + specialSum(a, 'crit')) / 100, dmgCut: Math.min(0.5, (optSum(a, 'dmgCut') + partyCut) / 100),
+      spd: specialSum(a, 'speed') / 100, revive: specialSum(a, 'reviveOnce') / 100, stunFirst: specialSum(a, 'firstHitStun') > 0, bounce: specialSum(a, 'bounce') / 100,
     };
   };
   const allies = members.slice(0, 3).map(mk);
@@ -424,8 +434,17 @@ export const hitBonus = (hit: number) => Math.min(C.hitBonusMax, Math.floor(hit 
 
 const isMe = (f: Field, u: Unit) => u === f.me;
 /** 아군 → 몬스터 */
-export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: boolean; knock?: number; heavy?: boolean; stun?: number; silent?: boolean } = {}) {
+export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: boolean; knock?: number; heavy?: boolean; stun?: number; silent?: boolean; bounced?: boolean } = {}) {
   if (m.dead || m.st === 'spawn') return;
+  // GROWTH §3-4: 「도토리 깎은 나무검」 적마다 첫 공격이 1초 멈춤 · 「왕슬라임 젤리 지팡이」 근처 적 하나에 튕김
+  if (by.stunFirst && !m.firstHit) {
+    m.firstHit = true;
+    o = { ...o, stun: Math.max(o.stun ?? 0, 1) };
+  }
+  if (!o.bounced && (by.bounce ?? 0) > 0 && Math.random() < by.bounce!) {
+    const near = f.units.filter((x) => x.team === 'mob' && x !== m && !x.dead && x.st !== 'spawn' && Math.hypot(x.x - m.x, x.y - m.y) < 2.5).sort((p, q) => Math.hypot(p.x - m.x, p.y - m.y) - Math.hypot(q.x - m.x, q.y - m.y))[0];
+    if (near) hurtMob(f, near, dmg * 0.5, by, { silent: true, bounced: true });
+  }
   const crit = !!o.crit;
   // 연타: 내가(직접 조작) 2초 안에 계속 때리면 HIT가 쌓이고 피해 +
   if (by === f.me && !f.auto) {
@@ -503,6 +522,14 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
     f.hitsTaken++;
     shake(f, 1);
   }
+  if (u.hp <= 0 && (u.revive ?? 0) > 0) {
+    // GROWTH §3-4: 「설원 수호자의 털옷」 한 번 쓰러지면 체력 30%로 일어남
+    u.hp = Math.max(1, Math.round(u.max * u.revive!));
+    u.revive = 0;
+    u.inv = 1;
+    f.banner = `${u.actor?.name ?? '동료'}${josa(u.actor?.name ?? '동료', '이')} 다시 일어났다!`;
+    f.bannerT = 1.6;
+  }
   if (u.hp <= 0) {
     u.hp = 0;
     u.dead = true;
@@ -567,7 +594,7 @@ export function attack(f: Field, u: Unit) {
   const J = C.jobAtk[u.job!] ?? C.jobAtk.knight;
   u.combo = (u.comboT ?? 0) > 0 ? ((u.combo ?? 0) % 3) + 1 : 1;
   u.comboT = Math.max(C.combo.window, J.swing + 0.3);
-  u.swing = u.swingMax = J.swing;
+  u.swing = u.swingMax = J.swing * (1 - Math.min(0.5, u.spd ?? 0));
   u.atkAnim = Math.min(0.2, J.swing);
   const third = u.combo === 3;
   const mult = C.combo.mult[u.combo - 1] * J.dmg;

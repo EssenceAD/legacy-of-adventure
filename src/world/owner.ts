@@ -15,6 +15,8 @@ import { LEGACY_ORIGINS, OSTATS, originByKey, type Gender, type Job, type OStat,
 import { onNightFlip } from './clock';
 import { queueEvent } from './events';
 import { repHook, stars, today } from './progress';
+import { guestGiftEffect, guestGiftedToday, talkHint } from './growth';
+import { FISH } from '../data/story/fish';
 import { markDirty, P, S, uiHooks, world, type Actor, type OwnerState, type TalkChoice, type TalkLine, type TieState } from './state';
 
 const O = CONFIG.owner;
@@ -371,7 +373,9 @@ export function talkTo(id: string): string | null {
   const day = Math.floor(Date.now() / DAY);
   // 엔딩을 본 뒤(계속 운영)에는 대화가 조금 바뀐다
   const after = P.owner?.ended && (day + id.length) % 2 === 0;
-  const mood = after ? AFTER_LINES[(day + id.length) % AFTER_LINES.length] : d.moods[(day + id.length) % d.moods.length];
+  // GROWTH §2: 인연 2단계부터 가끔 기분 대사 대신 선물 힌트 (직접 말하지 않음)
+  const hint = after ? null : talkHint(id, t.stage);
+  const mood = hint ? hint.replace(/{me}/g, P.owner?.name ?? '주인장') : after ? AFTER_LINES[(day + id.length) % AFTER_LINES.length] : d.moods[(day + id.length) % d.moods.length];
   const styles: ReplyStyle[] = ['warm', 'bold', 'tease'];
   uiHooks.talk([[d.port, fillT(mood), undefined, d.name]], undefined, styles.map((st) => ({
     label: REPLY[st],
@@ -412,6 +416,42 @@ export function giveGift(id: string, g: GiftKey): { err?: string; kind?: 'like' 
   addTie(id, base > 0 ? base * (1 + (stat('heart') / 100) * T.heartGift) * (isLinked(id) ? T.linkedMult : 1) : base, true);
   const line = kind === 'like' ? `「${GIFTS[g].name}」! 이거 정말 좋아해요!` : kind === 'hate' ? `「${GIFTS[g].name}」…? 이건 좀…` : `「${GIFTS[g].name}」, 고마워요.`;
   return { kind, line };
+}
+
+/** GROWTH §4: 물고기 선물 — 좋아하는 사람(fish.ts like)이면 좋아함과 같은 인연 + · 아니면 보통 (하루 한 번·행동력은 giveGift와 같다) */
+export function giveFish(id: string, fishId: string): { err?: string; kind?: 'like' | 'normal'; line?: string } {
+  const d = bondById(id);
+  const f = FISH.find((x) => x.id === fishId);
+  if (!d || !tieAvailable(id)) return { err: '아직 인연을 쌓을 수 없어요' };
+  if (!f || !f.use.includes('gift') || !((P.growth.fish.bag[fishId] ?? 0) > 0)) return { err: '그 물고기가 가방에 없어요' };
+  const t = tie(id);
+  if (t.giftDay === today()) return { err: '오늘은 이미 선물했어요 (내일 또)' };
+  if (energyLeft() <= 0) return { err: '오늘은 기운이 없어요 (내일 또)' };
+  useEnergy();
+  P.growth.fish.bag[fishId]--;
+  if (P.growth.fish.bag[fishId] <= 0) delete P.growth.fish.bag[fishId];
+  P.counters.giftsGiven++;
+  t.giftDay = today();
+  ownerGain('gift');
+  const like = !!f.like?.includes(id);
+  if (like && !P.growth.fishLike.includes(`${id}:${fishId}`)) P.growth.fishLike.push(`${id}:${fishId}`);
+  const base = like ? T.giftLike : T.giftNormal;
+  addTie(id, base * (1 + (stat('heart') / 100) * T.heartGift) * (isLinked(id) ? T.linkedMult : 1), true);
+  return { kind: like ? 'like' : 'normal', line: like ? `「${f.name}」! 이거 정말 좋아해요!` : `「${f.name}」, 고마워요.` };
+}
+/** GROWTH §2: 일반 단골에게 선물 (직업별 좋아하는 것 1개) — 하루 한 번 · 행동력 1 */
+export function giveGuest(a: Actor, g: GiftKey): { err?: string; kind?: 'like' | 'normal'; line?: string } {
+  if (!P.owner) return { err: '주인을 만들면 선물할 수 있어요' };
+  if (!(P.gifts[g] > 0)) return { err: '그 선물이 가방에 없어요' };
+  if (guestGiftedToday(a)) return { err: '오늘은 이미 선물했어요 (내일 또)' };
+  if (energyLeft() <= 0) return { err: '오늘은 기운이 없어요 (내일 또)' };
+  useEnergy();
+  P.gifts[g]--;
+  P.counters.giftsGiven++;
+  ownerGain('gift');
+  const kind = guestGiftEffect(a, g);
+  markDirty();
+  return { kind, line: kind === 'like' ? `「${GIFTS[g].name}」! 마침 이게 필요했어요!` : `「${GIFTS[g].name}」, 고마워요.` };
 }
 
 // ── 함께 원정·토벌 · 부탁 완수 (다른 모듈이 부른다) ──
