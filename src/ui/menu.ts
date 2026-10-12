@@ -1,6 +1,7 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
 import { ACHIEVEMENTS } from '../data/achieve';
+import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { PROP_CARD_NAME, propCardMode, setPropCardMode, type PropCardMode } from './propCard';
 import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
@@ -95,6 +96,7 @@ function groups(): [string, Item[]][] {
       { icon: 'm_guide', name: '안내서', open: () => openManual() },
       { icon: 'm_letter', name: '모모에게 편지', open: () => openReport() },
       { icon: 'm_album', name: '만든 사람', open: () => openCredits() },
+      { icon: 'm_chat', name: '💬 유저 톡방', open: () => openCommunity('menu') },
     ]],
   ];
 }
@@ -258,7 +260,7 @@ export function openMail() {
     '우편함',
     `<p class="sub">출석·랭킹 보상 · 운영자 선물 · 앞 주인 편지</p>
     ${mailWaiting() ? `<button class="bigbtn" id="mlAll">모두 받기 (${mailWaiting()})</button>` : ''}
-    <div class="mails">${list.length ? list.map((m) => `<div class="mail ${m.claimed ? 'got' : ''}"><span><small>${FROM[m.from] ?? ''} · ${new Date(m.at).toLocaleDateString('ko-KR')}</small><b>${esc(m.title)}</b><small>${esc(m.body)}</small>${rewardLine(m.reward) ? `<small class="g">${esc(rewardLine(m.reward))}</small>` : ''}</span>${m.claimed ? '<em>받음</em>' : `<button data-ml="${m.id}">${rewardLine(m.reward) ? '받기' : '읽음'}</button>`}</div>`).join('') : '<p class="note">편지가 없어요</p>'}</div>`,
+    <div class="mails">${list.length ? list.map((m) => `<div class="mail ${m.claimed ? 'got' : ''}"><span><small>${FROM[m.from] ?? ''} · ${new Date(m.at).toLocaleDateString('ko-KR')}</small><b>${esc(m.title)}</b><small>${esc(m.body)}</small>${m.link === 'kakao' ? communityLink('mail', '톡방 가기 →') : ''}${rewardLine(m.reward) ? `<small class="g">${esc(rewardLine(m.reward))}</small>` : ''}</span>${m.claimed ? '<em>받음</em>' : `<button data-ml="${m.id}">${rewardLine(m.reward) ? '받기' : '읽음'}</button>`}</div>`).join('') : '<p class="note">편지가 없어요</p>'}</div>`,
   );
   $$('[data-ml]').forEach(
     (b) =>

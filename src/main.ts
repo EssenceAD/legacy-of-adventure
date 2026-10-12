@@ -1,4 +1,5 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
+import { initCommunity } from './ui/community';
 import './style.css';
 import { flushGoldLog } from './world/economy';
 import * as raidW from './world/raid';
@@ -733,6 +734,7 @@ async function boot() {
   initOwnerUi();
   // STORY_V1: 막 · 갈림길 · 엔딩
   initStoryUI();
+  initCommunity();
   // TOWN T2: 꾸미기 모드
   initDecor();
   // ONBOARDING: 첫 손님·장부 1장 뒤 출신 고르기·내일 선물 (장부 hook 다음에)

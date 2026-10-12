@@ -1422,3 +1422,10 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 .cmade{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .cm{display:flex;flex-direction:column;align-items:center;font-size:11px}
 .cm.best{box-shadow:0 0 0 2px #ffd36b}
+
+/* 유저 톡방 */
+a.kakao{color:#ffe14d;text-decoration:underline}
+.kcard{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;background:#3a3218;border:1px solid #c9a63a;border-radius:6px;padding:8px 10px;margin:0 0 8px}
+.kcard b{flex:1 1 100%}.kcard small{flex:1}
+.kcard a.kbtn{background:#fee500;color:#191919;text-decoration:none;padding:4px 12px;border-radius:4px;font-weight:bold}
+.mail a.kakao{display:inline-block;margin-top:2px}

@@ -3,8 +3,8 @@ import { CONFIG } from '../data/config';
 import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
-import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type RegionId, type Slot } from '../data/items';
-import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, transcendRate } from '../world/craft';
+import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
+import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, transcendRate, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
@@ -32,9 +32,9 @@ export function openSmith(o: Building, tab = smTab) {
   if (tab === 0) {
     const rows = sorted()
       .filter((it) => it.owner == null && !it.locked)
-      .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]}</small></span><button data-sal="${it.id}">분해</button></div>`)
+      .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${salvageText(it.grade)}</small></span><button data-sal="${it.id}">분해</button></div>`)
       .join('');
-    body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">일괄 분해…</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
+    body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">일괄 분해…</button><button class="bigbtn sm ghost" id="dSwap">가루 바꾸기…</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
   } else if (tab === 1) {
     const rows = sorted()
       .map((it) => {
@@ -77,6 +77,7 @@ export function openSmith(o: Building, tab = smTab) {
     <div class="regs">${regs}</div>
     <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
     ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
+    ${ashShort(craftRegion) > 0 && swappableAsh() > 0 ? `<button class="bigbtn sm" id="cFill">가루 바꾸기로 채우기 (${DUST_NAME.n} ${fmt(ashShort(craftRegion))} 모자람)</button>` : ''}
     <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
     <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
     ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
@@ -89,7 +90,8 @@ export function openSmith(o: Building, tab = smTab) {
       (b.onclick = () => {
         const it = P.bag.find((x) => x.id === +b.dataset.sal!)!;
         if (it.grade !== 'n' && !confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`)) return;
-        toast(`분해 · ${DUST_NAME[it.grade]} +${salvage(it)}`);
+        salvage(it);
+        toast(`분해 · ${salvageText(it.grade)}`);
         openSmith(o);
       }),
   );
@@ -141,6 +143,15 @@ export function openSmith(o: Building, tab = smTab) {
         craftSummary(craftRegion, craftMany(craftRegion, slots), () => openSmith(o), slots);
       }),
   );
+  const cf = document.getElementById('cFill');
+  if (cf)
+    cf.onclick = () => {
+      const got = fillAsh(ashShort(craftRegion));
+      toast(got ? `가루를 바꿔 ${DUST_NAME.n} +${fmt(got)}` : '바꿀 가루가 없어요');
+      openSmith(o);
+    };
+  const ds = document.getElementById('dSwap');
+  if (ds) ds.onclick = () => openDustSwap(() => openSmith(o));
   const cs = document.getElementById('cSet');
   if (cs)
     cs.onclick = () => {
@@ -209,4 +220,33 @@ export function openGarden(o: Building) {
   });
   appendMoveButton(o);
   void S;
+}
+
+/** HOTFIX21: 다른 재료·금화·가방으로는 더 만들 수 있는데 잿빛 가루만 모자란 양 (최대 제작 기준) */
+function ashShort(r: RegionId): number {
+  const c = craftCost(r);
+  const free = bagSize() - P.bag.filter((x) => x.owner == null).length;
+  const n = Math.max(0, Math.min(free, Math.floor(P.mats[r] / Math.max(1, c.mats)), Math.floor(S.gold / Math.max(1, c.gold)), c.bossMats ? Math.floor((P.bossMats[c.boss.id] ?? 0) / c.bossMats) : 99));
+  return Math.max(0, n * c.dust - P.dust.n);
+}
+/** HOTFIX21: 가루 바꾸기 창 — 높은 가루 → 잿빛 (반대 방향 없음) */
+export function openDustSwap(back: () => void) {
+  const rows = (['r', 'e', 'l'] as Grade[])
+    .map((g) => {
+      const rate = CONFIG.smith.dustSwap[g];
+      const have = P.dust[g];
+      const b = (n: number, t: string) => `<button data-sw="${g}" data-n="${n}" ${have >= Math.max(1, n) ? '' : 'disabled'}>${t}</button>`;
+      return `<div class="crow2"><span><b style="color:${GRADE_INFO[g].color}">${DUST_NAME[g]}</b> 1 → ${DUST_NAME.n} ${rate} <small>(가진 것 ${fmt(have)})</small></span>${b(1, '1개')}${b(10, '10개')}${b(have, '전부')}</div>`;
+    })
+    .join('');
+  openWin('가루 바꾸기', `<p class="sub">${dustLine()}</p><p class="note">높은 등급 가루를 잿빛 가루로 바꿔요 · 반대로는 바꿀 수 없어요</p><div class="crows">${rows}</div><button class="bigbtn ghost" id="swBack">돌아가기</button>`);
+  $$('[data-sw]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const got = swapDust(b.dataset.sw as Grade, +b.dataset.n!);
+        if (got) toast(`${DUST_NAME.n} +${fmt(got)}`);
+        openDustSwap(back);
+      }),
+  );
+  $('#swBack').onclick = back;
 }

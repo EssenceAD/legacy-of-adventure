@@ -11,7 +11,7 @@ import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed, sendAway } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, smithObj } from '../world/craft';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
 import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
@@ -331,7 +331,7 @@ export function showItem(it: Item, back: () => void = openBag) {
     <div class="btnrow">
       <button class="bigbtn sm" id="iEnh" ${smith && !maxed ? '' : 'disabled'}>${maxed ? '최대 강화' : smith ? `강화 +${it.enh + 1} (${DUST_NAME[it.grade]} ${enhanceCost(it)}/${P.dust[it.grade]} · ${pct(enhanceRate(it))})` : '강화 (대장간 필요)'}</button>
       <button class="bigbtn sm ghost" id="iLock">${it.locked ? '🔒 잠금 풀기' : '🔓 잠그기'}</button>
-      <button class="bigbtn sm red" id="iSal" ${it.owner != null || it.locked ? 'disabled' : ''}>분해 (${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]})</button>
+      <button class="bigbtn sm red" id="iSal" ${it.owner != null || it.locked ? 'disabled' : ''}>분해 (${salvageText(it.grade)})</button>
     </div>
     <button class="bigbtn sm ghost" id="iBack">← 돌아가기</button>`,
   );
@@ -344,8 +344,8 @@ export function showItem(it: Item, back: () => void = openBag) {
   };
   $('#iSal').onclick = () => {
     if (it.grade !== 'n' && !confirm(`${g.name} 장비를 분해할까요?`)) return;
-    const d = salvage(it);
-    toast(`분해 · ${DUST_NAME[it.grade]} +${d}`);
+    salvage(it);
+    toast(`분해 · ${salvageText(it.grade)}`);
     back();
   };
   $('#iBack').onclick = back;
