@@ -1441,7 +1441,7 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 #storyFx.sfx-sparkle{background:radial-gradient(circle at 30% 30%,rgba(255,243,192,.25),transparent 40%),radial-gradient(circle at 70% 60%,rgba(255,243,192,.2),transparent 35%)}
 
 /* MYTHIC 도감 */
-.mgrid{display:grid;grid-template-columns:1fr;gap:6px}
+.mythgrid{display:grid;grid-template-columns:1fr;gap:6px}
 .mcell{border:1px solid #4a3a2a;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:2px;opacity:.6}
 .mcell.seed{opacity:.85;border-color:#8a7a4a}
 .mcell.met{opacity:1;border-color:transparent;background:linear-gradient(#2a2016,#2a2016) padding-box,linear-gradient(90deg,#ff7a7a,#ffd36b,#7aff9a,#7ac8ff,#c07aff) border-box}

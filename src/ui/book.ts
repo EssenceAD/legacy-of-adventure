@@ -136,7 +136,7 @@ export function openDex(tab = dTab) {
       if (seeds.includes(m.key)) return `<div class="mcell seed"><b>${esc(L?.name ?? m.key)}</b><small>기억의 씨앗 · 다음 여관에서 신화로 찾아와요</small></div>`;
       return `<div class="mcell"><b>${esc(L?.name ?? '???')}</b><small>???</small></div>`;
     }).join('');
-    body = `<p class="sub">신화 ${MYTHIC.filter((m) => P.story.mythic?.[m.key]?.met).length}/${MYTHIC.length} · 열쇠 조각 ${(P.legacy.shards ?? []).length}개</p><p class="note">${esc(MYTHIC_HINT)}</p><div class="mgrid">${cells}</div>`;
+    body = `<p class="sub">신화 ${MYTHIC.filter((m) => P.story.mythic?.[m.key]?.met).length}/${MYTHIC.length} · 열쇠 조각 ${(P.legacy.shards ?? []).length}개</p><p class="note">${esc(MYTHIC_HINT)}</p><div class="mythgrid">${cells}</div>`;
   } else if (tab === 5) {
     // 베타 1장: 어울림 24칸 — 발견한 것은 구성·효과, 아직은 ???와 힌트
     const cells = HARMONIES.map((h) => {

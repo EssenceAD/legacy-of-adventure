@@ -1,6 +1,7 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
 import { ACHIEVEMENTS } from '../data/achieve';
+import { MANUAL_V2 } from '../data/story/manual';
 import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { PROP_CARD_NAME, propCardMode, setPropCardMode, type PropCardMode } from './propCard';
@@ -425,20 +426,9 @@ export function openKeys() {
 
 // ───────── 안내서 「여관 운영 안내서」 ─────────
 
-export const MANUAL: { key: string; icon: IconKey; title: string; lines: string[] }[] = [
-  { key: 'start', icon: 'm_quest', title: '처음 시작', lines: ['왼쪽 위 임무 카드가 늘 다음 할 일을 알려 줘요.', '카드를 누르면 그곳으로 가고, 손가락이 눌러야 할 버튼을 톡톡 가리켜요.', '다 하면 카드가 반짝 — 눌러서 보상을 받아요.'] },
-  { key: 'build', icon: 'm_smith', title: '건설 · 땅', lines: ['울타리 안 풀밭은 전부 지을 수 있는 땅이에요. 아래 「건설」에서 골라 원하는 칸에 지어요.', '땅을 넓히면 숲을 베어 내요 — 울타리 밖 「땅 넓히기」 팻말을 눌러도 돼요.', '잠긴 건물은 무엇을 하면 열리는지 적혀 있어요 (땅 단계 · 평판 · 장부).', '여관 본관은 Lv.10, 주점은 Lv.6까지 — 레벨마다 모습이 조금씩 바뀌어요.'] },
-  { key: 'guests', icon: 'm_guests', title: '손님 · 단골', lines: ['손님은 기분이 좋으면 떠날 때 단골이 되겠다고 해요.', '단골은 원정·사냥·토벌에 데려갈 수 있어요.', '손님을 눌러 말을 걸면 기분이 조금 좋아져요.'] },
-  { key: 'expedition', icon: 'm_expedition', title: '원정', lines: ['의뢰 게시판에서 의뢰를 골라 파티를 보내요.', '짧은 원정(1분)은 자주, 긴 원정은 잘 때.', '진행 바를 누르면 원정 일지를 볼 수 있어요.'] },
-  { key: 'hunt', icon: 'm_hunt', title: '사냥', lines: ['지역마다 10스테이지, x-10은 지역 보스.', '깬 스테이지는 「맡겨 두기」로 마을에서 계속 사냥 · 꺼 둬도 방치 보상.', '전투력이 모자라면 장비·레벨·케미로 올리고 다시!'] },
-  { key: 'raid', icon: 'm_raid', title: '토벌', lines: ['매주 월요일 보스가 바뀌어요. 체력은 주간 동안 이어서 깎여요.', '번쩍이면 막기를 꾹 — 완벽하게 막으면 보스가 기절.', '한 판 피해량으로 주간 랭킹에 올라요.'] },
-  { key: 'smith', icon: 'm_smith', title: '대장간', lines: ['분해 → 가루 → 강화(+10까지), 재료로 세트 장비 제작.', '지역 보스 재료는 사냥 x-10과 토벌에서 얻어요.'] },
-  { key: 'dex', icon: 'm_dex', title: '도감', lines: ['손님·아이템·케미·영웅을 모으면 모든 전투력이 올라요.', '도감 하나를 100% 채우면 유산의 기념비가 열려요.'] },
-  { key: 'owner', icon: 'm_owner', title: '주인 · 인연', lines: ['주인 능력치는 매일·행동마다 조금씩 올라요.', '영웅·전설·마을 사람에게 말 걸기·선물로 인연을 쌓아요.', '언젠가 방랑의 불씨가 타오르면… 엔딩을 고를 수 있어요.'] },
-  { key: 'grade', icon: 'm_neighbor', title: '마을 등급', lines: ['장부 장을 마칠 때마다 마을 등급이 올라요.', '오두막 → 쉼터 → 마을 → 고을 → 도시. 길·담·장식·NPC가 바뀌어요.'] },
-  { key: 'collect', icon: 'm_achieve', title: '업적 · 칭호', lines: ['업적을 이루면 금화·가루·칭호를 받아요.', '칭호는 메뉴 → 칭호에서 달아요.'] },
-  { key: 'shop', icon: 'm_shop', title: '상점 · 출석 · 우편함', lines: ['상점 진열은 매일 바뀌어요.', '매일 첫 접속 때 출석 도장 — 보상은 우편함으로.'] },
-];
+/** 안내서 v2 (17쪽 · 문구는 data/story/manual.ts 그대로) — 아이콘은 있는 것 중 가까운 것 */
+const MANUAL_ICON: Record<string, IconKey> = { fishing: 'm_garden', legends: 'm_heroes', story: 'm_album', social: 'm_chat' };
+export const MANUAL: { key: string; icon: IconKey; title: string; lines: string[] }[] = MANUAL_V2.map((p) => ({ ...p, icon: MANUAL_ICON[p.key] ?? (p.icon as IconKey) }));
 
 /** 창 제목 → 안내서 쪽 */
 export const HELP_OF: [RegExp, string][] = [
