@@ -1,6 +1,7 @@
 // 전투 개편 1차: 쿼터뷰 필드 액션 — 상태와 규칙 (그리기는 draw.ts, 조작·화면은 ui.ts)
 //  좌표는 타일(마을과 같은 쿼터뷰). 주인공 1명 조종 + 동료 2명 AI. 몬스터: 다가오기 → 예고(빨간 범위 0.6초) → 공격 → 빈틈 0.8초
 import { CONFIG } from '../data/config';
+import { josa } from '../data/josa';
 import { mythicAtk, mythicDef, mythicHeal } from '../world/mythic';
 import { buffOf } from '../world/facilities';
 import { shakeParams } from '../engine/shake';
@@ -941,7 +942,7 @@ function aiBoss(f: Field, m: Unit, t: Unit, dt: number) {
   const look = m.boss!;
   if (!m.enraged && m.hp < m.max * 0.5) {
     m.enraged = true;
-    f.banner = `${look.name}이(가) 화났다!`;
+    f.banner = `${look.name}${josa(look.name, '이')} 화났다!`;
     f.bannerT = 1.6;
     shake(f, C.shake.boss);
   }
