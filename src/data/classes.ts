@@ -11,26 +11,28 @@ export interface Face {
   scar?: boolean;
   glasses?: boolean;
   brow2?: number;
+  /** EASTER §5: 볼에 물감 한 점 */
+  paint?: string;
 }
 
 export interface ClassDef {
   name: string;
   face: Face;
   hair: string;
-  style: 'short' | 'long' | 'braid' | 'none' | 'bald';
+  style: 'short' | 'long' | 'braid' | 'twin' | 'none' | 'bald';
   cloth: string;
   arm: string;
   pants: string;
   boots: string;
   accent: string;
-  weapon: 'sword' | 'staff' | 'axe' | 'dagger' | 'book' | 'bow' | 'holy' | null;
+  weapon: 'sword' | 'staff' | 'axe' | 'dagger' | 'book' | 'bow' | 'holy' | 'lantern' | 'pinwheel' | 'brush' | null;
   /** 리마스터: 등 뒤 망토 · 화살통 · 쌍단검 */
   cape?: string;
   quiver?: boolean;
   dual?: boolean;
   shield?: boolean;
   robe?: boolean;
-  hat?: 'wizard' | 'feather';
+  hat?: 'wizard' | 'feather' | 'beret';
   hatc?: string;
   elf?: boolean;
   dwarf?: boolean;
@@ -43,6 +45,10 @@ export interface ClassDef {
   brow?: string;
   /** 끼운 무기 등급 색 (날·머리 부분) */
   weaponColor?: string;
+  /** EASTER §5: 피부색 · 어깨 수건 · 안경 테 색 */
+  skin?: string;
+  towel?: string;
+  glassesColor?: string;
 }
 
 export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'keeper' | 'post' | 'hero';

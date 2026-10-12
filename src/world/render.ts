@@ -896,7 +896,29 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
     ctx.fillStyle = '#e8b84a';
     ctx.fillRect(X - tw / 2, ty - 8, tw, 10);
     ctx.fillStyle = '#3a2408';
-    ctx.fillText(a.name, X, ty);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(a.name, X, ty - 3);
+    ctx.textBaseline = 'alphabetic';
+    // 머리 위 ★ 하나
+    const st = P(ctx);
+    st.rect(X - 1, ty - 14, 3, 3, '#ffd36b');
+    st.px(X, ty - 15, '#ffd36b');
+    st.px(X, ty - 11, '#ffd36b');
+    st.px(X - 2, ty - 13, '#ffd36b');
+    st.px(X + 2, ty - 13, '#ffd36b');
+    // 따뜻한밤의 등불: 밤에만 주변 2칸 은은한 빛
+    if (a.cameo === 'warmnight' && NL > 0) {
+      const night = NL / CONFIG.dayNight.tintSteps;
+      const r = TH * 2.2;
+      const g = ctx.createRadialGradient(X + 4, Y - 14, 0, X + 4, Y - 14, r);
+      g.addColorStop(0, `rgba(255,200,110,${0.4 * night})`);
+      g.addColorStop(1, 'rgba(255,200,110,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = g;
+      ctx.fillRect(X + 4 - r, Y - 14 - r, r * 2, r * 2);
+      ctx.restore();
+    }
     if (Math.random() < 0.03) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
   }
   // 우체부 머리 위 !
@@ -1089,7 +1111,9 @@ function drawLuxury(ctx: CanvasRenderingContext2D, o: Building, x: number, y: nu
   ctx.fillStyle = '#e8b84a';
   ctx.fillRect(X - tw / 2, Y - 8, tw, 10);
   ctx.fillStyle = '#3a2408';
-  ctx.fillText(text, X, Y);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, X, Y - 3);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawPioneer(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {

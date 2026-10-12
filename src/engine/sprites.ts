@@ -24,6 +24,8 @@ interface Pose {
 }
 
 function drawChar(def: ClassDef, pose: Pose = {}): GridT {
+  const SKN = def.skin ?? SK.skin;
+  const SKN2 = def.skin ? dk(def.skin, 0.18) : SK.skin2;
   const G = Grid(24, 33, 1, 3);
   const bob = pose.bob || 0;
   const dw = def.dwarf;
@@ -63,6 +65,13 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     G.rect(5, headCY + 2, 3, 6, def.hair);
     G.ell(6, headCY + 9, 1.6, 1.6, def.hair);
   }
+  // EASTER §5: 양갈래 — 양옆으로 묶은 머리
+  if (def.style === 'twin') {
+    G.ell(4, headCY + 2, 1.8, 2.6, def.hair);
+    G.ell(17.5, headCY + 2, 1.8, 2.6, def.hair);
+    G.set(4, headCY + 5, def.hair);
+    G.set(18, headCY + 5, def.hair);
+  }
   // 다리
   if (!sit) {
     const lx = pose.lx || 0;
@@ -80,7 +89,7 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
   // 뒤쪽 팔
   const aB = pose.armB || 0;
   G.rect(6, bodyY + 1 + aB, 2, 5, dk(def.arm, 0.25));
-  G.rect(6, bodyY + 6 + aB, 2, 1, SK.skin2);
+  G.rect(6, bodyY + 6 + aB, 2, 1, SKN2);
   // 도적: 뒤쪽 손에도 단검 (쌍단검)
   if (def.dual && !sit && !pose.cast) {
     G.rect(6, bodyY + 7 + aB, 1, 4, '#e9eef7');
@@ -98,6 +107,11 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     const bw = dw ? 10 : 8;
     G.rect(Math.round(cx - bw / 2), bodyY, bw, (dw ? 8 : 7) - (sit ? 1 : 0), def.cloth);
     if (def.apron) G.rect(Math.round(cx - 2), bodyY + 2, 5, 6, def.apron);
+    // EASTER §5: 어깨에 걸친 흰 수건 (2px)
+    if (def.towel) {
+      G.rect(Math.round(cx - bw / 2), bodyY, bw, 1, def.towel, 'flat');
+      G.rect(Math.round(cx + bw / 2) - 2, bodyY + 1, 2, 2, def.towel, 'flat');
+    }
     if (!def.robe) G.rect(Math.round(cx - bw / 2), bodyY + (dw ? 6 : 5), bw, 1, def.accent);
     if (def.weapon === 'sword') {
       G.rect(10, bodyY, 3, 6, '#2f57b0');
@@ -105,9 +119,9 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     }
   }
   // 머리
-  G.ell(cx + 0.6, headCY - 0.2, 6.2, 5.6, SK.skin);
-  if (def.elf) G.tri(5, headCY - 1, 6.5, headCY + 1.5, 2.5, headCY - 3, SK.skin);
-  if (def.style === 'short' || def.style === 'long' || def.style === 'braid') {
+  G.ell(cx + 0.6, headCY - 0.2, 6.2, 5.6, SKN);
+  if (def.elf) G.tri(5, headCY - 1, 6.5, headCY + 1.5, 2.5, headCY - 3, SKN);
+  if (def.style === 'short' || def.style === 'long' || def.style === 'braid' || def.style === 'twin') {
     G.ell(cx + 0.3, headCY - 1.9, 6.7, 4.9, def.hair, null, (x, y) => y < headCY - 1.6 || (x < cx - 2.4 && y < headCY + 3.5));
     G.rect(12, headCY - 3.6, 5, 1, def.hair);
     G.set(16, headCY - 2.6, def.hair);
@@ -120,7 +134,7 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
   }
   if (def.style === 'bald') {
     G.rect(5, headCY - 1, 2, 4, def.hair);
-    G.ell(cx, headCY - 4, 3, 1.2, lt(SK.skin, 0.15));
+    G.ell(cx, headCY - 4, 3, 1.2, lt(SKN, 0.15));
   }
   if (def.bandana) {
     G.ell(cx + 0.3, headCY - 2.8, 6.7, 3.6, def.bandana, null, (_x, y) => y < headCY - 2);
@@ -141,6 +155,12 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     G.tri(6, headCY - 4.5, 16, headCY - 4.5, 7, headCY - 13, def.hatc!);
     G.rect(7, headCY - 6, 9, 1, def.accent, 'flat');
   }
+  // EASTER §5: 베레모 (납작 · 한쪽으로 기울게)
+  if (def.hat === 'beret') {
+    G.ell(cx + 1.2, headCY - 4.6, 6.6, 2.2, def.hatc!);
+    G.set(Math.round(cx + 1), Math.round(headCY - 7.4), def.hatc!);
+    G.rect(Math.round(cx - 4), Math.round(headCY - 3), 10, 1, dk(def.hatc!, 0.2));
+  }
   // 베타: 평가단 — 챙 넓은 모자 + 깃털
   if (def.hat === 'feather') {
     G.rect(3, headCY - 5, 16, 2, def.hatc!);
@@ -156,7 +176,7 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
       for (let y = 0; y < G.h; y++)
         for (let x = 0; x < G.w; x++) {
           const p = G.g[y][x];
-          if (p && (p.c === SK.skin || (def.hood && p.c === def.hair)) && y - 3 < headCY + 4) G.g[y][x] = { c: hc };
+          if (p && (p.c === SKN || (def.hood && p.c === def.hair)) && y - 3 < headCY + 4) G.g[y][x] = { c: hc };
         }
     }
     if (def.dwarf && def.beard) {
@@ -171,19 +191,19 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
   if (pose.cast) {
     // 시전: 두 손을 들고 손에 빛
     G.rect(13, bodyY - 2, 2, 4, def.arm);
-    G.rect(13, bodyY - 4, 2, 2, SK.skin);
+    G.rect(13, bodyY - 4, 2, 2, SKN);
     const gl = ramp(def.accent, 2);
     const r = pose.cast;
     for (const [dx, dy] of [[0, -2], [1, -2], [-1, -1], [2, -1], [-1, 0], [2, 0], [0, 1], [1, 1]].slice(0, 4 + r * 2)) G.set(13 + dx, bodyY - 4 + dy - (r > 1 ? 1 : 0), dx === 0 || dx === 1 ? '#ffffff' : gl, 'flat');
     if (r === 3) for (const [dx, dy] of [[-2, -4], [3, -4], [-3, -1], [4, -1]]) G.set(13 + dx, bodyY - 4 + dy, gl, 'flat');
   } else if (pose.atk === 1) {
     G.rect(13, bodyY - 1, 2, 4, def.arm);
-    G.rect(13, bodyY - 2, 2, 2, SK.skin);
+    G.rect(13, bodyY - 2, 2, 2, SKN);
     weapon(G, def, 13, bodyY - 2, 'up');
   } else if (pose.atk === 3) {
     // 휘두르는 순간: 무기는 가운데 · 지나간 자리에 잔상(스미어) 1프레임
     G.rect(13, bodyY, 3, 3, def.arm);
-    G.rect(16, bodyY, 2, 2, SK.skin);
+    G.rect(16, bodyY, 2, 2, SKN);
     const sm = '#fff3d6';
     for (let a = 0; a <= 8; a++) {
       const t = (a / 8) * (Math.PI / 2);
@@ -193,28 +213,29 @@ function drawChar(def: ClassDef, pose: Pose = {}): GridT {
     weapon(G, def, 17, bodyY, 'mid');
   } else if (pose.atk === 4) {
     G.rect(13, bodyY + 3, 3, 2, def.arm);
-    G.rect(16, bodyY + 4, 2, 2, SK.skin);
+    G.rect(16, bodyY + 4, 2, 2, SKN);
     weapon(G, def, 17, bodyY + 4, 'low');
   } else if (pose.atk === 2) {
     G.rect(13, bodyY + 2, 4, 2, def.arm);
-    G.rect(17, bodyY + 2, 2, 2, SK.skin);
+    G.rect(17, bodyY + 2, 2, 2, SKN);
     weapon(G, def, 18, bodyY + 2, 'fwd');
   } else if (pose.eat) {
     G.rect(13, bodyY + 1, 2, 3, def.arm);
-    G.rect(14, bodyY - 1 - (pose.eat > 1 ? 1 : 0), 2, 2, SK.skin);
+    G.rect(14, bodyY - 1 - (pose.eat > 1 ? 1 : 0), 2, 2, SKN);
   } else if (pose.pray) {
     G.rect(12, bodyY + 1, 3, 3, def.arm);
-    G.rect(14, bodyY + 1, 2, 2, SK.skin);
+    G.rect(14, bodyY + 1, 2, 2, SKN);
   } else {
     G.rect(13, bodyY + 1 + aF, 2, 5, def.arm);
-    G.rect(13, bodyY + 6 + aF, 2, 1, SK.skin);
-    if (!sit) weapon(G, def, 14, bodyY + 6 + aF, 'rest');
+    G.rect(13, bodyY + 6 + aF, 2, 1, SKN);
+    if (!sit) weapon(G, def, 14, bodyY + 6 + aF, 'rest', ((pose.lx ?? 0) + (pose.rx ?? 0) + 8) % 2);
   }
   return G;
 }
 
 /** 얼굴: 직업마다 눈·눈썹·코·입·주근깨·흉터·안경이 다르다 */
 function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
+  const SKN2 = def.skin ? dk(def.skin, 0.18) : SK.skin2;
   const ey = Math.round(headCY - 0.6) - (pose.hurt ? 0 : 0);
   // 리마스터 표정: 공격 = 기합 · 피격 = 아픔 (눈·눈썹·입을 바꾼다)
   const F = pose.face === 'hurt' ? { ...def.face, eyes: 'hurt' as const, mouth: 'o' as const, brow: 'up' as const } : pose.face === 'shout' ? { ...def.face, brow: 'angry' as const, mouth: 'o' as const } : def.face || {};
@@ -292,8 +313,8 @@ function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
     G.set(14, ey - 2, BR, 'flat');
     G.set(15, ey - 1, BR, 'flat');
   }
-  if (F.nose === 'big') G.rect(12, ey + 1, 2, 2, SK.skin2, 'flat');
-  else G.set(13, ey + 2, SK.skin2, 'flat');
+  if (F.nose === 'big') G.rect(12, ey + 1, 2, 2, SKN2, 'flat');
+  else G.set(13, ey + 2, SKN2, 'flat');
   switch (F.mouth) {
     case 'grin':
       G.rect(11, ey + 4, 4, 1, MO, 'eye');
@@ -309,7 +330,7 @@ function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
       G.rect(12, ey + 3, 2, 2, '#7a2a3a', 'eye');
       break;
     case 'flat':
-      G.rect(12, ey + 4, 2, 1, dk(SK.skin2, 0.2), 'eye');
+      G.rect(12, ey + 4, 2, 1, dk(SKN2, 0.2), 'eye');
       break;
     case 'tiny':
       G.set(12, ey + 4, MO, 'eye');
@@ -329,11 +350,12 @@ function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
     G.set(16, ey + 2, '#c27a5a', 'flat');
   }
   if (F.scar) {
-    G.set(15, ey + 3, SK.skin2, 'flat');
-    G.set(16, ey + 2, SK.skin2, 'flat');
+    G.set(15, ey + 3, SKN2, 'flat');
+    G.set(16, ey + 2, SKN2, 'flat');
   }
+  if (F.paint) G.set(16, ey + 2, F.paint, 'flat');
   if (F.glasses) {
-    const gc = '#b08850';
+    const gc = def.glassesColor ?? '#b08850';
     for (const ex of [9, 13]) {
       G.rect(ex + 1, ey - 1, 2, 1, gc, 'eye');
       G.rect(ex + 1, ey + 2, 2, 1, gc, 'eye');
@@ -354,10 +376,43 @@ function drawFace(G: GridT, def: ClassDef, pose: Pose, headCY: number) {
   }
 }
 
-function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low') {
+function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low', frame = 0) {
   const w = def.weapon;
   if (!w) return;
   const wc = def.weaponColor;
+  // EASTER §5: 개척자 소품 — 등불 · 바람개비(두 장 번갈아) · 붓
+  if (w === 'lantern') {
+    G.rect(hx, hy, 1, 2, '#5a3a2a');
+    G.rect(hx - 1, hy + 2, 3, 4, '#3a2a20');
+    G.rect(hx, hy + 3, 1, 2, wc ?? '#ffd36b', 'flat');
+    G.set(hx, hy + 6, '#3a2a20');
+    return;
+  }
+  if (w === 'pinwheel') {
+    G.rect(hx, hy - 6, 1, 8, '#8a6040');
+    const c1 = wc ?? '#e8503c';
+    const c2 = '#ffd36b';
+    const cy = hy - 7;
+    if (frame) {
+      G.rect(hx - 2, cy - 1, 2, 2, c1, 'flat');
+      G.rect(hx + 1, cy + 1, 2, 2, c1, 'flat');
+      G.rect(hx + 1, cy - 2, 2, 2, c2, 'flat');
+      G.rect(hx - 2, cy + 1, 2, 2, c2, 'flat');
+    } else {
+      G.rect(hx - 1, cy - 3, 2, 2, c1, 'flat');
+      G.rect(hx, cy + 2, 2, 2, c1, 'flat');
+      G.rect(hx + 2, cy - 1, 2, 2, c2, 'flat');
+      G.rect(hx - 3, cy, 2, 2, c2, 'flat');
+    }
+    G.set(hx, cy, '#ffffff', 'flat');
+    return;
+  }
+  if (w === 'brush') {
+    G.rect(hx, hy - 5, 1, 7, '#8a6040');
+    G.rect(hx, hy - 7, 1, 2, '#e8e2d4');
+    G.set(hx, hy - 8, wc ?? '#ef6f9a', 'flat');
+    return;
+  }
   if (w === 'sword') {
     const bl = wc ?? '#e9eef7';
     const hd = def.accent;
