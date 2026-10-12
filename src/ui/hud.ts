@@ -2,7 +2,7 @@
 import { sfx } from '../audio/sfx';
 import { pendingWith, runFirstWith } from '../world/events';
 import { unseenDrops } from '../world/decodrop';
-import { canUndo, decorView, noteMove, undo } from '../world/decor';
+import { canUndo, decorView, entranceWhy, moveEntrance, noteMove, rememberDungeonHome, undo } from '../world/decor';
 import { notePlace, takeOut } from '../world/store';
 import { N, sx, sy, toTile, view } from '../engine/iso';
 import { track as trackEv } from '../net/telemetry';
@@ -19,7 +19,7 @@ import { CONFIG } from '../data/config';
 import { regionById, REGIONS } from '../data/items';
 import { esc } from './common';
 import { baseKey, FLIP } from '../engine/assets';
-import { blocksDoor, buildCost, canPlace, gateOk, grid, inLand, landBounds, placing, pondAt, suggestSpot, type Placement } from '../world/town';
+import { blocksDoor, buildCost, canPlace, entrance, gateOk, grid, inLand, landBounds, outsideOk, placing, pondAt, suggestSpot, type Placement } from '../world/town';
 import type { StoredObj } from '../world/state';
 import { computeSets } from '../world/harmony';
 import type { Building } from '../world/state';
@@ -50,7 +50,11 @@ const fmt = (n: number) => n.toLocaleString('ko-KR');
 /** 놓을 수 없는 까닭 (놓을 수 있으면 null) */
 function whyNot(pl: Placement): string | null {
   if (pl.tx == null || pl.ty == null) return '놓을 곳을 눌러요';
+  // FEEDBACK23 §5: 마을 입구
+  if (pl.ent) return entranceWhy(pl.tx);
   const ign = pl.move;
+  // FEEDBACK23 §4: 던전은 숲속 원래 자리로 되돌릴 수 있다 (땅 밖)
+  if (outsideOk(pl)) return canPlace(pl, ign) ? null : '다른 건물과 겹쳐요';
   for (let j = 0; j < pl.fh; j++)
     for (let i = 0; i < pl.fw; i++) if (!inLand(pl.tx + i, pl.ty + j)) return '땅 밖이에요';
   for (let j = 0; j < pl.fh; j++)
@@ -73,8 +77,8 @@ function check(pl: Placement) {
 function placeText(pl: Placement) {
   $('#placeOk').toggleAttribute('disabled', !pl.ok);
   $('#placeRot').toggleAttribute('disabled', !pl.sprite);
-  const verb = pl.move || pl.prop ? ' 옮기기' : pl.store ? ' 꺼내 놓기' : pl.chain ? ' 이어 놓기' : '';
-  $('#placeTxt').textContent = `${def(pl.kind).name}${verb} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}${pl.chain && pl.ok ? ' · ✕로 끝내요' : ''}`;
+  const verb = pl.move || pl.prop || pl.ent ? ' 옮기기' : pl.store ? ' 꺼내 놓기' : pl.chain ? ' 이어 놓기' : '';
+  $('#placeTxt').textContent = `${pl.ent ? '마을 입구' : def(pl.kind).name}${verb} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}${pl.chain && pl.ok ? ' · ✕로 끝내요' : ''}`;
   const w = $('#placeWhy');
   // TOWN T2: 놓으면 생기는 어울림을 미리 (이름)
   const hm = pl.ok ? harmonyHere(pl) : [];
@@ -91,7 +95,7 @@ function placeText(pl: Placement) {
 }
 /** 이 자리에 놓으면 이 장식이 들어가는 어울림 이름 */
 function harmonyHere(pl: Placement): string[] {
-  if (pl.tx == null || pl.ty == null || !def(pl.kind).deco) return [];
+  if (pl.tx == null || pl.ty == null || !def(pl.kind).deco || pl.ent) return [];
   const ghost = { kind: pl.kind, tx: pl.tx, ty: pl.ty, fw: pl.fw, fh: pl.fh, lvl: 1, hue: null, inside: [], sprite: pl.sprite } as unknown as Building;
   const objs = world.objs.filter((o) => o !== pl.move).concat(ghost);
   return [...new Set(computeSets(objs).filter((x) => x.members.includes(ghost)).map((x) => HARMONIES.find((h) => h.id === x.id)?.name ?? ''))].filter(Boolean);
@@ -297,12 +301,25 @@ export function startMove(o: Building) {
   openPlace({ kind: o.kind, sprite: o.sprite, fw: o.fw, fh: o.fh, tx: o.tx, ty: o.ty, ok: false, flip: !!o.flip, move: o });
 }
 
+/** FEEDBACK23 §5: 마을 입구 옮기기 — 울타리 앞 가장자리 칸 하나를 좌우로 (정문이 있으면 같이) */
+export function startMoveEntrance() {
+  if (S.visiting) return;
+  const [ex, ey] = entrance();
+  openPlace({ kind: 'gate', sprite: null, fw: 1, fh: 1, tx: ex, ty: ey, ok: false, ent: true });
+}
+
 /** 배치 중 탭·끌기: 그 자리로 미리보기를 옮긴다 (칸이 바뀌면 톡) */
 export function movePlacement(fx: number, fy: number) {
   const pl = placing.pl;
   if (!pl) return;
-  const tx = Math.floor(fx - pl.fw / 2 + 0.5);
-  const ty = Math.floor(fy - pl.fh / 2 + 0.5);
+  let tx = Math.floor(fx - pl.fw / 2 + 0.5);
+  let ty = Math.floor(fy - pl.fh / 2 + 0.5);
+  // FEEDBACK23 §5: 입구는 앞 가장자리 줄을 벗어나지 않는다 (손가락이 어디 있든 가장 가까운 칸)
+  if (pl.ent) {
+    const [a, b] = landBounds();
+    tx = Math.max(a, Math.min(b - 1, Math.floor(fx)));
+    ty = b - 1;
+  }
   if (tx === pl.tx && ty === pl.ty) return;
   pl.tx = tx;
   pl.ty = ty;
@@ -349,6 +366,17 @@ function confirmPlace() {
     }
     return;
   }
+  // FEEDBACK23 §5: 마을 입구
+  if (pl.ent) {
+    const why = moveEntrance(pl.tx!);
+    if (why) return toast(why);
+    sfx('build');
+    cancelPlace();
+    toast('마을 입구를 옮겼어요 · 손님이 여기로 드나들어요');
+    return;
+  }
+  // FEEDBACK23 §4: 던전을 처음 옮기면 숲속 원래 자리를 기억 (그 자리로 되돌릴 수 있게)
+  if (pl.move) rememberDungeonHome(pl.move);
   // TOWN T2: 꾸미기 모드에서 옮긴 것도 되돌리기에 (BUILDUX: 밖에서 옮긴 것도)
   const mv = pl.move ? { o: pl.move, tx: pl.move.tx, ty: pl.move.ty, flip: pl.move.flip } : null;
   const gold0 = S.gold;

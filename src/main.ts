@@ -48,12 +48,12 @@ import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
-import { addObj, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
+import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
 import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
-import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
+import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startMoveEntrance, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
 import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu } from './ui/menu';
@@ -396,6 +396,8 @@ function pinchDist() {
 
 /** BUILDUX §2-1: 꾸미기 모드에서 꾹 누르기(0.4초) = 들기 */
 let lpTimer = 0;
+/** 마지막으로 누른 손가락 종류 (mouse · touch · pen) */
+let lastPtrType = '';
 /** BUILDUX §1-5: 들고 끄는 중 마지막 손가락 자리 (가장자리 자동 스크롤) */
 let lastPtr: [number, number] | null = null;
 let edgeRaf = 0;
@@ -424,12 +426,23 @@ function edgeLoop() {
   };
   edgeRaf = requestAnimationFrame(step);
 }
-/** 꾹 누른 칸의 건물·장식을 든다 */
+/**
+ * 꾹 누른 곳의 건물·장식을 든다.
+ *  FEEDBACK23 §2: 예전엔 손가락 아래 「바닥 칸」만 봤다 → 키 큰 건물은 지붕·벽을 누르면 그 아래 칸이 뒤쪽 빈 칸이라 안 들렸다
+ *  (태블릿 가로에서 건물이 작게 보여 더 자주). 이제 탭과 같은 그림 판정(투명 픽셀 빼고 앞 건물부터)을 먼저, 없으면 바닥 칸
+ *  · 던전 입구도 옮길 수 있다 (§4) · 울타리 앞 입구 칸을 꾹 = 마을 입구 옮기기 (§5)
+ */
 function liftAt(clientX: number, clientY: number): boolean {
+  if (S.visiting) return false;
   const [fx, fy] = toTile(cv, clientX, clientY);
-  const o = grid[Math.floor(fy)]?.[Math.floor(fx)];
-  if (!o || def(o.kind).fixed || S.visiting) return false;
-  startMove(o);
+  const [mx, my] = toLogical(cv, clientX, clientY);
+  const o = buildingAt(mx, my, alphaAt) ?? grid[Math.floor(fy)]?.[Math.floor(fx)];
+  if (!o) {
+    const [ex, ey] = entrance();
+    if (Math.floor(fx) !== ex || Math.floor(fy) !== ey) return false;
+    startMoveEntrance();
+  } else if (!canMoveKind(o.kind)) return false;
+  else startMove(o);
   ghostDrag = true;
   moved = true;
   lastPtr = [clientX, clientY];
@@ -442,6 +455,8 @@ function bindInput() {
   // BUILDUX §5: 오른쪽 클릭 = 취소 (배치 · 꾸미기 끌기)
   cv.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    // FEEDBACK23 §2: 안드로이드(태블릿)는 손가락을 꾹 누르면 contextmenu가 온다 → 방금 꾹 눌러 든 건물을 바로 내려놓지 않게 (마우스 오른쪽 클릭만 취소)
+    if (lastPtrType === 'touch' || lastPtrType === 'pen' || (e as PointerEvent).pointerType === 'touch') return;
     if (placing.pl) cancelPlace(true);
     else if (decorView.on) decorInput.cancel();
   });
@@ -463,6 +478,7 @@ function bindInput() {
     { passive: false },
   );
   cv.addEventListener('pointerdown', (e) => {
+    lastPtrType = e.pointerType;
     if (e.button === 2) return;
     // HOTFIX14 §4: 운명의 별은 누르는 순간에 판정 (떼는 사이 별이 지나가거나 드래그로 바뀌지 않게)
     if (!placing.pl && touches.size === 0) {
@@ -510,7 +526,12 @@ function bindInput() {
     if (decorView.on && !placing.pl && touches.size === 1) {
       const [x0, y0] = [e.clientX, e.clientY];
       lpTimer = window.setTimeout(() => {
-        if (drag && !moved && decorView.on && !placing.pl) liftAt(x0, y0);
+        if (drag && (!moved || Math.abs(drag.cx - view.cam.x) + Math.abs(drag.cy - view.cam.y) <= CONFIG.feedback23.longPressSlopPx / view.SC) && decorView.on && !placing.pl) {
+          // 흔들려 조금 밀린 화면은 제자리로
+          view.cam.x = drag.cx;
+          view.cam.y = drag.cy;
+          liftAt(x0, y0);
+        }
       }, CONFIG.placement.longPressMs);
     }
   });
@@ -537,7 +558,8 @@ function bindInput() {
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > CONFIG.view.dragThreshold) moved = true;
-    if (moved && !ghostDrag) clearTimeout(lpTimer);
+    // FEEDBACK23 §2: 꾹 누르는 동안 손가락이 조금 흔들려도(태블릿) 들기는 그대로 — 그 이상 끌면 둘러보기
+    if (moved && !ghostDrag && Math.abs(dx) + Math.abs(dy) > CONFIG.feedback23.longPressSlopPx) clearTimeout(lpTimer);
     if (ghostDrag) lastPtr = [e.clientX, e.clientY];
     if (moved && ghostDrag) {
       // 건물이 손가락보다 살짝 위에 따라와서 손에 가리지 않게
@@ -890,6 +912,8 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
+  // FEEDBACK23 e2e: 마을 입구 칸 · 던전 숲속 원래 자리
+  if (import.meta.env.DEV) Object.assign(window, { __ent: () => entrance(), __autoEntX: () => autoEntranceX(), __dgHome: () => dungeonHome(), __hitAt: (cx: number, cy: number) => { const [mx, my] = toLogical(cv, cx, cy); const [fx, fy] = toTile(cv, cx, cy); return { sprite: buildingAt(mx, my, alphaAt)?.kind ?? null, floor: grid[Math.floor(fy)]?.[Math.floor(fx)]?.kind ?? null }; } });
   if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다

@@ -5,7 +5,7 @@ import { track as trackGoal } from './progress';
 import { patchTiles } from './ground';
 import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
-import { canPlace, inLand, pathT, rebuildPaths, spriteFor } from './town';
+import { blocksDoor, canPlace, entrance, grid, inLand, landBounds, pathT, rebuildPaths, spriteFor } from './town';
 import { track as trackEv } from '../net/telemetry';
 
 export const PATH_MATS = ['stone', 'dirt', 'brick', 'deck', 'step'] as const;
@@ -218,6 +218,69 @@ export function noteMove(o: Building, tx: number, ty: number, flip: boolean | un
   const set = (x: number, y: number, f: boolean | undefined) => ((o.tx = x), (o.ty = y), (o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
   pushUndo({ label: `${def(o.kind).name} 옮기기`, undo: () => set(tx, ty, flip), redo: () => set(nx, ny, nf) });
   trackEv('edit_action', { tool: 'move', n: 1 });
+}
+
+// ───────── FEEDBACK23 §5: 마을 입구 옮기기 (울타리 앞 가장자리를 따라 좌우로) ─────────
+
+/** 지금 입구 칸을 덮고 있는 정문 (없으면 undefined) */
+export function gateOnEntrance(): Building | undefined {
+  const [ex, ey] = entrance();
+  return world.objs.find((o) => o.kind === 'gate' && ex >= o.tx && ex < o.tx + o.fw && ey >= o.ty && ey < o.ty + o.fh);
+}
+/** 입구를 x로 옮길 수 없는 까닭 (되면 null) — 정문이 있으면 같이 옆으로 따라가야 한다 */
+export function entranceWhy(x: number | null): string | null {
+  if (S.visiting) return '이웃 마을은 꾸밀 수 없어요';
+  const [a, b] = landBounds();
+  const y = b - 1;
+  if (x == null || !Number.isInteger(x) || x < a || x >= b) return '입구는 울타리 앞쪽 가장자리에만 놓아요';
+  const gate = gateOnEntrance();
+  const g = grid[y]?.[x];
+  if (g && g !== gate) return '건물·장식이 있는 칸엔 입구를 못 놓아요';
+  if (isPond(x, y)) return '연못 위엔 입구를 못 놓아요';
+  if (gate) {
+    const t = { kind: gate.kind, tx: gate.tx + x - entrance()[0], ty: gate.ty, fw: gate.fw, fh: gate.fh };
+    // 정문 규칙(canPlace의 gateOk)은 「지금 입구 위」를 보므로 쓰지 않는다 — 같은 만큼 밀리니 새 입구 칸은 저절로 덮인다
+    if (!canPlaceIgnoringGateRule(t, gate)) return '정문이 따라갈 자리가 없어요 (정문 옆을 비워 주세요)';
+  }
+  return null;
+}
+/** 정문 규칙(입구 위)만 빼고 놓을 수 있나 — 입구를 옮기는 중엔 새 입구 기준이라 */
+function canPlaceIgnoringGateRule(t: { kind: Building['kind']; tx: number; ty: number; fw: number; fh: number }, gate: Building): boolean {
+  for (let j = 0; j < t.fh; j++)
+    for (let i = 0; i < t.fw; i++) {
+      const x = t.tx + i;
+      const y = t.ty + j;
+      if (!inLand(x, y) || isPond(x, y)) return false;
+      const g = grid[y]?.[x];
+      if (g && g !== gate) return false;
+    }
+  return !blocksDoor(t, gate);
+}
+/** 입구를 x로 옮긴다 (정문도 같이) · 되돌리기 한 단계 · 안 되면 까닭 */
+export function moveEntrance(x: number): string | null {
+  const why = entranceWhy(x);
+  if (why) return why;
+  const prev = P.decor.entX ?? null;
+  const gate = gateOnEntrance();
+  const g0 = gate?.tx ?? 0;
+  const g1 = gate ? gate.tx + x - entrance()[0] : 0;
+  const set = (v: number | null, gx: number) => {
+    P.decor.entX = v;
+    if (gate) gate.tx = gx;
+  };
+  set(x, g1);
+  pushUndo({ label: '마을 입구 옮기기', undo: () => set(prev, g0), redo: () => set(x, g1) });
+  rebuildPaths();
+  markDirty();
+  trackEv('edit_action', { tool: 'entrance', n: 1 });
+  return null;
+}
+
+/** FEEDBACK23 §4: 던전을 처음 옮길 때 숲속 원래 자리를 기억 (나중에 그 자리로 되돌릴 수 있게) */
+export function rememberDungeonHome(o: Building) {
+  if (o.kind !== 'dungeon' || P.decor.dgHome || S.visiting) return;
+  if (inLand(o.tx, o.ty) && inLand(o.tx + o.fw - 1, o.ty + o.fh - 1)) return;
+  P.decor.dgHome = [o.tx, o.ty];
 }
 
 // ───────── 꾸미기 모드 화면 상태 (render가 읽는다) ─────────
