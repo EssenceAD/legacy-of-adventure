@@ -1,7 +1,7 @@
 // 핫픽스 12 §6: 케미 알림 다이어트 — 마을 만남은 조용히(♥ 말풍선만) · 대화창은 원정을 같이 다녀와서 3·5단계·처음 발견일 때만,
 //  하루 최대 3번 · 나머지는 「케미 소식」(장부 탭 · 빨간 점) · 설정 「전부 / 중요한 것만(기본) / 끄기」 · 5단계 보상(전용 합동 오의 · 칭호)
 import { orderPair, pairById, type ChemPair } from '../data/chem';
-import { getPref } from '../save/save';
+import { getPref, setPref } from '../save/save';
 import { track } from '../net/telemetry';
 import { pairOf, type BondGain } from './chem';
 import { queueEvent } from './events';
@@ -11,6 +11,15 @@ import { markDirty, P, uiHooks, type Actor } from './state';
 export type ChemNotice = 'all' | 'important' | 'off';
 export const CHEM_NOTICE_NAME: Record<ChemNotice, string> = { all: '전부', important: '중요한 것만', off: '끄기' };
 export const chemNoticeMode = (): ChemNotice => getPref<ChemNotice>('chemNotice', 'important');
+let quietN = 0;
+/** HOTFIX18 §3: 예전 설정이 「전부」로 남은 기기는 한 번 「중요만」으로 (설정에서 다시 켤 수 있다) · 바꿨으면 true */
+export function migrateChemNotice(): boolean {
+  if (getPref<boolean>('chemFix18', false)) return false;
+  setPref('chemFix18', true);
+  if (getPref<string>('chemNotice', 'important') !== 'all') return false;
+  setPref('chemNotice', 'important');
+  return true;
+}
 /** 하루에 대화창으로 뜨는 케미 이벤트 최대 */
 export const CHEM_TALKS_PER_DAY = 3;
 const NEWS_KEEP = 40;
@@ -56,7 +65,11 @@ export function notifyChem(g: BondGain, from: 'town' | 'party'): boolean {
   const want = mode === 'all' ? from === 'party' || important : mode === 'important' ? from === 'party' && important : false;
   if (!want || (mode !== 'all' && !takeTalkSlot())) {
     pushNews(lineOf(g));
-    track('chem_notice', { how: 'news', from, lv: g.levelUp ?? 0, mode });
+    // HOTFIX18 §3: 대화창 없이 소식에만 쌓이는 줄은 50개마다 한 번 (하루 600건이 넘던 기록)
+    if (++quietN >= 50) {
+      track('chem_news', { n: quietN, mode });
+      quietN = 0;
+    }
     return false;
   }
   chemTalk(g.a, g.b, g.levelUp, g.discovered);

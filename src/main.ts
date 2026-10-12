@@ -1,6 +1,9 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
-import { decorInput, initDecor } from './ui/decor';
+import { decorInput, enterDecor, initDecor } from './ui/decor';
+import { highlightGo } from './ui/notice';
+import { setNight as setNightHL } from './world/daynight';
+import { openPlace as openPlaceHL } from './ui/nav';
 import { decorView } from './world/decor';
 import { initPropCard } from './ui/propCard';
 import { proposeTalk } from './world/actors';
@@ -619,6 +622,8 @@ async function boot() {
   initStoryUI();
   // TOWN T2: 꾸미기 모드
   initDecor();
+  // HOTFIX18 §4: 「새로 생긴 것」 카드의 [해 보기]
+  Object.assign(highlightGo, { decor: enterDecor, photo: enterPhoto, night: () => setNightHL(true), build: openBuild, village: () => openPlaceHL('village'), hunt: () => openHunt() });
   // HOTFIX16: 단골 제안 손님 카드 · 오늘의 목표 알약
   initPropCard();
   initGoalPill();

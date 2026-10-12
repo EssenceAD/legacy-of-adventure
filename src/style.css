@@ -1313,3 +1313,9 @@ body.decor #hud > :not(#decorBar):not(#placebar):not(#toast) {display:none !impo
 #placeWhy.good{color:#8fe08f}
 body.decor #view.placing #decorBar{display:none}
 body.decor #over .bub{display:none}
+
+/* HOTFIX18 §4: 새로 생긴 것 카드 */
+.hl{display:flex;flex-direction:column;gap:8px}
+.hlrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 8px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink)}
+.hlrow i{font-style:normal;font-size:22px}
+.hlrow span{font-size:var(--f-ui);line-height:1.4}

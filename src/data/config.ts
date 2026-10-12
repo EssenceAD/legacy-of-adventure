@@ -449,7 +449,7 @@ export const CONFIG = {
     giftFavLv: 10,
   },
   /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
-  gifts: { sorryGold: 1000, /** 서버 저장에서 이미 하나를 잃은 게 확인된 여관 (지금 저장엔 중복이 없어도 사과 편지) */ sorryInns: ['롯데캐슬 여관', '머리박고힐 여관'] as string[] },
+  gifts: { sorryGold: 1000, /** HOTFIX18 §1: 이 시각(v0.11.3 배포) 전에 지은 중복만 사과 */ sorryBefore: 1791729000000, /** 서버 저장에서 이미 하나를 잃은 게 확인된 여관 (지금 저장엔 중복이 없어도 사과 편지) */ sorryInns: ['롯데캐슬 여관', '머리박고힐 여관'] as string[] },
   /** HOTFIX14 §1 임시 → TOWN_SPEC T3에서 땅 단계별 최대 채수·수입 배율과 함께 정식으로: n번째 채 건설비 배율 */
   town: { copyCost: [1, 1.5] as number[] },
   /** 핫픽스 12 §2: 역할 조합(탱·힐·딜) · 멘토 경험치 · 의뢰 조건 태그 */

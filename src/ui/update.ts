@@ -3,8 +3,10 @@
 //  - 누르면 저장을 먼저 끝내고 새로고침 · 전투 중이면 끝난 뒤에 띠 · 날짜가 바뀌었으면 띠 없이 바로
 //  - 업데이트 후 첫 화면에 패치노트 카드 한 번
 import { getPref, hasSave, setPref, writeSave } from '../save/save';
+import { HIGHLIGHTS, highlightGo, type Highlight } from './notice';
+import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
-import { isWinOpen, openWin } from './windows';
+import { closeWin, isWinOpen, openWin, toast } from './windows';
 
 declare const __APP_VERSION__: string;
 declare const __BUILD__: string;
@@ -62,8 +64,36 @@ export async function maybeShowPatchCard() {
   const n = (await loadPatchNotes()).find((x) => x.version === APP_VERSION);
   if (!n) return;
   // 다른 창(방치 요약·출석 등)이 떠 있으면 닫힐 때까지 기다렸다가 (겹쳐 쌓지 않게)
-  for (let i = 0; i < 300 && (isWinOpen() || !document.getElementById('title')?.hidden); i++) await new Promise((r) => setTimeout(r, 1000));
+  for (let i = 0; i < 300 && (isWinOpen() || !document.getElementById('title')?.hidden || !document.getElementById('dlg')?.hidden); i++) await new Promise((r) => setTimeout(r, 1000));
+  // HOTFIX18 §4: 핵심 기능이 있으면 패치 노트 대신 「새로 생긴 것」 카드 (다시 보지 않기를 고르면 예전처럼 패치 노트)
+  const hl = HIGHLIGHTS[APP_VERSION];
+  if (hl?.length && !getPref<boolean>('hlOff', false)) return showHighlights(hl);
   openWin(`v${n.version} 업데이트`, `<p class="pn-title">${esc(n.title)}</p>${noteHtml(n)}<p class="sub">메뉴 → 공지 → 패치노트에서 다시 볼 수 있어요</p>`, 'pncard');
+}
+
+/** HOTFIX18 §4: 「새로 생긴 것」 카드 — 아이콘 · 한 줄 · [해 보기] · 다시 보지 않기 · 패치 노트 전체 */
+export function showHighlights(hl: Highlight[]) {
+  openWin(
+    '새로 생긴 것',
+    `<div class="hl">${hl.map((h, i) => `<div class="hlrow"><i>${h.icon}</i><span>${esc(h.text)}</span><button class="bigbtn sm" data-hl="${i}">${esc(h.label)}</button></div>`).join('')}</div>
+    <div class="btnrow"><button class="bigbtn ghost sm" id="hlAll">패치 노트 전체</button><button class="bigbtn ghost sm" id="hlOff">다시 보지 않기</button></div>`,
+    'hlcard',
+  );
+  document.querySelectorAll<HTMLElement>('[data-hl]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const h = hl[+b.dataset.hl!];
+        trackEv('highlight_go', { go: h.go, ver: APP_VERSION });
+        closeWin();
+        highlightGo[h.go]();
+      }),
+  );
+  document.getElementById('hlAll')!.onclick = () => openPatchNotes();
+  document.getElementById('hlOff')!.onclick = () => {
+    setPref('hlOff', true);
+    closeWin();
+    toast('다음부턴 패치 노트로 보여 드릴게요');
+  };
 }
 
 // ───────── 새 버전 확인 ─────────

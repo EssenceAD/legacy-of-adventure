@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
 import { def, type Kind } from './data/catalog';
@@ -191,6 +192,8 @@ export function continueGame() {
   initStory(false);
   // HOTFIX17 §2: 토벌 도전 횟수 오류 복구 (오늘 횟수 한 번 돌려주기)
   repairRaidTries();
+  // HOTFIX18 §3: 케미 알림 「전부」 → 「중요만」 (한 번)
+  if (migrateChemNotice()) setTimeout(() => toast('케미 알림을 「중요만」으로 바꿨어요 · 설정에서 다시 켤 수 있어요'), 4000);
   S.started = true;
   S.nightT = S.night ? 1 : 0;
   resetCamera();
@@ -331,10 +334,13 @@ export function expandLand(l: number) {
 /** HOTFIX14 §5: 같은 건물 2채 이상이 저장에 있는 유저 — 예전 버전에서 하나를 잃었을 수 있다 → 사과 금화 (한 번) */
 function sorryForDupes() {
   if (P.meta.sorryDupe) return;
-  const kinds = [...new Set(world.objs.map((o) => o.kind))].filter((k) => !MULTI(k) && !SINGLE(k) && world.objs.filter((o) => o.kind === k).length >= 2);
+  // HOTFIX18 §1: 업데이트 전부터 있던 중복만 (지은 시각이 없으면 예전 건물) — 그 뒤 새로 지은 두 번째 채엔 사과하지 않는다
+  const old = (o: Building) => !o.builtAt || o.builtAt < CONFIG.gifts.sorryBefore;
+  const kinds = [...new Set(world.objs.map((o) => o.kind))].filter((k) => !MULTI(k) && !SINGLE(k) && world.objs.filter((o) => o.kind === k && old(o)).length >= 2);
   const named = CONFIG.gifts.sorryInns.includes(S.innName);
-  if (!kinds.length && !named) return;
+  // 한 번 확인하면 끝 (나중에 두 번째 채를 지어도 다시 묻지 않는다)
   P.meta.sorryDupe = true;
+  if (!kinds.length && !named) return;
   addMail({
     from: 'system',
     title: '모모의 편지 · 사라진 건물 미안해요',

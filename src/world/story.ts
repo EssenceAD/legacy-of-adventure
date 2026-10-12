@@ -51,6 +51,7 @@ export function actUp(to: 2 | 3) {
   s.act = to;
   s.actDay[to] = S.day;
   if (to === 3 && !s.letter) s.letter = 1;
+  s.seen.push('tele:act' + to);
   track('act_up', { act: to, day: storyDay(), playMin: s.playMin });
   markDirty();
 }
@@ -72,6 +73,12 @@ export function initStory(fresh: boolean) {
     if (s.act === 2) s.actDay[2] = S.day;
     // 옛 저장의 플레이 시간: 운영 일수로 어림 (게임 1일 ≈ 24분)
     if (!fresh && !s.playMin) s.playMin = Math.round(S.day * 24);
+    markDirty();
+  }
+  // HOTFIX18 §2: 추정으로 올린 막도 한 번 기록 (예전엔 조용히 올려서 act_up이 0건이었다)
+  if (s.act >= 2 && !s.seen.includes('tele:act' + s.act)) {
+    s.seen.push('tele:act' + s.act);
+    track('act_up', { act: s.act, day: storyDay(), playMin: s.playMin, inferred: true });
     markDirty();
   }
   // 유산 포인트 · 기억 조각: 이미 본 엔딩만큼 한 번 채운다 (처음 본 엔딩이었으니 +첫 보너스)

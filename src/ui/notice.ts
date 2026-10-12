@@ -20,6 +20,27 @@ const NOTICES: Notice[] = [
   { id: 1, tag: '제보', t: '버그 · 건의는 우체부 모모에게', d: '상시', b: '마을의 모모(머리 위 !)를 누르면 편지를 쓸 수 있어요.' },
 ];
 const TABS = ['전체', '공지', '업데이트', '이벤트', '제보', '패치노트'];
+
+/**
+ * HOTFIX18 §4: 업데이트 뒤 첫 실행에 패치 노트 대신 보여 줄 「새로 생긴 것」 — 핵심 2~3개 · [해 보기]
+ *  go: 누르면 열 곳 (main이 highlightGo에 채운다)
+ */
+export type HighlightGo = 'decor' | 'photo' | 'night' | 'build' | 'village' | 'hunt';
+export interface Highlight {
+  icon: string;
+  text: string;
+  label: string;
+  go: HighlightGo;
+}
+export const HIGHLIGHTS: Record<string, Highlight[]> = {
+  '0.17.1-beta': [
+    { icon: '🎨', text: '꾸미기 모드 — 길을 직접 그리고, 연못·꽃밭 바닥, 장식 여러 개 한 번에 옮기기', label: '꾸며 보기', go: 'decor' },
+    { icon: '🏘️', text: '이웃 마을 다섯 곳이 새 단장 — 정자·풍차·벚나무 장식 구경', label: '구경 가기', go: 'village' },
+    { icon: '📸', text: '사진 모드 — 내 마을을 배경화면 크기로 한 장', label: '찍어 보기', go: 'photo' },
+  ],
+};
+export const highlightGo: Record<HighlightGo, () => void> = { decor: () => {}, photo: () => {}, night: () => {}, build: () => {}, village: () => {}, hunt: () => {} };
+
 let latest = Math.max(...NOTICES.map((n) => n.id));
 
 /** 서버 공지(notices, 운영자가 대시보드에서 씀)를 맨 위에 더한다 */
