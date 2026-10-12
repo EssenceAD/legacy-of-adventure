@@ -28,6 +28,8 @@ export interface HarmonyFx {
 }
 
 export const CONFIG = {
+  /** 유저 톡방 (카카오톡 오픈채팅) — 게임 안 모든 톡방 링크는 여기서 읽는다 */
+  community: { kakao: 'https://open.kakao.com/o/g1KwZ2Ri' },
   map: {
     /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) */
     size: 32,
@@ -420,6 +422,10 @@ export const CONFIG = {
   smith: {
     /** 분해: 등급별 가루 */
     salvage: { n: 10, r: 25, e: 60, l: 150, a: 300 } as Record<string, number>,
+    /** HOTFIX21: 희귀 이상 분해 때 잿빛 가루도 같이 (깊은 지역은 일반 장비가 안 나와 잿빛이 모자람) */
+    salvageAsh: { n: 0, r: 10, e: 20, l: 40, a: 60 } as Record<string, number>,
+    /** HOTFIX21: 가루 바꾸기 — 높은 가루 1 → 잿빛 가루 n (반대 방향은 없음) */
+    dustSwap: { r: 5, e: 12, l: 30 } as Record<string, number>,
     /** 강화 비용 = (현재 강화+1)² × 이 값 (그 장비 등급 가루) */
     enhanceCost: 10,
     maxEnhance: 10,

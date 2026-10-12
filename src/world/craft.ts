@@ -2,7 +2,8 @@
 import { bestOf } from './town';
 import { towerEnhance } from './facilities';
 import { addCrop } from './facilities';
-import { SLOTS } from '../data/items';
+import { DUST_NAME, SLOTS } from '../data/items';
+import { track as trackEv } from '../net/telemetry';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { BOSSES, bossById } from '../data/bosses';
@@ -31,6 +32,8 @@ export function salvage(it: Item): number {
   P.bag.splice(i, 1);
   const n = SM.salvage[it.grade];
   P.dust[it.grade] += n;
+  // HOTFIX21: 희귀 이상은 잿빛 가루도 같이
+  P.dust.n += SM.salvageAsh[it.grade] ?? 0;
   P.counters.salvaged++;
   track('salvage');
   markDirty();
@@ -38,6 +41,35 @@ export function salvage(it: Item): number {
 }
 
 /** 안 끼고 있는 일반 장비를 전부 분해 (예전 버튼과 같은 결과 — 강화·세트도 포함, 남기기 없음) */
+/** 분해 한 개로 얻는 것 (글자) — 「푸른 가루 +25 · 잿빛 가루 +10」 */
+export function salvageText(g: Grade): string {
+  const ash = SM.salvageAsh[g] ?? 0;
+  return `${DUST_NAME[g]} +${SM.salvage[g]}${ash ? ` · ${DUST_NAME.n} +${ash}` : ''}`;
+}
+/** HOTFIX21: 가루 바꾸기 (높은 가루 → 잿빛) · 바꾼 잿빛 수 */
+export function swapDust(g: Grade, count: number): number {
+  const rate = SM.dustSwap[g];
+  count = Math.min(Math.floor(count), P.dust[g]);
+  if (!rate || count <= 0) return 0;
+  P.dust[g] -= count;
+  P.dust.n += count * rate;
+  trackEv('dust_swap', { g, count });
+  markDirty();
+  return count * rate;
+}
+/** 잿빛 가루가 need만큼 모자랄 때 푸른 → 보랏빛 → 황금 순으로 채운다 · 채운 잿빛 수 */
+export function fillAsh(need: number): number {
+  let got = 0;
+  for (const g of ['r', 'e', 'l'] as Grade[]) {
+    if (got >= need) break;
+    const rate = SM.dustSwap[g];
+    got += swapDust(g, Math.min(P.dust[g], Math.ceil((need - got) / rate)));
+  }
+  return got;
+}
+/** 바꿀 수 있는 잿빛 총량 */
+export const swappableAsh = () => (['r', 'e', 'l'] as Grade[]).reduce((s, g) => s + P.dust[g] * (SM.dustSwap[g] ?? 0), 0);
+
 export function salvageAllCommon(): { count: number; dust: number } {
   const r = salvageBulk(['n'], { upgraded: true, keepBest: false });
   return { count: r.count, dust: r.dust.n ?? 0 };
@@ -61,12 +93,13 @@ export function bulkTargets(grades: Grade[], o: BulkOpts = {}): Item[] {
   return P.bag.filter((it) => grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
 }
 /** 미리 보기: 등급별 개수 · 얻을 가루 */
-export function bulkPreview(grades: Grade[], o: BulkOpts = {}): Record<Grade, { n: number; dust: number }> {
-  const out = {} as Record<Grade, { n: number; dust: number }>;
+export function bulkPreview(grades: Grade[], o: BulkOpts = {}): Record<Grade, { n: number; dust: number; ash?: number }> {
+  const out = {} as Record<Grade, { n: number; dust: number; ash?: number }>;
   for (const g of ['n', 'r', 'e', 'l', 'a'] as Grade[]) out[g] = { n: 0, dust: 0 };
   for (const it of bulkTargets(['n', 'r', 'e', 'l', 'a'], o)) {
     out[it.grade].n++;
     out[it.grade].dust += SM.salvage[it.grade];
+    out[it.grade].ash = (out[it.grade].ash ?? 0) + (SM.salvageAsh[it.grade] ?? 0);
   }
   void grades;
   return out;
@@ -78,6 +111,8 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
     const d = salvage(it);
     if (!d) continue;
     dust[it.grade] = (dust[it.grade] ?? 0) + d;
+    const ash = SM.salvageAsh[it.grade] ?? 0;
+    if (ash) dust.n = (dust.n ?? 0) + ash;
     count++;
   }
   return { count, dust };

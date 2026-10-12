@@ -19,6 +19,8 @@ export const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 const PICS: Record<string, string> = {};
 export function pic(a: Actor): string {
   if (a.role) return PORTRAITS[a.kind] || '';
+  // EASTER: 카메오(베타 개척자)는 전용 초상화
+  if (a.cameo && PORTRAITS['p_' + a.cameo]) return PORTRAITS['p_' + a.cameo];
   // 영웅·전설은 전용 초상화
   if (a.legendId && PORTRAITS['legend_' + a.legendId]) return PORTRAITS['legend_' + a.legendId];
   if (a.heroId && PORTRAITS['hero_' + a.heroId]) return PORTRAITS['hero_' + a.heroId];
@@ -37,12 +39,13 @@ export function pic(a: Actor): string {
  * 영웅·전설·NPC는 전용 초상화, 그림이 없으면 도트 얼굴(pic). 작은 목록 아이콘은 pic 그대로(마을 모습과 이어지게).
  */
 export function portrait(a: Actor): string {
-  if (a.role || a.legendId || a.heroId) return pic(a);
+  if (a.role || a.legendId || a.heroId || a.cameo) return pic(a);
   return PORTRAITS[`g_${a.kind}_${a.race ?? 'human'}`] || pic(a);
 }
 
 /** 이름 + 희귀도 색 */
 export function nameTag(a: Actor) {
+  if (a.cameo) return `<b class="cameo-name">★${esc(a.name)}</b>`;
   const col = RARITY_INFO[a.rarity].color;
   const star = a.legendId ? `<span class="legend-mark">✦${(a.stars ?? 1) >= 5 ? '✦' : ''}</span>` : a.heroId ? '<span class="g">★</span>' : '';
   return `<b class="${a.legendId ? 'legend-name' : ''}" style="color:${a.rarity === 'common' ? 'var(--cream)' : col}">${star}${esc(a.name)}</b>`;

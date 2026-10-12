@@ -1447,3 +1447,14 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 .mcell.met{opacity:1;border-color:transparent;background:linear-gradient(#2a2016,#2a2016) padding-box,linear-gradient(90deg,#ff7a7a,#ffd36b,#7aff9a,#7ac8ff,#c07aff) border-box}
 .mcell small{font-size:11px;opacity:.9}
 #dT{flex-wrap:wrap;row-gap:2px}
+
+/* 유저 톡방 */
+a.kakao{color:#ffe14d;text-decoration:underline}
+.kcard{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;background:#3a3218;border:1px solid #c9a63a;border-radius:6px;padding:8px 10px;margin:0 0 8px}
+.kcard b{flex:1 1 100%}.kcard small{flex:1}
+.kcard a.kbtn{background:#fee500;color:#191919;text-decoration:none;padding:4px 12px;border-radius:4px;font-weight:bold}
+.mail a.kakao{display:inline-block;margin-top:2px}
+
+/* EASTER: 카메오 손님 */
+.cameo-name{color:#ffd36b;text-shadow:0 0 4px rgba(255,211,107,.5)}
+img.port.pixel{image-rendering:pixelated}

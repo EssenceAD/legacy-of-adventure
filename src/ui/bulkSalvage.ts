@@ -20,7 +20,7 @@ export function openBulkSalvage(back: () => void) {
   const rare = sel.filter((g) => (g === 'l' || g === 'a') && pv[g].n > 0);
   const rows = GRADES.map(
     (g) =>
-      `<label class="tog bulkg ${pv[g].n ? '' : 'zero'}"><input type="checkbox" data-g="${g}" ${grades.has(g) ? 'checked' : ''}> <b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name}</b> <span>${pv[g].n}개 · ${DUST_NAME[g]} +${fmt(pv[g].dust)}</span></label>`,
+      `<label class="tog bulkg ${pv[g].n ? '' : 'zero'}"><input type="checkbox" data-g="${g}" ${grades.has(g) ? 'checked' : ''}> <b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name}</b> <span>${pv[g].n}개 · ${DUST_NAME[g]} +${fmt(pv[g].dust)}${pv[g].ash ? ` · ${DUST_NAME.n} +${fmt(pv[g].ash)}` : ''}</span></label>`,
   ).join('');
   openWin(
     '일괄 분해',
@@ -28,7 +28,7 @@ export function openBulkSalvage(back: () => void) {
     <div class="bulk">${rows}</div>
     <label class="tog"><input type="checkbox" id="bkBest" ${opts.keepBest ? 'checked' : ''}> 부위별 최고 장비 1개 남기기 (무기·갑옷·장신구)</label>
     <label class="tog"><input type="checkbox" id="bkUp" ${opts.upgraded ? 'checked' : ''}> 강화·세트 장비도 포함</label>
-    <p class="sub">합계 <b class="g">${total}개</b> · ${sel.filter((g) => pv[g].n).map((g) => `${DUST_NAME[g]} +${fmt(pv[g].dust)}`).join(' · ') || '얻을 가루 없음'}</p>
+    <p class="sub">합계 <b class="g">${total}개</b> · ${totalLine(sel, pv) || '얻을 가루 없음'}</p>
     ${rare.length ? `<p class="sub bad">⚠ ${rare.map((g) => `${GRADE_INFO[g].name} ${pv[g].n}개`).join(' · ')} 포함</p>` : ''}
     <button class="bigbtn ${rare.length ? 'red' : ''}" id="bkGo" ${total ? '' : 'disabled'}>${armed ? '한 번 더 누르면 분해' : `분해하기 (${total}개)`}</button>`,
   );
@@ -76,4 +76,15 @@ export function bindAutoSalvage(id: string) {
     P.autoSalvage = s.value !== '';
     markDirty();
   };
+}
+
+/** HOTFIX21: 합계 — 등급 가루 + 희귀 이상에서 같이 나오는 잿빛 가루를 합쳐서 */
+function totalLine(sel: Grade[], pv: ReturnType<typeof bulkPreview>): string {
+  const sum: Partial<Record<Grade, number>> = {};
+  for (const g of sel) {
+    if (!pv[g].n) continue;
+    sum[g] = (sum[g] ?? 0) + pv[g].dust;
+    if (pv[g].ash) sum.n = (sum.n ?? 0) + pv[g].ash;
+  }
+  return GRADES.filter((g) => sum[g]).map((g) => `${DUST_NAME[g]} +${fmt(sum[g]!)}`).join(' · ');
 }

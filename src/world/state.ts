@@ -436,6 +436,8 @@ export function freshProgress() {
       mail: [] as Mail[],
       mailNext: 1,
       welcome: false,
+      /** 출석 3일째 모모 편지 「톡방」 (한 번만) */
+      kakaoMail: false,
       /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
       slot5: false,
       slot5Seen: false,
@@ -572,6 +574,8 @@ export interface Mail {
   reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string; /** EASTER: 개척자 금빛 편지 */ pioneer?: string };
   /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
   ver?: string;
+  /** 편지 안 링크 버튼 (유저 톡방) */
+  link?: 'kakao';
   at: number;
   claimed: boolean;
 }

@@ -1,5 +1,6 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { communityLink } from './community';
 import { landReqs, landWhy } from '../world/landreq';
 import { GROUPS, groupOf, markSeen, unseenDrops } from '../world/decodrop';
 import { putAway, storeWhy } from '../world/store';
@@ -675,7 +676,7 @@ export function openReport() {
     () => {
       openWin(
         '모모에게 편지 쓰기',
-        `<form class="report" id="rep"><label>종류<select id="rk"><option>버그 제보</option><option>개선 건의</option><option>칭찬</option></select></label><label>내용<textarea id="rt" rows="4" maxlength="300" placeholder="예) 온천 옆에서 손님이 길을 잃었어요"></textarea></label><button>편지 보내기</button></form>`,
+        `<form class="report" id="rep"><label>종류<select id="rk"><option>버그 제보</option><option>개선 건의</option><option>칭찬</option></select></label><label>내용<textarea id="rt" rows="4" maxlength="300" placeholder="예) 온천 옆에서 손님이 길을 잃었어요"></textarea></label><button>편지 보내기</button></form><p class="note">급한 건 카톡방에서 더 빨리 답해 드려요 → ${communityLink('report', '톡방')}</p>`,
       );
       ($('#rep') as HTMLFormElement).onsubmit = (e) => {
         e.preventDefault();

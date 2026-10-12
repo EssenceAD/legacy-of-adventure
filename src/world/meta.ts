@@ -175,6 +175,11 @@ export function dailyAttend(): number | null {
   addMail({ from: 'attend', title: `출석 ${a.total}일째 도장`, body: `7일 보상판 ${day}일째 보상이에요.`, reward: ATTEND7[day - 1] });
   const big = ATTEND28[((a.total - 1) % 28) + 1];
   if (big) addMail({ from: 'attend', title: `누적 출석 ${((a.total - 1) % 28) + 1}일 보상`, body: '꾸준히 와 줘서 고마워요!', reward: big });
+  // 출석 3일째: 모모 편지 한 통 — 유저 톡방 (한 번만)
+  if (a.total >= 3 && !P.meta.kakaoMail) {
+    P.meta.kakaoMail = true;
+    addMail({ from: 'system', title: '💌 모모의 편지', body: '다른 여관 주인님들도 만나 볼래요? 용사님들이 모이는 카톡방이 있어요!', reward: {}, link: 'kakao' });
+  }
   return a.total;
 }
 

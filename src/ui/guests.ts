@@ -1,5 +1,6 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { CONFIG } from '../data/config';
+import { tapCameo } from './easter';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
@@ -11,7 +12,7 @@ import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed, sendAway } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, smithObj } from '../world/craft';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
 import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
@@ -102,6 +103,20 @@ function talkGuest(a: Actor) {
 
 /** 손님 상세 */
 export function showActor(a: Actor) {
+  if (a.cameo) {
+    openWin(
+      `★ ${a.name}`,
+      `<div class="who"><img class="port pixel" src="${portrait(a)}" alt=""><div><p class="sub">${nameTag(a)}<br>베타 개척자 · 지나가는 손님</p><p class="note">${doingText(a)}</p></div></div>
+      <div class="btnrow">${S.visiting ? '' : '<button class="bigbtn sm" id="aTalk">말 걸기</button>'}</div>`,
+    );
+    const t = document.getElementById('aTalk');
+    if (t)
+      t.onclick = () => {
+        closeWin();
+        tapCameo(a);
+      };
+    return;
+  }
   if (!a.id) {
     // 이웃 마을 구경꾼·npc
     openWin(a.name, `<div class="who"><img class="port" src="${portrait(a)}" alt=""><div><p class="sub">${kindText(a)} · ${doingText(a)}</p></div></div>`);
@@ -331,7 +346,7 @@ export function showItem(it: Item, back: () => void = openBag) {
     <div class="btnrow">
       <button class="bigbtn sm" id="iEnh" ${smith && !maxed ? '' : 'disabled'}>${maxed ? '최대 강화' : smith ? `강화 +${it.enh + 1} (${DUST_NAME[it.grade]} ${enhanceCost(it)}/${P.dust[it.grade]} · ${pct(enhanceRate(it))})` : '강화 (대장간 필요)'}</button>
       <button class="bigbtn sm ghost" id="iLock">${it.locked ? '🔒 잠금 풀기' : '🔓 잠그기'}</button>
-      <button class="bigbtn sm red" id="iSal" ${it.owner != null || it.locked ? 'disabled' : ''}>분해 (${DUST_NAME[it.grade]} +${CONFIG.smith.salvage[it.grade]})</button>
+      <button class="bigbtn sm red" id="iSal" ${it.owner != null || it.locked ? 'disabled' : ''}>분해 (${salvageText(it.grade)})</button>
     </div>
     <button class="bigbtn sm ghost" id="iBack">← 돌아가기</button>`,
   );
@@ -344,8 +359,8 @@ export function showItem(it: Item, back: () => void = openBag) {
   };
   $('#iSal').onclick = () => {
     if (it.grade !== 'n' && !confirm(`${g.name} 장비를 분해할까요?`)) return;
-    const d = salvage(it);
-    toast(`분해 · ${DUST_NAME[it.grade]} +${d}`);
+    salvage(it);
+    toast(`분해 · ${salvageText(it.grade)}`);
     back();
   };
   $('#iBack').onclick = back;

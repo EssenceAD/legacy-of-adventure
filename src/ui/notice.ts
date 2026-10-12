@@ -1,6 +1,7 @@
 // 공지 창(!): 탭(전체/공지/업데이트/이벤트/제보) + 목록 + 본문. 새 공지가 있으면 빨간 점.
 // 기본 공지 + 서버 공지(notices).
 import { getPref, setPref } from '../save/save';
+import { communityCard } from './community';
 import { openWin } from './windows';
 import { listNotices } from '../net/server';
 import { loadPatchNotes, notesListHtml } from './update';
@@ -86,7 +87,7 @@ export function openNotices() {
   dot().hidden = true;
   openWin(
     '새 소식',
-    `<div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div class="nlist">${NOTICES.map(
+    `<div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
       (n, i) => `<button class="nrow" data-i="${i}"><span class="tg"></span>[${n.tag}] ${n.t}</button>`,
     ).join('')}</div><div class="nbody" id="nbody"></div>`,
     'wide',
@@ -107,6 +108,7 @@ export function openNotices() {
         // 패치노트 탭: 버전별로 접고 펼치기 (운영자 공지는 「공지」 탭 그대로)
         const list = document.querySelector<HTMLElement>('.nlist')!;
         list.hidden = t.dataset.t === '패치노트';
+        document.getElementById('kPin')!.hidden = t.dataset.t !== '전체' && t.dataset.t !== '공지';
         if (t.dataset.t === '패치노트') {
           void loadPatchNotes().then((n) => (document.getElementById('nbody')!.innerHTML = notesListHtml(n)));
           return;
