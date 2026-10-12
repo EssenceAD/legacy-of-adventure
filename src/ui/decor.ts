@@ -11,7 +11,7 @@ import { markDirty, P, S } from '../world/state';
 import { placing } from '../world/town';
 import { track as trackEv } from '../net/telemetry';
 import { buildHooks, closeWin, isWinOpen, openBuild, openWin, thumbOf, toast } from './windows';
-import { cancelPlace, rotatePlacement, startPlace, startTakeOut } from './hud';
+import { cancelPlace, rotatePlacement, startMoveEntrance, startPlace, startTakeOut } from './hud';
 import { esc } from './common';
 import { syncHud } from '../game';
 
@@ -106,7 +106,7 @@ function draw() {
     sub = pk.length
       ? `<span class="hint">장식 ${pk.length}개 · 끌어서 옮겨요</span><button data-act="flip">↔ 반전</button><button data-act="stash">📦 넣어 두기</button>${same ? `<button data-act="dup">＋ 같은 것 놓기</button>` : ''}<button data-act="unpick">해제</button>`
       : '<span class="hint">손가락으로 네모를 그려 장식을 골라요 (PC: Shift+끌기)</span>';
-  } else sub = '<span class="hint">꾹 눌러 들어서 옮겨요 · 그냥 누르면 정보 · 끌면 둘러보기</span>';
+  } else sub = '<span class="hint">꾹 눌러 들어서 옮겨요 · 그냥 누르면 정보 · 끌면 둘러보기</span><button data-act="ent" title="손님이 드나드는 울타리 앞 입구를 좌우로 옮겨요">🚪 입구 옮기기</button>';
   const n = storeList().length;
   bar.innerHTML = `<div class="dt">${TABS.map(([t, nm]) => `<button class="tl ${tab === t ? 'on' : ''}" data-tab="${t}">${nm}</button>`).join('')}</div>
     <div class="ds">${sub}</div>
@@ -172,6 +172,8 @@ function act(a: string) {
     if (k) startPlace(k);
   }
   if (a === 'unpick') decorView.picked = [];
+  // FEEDBACK23 §5: 마을 입구 옮기기
+  if (a === 'ent') return startMoveEntrance();
   if (a === 'store') return openStore();
   if (a === 'exit') return exitDecor();
   draw();

@@ -539,6 +539,13 @@ export const CONFIG = {
    *  · 두 번째 채부터 수입 copyIncome 배 · 여관 전체 효과는 가장 높은 레벨 한 채
    */
   town: { copyCost: [1, 1.5, 2, 2.5] as number[], maxCopies: [1, 1, 1, 2, 3, 4, 4] as number[], copyIncome: 0.7 },
+  /**
+   * FEEDBACK23: 꾸미기 피드백 묶음
+   *  noPathDetour = 자동 길을 깔 때 지운 칸(noPath)에 붙는 길찾기 비용 — 0이면 돌아가는 새 길을 만들지 않는다
+   *   (예전 8: 지운 칸 옆으로 우회 길이 새로 생겨 「지웠는데 다시 생겨요」 신고 · BUILDUX §7 「지운 칸은 다시 안 깔림」)
+   *  longPressSlopPx = 꾹 누르는 동안 손가락이 이만큼(CSS px)까지 흔들려도 들기를 취소하지 않는다 (태블릿 손가락 떨림)
+   */
+  feedback23: { noPathDetour: 0, longPressSlopPx: 14 },
   /** 핫픽스 12 §2: 역할 조합(탱·힐·딜) · 멘토 경험치 · 의뢰 조건 태그 */
   party: {
     rolePowerPct: 0.1,

@@ -888,7 +888,8 @@ export function departParty(run: Run) {
       continue;
     }
     const d = doorOf(dg);
-    const p = astar(a.x, a.y, d[0], d[1]);
+    // FEEDBACK23 §3: 던전 가는 길을 지웠으면(땅 밖 숲) 풀밭을 걸어서 간다 — 길이 없다고 그 자리에서 사라지지 않게
+    const p = astar(a.x, a.y, d[0], d[1]) ?? astar(a.x, a.y, d[0], d[1], true);
     const hide = () => {
       a.hidden = true;
       a.st = 'in';

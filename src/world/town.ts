@@ -288,8 +288,8 @@ export function astar(sx0: number, sy0: number, gx: number, gy: number, free = f
       if (!inMap(nx, ny)) continue;
       const nk = ny * N + nx;
       if (closed[nk] || (nk !== goal && !walkable(nx, ny, free))) continue;
-      // 흙길 칸을 선호 · BUILDUX §7: 길을 깔 때는 유저가 지운 칸(noPath)을 돌아간다
-      const ng = g[k] + 1 + (pathT.has(nk) ? -0.4 : 0) + (avoidNo?.has(nk) ? 8 : 0);
+      // 흙길 칸을 선호 · BUILDUX §7: 유저가 지운 칸(noPath)은 다시 안 깐다 — FEEDBACK23: 돌아가는 새 길도 만들지 않는다 (비용 0 = 같은 길에서 그 칸만 빠짐)
+      const ng = g[k] + 1 + (pathT.has(nk) ? -0.4 : 0) + (avoidNo?.has(nk) ? CONFIG.feedback23.noPathDetour : 0);
       if (ng < g[nk]) {
         g[nk] = ng;
         came[nk] = k;
@@ -366,11 +366,25 @@ export function nearestWalkable(x: number, y: number): [number, number] | null {
   return null;
 }
 
-/** 마을 입구: 울타리 앞쪽(화면 아래) 가장자리에서 여관 문과 같은 줄의 빈 칸 */
-export function entrance(): [number, number] {
+/** 자동 입구 줄: 여관 문과 같은 x (여관이 없으면 땅 가운데) */
+export function autoEntranceX(): number {
   const [a, b] = landBounds();
   const inn = findKind('inn');
-  const hx = inn ? doorOf(inn)[0] : Math.floor((a + b) / 2);
+  return inn ? doorOf(inn)[0] : Math.floor((a + b) / 2);
+}
+/**
+ * FEEDBACK23 §5: 입구를 둘 x — 꾸미기에서 옮겼으면 그 x(P.decor.entX · 이웃은 모습의 ent), 아니면 자동.
+ *  땅이 넓어져도 앞 가장자리 안으로 끼워 넣는다 (옛 저장 = 없음 = 지금 그대로)
+ */
+export function entranceX(): number {
+  const [a, b] = landBounds();
+  const v = S.visiting ? S.visiting.ent : P.decor?.entX;
+  const x = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : autoEntranceX();
+  return Math.max(a, Math.min(b - 1, x));
+}
+/** 마을 입구: 울타리 앞쪽(화면 아래) 가장자리에서 입구 줄(기본 = 여관 문과 같은 줄)에 가장 가까운 빈 칸 */
+export function entrance(hx = entranceX()): [number, number] {
+  const [a, b] = landBounds();
   const y = b - 1;
   for (let d = 0; d < b - a; d++)
     for (const x of [hx - d, hx + d]) if (x >= a && x < b && (!grid[y]?.[x] || grid[y][x]!.kind === 'gate')) return [x, y];
@@ -401,14 +415,35 @@ export interface Placement {
   store?: StoredObj;
   /** BUILDUX §1-6: 같은 장식을 이어서 놓는 중 */
   chain?: boolean;
+  /** FEEDBACK23 §5: 마을 입구를 옮기는 중 (1칸 · 울타리 앞 가장자리만) */
+  ent?: boolean;
 }
 
 /** 지금 배치 모드 (null이면 아님) */
 export const placing = { pl: null as Placement | null };
 
+/** FEEDBACK23 §4: 꾸미기에서 옮길 수 있는 종류 — 고정 건물 중 던전 입구는 옮길 수 있다 (철거·보관은 여전히 안 됨) */
+export const canMoveKind = (k: Kind) => !def(k).fixed || k === 'dungeon';
+/** FEEDBACK23 §4: 던전이 처음 있던 숲속 자리 (처음 옮길 때 기억) — 땅 밖이어도 여기로는 되돌릴 수 있다 */
+export function dungeonHome(): [number, number] | null {
+  const h = S.visiting ? null : P.decor?.dgHome;
+  return Array.isArray(h) && h.length === 2 && h.every(Number.isFinite) ? [h[0], h[1]] : null;
+}
+/** 땅 밖이어도 되는 자리인가 (던전의 숲속 원래 자리) */
+export function outsideOk(o: { kind: Kind; tx: number | null; ty: number | null }): boolean {
+  if (o.kind !== 'dungeon' || o.tx == null || o.ty == null) return false;
+  const h = dungeonHome();
+  return !!h && h[0] === o.tx && h[1] === o.ty;
+}
+
 /** 지을 수 있나: 발판 전부 땅 안 + 안 겹침 + 문 앞 칸 비어 있음(장식 제외) */
 export function canPlace(o: { kind: Kind; tx: number | null; ty: number | null; fw: number; fh: number; flip?: boolean }, ignore?: Building): boolean {
   if (o.tx == null || o.ty == null) return false;
+  // FEEDBACK23 §4: 던전을 숲속 원래 자리로 되돌리기 — 땅 밖이라 겹침만 본다
+  if (outsideOk(o)) {
+    for (let j = 0; j < o.fh; j++) for (let i = 0; i < o.fw; i++) { const g = grid[o.ty + j]?.[o.tx + i]; if (g && g !== ignore) return false; }
+    return true;
+  }
   for (let j = 0; j < o.fh; j++)
     for (let i = 0; i < o.fw; i++) {
       const x = o.tx + i;

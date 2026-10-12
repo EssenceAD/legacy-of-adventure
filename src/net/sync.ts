@@ -36,6 +36,8 @@ export function villageSnapshot() {
     grade: townGrade(),
     title: myTitle(),
     trophies: [...P.trophies],
+    // FEEDBACK23 §5: 옮긴 마을 입구 x (v3 좌표 · 옮긴 적 없으면 빼서 보는 쪽이 자동으로)
+    ...(typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.con?.from?.[0] ?? o.tx, o.con?.from?.[1] ?? o.ty, o.lvl, o.hue, !!o.flip]),
   };
 }

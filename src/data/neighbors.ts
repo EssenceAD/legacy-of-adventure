@@ -15,6 +15,8 @@ export interface Neighbor {
   owner: string;
   land: number;
   like: number;
+  /** FEEDBACK23 §5: 옮긴 마을 입구 x (없으면 자동) */
+  ent?: number;
   /** [종류, x, y, 레벨, 지붕 hue, 좌우 반전] */
   layout: [Kind, number, number, number?, (number | null)?, boolean?][];
 }

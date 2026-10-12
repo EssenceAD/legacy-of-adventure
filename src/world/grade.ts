@@ -3,7 +3,7 @@
 import { GRADE_NAMES } from '../data/guide';
 import { townGrade } from './guide';
 import { P as PG, S } from './state';
-import { entrance, landBounds } from './town';
+import { autoEntranceX, entrance, landBounds } from './town';
 
 export { GRADE_NAMES };
 
@@ -39,10 +39,12 @@ export interface Prop {
   y: number;
   fw: number;
   fh: number;
+  /** FEEDBACK23 §5: 입구를 옮겨 자리가 밀린 장식 — 이름표는 자동 입구 자리 그대로 (옮겨 둔 기록이 풀리지 않게) */
+  key?: string;
 }
 
 /** 등급 장식 하나의 이름표 (옮겼는지 기억) */
-export const propKey = (p: Prop) => `${p.k}@${p.x},${p.y}`;
+export const propKey = (p: Prop) => p.key ?? `${p.k}@${p.x},${p.y}`;
 /** 마을 안으로 옮길 수 있는 장식 (건설 목록에도 있는 것) */
 export const MOVABLE_PROPS: Prop['k'][] = ['lamppost', 'bench', 'flowerbed', 'banner', 'stall', 'fountain', 'gate'];
 
@@ -62,7 +64,9 @@ export const showcaseVisit = () => !!S.visiting && !S.visiting.uid;
 export function gradeProps(g = gradeNow()): Prop[] {
   if (g < 1 || showcaseVisit()) return [];
   const [, b] = landBounds();
-  const [ex] = entrance();
+  // FEEDBACK23 §5: 자리는 자동 입구 기준으로 만들고(이름표 그대로) 옮긴 입구만큼 옆으로 민다
+  const [ex] = entrance(autoEntranceX());
+  const shift = entrance()[0] - ex;
   const P = (k: Prop['k'], x: number, y: number, fw = 1, fh = 1): Prop => ({ k, x, y, fw, fh });
   const list: Prop[] = [];
   // 쉼터: 첫 가로등 2개 (입구 양옆)
@@ -83,6 +87,7 @@ export function gradeProps(g = gradeNow()): Prop[] {
     // 도시: 마을 정문(아치)
     list.push(P('gate', ex, b + 1));
   }
+  if (shift) for (const p of list) Object.assign(p, { key: propKey(p), x: p.x + shift });
   // 땅 개편: 개간 대신 꾸밈 — 울타리 바로 바깥 공터 줄(뒤 1칸)에 등급마다 화분·석등·깃발
   const [a] = landBounds();
   const span = b - a;

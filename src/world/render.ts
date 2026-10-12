@@ -25,7 +25,7 @@ import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { doorOf, grid, groundVersion, inLand, landBounds, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, groundVersion, inLand, landBounds, outsideOk, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
 import { drawConstruction, silMem } from './conDraw';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
@@ -794,7 +794,8 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
   for (let j = 0; j < pl.fh; j++)
     for (let i = 0; i < pl.fw; i++) {
       const g = grid[ty + j]?.[tx + i];
-      if (g && g !== pl.move) hit.add(g);
+      // FEEDBACK23 §5: 입구를 옮길 땐 따라오는 정문은 빨갛게 하지 않는다
+      if (g && g !== pl.move && !(pl.ent && g.kind === 'gate')) hit.add(g);
     }
   const blink = Math.sin(T * 10) > 0 ? 0.7 : 0.3;
   for (const o of hit) {
@@ -813,7 +814,7 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
   ctx.globalAlpha = 0.38;
   for (let j = 0; j < pl.fh; j++)
     for (let i = 0; i < pl.fw; i++) {
-      const free = inLand(tx + i, ty + j) && (!grid[ty + j]?.[tx + i] || grid[ty + j][tx + i] === pl.move);
+      const free = (inLand(tx + i, ty + j) || outsideOk(pl)) && (!grid[ty + j]?.[tx + i] || grid[ty + j][tx + i] === pl.move);
       ctx.fillStyle = ok ? '#5fd06a' : free ? '#e0a040' : '#ff4040';
       fillTile(ctx, tx + i, ty + j);
     }
@@ -827,7 +828,7 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
   if (pl.sprite && !['well', 'board', 'tree', 'pine', 'fire'].includes(pl.kind)) {
     const [dx, dy] = doorOf({ tx, ty, fw: pl.fw, fh: pl.fh, flip: pl.flip });
     const g = grid[dy]?.[dx];
-    const blocked = !inLand(dx, dy) || (!!g && g !== pl.move);
+    const blocked = (!inLand(dx, dy) && !outsideOk(pl)) || (!!g && g !== pl.move);
     const X = Math.round(view.OX + sx(dx + 0.5, dy + 0.5));
     const Y = Math.round(view.OY + sy(dx + 0.5, dy + 0.5));
     const p = P(ctx);
@@ -853,6 +854,19 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
     if (okToDraw(b)) ctx.drawImage(b, x, y + bob);
   }
   ctx.globalAlpha = 1;
+  // FEEDBACK23 §5: 입구 = 바닥에서 바깥(앞)으로 향하는 꺾쇠 두 개
+  if (pl.ent) {
+    const p = P(ctx);
+    const X = Math.round(view.OX + sx(tx + 0.5, ty + 1));
+    const Y = Math.round(view.OY + sy(tx + 0.5, ty + 1));
+    const c = pl.ok ? '#ffffff' : '#ff5a5a';
+    const bob2 = Math.round(Math.sin(T * 6));
+    for (const o of [0, 5]) for (let k = 0; k < 4; k++) {
+      p.px(X - 3 + k, Y + o + bob2 + k, c);
+      p.px(X + 3 - k, Y + o + bob2 + k, c);
+    }
+    return;
+  }
   // 베타: 어울림 범위 · 짝 건물 초록 · 미리보기 말풍선 (유령 위에)
   drawPlacementHarmony(ctx, pl);
 }

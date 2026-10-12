@@ -10,7 +10,7 @@ import { baseKey, FIRE_FRAMES, IMG, PORTRAITS } from '../engine/assets';
 import { canvas } from '../engine/pixel';
 import { stars } from '../world/progress';
 import { P as PG, S, world, type Building } from '../world/state';
-import { buildableKinds, copyIncomeMult, landNeedFor, maxCopies, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
+import { buildableKinds, canMoveKind, copyIncomeMult, landNeedFor, maxCopies, maxLevel, nextLevelCost , MULTI, buildCost, countKind } from '../world/town';
 import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
@@ -300,9 +300,9 @@ const THUMB_H = 56;
 /** 모닥불 썸네일 = campfire.png 1번 프레임 */
 const fireThumb = () => FIRE_FRAMES[0] ?? canvas(32, 34);
 
-/** 창 맨 아래에 「옮기기 · 방향」 버튼 (던전처럼 고정된 건물·이웃 마을은 없음) */
+/** 창 맨 아래에 「옮기기 · 방향」 버튼 (이웃 마을은 없음 · FEEDBACK23 §4: 던전 입구도 옮길 수 있다) */
 export function appendMoveButton(o: Building) {
-  if (S.visiting || def(o.kind).fixed || (o.build !== undefined && !o.con)) return;
+  if (S.visiting || !canMoveKind(o.kind) || (o.build !== undefined && !o.con)) return;
   const b = document.createElement('button');
   b.className = 'bigbtn sm ghost';
   b.id = 'moveB';

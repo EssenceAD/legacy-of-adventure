@@ -527,7 +527,8 @@ export function freshProgress() {
     goldLog: { day: '', by: {} as Record<string, number> },
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
     /** BUILDUX: store = 보관함 · recent = 최근 놓은 장식 5개 · hintSeen = 첫 진입 안내 봄 */
-    decor: { autoPath: true, paint: {} as Record<string, string>, store: [] as StoredObj[], recent: [] as string[], hintSeen: false, round: {} as Record<string, number>, noPath: {} as Record<string, number>, seen: [] as string[], owned: [] as string[], bookGot: [] as number[] },
+    /** FEEDBACK23: entX = 옮긴 마을 입구 x (null = 여관 문 줄 · 자동) · dgHome = 던전을 처음 옮기기 전 숲속 자리 (되돌릴 수 있게) */
+    decor: { autoPath: true, paint: {} as Record<string, string>, store: [] as StoredObj[], recent: [] as string[], hintSeen: false, round: {} as Record<string, number>, noPath: {} as Record<string, number>, seen: [] as string[], owned: [] as string[], bookGot: [] as number[], entX: null as number | null, dgHome: null as [number, number] | null },
     /** DECO_DROP §2 (ECONOMY §3 앞당김): 영웅 동상에 세운 전설 · 불꽃놀이 횟수 */
     luxury: { statue: '', shows: 0 },
     harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[], migrate: false, allDone: false },

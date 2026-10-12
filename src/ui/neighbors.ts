@@ -42,6 +42,8 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     grade: Math.max(0, Math.min(4, Math.floor(Number(s.grade) || 0))),
     title: typeof (s as { title?: unknown }).title === 'string' ? ((s as { title: string }).title).slice(0, 12) : '',
     layout,
+    // FEEDBACK23 §5: 옮긴 입구 (v3부터만 · 숫자가 아니면 자동)
+    ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) } : {}),
   };
 }
 
