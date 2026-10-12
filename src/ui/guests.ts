@@ -1,5 +1,6 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { CONFIG } from '../data/config';
+import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
 import { tapCameo } from './easter';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
@@ -9,7 +10,7 @@ import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAM
 import { CLASS_WEAPON, CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
-import { doingText, regularNeed, sendAway } from '../world/actors';
+import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
@@ -50,17 +51,19 @@ export function openGuests() {
   const key = [(a: Actor) => a.lvl, (a: Actor) => powerOf(a), (a: Actor) => RARITIES.indexOf(a.rarity) * 1000 + a.lvl][gSort];
   list.sort((a, b) => key(b) - key(a));
   const rows = list
-    .map((a) => `<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button>`)
+    .map((a) => `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`)
     .join('');
   openWin(
     `손님 ${all.length}명`,
-    `<p class="sub regsum">단골 <b>${regs.length}/${capacity()}</b> · 대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}</p>${tabs([`단골 ${regs.length}`, `방문 ${vis.length}`, `대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}`], gTab, 'gT')}
+    `<p class="sub regsum">단골 <b>${regs.length}/${capacity()}</b> · 대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}</p>${tabs([`단골 ${regs.length}`, `방문 ${vis.length}`, `대기 ${P.waitlist.length}/${CONFIG.guests.waitlistMax}`, `옛 단골 ${formerList().length}`], gTab, 'gT')}
     ${
-      gTab === 2
+      gTab === 3
+        ? formerHtml()
+        : gTab === 2
         ? `<p class="note">단골 자리가 꽉 찼을 때 단골이 되고 싶어 한 손님이에요 · 자리가 나면 다시 찾아와 제안해요</p><div class="glist">${
             P.waitlist.map((w) => `<div class="wrow"><b style="color:${RARITY_INFO[w.rarity].color}">${esc(w.name)}</b> · Lv.${w.lvl} ${RACE_NAME[w.race]} ${CLASSES[w.kind].name}</div>`).join('') || '<p class="note">대기 중인 손님이 없어요</p>'
           }</div>`
-        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>
+        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>
     <div class="glist">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
@@ -76,6 +79,38 @@ export function openGuests() {
       }),
   );
   $$('.glist button').forEach((b) => (b.onclick = () => showActor(all.find((a) => a.id === +b.dataset.id!)!)));
+  $$('[data-pick]').forEach(
+    (b) =>
+      ((b as HTMLInputElement).onchange = () => {
+        const id = +b.dataset.pick!;
+        if ((b as HTMLInputElement).checked) picked.add(id);
+        else picked.delete(id);
+        outArmed = false;
+        keepScroll(openGuests);
+      }),
+  );
+  const go = document.getElementById('gOut');
+  if (go)
+    go.onclick = () => {
+      if (!outArmed) {
+        outArmed = true;
+        return keepScroll(openGuests);
+      }
+      outArmed = false;
+      let n = 0;
+      for (const a of vis) if (picked.has(a.id) && checkout(a)) n++;
+      picked.clear();
+      toast(n ? `${n}명 체크아웃` : '내보낼 손님이 없어요');
+      openGuests();
+    };
+  $$('[data-recall]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const err = recall(+b.dataset.recall!);
+        toast(err ?? '다시 돌아왔어요!');
+        openGuests();
+      }),
+  );
   const gb = document.getElementById('gBag');
   if (gb) gb.onclick = () => openBag();
   const ga = document.getElementById('gAuto');
@@ -146,7 +181,7 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    <div class="btnrow">${a.runId == null && !S.visiting ? '<button class="bigbtn sm" id="aTalk">말 걸기</button>' : ''}${a.status === 'regular' && a.runId == null ? '<button class="bigbtn sm ghost" id="aBye">단골 보내 주기</button>' : ''}</div>`,
+    <div class="btnrow">${a.runId == null && !S.visiting ? '<button class="bigbtn sm" id="aTalk">말 걸기</button>' : ''}${byeBtn(a)}</div>`,
   );
   const tk = document.getElementById('aTalk');
   if (tk) tk.onclick = () => talkGuest(a);
@@ -166,9 +201,19 @@ export function showActor(a: Actor) {
   const bye = document.getElementById('aBye');
   if (bye)
     bye.onclick = () => {
-      if (!confirm(`${a.name}${josa(a.name, "를")} 보내 줄까요? 끼고 있던 장비는 가방으로 돌아와요.`)) return;
-      sendAway(a, true);
-      openGuests();
+      // 실수 방지: 창 안에서 한 번 더 누르기
+      if (byeArmed !== a.id) {
+        byeArmed = a.id;
+        bye.textContent = a.status === 'regular' ? '한 번 더 누르면 작별' : '오늘 밤 체크아웃할까요? (한 번 더 누르면 확인)';
+        bye.classList.add('red');
+        return;
+      }
+      byeArmed = 0;
+      if (a.status === 'regular') {
+        const line = farewell(a);
+        if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
+      } else if (checkout(a)) toast(`${a.name} 체크아웃`);
+      closeWin();
     };
 }
 
@@ -372,3 +417,23 @@ export function showItem(it: Item, back: () => void = openBag) {
   };
 }
 const fitClassName = (it: Item) => (Object.entries(CLASS_WEAPON).filter(([, w]) => w === it.wkind).map(([k]) => (CLASSES as Record<string, { name: string }>)[k]?.name ?? k).join('·') || '없음');
+
+let byeArmed = 0;
+/** 내보내기 버튼: 방문·지나가는 손님 = 체크아웃 · 단골 = 작별 · 못 하면 회색 + 까닭 (영웅·전설은 숨김) */
+function byeBtn(a: Actor): string {
+  if (a.heroId || a.legendId || a.status === 'hero' || a.cameo) return '';
+  const why = dismissWhy(a);
+  const label = a.status === 'regular' ? '단골 작별하기' : '내보내기';
+  return why ? `<button class="bigbtn sm ghost" disabled title="${esc(why)}">${label} · ${esc(why)}</button>` : `<button class="bigbtn sm ghost" id="aBye">${label}</button>`;
+}
+/** 옛 단골 (실제 3일 안 다시 부르기) · 추억 (작별한 단골 이름) */
+function formerHtml(): string {
+  const fl = formerList();
+  const rows = fl.map((r) => `<div class="wrow"><b style="color:${RARITY_INFO[r.rarity].color}">${esc(r.name)}</b> · Lv.${r.lvl} ${RACE_NAME[r.race]} ${CLASSES[r.kind].name} <small>${Math.max(1, Math.ceil((r.at + CONFIG.dismiss.recallDays * 864e5 - Date.now()) / 864e5))}일 남음</small> <button class="bagb" data-recall="${r.id}">다시 부르기</button></div>`).join('');
+  const names = P.farewells ?? [];
+  return `<p class="note">작별한 단골은 실제 ${CONFIG.dismiss.recallDays}일 동안 레벨·장비 그대로 다시 부를 수 있어요 (단골 자리가 있을 때)</p><div class="glist">${rows || '<p class="note">옛 단골이 없어요</p>'}</div>${names.length ? `<p class="sub">추억 · ${names.map(esc).join(' · ')}</p>` : ''}`;
+}
+
+/** 방문 손님 여러 명 고르기 (단골은 하나씩) */
+const picked = new Set<number>();
+let outArmed = false;

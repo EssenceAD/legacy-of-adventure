@@ -29,6 +29,10 @@ export interface HarmonyFx {
 
 export const CONFIG = {
   /** 유저 톡방 (카카오톡 오픈채팅) — 게임 안 모든 톡방 링크는 여기서 읽는다 */
+  /** FEEDBACK: 손님 내보내기 — 옛 단골로 남는 날(실제) · 최대 수 · 단골 작별 대사 */
+  dismiss: { recallDays: 3, formerMax: 20, farewellLines: ['…그래, 또 들를게. 그때도 이 자리 비워 둬야 해.', '신세 많이 졌어, 주인장. 가는 길에 소문 많이 내 줄게!'] },
+  /** FEEDBACK: 방이 꽉 차 손님을 못 받을 때 안내 (게임 하루 한 번) */
+  fullRoomToast: '방이 꽉 찼어요 — 손님을 내보내거나 별채를 더 지어요',
   community: { kakao: 'https://open.kakao.com/o/g1KwZ2Ri' },
   map: {
     /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) */

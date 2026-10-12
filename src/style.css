@@ -1458,3 +1458,9 @@ a.kakao{color:#ffe14d;text-decoration:underline}
 /* EASTER: 카메오 손님 */
 .cameo-name{color:#ffd36b;text-shadow:0 0 4px rgba(255,211,107,.5)}
 img.port.pixel{image-rendering:pixelated}
+
+/* FEEDBACK: 손님 내보내기 */
+.glist .gpick{display:inline-flex;align-items:center;padding:0 4px}
+.glist .gpick + button{flex:1}
+.glist .grow{display:flex;align-items:stretch;gap:2px}
+.glist .grow > button{flex:1}

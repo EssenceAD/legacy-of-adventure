@@ -405,6 +405,9 @@ export function freshProgress() {
     salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, auto: '' as '' | 'n' | 'r' },
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
+    /** FEEDBACK: 내보낸 단골 (실제 3일 동안 다시 부르기) · 작별한 단골 이름 (추억) */
+    formerRegs: [] as import('./dismiss').FormerReg[],
+    farewells: [] as string[],
     /** 핫픽스 10 §15: 단골 자리가 새로 생긴 만큼 「빠른 제안」 (받으면 하나 줄어든다) · 옛 저장 구제 1번 · 모모 안내 횟수 */
     fastSlots: 0,
     fastRescued: false,

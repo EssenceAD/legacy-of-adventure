@@ -621,6 +621,12 @@ function tap(e: PointerEvent) {
     movePlacement(fx, fy);
     return;
   }
+  // FEEDBACK: 꾸미기 「옮기기」(손 도구)에서는 건물을 짧게 눌러도 바로 집는다 (꾹 누르기와 같음 · 정보 창 대신)
+  if (decorView.on && !S.visiting) {
+    const [tmx, tmy] = toLogical(cv, e.clientX, e.clientY);
+    const ob = buildingAt(tmx, tmy, alphaAt);
+    if (ob && canMoveKind(ob.kind)) return startMove(ob);
+  }
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
   // 땅 개편: 땅 넓히기 팻말
   if (!S.visiting && signHit(mx, my)) return openLand();

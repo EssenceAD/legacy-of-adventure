@@ -125,7 +125,7 @@ for (const night of [true, false]) {
   const { xy } = await bodyXY(kinds[0]);
   await press(xy[0], xy[1], 60);
   await W(500);
-  ok(!(await placing()) && !!(await winOn()), `${label}: 그냥 누르면 정보 창 「${await winOn()}」`);
+  ok((await placing())?.move === kinds[0], `${label}: 짧게 눌러도 바로 집힘 (${JSON.stringify(await placing())})`);
   await cancel();
   await W(300);
   await exitDecor();

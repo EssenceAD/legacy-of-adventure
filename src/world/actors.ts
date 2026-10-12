@@ -505,6 +505,7 @@ function scanChem(dt: number) {
 
 // ───────── 손님 오고 가기 ─────────
 
+let fullToastDay = -1;
 /** 묵는 손님(지나가는 손님 제외) — 정원은 이 수로 센다 */
 const stayers = () => guestsOf().filter((a) => a.status !== 'passer');
 
@@ -515,6 +516,11 @@ export function arrive(a?: Actor): Actor | null {
   if (!a) {
     if (stayers().length < capacity()) a = makeAdventurer(ex, ey, { day: S.day });
     else {
+      // FEEDBACK: 방이 꽉 찼다고 알려 준다 (게임 하루 한 번)
+      if (fullToastDay !== S.day && S.started && !S.visiting) {
+        fullToastDay = S.day;
+        uiHooks.toast(CONFIG.fullRoomToast);
+      }
       const h = hourNow();
       const passers = guestsOf().filter((x) => x.status === 'passer').length;
       if (h < G.passerFromHour || h >= G.passerUntilHour || passers >= G.passerMax || Math.random() > G.passerChance) return null;
