@@ -124,7 +124,11 @@ ok(await p.locator('.conp').count() > 0 && /공사 중/.test(await p.locator('.c
 ok(await p.locator('#upB').count() === 0, '공사 중엔 레벨업 버튼 대신 진행 막대');
 await p.locator('#moveB').click({ force: true });
 await W(300);
-ok(/공사 중이에요/.test(await p.evaluate(() => document.querySelector('#toast')?.textContent ?? '')), '옮기기 → 「공사 중이에요」');
+// BUILDUX §2-2: 공사 중이어도 옮기기는 된다 (공사는 그대로 이어짐) → 배치 모드가 열리고, 취소하면 그대로
+ok(await p.evaluate(() => !!window.__placing()), '옮기기 → 공사 중이어도 배치 모드 (BUILDUX §2-2)');
+await p.keyboard.press('Escape');
+await p.evaluate(() => { const b = document.querySelector('#ghostX, #plCancel, [data-ghost="x"]'); if (b) b.click(); });
+await W(300);
 // 5) 시간 당겨서 완성 → 레벨 오름 + 「완성!」
 await clear();
 await p.evaluate((K) => { const o = window.__world.objs.find((x) => x.kind === K); o.con.end = Date.now() + 200; }, K);
