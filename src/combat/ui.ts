@@ -81,6 +81,7 @@ export function foldCombat() {
   removeEventListener('keydown', onKey);
   removeEventListener('keyup', onKeyUp);
   root.remove();
+  document.body.classList.remove('in-combat');
   foldHooks.fold();
   afterBusy();
   flushScene();
@@ -113,6 +114,7 @@ export function unfoldCombat() {
   if (!folded || !F || !root) return;
   folded = false;
   document.getElementById('view')!.appendChild(root);
+  document.body.classList.add('in-combat');
   fit();
   addEventListener('resize', fit);
   addEventListener('keydown', onKey);
@@ -184,11 +186,11 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbstick" id="cbStick" hidden><i></i></div>
     <div class="cbpad">
       <div class="cbnames" id="cbNames" hidden><span id="cbN1"></span><span id="cbN2"></span></div>
-      <button class="cbb ult" id="cbUlt"><img alt=""><i class="ring"></i><kbd class="kc" data-k="ult"></kbd></button>
-      <button class="cbb s2" id="cbS2"><img alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s2"></kbd></button>
-      <button class="cbb s1" id="cbS1"><img alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s1"></kbd></button>
+      <button class="cbb ult" id="cbUlt"><img draggable="false" alt=""><i class="ring"></i><kbd class="kc" data-k="ult"></kbd></button>
+      <button class="cbb s2" id="cbS2"><img draggable="false" alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s2"></kbd></button>
+      <button class="cbb s1" id="cbS1"><img draggable="false" alt=""><i class="cd"></i><em></em><kbd class="kc" data-k="s1"></kbd></button>
       <button class="cbb dodge" id="cbDodge"><b>⤼</b><i class="cd"></i><kbd class="kc" data-k="dodge"></kbd></button>
-      <button class="cbb atk" id="cbAtk"><img src="${iconSrc('skill_attack')}" alt=""><kbd class="kc" data-k="attack"></kbd></button>
+      <button class="cbb atk" id="cbAtk"><img draggable="false" src="${iconSrc('skill_attack')}" alt=""><kbd class="kc" data-k="attack"></kbd></button>
     </div>
     <div class="cbcast" id="cbCast" hidden></div>
     <div class="cbcut" id="cbCut" hidden></div>
@@ -196,6 +198,9 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbpause" id="cbPause" hidden><div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div></div>
     <div class="cbkeycard" id="cbKeyCard" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
+  document.body.classList.add('in-combat');
+  // 길게 누르기 메뉴(이미지 저장·링크)는 전투 화면 어디서도 안 뜨게
+  root.addEventListener('contextmenu', (e) => e.preventDefault());
   fit();
   addEventListener('resize', fit);
   bindInput();
@@ -411,7 +416,7 @@ function hud() {
   // 필살기 컷인 띠 (0.5초)
   const cut = $('#cbCut');
   if (f.ult > 0 && cut.hidden) {
-    cut.innerHTML = `<div class="band"></div>${f.allies.filter((a) => !a.dead).map((a) => `<img src="${pic(a.actor!)}" alt="">`).join('')}<b>${f.ultName}</b>`;
+    cut.innerHTML = `<div class="band"></div>${f.allies.filter((a) => !a.dead).map((a) => `<img draggable="false" src="${pic(a.actor!)}" alt="">`).join('')}<b>${f.ultName}</b>`;
     cut.hidden = false;
   } else if (f.ult <= 0 && !cut.hidden) cut.hidden = true;
   if (f.done && f.doneT > 1 && $('#cbRes').hidden) finish();
@@ -420,7 +425,7 @@ function hud() {
 function buildParty() {
   const f = F!;
   $('#cbParty').innerHTML = f.allies
-    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name} 조종"><img src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
+    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name} 조종"><img draggable="false" src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
     .join('');
   document.querySelectorAll<HTMLElement>('[data-ally]').forEach(
     (b) =>
@@ -746,6 +751,7 @@ export function closeCombat() {
   holding = false;
   stickOn = false;
   root?.remove();
+  document.body.classList.remove('in-combat');
   root = null;
   F = null;
   paused = false;
