@@ -1,5 +1,6 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { CONFIG } from '../data/config';
+import { tapCameo } from './easter';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
@@ -102,6 +103,20 @@ function talkGuest(a: Actor) {
 
 /** 손님 상세 */
 export function showActor(a: Actor) {
+  if (a.cameo) {
+    openWin(
+      `★ ${a.name}`,
+      `<div class="who"><img class="port pixel" src="${portrait(a)}" alt=""><div><p class="sub">${nameTag(a)}<br>베타 개척자 · 지나가는 손님</p><p class="note">${doingText(a)}</p></div></div>
+      <div class="btnrow">${S.visiting ? '' : '<button class="bigbtn sm" id="aTalk">말 걸기</button>'}</div>`,
+    );
+    const t = document.getElementById('aTalk');
+    if (t)
+      t.onclick = () => {
+        closeWin();
+        tapCameo(a);
+      };
+    return;
+  }
   if (!a.id) {
     // 이웃 마을 구경꾼·npc
     openWin(a.name, `<div class="who"><img class="port" src="${portrait(a)}" alt=""><div><p class="sub">${kindText(a)} · ${doingText(a)}</p></div></div>`);

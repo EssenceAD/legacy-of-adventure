@@ -688,6 +688,11 @@ function passersLeave() {
   if (hourNow() < G.passerLeaveHour + passerExtraHours() && !S.night) return;
   for (const a of guestsOf()) {
     if (a.status !== 'passer') continue;
+    // EASTER: 카메오(베타 개척자)는 낮에만 걷다 간다 — 단골 제안·대기 목록 없음
+    if (a.cameo) {
+      sendAway(a, true);
+      continue;
+    }
     const avg = a.moodN ? (a.moodSum + a.mood) / (a.moodN + 1) : a.mood;
     // 단골 자리가 있으면 그 자리에서 제안, 없으면 대기 목록
     if (avg >= regularNeed() && regularsCount() < capacity()) propose(a);
@@ -746,7 +751,7 @@ const EARLY_REGULARS = 3;
 const EARLY_HOURS = 1;
 function earlyRegular() {
   if (S.visiting || regularsCount() >= Math.min(EARLY_REGULARS, capacity())) return;
-  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId);
+  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId && !g.cameo);
   const a = stay.find((g) => g.moodN >= EARLY_HOURS && g.moodSum / g.moodN >= regularNeed());
   if (a) return propose(a);
   // 머무는 손님이 없으면: 소문을 듣고 온 모험가가 바로 찾아온다 (기분 좋게)
@@ -818,7 +823,7 @@ export function fastRegular() {
   if (S.visiting || P.fastSlots <= 0 || regularsCount() >= capacity()) return;
   // 대기 목록 손님이 먼저 (callWaitlist)
   if (P.waitlist.length) return;
-  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId && !g.leaving && g.runId == null);
+  const stay = guestsOf().filter((g) => (g.status === 'visitor' || g.status === 'passer') && !g.heroId && !g.legendId && !g.cameo && !g.leaving && g.runId == null);
   const a = stay.find((g) => g.moodN >= EARLY_HOURS && g.moodSum / g.moodN >= regularNeed());
   if (a) return propose(a, true);
   // 머무는 손님이 없으면: 소문 듣고 온 손님 (게임 2시간에 한 번까지)

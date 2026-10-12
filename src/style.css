@@ -1429,3 +1429,7 @@ a.kakao{color:#ffe14d;text-decoration:underline}
 .kcard b{flex:1 1 100%}.kcard small{flex:1}
 .kcard a.kbtn{background:#fee500;color:#191919;text-decoration:none;padding:4px 12px;border-radius:4px;font-weight:bold}
 .mail a.kakao{display:inline-block;margin-top:2px}
+
+/* EASTER: 카메오 손님 */
+.cameo-name{color:#ffd36b;text-shadow:0 0 4px rgba(255,211,107,.5)}
+img.port.pixel{image-rendering:pixelated}

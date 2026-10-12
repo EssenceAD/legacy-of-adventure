@@ -102,6 +102,8 @@ export function resolveSpeaker(who: string, nameTag?: string): { actor: Actor | 
   if (who.startsWith('@')) actor = all.find((a) => a.id === +who.slice(1)) ?? null;
   else if ((GUEST_KINDS as readonly string[]).includes(who) && nameTag) actor = all.find((a) => a.name === nameTag) ?? null;
   if (actor) return { actor, port: portrait(actor), name: actor.name };
+  // EASTER: 카메오는 id가 0 — 전용 초상화 키 p_<id>로 말한다
+  if (who.startsWith('p_') && PORTRAITS[who]) return { actor: null, port: PORTRAITS[who], name: nameTag ?? who };
   return { actor: null, port: PORTRAITS[who] || '', name: nameTag ?? speakerName(who, S.innName) };
 }
 /** 대사 줄을 만들 때: 손님이면 '@id', 영웅·전설은 전용 초상화 키 */

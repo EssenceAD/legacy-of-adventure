@@ -111,6 +111,35 @@ ok(lines.length === 5 && /이카몰리/.test(lines[0]), `카메오 대사 ${line
 ok(await p.evaluate(() => !!window.__P.meta.easter.expCoupon || window.__P.runs.length > 0), '선물: 다음 의뢰 −10% 쿠폰 (또는 이미 의뢰에 씀)');
 ok(await p.evaluate(() => (window.__P.meta.easter.met ?? []).includes('ikamolly')), '만난 개척자 기록');
 
+// ── EASTER 마무리: 카메오 상세 창 (전용 초상화 · 금색 이름 ★ · 「베타 개척자 · 지나가는 손님」 · 말 걸기 · 장비 칸 없음) · 목록 이름 금색
+await settle();
+await p.evaluate(() => window.__showObj && 0);
+const det = await p.evaluate(async () => {
+  const a = window.__world.actors.find((x) => x.cameo === 'ikamolly');
+  const m = await import('/src/ui/guests.ts');
+  m.showActor(a);
+  const w = document.querySelector('#win');
+  return { port: w.querySelector('img.port')?.src ?? '', portP: w.querySelector('img.port')?.src === (window.__portraits?.p_ikamolly ?? ''), sub: w.querySelector('.sub')?.textContent ?? '', gold: !!w.querySelector('.cameo-name'), talk: !!w.querySelector('#aTalk'), slots: w.querySelectorAll('.slot').length };
+});
+ok(det.gold && /★/.test(det.sub) && /베타 개척자 · 지나가는 손님/.test(det.sub), '상세: 금색 이름 ★ · 부제 ' + det.sub);
+ok(det.talk && det.slots === 0, '상세: 말 걸기 있음 · 장비 칸 없음');
+ok(/p_ikamolly/.test(det.port), '상세: 전용 초상화 p_ikamolly');
+await W(800);
+await p.screenshot({ path: `${dir}/${name}_05b_cameo_detail.png` });
+await p.locator('#aTalk').click();
+await W(500);
+ok(await p.evaluate(() => !document.querySelector('#dlg').hidden && /이카몰리/.test(document.querySelector('#dName')?.textContent ?? '')), '말 걸기 → 카메오 대사');
+await settle();
+// 저녁(떠날 때): 단골 제안 없이 떠남
+const left = await p.evaluate(async () => {
+  window.__S.clock = (21 - 6) * 60;
+  return true;
+});
+void left;
+for (let i = 0; i < 20 && (await p.evaluate(() => window.__world.actors.some((x) => x.cameo === 'ikamolly' && !x.leaving))); i++) await W(500);
+await settle();
+ok(await p.evaluate(() => !window.__world.actors.some((x) => x.cameo === 'ikamolly' && !x.leaving) && !window.__P.waitlist.some((w) => w.name === '이카몰리')), '저녁: 카메오는 단골 제안·대기 없이 떠남');
+
 // ── §3 도감 영웅 탭 「개척자」
 await p.evaluate(() => window.__openDex(3));
 await W(500);
