@@ -7,9 +7,9 @@ import { powerOf } from '../world/adventurers';
 import { P, S, world, type RaidRecord } from '../world/state';
 import { getPref, readSave, setPref, snapshot } from '../save/save';
 import { validRecord } from './local';
-import { townGrade } from '../world/guide';
+import { chaptersDone, townGrade } from '../world/guide';
 import { addMail, myTitle } from '../world/meta';
-import { me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
+import { isGuest, me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
 
@@ -28,7 +28,8 @@ export function villageSnapshot() {
     v: 2,
     land: world.home?.land ?? S.land,
     innName: S.innName,
-    owner: me.profile?.nickname ?? '',
+    // GUEST_SPEC §2: 게스트는 주인 이름 대신 「○○ 여관 주인」(보는 쪽에서)
+    owner: isGuest() ? '' : (me.profile?.nickname ?? ''),
     repHero: repHero(),
     // 5단계: 마을 등급 (이웃이 보러 오면 비교하는 맛) · 칭호
     grade: townGrade(),
@@ -56,6 +57,8 @@ export function setCloudReady(on: boolean) {
 }
 /** 이 기기 저장이 어느 계정 것인지 (그 계정으로 올린 적이 있으면 그 사람 것) */
 const OWNER = 'cloudOwner';
+/** 이 기기 저장이 이미 어떤 계정 것인가 (그 계정이 로그아웃·만료됐을 때 게스트로 올리지 않게) */
+export const ownedByAccount = () => !!getPref<string>(OWNER, '');
 export function markOwner() {
   if (me.profile) setPref(OWNER, me.profile.id);
 }
@@ -68,6 +71,11 @@ export async function pushNow() {
     await pushSave(snapshot(), CONFIG.save.version);
     markOwner();
     await pushVillage(villageSnapshot(), S.innName, repHero());
+    // GUEST_SPEC §1: 장부 2장을 마친 게스트에게 모모 편지 한 번 — 「계정을 연결해 주세요」
+    if (isGuest() && chaptersDone() >= 2 && !P.meta.linkMail) {
+      P.meta.linkMail = true;
+      addMail({ from: 'system', title: '모모의 편지 · 여관을 지키는 법', body: '폰을 바꾸거나 브라우저를 지워도 여관을 지키려면 계정을 연결해 주세요! 메뉴 → 계정 → 「계정 연결하기」. 마을·금화·장비는 그대로예요.', reward: {} });
+    }
   } catch {
     /* 다음 번에 다시 */
   } finally {

@@ -575,7 +575,7 @@ export function visit(v: Neighbor) {
     $('#visitbar').hidden = false;
     $('#visitfoot').hidden = false;
     $('#vName').textContent = v.name;
-    $('#vSub').textContent = `${v.title ? `「${v.title}」 ` : ''}주인 ${v.owner} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
+    $('#vSub').textContent = `${v.title ? `「${v.title}」 ` : ''}${v.owner ? `주인 ${v.owner}` : `${v.name} 주인`} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
   });

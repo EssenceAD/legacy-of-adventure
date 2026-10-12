@@ -73,10 +73,10 @@ import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
 import { _raidAdvance } from './ui/raid';
 import { announce, rumorNow } from './ui/chat';
-import { initAuth, online } from './net/server';
+import { ensureGuest, initAuth, online } from './net/server';
 import * as SRV from './net/server';
 import * as SYNC from './net/sync';
-import { checkLastWeek, dailyStats, startCloud } from './net/sync';
+import { checkLastWeek, dailyStats, ownedByAccount, startCloud } from './net/sync';
 import { dailyOwner, nightOwner } from './world/owner';
 import * as OWN from './world/owner';
 import { makeAdventurer, powerOf } from './world/adventurers';
@@ -727,7 +727,19 @@ async function boot() {
   initSound();
   void initChat();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
-  void initAuth().then(() => (online() ? afterLogin() : undefined));
+  // GUEST_SPEC §1: 로그인이 없으면 게임을 시작한 뒤 조용히 게스트 계정 → 이 기기 저장·마을을 올린다 (서버 저장이 없는 새 계정이라 덮어쓸 일 없음)
+  //  다른 계정 저장인 기기(로그인 만료)·직접 로그아웃한 기기는 건너뛴다
+  void initAuth().then(() => {
+    if (online()) return void afterLogin();
+    const tryGuest = window.setInterval(() => {
+      if (!S.started || S.visiting) return;
+      clearInterval(tryGuest);
+      if (online() || ownedByAccount() || getPref<boolean>('guestOff', false)) return;
+      void ensureGuest(S.innName).then((ok) => {
+        if (ok) void afterLogin(true);
+      });
+    }, 3000);
+  });
   startCloud();
   void loadServerNotices();
   setOnZoom(resize);

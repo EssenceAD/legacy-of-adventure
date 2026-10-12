@@ -435,6 +435,8 @@ export function freshProgress() {
       /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
       sorryDupe: false,
       giftDeco: {} as Record<string, number>,
+      /** GUEST_SPEC: 게스트에게 「계정 연결」 편지를 보냈나 */
+      linkMail: false,
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {

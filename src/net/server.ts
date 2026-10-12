@@ -1,6 +1,7 @@
 // Supabase 연결 (3단계 2차). 서버 쪽(테이블·보안 규칙·함수·계정 복구)은 이미 있다 — 여기선 부르기만 한다.
 // 공개 키(publishable)만 쓴다. 로그인 안 한 손님은 이 모듈을 거치지 않고 지금처럼 로컬로 논다.
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
+import { CONFIG } from '../data/config';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
@@ -21,6 +22,8 @@ export interface Profile {
 
 /** 지금 로그인한 사람 (프로필까지 있어야 로그인으로 친다) */
 export const me = { profile: null as Profile | null };
+/** GUEST_SPEC: 게스트(익명 로그인) 계정인가 — 아이디가 g_ 로 시작 */
+export const isGuest = () => !!me.profile && me.profile.login_id.startsWith(CONFIG.cloud.guestPrefix);
 export const online = () => !!me.profile;
 
 const listeners = new Set<() => void>();
@@ -34,6 +37,7 @@ const emailOf = (loginId: string) => `${loginId}@players.legacy-of-adventure.app
 
 export function checkSignUp(loginId: string, pw: string, nickname: string): string | null {
   if (!LOGIN_RE.test(loginId)) return '아이디는 영어 소문자·숫자·_ 4~16자예요';
+  if (loginId.startsWith(CONFIG.cloud.guestPrefix)) return `아이디는 ${CONFIG.cloud.guestPrefix}로 시작할 수 없어요`;
   if (pw.length < 6) return '비밀번호는 6자 이상이에요';
   const n = [...nickname.trim()].length;
   if (n < 2 || n > 8) return '닉네임은 2~8자예요';
@@ -141,6 +145,63 @@ export async function recover(loginId: string, code: string, newPw: string): Pro
   }
 }
 
+// ───────── GUEST_SPEC §1: 게스트 계정 (익명 로그인) ─────────
+
+const hex = (n: number) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, n);
+/** 조용히 게스트 계정 만들기 (서버에서 익명 로그인이 꺼져 있으면 아무 일도 안 한다) · 됐으면 true */
+export async function ensureGuest(innName: string): Promise<boolean> {
+  if (!sb || me.profile) return !!me.profile;
+  // 개발·검사(봇 빌드·자동화 브라우저)에선 진짜 서버에 계정을 만들지 않는다
+  if (import.meta.env.DEV || import.meta.env.MODE === 'test' || navigator.webdriver) return false;
+  try {
+    let { data: u } = await sb.auth.getUser();
+    if (!u.user) {
+      const r = await sb.auth.signInAnonymously();
+      if (r.error || !r.data.user) return false;
+      u = { user: r.data.user };
+    }
+    // 프로필: 아이디 g_ + 12자 · 닉네임 「주인」+ 6자 (겹치면 다시)
+    for (let i = 0; i < 4 && !me.profile; i++) {
+      const id = u.user!.id.replace(/-/g, '');
+      const { error } = await sb.from('profiles').insert({ id: u.user!.id, login_id: (CONFIG.cloud.guestPrefix + id.slice(0, 12)).slice(0, 16), nickname: '주인' + hex(6), inn_name: (innName || '이름 없는 여관').slice(0, 12) });
+      if (error && error.code !== '23505') return false;
+      me.profile = await loadProfile();
+    }
+    if (me.profile) emit();
+    return !!me.profile;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * GUEST_SPEC §1: 「계정 연결하기」 — 게스트 계정에 아이디·비밀번호를 붙인다 (같은 계정 그대로 · 데이터 유지)
+ * 서버: 로그인 이메일·비밀번호(updateUser) → 아이디 바꾸기(link_guest, 게스트일 때만) → 닉네임 → 복구 코드
+ */
+export async function linkGuest(loginId: string, pw: string, nickname: string): Promise<{ code: string } | { error: string }> {
+  if (!sb || !isGuest()) return { error: '게스트 계정이 아니에요' };
+  const bad = checkSignUp(loginId, pw, nickname);
+  if (bad) return { error: bad };
+  nickname = nickname.trim();
+  const { data: dup } = await sb.from('profiles').select('id,login_id,nickname').or(`login_id.eq.${loginId},nickname.eq.${nickname}`);
+  if (dup?.some((d) => d.login_id === loginId)) return { error: '이미 있는 아이디예요' };
+  if (dup?.some((d) => d.nickname === nickname && d.id !== me.profile!.id)) return { error: '이미 있는 닉네임이에요' };
+  // 서버에 link_guest가 있어야 아이디를 바꿀 수 있다 — 없으면 아무것도 바꾸지 않고 멈춘다
+  const probe = await sb.rpc('link_guest', { new_login_id: loginId, dry_run: true });
+  if (probe.error) return { error: /function|not find|does not exist/i.test(probe.error.message) ? '계정 연결은 서버 준비 중이에요. 조금만 기다려 주세요' : '연결하지 못했어요: ' + probe.error.message };
+  if (probe.data !== 'ok') return { error: probe.data === 'taken' ? '이미 있는 아이디예요' : '연결하지 못했어요 (' + probe.data + ')' };
+  const up = await sb.auth.updateUser({ email: emailOf(loginId), password: pw });
+  if (up.error) return { error: authError(up.error.message) };
+  const ln = await sb.rpc('link_guest', { new_login_id: loginId, dry_run: false });
+  if (ln.error || ln.data !== 'ok') return { error: '아이디를 바꾸지 못했어요 (로그인은 새 아이디로 돼요)' };
+  await sb.from('profiles').update({ nickname, updated_at: new Date().toISOString() }).eq('id', me.profile!.id);
+  const code = makeRecoveryCode();
+  await sb.rpc('set_recovery_code', { p_code: code });
+  me.profile = await loadProfile();
+  emit();
+  return { code };
+}
+
 // ───────── 클라우드 저장 · 마을 모습 ─────────
 
 export async function pushSave(data: unknown, version: number) {
@@ -176,13 +237,31 @@ export interface VillageRow {
   updated_at: string;
 }
 
-/** 실제 유저 마을 (최근에 바뀐 순, 내 마을 빼고) */
-export async function listVillages(n = 20): Promise<VillageRow[]> {
+/** GUEST_SPEC §2: 숨길 운영·테스트 계정 (profiles.is_test · 컬럼이 아직 없으면 아이디 목록으로) */
+let hiddenIds: Set<string> | null = null;
+async function testIds(): Promise<Set<string>> {
+  if (hiddenIds || !sb) return hiddenIds ?? new Set();
+  const r = await sb.from('profiles').select('id').eq('is_test', true);
+  if (!r.error) hiddenIds = new Set((r.data ?? []).map((x) => x.id as string));
+  else {
+    const f = await sb.from('profiles').select('id').in('login_id', CONFIG.cloud.testLogins);
+    hiddenIds = new Set((f.data ?? []).map((x) => x.id as string));
+  }
+  return hiddenIds;
+}
+/** 실제 유저 마을: 최근 7일 안에 접속한 마을 · ♥ 많은 순 → 최근 순 · 내 마을·테스트 계정 빼고 */
+export async function listVillages(n: number = CONFIG.cloud.neighborPage): Promise<VillageRow[]> {
   if (!sb) return [];
-  let q = sb.from('villages').select('user_id,snapshot,likes,updated_at').order('updated_at', { ascending: false }).limit(n);
+  const since = new Date(Date.now() - CONFIG.cloud.neighborDays * 86400000).toISOString();
+  const hide = await testIds();
+  let q = sb.from('villages').select('user_id,snapshot,likes,updated_at').gte('updated_at', since).order('likes', { ascending: false }).order('updated_at', { ascending: false }).limit(n + hide.size + 1);
   if (me.profile) q = q.neq('user_id', me.profile.id);
   const { data } = await q;
-  return (data as VillageRow[]) ?? [];
+  return ((data as VillageRow[]) ?? []).filter((r) => !hide.has(r.user_id)).slice(0, n + 1);
+}
+/** 내 여관 (목록 맨 위 고정 · ♥ 확인용) */
+export async function myVillage(): Promise<VillageRow | null> {
+  return me.profile ? getVillage(me.profile.id) : null;
 }
 export async function getVillage(uid: string): Promise<VillageRow | null> {
   if (!sb) return null;

@@ -592,6 +592,14 @@ export const CONFIG = {
   cloud: {
     /** 클라우드 저장 간격 (초) */
     pushSeconds: 60,
+    /**
+     * GUEST_SPEC: 게스트 계정 (익명 로그인) — 아이디 앞머리 · 이웃 목록은 최근 N일 · 한 번에 M개 (더 보기)
+     * testLogins = profiles.is_test 컬럼이 아직 없을 때 숨길 운영·테스트 계정 아이디
+     */
+    guestPrefix: 'g_',
+    neighborDays: 7,
+    neighborPage: 30,
+    testLogins: ['cholybrown'],
     /** 진의 소문 조건: 주간 순위 ÷ 전체 ≤ 이 값 */
     topRankShare: 0.3,
     /** [세계]가 이만큼(ms) 조용할 때만 [소문]이 흐른다 */

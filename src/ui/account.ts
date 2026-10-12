@@ -2,7 +2,9 @@
 // 화면에 '이메일'이라는 말은 안 나온다. 로그인 안 해도 게임은 그대로 (손님 플레이).
 import * as game from '../game';
 import { checkLastWeek, compareSaves, dailyStats, flushOutbox, pushNow, setCloudReady, useServerSave, type SaveChoice } from '../net/sync';
-import { loadBlocks, login, logout, me, online, recover, regenRecovery, sb, signUp } from '../net/server';
+import { isGuest, linkGuest, loadBlocks, login, logout, me, online, recover, regenRecovery, sb, signUp } from '../net/server';
+import { setPref } from '../save/save';
+import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
 import { $, esc, fmt } from './common';
 import { closeWin, isWinOpen, onWinClose, openWin, toast } from './windows';
@@ -87,7 +89,51 @@ function showCode(code: string, first: boolean) {
   $('#rcOk').onclick = () => closeWin();
 }
 
+/** GUEST_SPEC §1: 게스트 계정 — 이웃 목록·클라우드 저장은 그대로 · 「계정 연결하기」로 아이디·비밀번호를 붙인다 */
+function openGuest() {
+  const p = me.profile!;
+  openWin(
+    '내 계정',
+    `<div class="acc"><div>계정<b>게스트</b></div><div>여관<b>${esc(p.inn_name)}</b></div><div>저장<b>1분마다 · 이 기기와 클라우드에</b></div></div>
+    <p class="sub">지금은 이 기기에만 묶인 게스트 계정이에요. <b>계정을 연결</b>하면 폰을 바꿔도 같은 여관을 이어서 해요. 마을·금화·장비는 그대로예요.</p>
+    <form class="report acc-form" id="lkF">${field('lId', '아이디 (4~16자)', 'text', '예) star_inn', 'maxlength="16"')}${field('lPw', '비밀번호 (6자 이상)', 'password')}${field('lPw2', '비밀번호 한 번 더', 'password')}${field('lNick', '닉네임 (2~8자)', 'text', '', 'maxlength="8"')}<button>계정 연결하기</button></form>
+    <div class="menu"><button id="acSave">지금 클라우드에 저장</button><button id="acOther">이미 계정이 있어요 (로그인)</button></div>`,
+  );
+  const v = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value ?? '';
+  const form = $('#lkF') as HTMLFormElement;
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button')!;
+    btn.disabled = true;
+    try {
+      if (v('lPw') !== v('lPw2')) return toast('비밀번호가 서로 달라요');
+      await pushNow();
+      const r = await linkGuest(v('lId').trim().toLowerCase(), v('lPw'), v('lNick'));
+      if ('error' in r) return toast(r.error);
+      trackEv('guest_link', {});
+      showCode(r.code, true);
+      await pushNow();
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  $('#acSave').onclick = async () => {
+    await pushNow();
+    toast('클라우드에 저장했어요');
+  };
+  $('#acOther').onclick = () => {
+    if (!confirm('다른 계정으로 로그인하면 이 게스트 여관은 이 기기에서 떠나요 (로그인한 계정의 마을을 고를 수 있어요). 계속할까요?')) return;
+    tab = 'login';
+    // 게스트 세션을 내리고 로그인 화면으로 (게스트 마을은 서버에 남는다)
+    void logout().then(() => {
+      setPref('guestOff', true);
+      openAccount();
+    });
+  };
+}
+
 function openMine() {
+  if (isGuest()) return openGuest();
   const p = me.profile!;
   openWin(
     '내 계정',
@@ -108,6 +154,8 @@ function openMine() {
   $('#acOut').onclick = async () => {
     await pushNow();
     await logout();
+    // GUEST_SPEC: 직접 로그아웃한 기기엔 게스트 계정을 다시 만들지 않는다
+    setPref('guestOff', true);
     closeWin();
     toast('로그아웃했어요 · 이 기기에서는 계속 놀 수 있어요');
   };
