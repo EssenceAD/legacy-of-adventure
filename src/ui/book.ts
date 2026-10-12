@@ -18,6 +18,8 @@ import { REGION_TITLES } from '../data/story/regions';
 import { huntRegionOpen } from '../world/hunt';
 import { isStarRegion, regionFirstDone, regionGuideDone, starsHave } from '../world/regions2';
 import { itemIcon } from '../world/items';
+import { UNIQUES } from '../data/story/uniques';
+import { FISH } from '../data/story/fish';
 import {
   claimGoal, DEX_REWARDS, monumentUnlocked, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
 } from '../world/progress';
@@ -47,10 +49,15 @@ function rewardsRow(book: 'guests' | 'items') {
 
 export function openDex(tab = dTab) {
   // REGIONS2: 「지역」 칸은 별이 흩어진 뒤부터
-  if (tab === 8 && !P.regions2.scatter) tab = 0;
+  // GROWTH: 「고유 장비」 · 「낚시」 칸은 맨 뒤 (지역 칸이 없을 때도 이름으로 찾는다)
+  const NAMES = ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시'];
+  if (tab >= NAMES.length) tab = 0;
   dTab = tab;
+  const tname = NAMES[tab];
   let body = '';
-  if (tab === 0) {
+  if (tname === '고유 장비') body = uniqueDexHtml();
+  else if (tname === '낚시') body = fishDexHtml();
+  else if (tab === 0) {
     const grid = RACES.map(
       (race) =>
         `<div class="dexrow"><span>${RACE_NAME[race]}</span>${GUEST_KINDS.map((k) =>
@@ -140,7 +147,7 @@ export function openDex(tab = dTab) {
       return `<div class="hcell"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
     }).join('');
     body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · 한 건물에 최대 ${CONFIG.harmony.perBuilding}개</p><div class="hgrid">${cells}</div>`;
-  } else if (tab === 8) {
+  } else if (tname === '지역') {
     // REGIONS2 §5-7: 지역 칸 — 열린 지역은 이름·재료·세트 · 첫 발자국 · 길잡이 (한 줄씩)
     const cells = REGIONS.slice(BASE_REGIONS).map((r, k) => {
       const i = BASE_REGIONS + k;
@@ -174,7 +181,7 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : [])], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(NAMES, tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
   $$('[data-db]').forEach(
@@ -199,6 +206,44 @@ export function openDex(tab = dTab) {
         openDex(tab);
       }),
   );
+}
+
+// ───────── GROWTH §3-4 고유 장비 · §4 낚시 ─────────
+
+function uniqueDexHtml(): string {
+  const cells = REGIONS.filter((r) => UNIQUES.some((u) => u.region === r.id))
+    .map(
+      (r) =>
+        `<div class="qhd"><b style="color:${r.color}">${esc(r.name)}</b></div><div class="uqgrid">${UNIQUES.filter((u) => u.region === r.id)
+          .map((u) => {
+            const n = P.growth.uniques[u.id] ?? 0;
+            if (!n) return `<div class="uqcell sil"><img src="${itemIcon({ slot: u.slot, grade: 'a', region: u.region as never, wkind: u.wkind })}" alt=""><b>???</b><small>${SLOT_NAME[u.slot]}</small></div>`;
+            return `<div class="uqcell on"><img src="${itemIcon({ slot: u.slot, grade: 'a', region: u.region as never, wkind: u.wkind })}" alt=""><b>${esc(u.name)}</b><small>「${esc(u.lore)}」</small><small class="g">${OPT_INFO[u.opt.k].label(u.opt.v, r.name)}${u.special ? ' · ' + esc(u.special.text) : ''}</small>${n > 1 ? `<small>×${n}</small>` : ''}</div>`;
+          })
+          .join('')}</div>`,
+    )
+    .join('');
+  const got = UNIQUES.filter((u) => (P.growth.uniques[u.id] ?? 0) > 0).length;
+  return `<p class="sub">고유 장비 ${got}/${UNIQUES.length}</p><p class="note">지역 사냥 보스(x-10) 0.5% · 토벌 보스 처치 1% · 고지역 8시간 원정 0.3% · 같은 것 두 번째부터는 분해 가루 2배</p>${cells}`;
+}
+
+function fishDexHtml(): string {
+  const F = P.growth.fish;
+  const cell = (fd: (typeof FISH)[number]) => {
+    const r = F.rec[fd.id];
+    const g = { n: '흔함', r: '희귀', e: '영웅', l: '전설' }[fd.grade];
+    if (!r?.n) return `<div class="fcell sil"><img src="${import.meta.env.BASE_URL}assets/fish/${fd.id}.png" alt=""><b>???</b><small>${g}${fd.time ? ' · ' + { day: '낮', night: '밤', dawn: '새벽' }[fd.time] : ''}</small></div>`;
+    return `<div class="fcell on g${fd.grade}"><img src="${import.meta.env.BASE_URL}assets/fish/${fd.id}.png" alt=""><b>${esc(fd.name)}</b><small>${g} · ${r.n}마리 · 최대 ${r.max}cm</small><small class="lore">${esc(fd.text)}</small></div>`;
+  };
+  let big: { name: string; size: number } | null = null;
+  for (const fd of FISH) {
+    const m = F.rec[fd.id]?.max ?? 0;
+    if (m > (big?.size ?? 0)) big = { name: fd.name, size: m };
+  }
+  const n = FISH.filter((x) => (F.rec[x.id]?.n ?? 0) > 0).length;
+  return `<p class="sub">낚시 ${n}/${FISH.length}종${big ? ` · 최대어 <b class="g">${esc(big.name)} ${big.size}cm</b>` : ''}</p><p class="note">잉어·연꽃 연못을 누르면 낚시 · 「가라앉은 등대 해안」이 열리면 사냥터 🎣 해안 낚시</p>
+  <div class="qhd"><b class="g">마을 연못</b></div><div class="fgrid">${FISH.filter((x) => x.where === 'pond').map(cell).join('')}</div>
+  <div class="qhd"><b class="g">등대 해안</b></div><div class="fgrid">${FISH.filter((x) => x.where === 'sea').map(cell).join('')}</div>`;
 }
 
 // ───────── 오늘의 목표 ─────────

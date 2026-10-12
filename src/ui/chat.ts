@@ -7,6 +7,8 @@ import { CONFIG } from '../data/config';
 import { HEROES } from '../data/heroes';
 import { BASE_REGIONS, REGIONS } from '../data/items';
 import { openNewRegions, regionRumor } from '../world/regions2';
+import { bragHooks, rumorHint } from '../world/growth';
+import { tieAvailable } from '../world/owner';
 import { NEIGHBORS } from '../data/neighbors';
 import POOL from '../data/chat_pool.json';
 import { P } from '../world/state';
@@ -141,6 +143,13 @@ function next() {
     setTimeout(next, rnd());
     return;
   }
+  // GROWTH §2: 하루 한 번 선물 힌트 소문 「○○가 요즘 … 이런 얘기를 하더라」
+  const gh = Math.random() < CONFIG.growth.hint.rumorChance ? rumorHint(tieAvailable) : null;
+  if (gh) {
+    push({ ch: '소문', who: pick(SPEAKERS), text: gh });
+    setTimeout(next, rnd());
+    return;
+  }
   // 소문 열린 전설 영웅이 있으면 가끔 그 힌트
   const heard = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
   if (heard.length && Math.random() < 0.15) {
@@ -165,6 +174,9 @@ const fromRow = (r: ChatRow): Msg =>
     : { ch: '세계', who: r.nickname, text: r.body, id: r.id, uid: r.user_id ?? undefined, hero: r.rep_hero };
 
 export async function initChat() {
+  // GROWTH §3-5: 자랑 문장의 이름 = 로그인했으면 닉네임
+  const own = bragHooks.name;
+  bragHooks.name = () => (online() && me.profile?.nickname) || own();
   // EASTER: 개척자 표시(★)용 목록을 미리
   void pioneers();
   // 로그인 안 했을 때의 [알림](내 마을 일)은 net.chat에서 온다
@@ -225,7 +237,9 @@ export function openChat() {
 }
 
 /** [알림]: 로그인했으면 서버가 문장을 만들어 모두에게 (실시간으로 돌아온다), 아니면 내 화면에만 */
-export function announce(text: string, kind?: 'legend' | 'boss_kill' | 'rank1', arg?: string) {
-  if (online() && kind) void postNotice(kind, arg ?? '');
+export function announce(text: string, kind?: 'legend' | 'boss_kill' | 'rank1' | 'brag', arg?: string) {
+  // GROWTH §3-5: 자랑은 서버가 「brag」를 받으면 모두에게, 아직 못 받으면(옛 서버) 내 화면에만
+  if (online() && kind === 'brag') void postNotice('brag', arg ?? text).then((ok) => ok || net.chat.announce(text));
+  else if (online() && kind) void postNotice(kind, arg ?? '');
   else net.chat.announce(text);
 }

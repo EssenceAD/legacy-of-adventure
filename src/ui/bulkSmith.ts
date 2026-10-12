@@ -6,6 +6,7 @@ import { salvage } from '../world/craft';
 import { P, type Item } from '../world/state';
 import { $, $$, esc, fmt, itemCell } from './common';
 import { closeWin, openWin, toast } from './windows';
+import { enhUse } from './enhance';
 import { track as trackEv } from '../net/telemetry';
 
 const SM = () => CONFIG.smith;
@@ -40,11 +41,12 @@ function draw(back: () => void, trans: boolean) {
     `<div class="bulkw">
       <p class="sub">대상</p><div class="btnrow seg">${T('equipped', '끼운 장비만')}${T('bag', '가방 전체')}${T('pick', '직접 고르기')}</div>
       ${pickList}
-      <p class="sub">목표 <b class="g">+${opts.goal}</b>까지${!trans && opts.goal <= 5 ? ' <small>(+5까지는 실패 없음)</small>' : ''}</p>
+      <p class="sub">목표 <b class="g">+${opts.goal}</b>까지${!trans && opts.goal >= 7 ? ' <small>(+7부터 실패하면 30% 확률로 1단계 하락)</small>' : ''}</p>
       <input type="range" id="bGoal" min="${lo}" max="${hi}" value="${opts.goal}">
       <p class="sub">예산: 가진 금화·가루의 <b class="g">${Math.round(opts.budget * 100)}%</b>까지만</p>
       <input type="range" id="bBud" min="10" max="100" step="10" value="${Math.round(opts.budget * 100)}">
       <label class="chk"><input type="checkbox" id="bLock" ${opts.skipLocked ? 'checked' : ''}> 🔒 잠금 장비 빼기</label>
+      ${trans ? '' : `<label class="chk"><input type="checkbox" id="bCharm" ${opts.charm ? 'checked' : ''} ${P.growth.charm > 0 ? '' : 'disabled'}> 🧿 부적 자동 사용 <small>(${P.growth.charm}개 · +7~+10 하락을 막을 때만 1개)</small></label>`}
       <div class="bprev"><b>미리보기</b> · 대상 ${p.items}개 · 예상${p.gold ? ` 금화 ${fmt(p.gold)} ·` : ''} 가루 ${fmt(p.dust)}${p.boss ? ` · 보스 재료 ${fmt(p.boss)}` : ''}${p.mats ? ` · 지역 재료 ${fmt(p.mats)}` : ''}${p.bossShort ? `<br><span class="bad">보스 재료가 모자라 멈출 장비 ${p.bossShort}개</span>` : ''}<br><small>실패 확률을 반영한 기대값이에요 · 예산을 넘기 전에 멈춰요</small></div>
       <div class="btnrow"><button class="bigbtn" id="bGo" ${p.items ? '' : 'disabled'}>시작</button><button class="bigbtn ghost" id="bBack">대장간으로</button></div>
     </div>`,
@@ -63,6 +65,8 @@ function draw(back: () => void, trans: boolean) {
   );
   ($('#bGoal') as HTMLInputElement).onchange = (e) => ((opts.goal = +(e.target as HTMLInputElement).value), draw(back, trans));
   ($('#bBud') as HTMLInputElement).onchange = (e) => ((opts.budget = +(e.target as HTMLInputElement).value / 100), draw(back, trans));
+  const bc = document.getElementById('bCharm') as HTMLInputElement | null;
+  if (bc) bc.onchange = () => ((opts.charm = bc.checked), draw(back, trans));
   ($('#bLock') as HTMLInputElement).onchange = (e) => ((opts.skipLocked = (e.target as HTMLInputElement).checked), draw(back, trans));
   $('#bBack').onclick = back;
   $('#bGo').onclick = () => {
@@ -117,7 +121,7 @@ function drawRun(back: () => void, trans: boolean) {
 
 /** 장비 한 줄 「+5까지」·「+10까지」: 그 장비만 목표까지 바로 (예산 = 전부, 재료가 모자라면 멈춤) */
 export function runToGoal(it: Item, goal: number): string {
-  const r = startBulk({ target: 'pick', picked: [it.id], goal, budget: 1, skipLocked: false });
+  const r = startBulk({ target: 'pick', picked: [it.id], goal, budget: 1, skipLocked: false, charm: enhUse.charm });
   let n = 0;
   while (bulkTick(r) && n++ < 400);
   return `${esc(it.name)} +${it.enh}${it.enh >= goal ? ' 도달!' : ' (재료가 모자라 멈춤)'} · 실패 ${r.fails}회${r.spentGold ? ` · 금화 −${fmt(r.spentGold)}` : ''} · 가루 −${fmt(r.spentDust)}`;

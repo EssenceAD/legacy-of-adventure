@@ -84,6 +84,9 @@ import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
 import { checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
+import { openPersonMenu } from './ui/personMenu';
+import { initFishingUI } from './ui/fishing';
+import { dailyFishing } from './world/fishing';
 import { showOffline, showReport } from './ui/expedition';
 import { computeOffline } from './world/offline';
 import { _raidAdvance } from './ui/raid';
@@ -176,6 +179,7 @@ function update(dt: number) {
       if (S.night) judgeNight();
       // 4단계: 매일 첫 접속 능력치 · 계절 · 놓친 인연 이벤트 · 밤이면 불씨 독백/선택
       dailyOwner();
+      dailyFishing();
       if (S.night) nightOwner(true);
       // 베타: v6 마이그레이션 (어울림 발견 보상 우편 · 장부 번호) → 장부 — 이미 해 둔 일은 바로 완료
       betaMigrate();
@@ -204,6 +208,7 @@ function update(dt: number) {
         tickLegends();
         maybeAlarm();
         dailyOwner();
+        dailyFishing();
         // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
       if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
         void dailyStats();
@@ -648,9 +653,10 @@ function tap(e: PointerEvent) {
     }
   }
   if (best) {
+    // GROWTH §2: 사람을 누르면 작은 메뉴 [말 걸기] [선물하기] (모모는 + 편지 · 손님은 + 정보)
     if (best.role === 'npc') {
       if (S.visiting) return;
-      openReport();
+      openPersonMenu(best, e.clientX, e.clientY);
     } else if (best.role === 'owner') openOwner();
     // ONBOARDING §2: 첫 손님은 누르면 체크인
     else if (tapFirstGuest(best)) return;
@@ -658,6 +664,7 @@ function tap(e: PointerEvent) {
     else if (best.role === 'yuan') tapYuan();
     // EASTER §2: 놀러 온 개척자 — 누르면 대사 하나씩
     else if (tapCameo(best)) return;
+    else if (!S.visiting && best.id) openPersonMenu(best, e.clientX, e.clientY);
     else showActor(best);
     return;
   }
@@ -784,6 +791,7 @@ async function boot() {
   initHarmonyUI();
   // BUILDINGS_SPEC: 새 기능 건물 효과 줄 · 연금술 공방 (어울림 줄 다음에 덧붙인다)
   initFacilitiesUI();
+  initFishingUI();
   // DECO_DROP §2: 뽐내기 장식 (영웅 동상 · 불꽃놀이 · 시계탑 종) — 건물 창 덧붙이기는 어울림·시설 뒤에
   initLuxury();
   // EASTER: 베타 개척자 (금빛 편지 · 카메오 · 전용 장식)
@@ -928,6 +936,8 @@ async function boot() {
   // 개발 중 콘솔에서 살펴보기용
   // FEEDBACK23 e2e: 마을 입구 칸 · 던전 숲속 원래 자리
   if (import.meta.env.DEV) Object.assign(window, { __ent: () => entrance(), __autoEntX: () => autoEntranceX(), __dgHome: () => dungeonHome(), __hitAt: (cx: number, cy: number) => { const [mx, my] = toLogical(cv, cx, cy); const [fx, fy] = toTile(cv, cx, cy); return { sprite: buildingAt(mx, my, alphaAt)?.kind ?? null, floor: grid[Math.floor(fy)]?.[Math.floor(fx)]?.kind ?? null }; } });
+  // GROWTH e2e: 손님(번호)·모모의 화면 좌표
+  if (import.meta.env.DEV) Object.assign(window, { __actorXY: (id: number | string) => { const a = world.actors.find((x) => (id === 'momo' ? x.role === 'npc' : x.id === id)); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; } });
   if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __mythic: { seed: debugMythic, prog: mythicProgress }, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다

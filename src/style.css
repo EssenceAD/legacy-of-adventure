@@ -1476,3 +1476,70 @@ img.port.pixel{image-rendering:pixelated}
 #storyFx.sfx-hush{background:rgba(2,2,10,.72);transition:background-color 1.2s}
 body.cbtalk #dlg{z-index:46}
 body.cbtalk #storyFx{z-index:45}
+
+/* ───────── GROWTH §2 사람 메뉴 · 선물 고르기 ───────── */
+.pmenu{position:fixed;z-index:400;display:flex;flex-direction:column;gap:4px;padding:6px 8px;min-width:132px;background:var(--navy);box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--line);animation:pmIn .12s ease-out}
+.pmenu .pmname{color:var(--gold);text-align:center;font-size:var(--f-small)}
+.pmenu button{border:0;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);padding:8px 10px;min-height:40px;cursor:pointer;text-align:left;font-size:var(--f-ui)}
+.pmenu button.ghost{background:#141a3a;color:#cfd8ff}
+@keyframes pmIn{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+.gpicks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:6px 0}
+.gpick{display:flex;align-items:center;gap:6px;border:0;background:#4a3a6a;box-shadow:0 0 0 2px var(--ink);padding:6px 8px;min-height:44px;cursor:pointer;text-align:left;position:relative}
+.gpick small{display:block;color:#cfc2ff}.gpick .gic{font-size:22px;width:32px;text-align:center;flex:none}
+.gmark{font-style:normal;margin-left:auto;font-weight:700}.gmark.like{color:#ff7a9a}.gmark.hate{color:#9aa6d8}.gmark.hint{opacity:.85}
+.fishic{width:32px;height:auto;max-height:32px;image-rendering:pixelated;object-fit:contain;flex:none}
+/* ───────── GROWTH §3-1 ★ · 가장 좋은 걸로 · 누가 끼면 좋을까 ───────── */
+.favbtn{border:0;background:none;color:var(--gold);font-size:20px;line-height:1;cursor:pointer;padding:0 2px;vertical-align:-2px}
+.favbtn:not(.on){color:#9aa6d8}.favstar{color:var(--gold)}
+.bigbtn.best{width:100%;margin:6px 0 2px}
+.whow{margin-top:8px;display:flex;flex-direction:column;gap:4px}.whow .irow img{width:28px;height:28px;image-rendering:pixelated}.whow .irow button{margin-left:auto;border:0;background:#3f5fc8;padding:4px 10px;cursor:pointer}
+.uniqbox{margin-top:6px;padding:6px 8px;background:#1a2450;box-shadow:0 0 0 2px #bfe6ff}.uniqbox .lore{color:#cfd8ff;font-style:italic}.uopt{color:#bfe6ff}
+/* ───────── GROWTH §3-2·3-3 강화 창 ───────── */
+.enhrate{font-size:var(--f-big)}.enhuse{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0}.enhuse .tog{margin-top:2px}.enhuse .tog.dim{opacity:.6}
+.goalln{display:flex;align-items:center;gap:8px;margin:4px 0 6px;padding:6px 8px;background:#2a2050;box-shadow:0 0 0 2px var(--ink);font-size:var(--f-small)}
+.goalln span{flex:1}.goalln button{border:0;background:#c08a2a;color:#fff;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.whetrow{margin-top:6px}.whetrow small{color:#9aa6d8}
+.rfopts{display:flex;flex-direction:column;gap:4px;margin:6px 0}.rfopt{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink)}
+.rfopt span{flex:1}.rfopt button{border:0;background:#141a3a;color:#cfd8ff;padding:4px 8px;cursor:pointer}.rfopt.new{animation:rfNew 1s ease-out;box-shadow:0 0 0 2px var(--gold)}
+@keyframes rfNew{from{background:#6a5a20}to{background:var(--navy2)}}
+.smithln{width:100%;margin-top:6px}
+/* ───────── GROWTH §3-4 득템 연출 ───────── */
+.fanfare{position:fixed;inset:0;z-index:9000;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ffpillar{position:absolute;left:50%;top:-10%;bottom:-10%;width:120px;transform:translateX(-50%) scaleX(0);animation:ffPillar 1.3s ease-out forwards;filter:blur(2px)}
+.ff-e .ffpillar{background:linear-gradient(90deg,transparent,rgba(163,91,214,.55),rgba(230,200,255,.85),rgba(163,91,214,.55),transparent)}
+.ff-l .ffpillar{background:linear-gradient(90deg,transparent,rgba(242,161,58,.6),rgba(255,240,180,.95),rgba(242,161,58,.6),transparent);width:160px}
+@keyframes ffPillar{0%{transform:translateX(-50%) scaleX(0);opacity:0}15%{transform:translateX(-50%) scaleX(1.2);opacity:1}70%{opacity:.9}100%{transform:translateX(-50%) scaleX(.6);opacity:0}}
+.ffflash{position:absolute;inset:0;background:#fff;animation:ffFlash 1.5s ease-out forwards}
+@keyframes ffFlash{0%{opacity:.95}20%{opacity:.35}100%{opacity:0}}
+.ffname{position:relative;text-align:center;animation:ffName 1.4s ease-out forwards;text-shadow:0 0 6px #000,0 2px 0 var(--ink)}
+.ffname small{display:block;color:#fff;font-size:var(--f-small)}.ffname b{display:block;font-size:22px;color:#fff}
+.ff-l .ffname b{color:#ffe6a0}.ff-e .ffname b{color:#e6c8ff}
+.ffname.big b{font-size:34px;color:#bfe6ff;letter-spacing:1px}
+@keyframes ffName{0%{transform:scale(.6);opacity:0}15%{transform:scale(1.1);opacity:1}25%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-16px)}}
+/* 도감: 고유 장비 · 낚시 */
+.uqgrid,.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.uqcell,.fcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);text-align:center}
+.uqcell img{width:32px;height:32px;image-rendering:pixelated}.uqcell.sil img,.fcell.sil img{filter:brightness(0) opacity(.45)}
+.uqcell small,.fcell small{color:#9aa6d8}.uqcell .g{color:#bfe6ff}.fcell .lore{font-style:italic}
+.fcell img{width:48px;height:auto;max-height:40px;object-fit:contain;image-rendering:pixelated}
+.fcell.gl{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #f2a13a}.fcell.ge{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #a35bd6}
+/* ───────── GROWTH §4 낚시 ───────── */
+.fstage{position:relative;height:180px;margin:8px 0;overflow:hidden;background:linear-gradient(180deg,#2a5a8a,#173a66);box-shadow:0 0 0 2px var(--ink);touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
+.fwater{position:absolute;inset:0;background:repeating-linear-gradient(170deg,rgba(255,255,255,.06) 0 6px,transparent 6px 22px);animation:fWave 3s linear infinite}
+@keyframes fWave{to{background-position:0 44px}}
+.fbob{position:absolute;left:50%;top:46%;width:18px;height:26px;margin-left:-9px;transition:top .2s}
+.fbob i{position:absolute;inset:0;border-radius:9px 9px 6px 6px;background:linear-gradient(180deg,#ff4a4a 0 45%,#fff 45% 100%);box-shadow:0 0 0 2px var(--ink)}
+.fstage.cast .fbob{animation:fBob .9s ease-in-out infinite}
+.fstage.bite .fbob{animation:fBite .12s linear infinite;top:52%}
+@keyframes fBob{50%{transform:translateY(3px) rotate(4deg)}}
+@keyframes fBite{0%{transform:translate(-2px,2px)}50%{transform:translate(2px,-2px)}100%{transform:translate(-2px,2px)}}
+.fbang{position:absolute;left:50%;top:14%;transform:translateX(-50%) scale(0);font-size:44px;font-weight:900;color:#ffe14a;text-shadow:0 3px 0 var(--ink),0 0 10px #000;pointer-events:none}
+.fstage.bite .fbang{transform:translateX(-50%) scale(1);transition:transform .06s}
+.fmsg{position:absolute;left:8px;right:8px;bottom:8px;text-align:center;font-size:var(--f-small);color:#fff;text-shadow:0 1px 0 var(--ink);pointer-events:none}
+.fstage.got{background:linear-gradient(180deg,#3a7aa8,#1f4a78)}.fstage.miss .fbob{opacity:.4}
+.fcatch{display:flex;align-items:center;gap:8px;justify-content:center;background:rgba(10,14,40,.75);padding:6px;text-align:left}.fcatch p{margin:2px 0 0;color:#cfd8ff}
+.fishbig{width:64px;height:auto;max-height:56px;image-rendering:pixelated;object-fit:contain}
+.fcatch .new{font-style:normal;color:#ffe14a;font-weight:700}
+.fbag .irow button{border:0;background:#3f5fc8;padding:4px 8px;cursor:pointer;margin-left:4px}.fbag .irow button:first-of-type{margin-left:auto}.fbag .irow button.ghost{background:#141a3a}
+.fishgo{width:100%;margin-top:8px}.fishtab{font-size:16px}
+.fishcook{margin-top:8px}.fishcook .irow button{margin-left:auto;border:0;background:#c08a2a;padding:4px 10px;cursor:pointer}

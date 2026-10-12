@@ -1,4 +1,5 @@
 // 원정 창: 의뢰 게시판(목록·진행 중 파티·천장) → 파티 고르기(전투력·성공률·전투력 올리기 안내) → 보고서 · 방치 요약
+import { dropFanfare } from './fanfare';
 import { BASE_REGIONS } from '../data/items';
 import { huntRegionOpen } from '../world/hunt';
 import { CONFIG } from '../data/config';
@@ -303,6 +304,7 @@ function showLoot(run: Run) {
     ${res.chemUps?.length ? `<p class="sub heart">${res.chemUps.map(esc).join(' · ')}</p>` : ''}
     <button class="bigbtn" id="repOk">받기</button>`,
   );
+  dropFanfare(res.items);
   $('#repOk').onclick = () => {
     claimRun(run);
     closeWin();

@@ -6,14 +6,19 @@ import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
-import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, transcendRate, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
+import { craftWhet, whetCost } from '../world/craft';
+import { favActors, favRank } from '../world/growth';
+import { openReforge, reforgeTab } from './reforge';
+import type { Item } from '../world/state';
+import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
 import * as game from '../game';
-import { $, $$, bindTabs, esc, fmt, itemCell, leftText, liveWin, pct, tabs } from './common';
+import { $, $$, bindTabs, esc, fmt, itemCell, leftText, liveWin, tabs } from './common';
 import { showItem } from './guests';
 import { appendMoveButton, openWin, toast } from './windows';
+import { enhMsg, enhUse, openEnhance, pityText } from './enhance';
 
 let craftRegion: RegionId = 'forest';
 let smTab = 0;
@@ -25,7 +30,42 @@ export const dustLine = () =>
     .join(' · ');
 
 const ownerName = (id: number | null | undefined) => (id == null ? '' : ((world.home?.actors ?? world.actors).find((a) => a.id === id)?.name ?? ''));
-const sorted = () => P.bag.slice().sort((p, q) => 'naerl'.indexOf(q.grade) - 'naerl'.indexOf(p.grade) || itemPower(q) - itemPower(p));
+const ownerOf = (id: number | null | undefined) => (id == null ? null : (world.home?.actors ?? world.actors).find((a) => a.id === id) ?? null);
+/** GROWTH §3-1: ★ 아끼는 영웅이 낀 장비가 맨 위 → 등급 → 전투력 */
+const favOf = (it: { owner?: number | null }) => {
+  const o = ownerOf(it.owner);
+  return o ? favRank(o) : 99;
+};
+export const sorted = () => P.bag.slice().sort((p, q) => favOf(p) - favOf(q) || 'naerl'.indexOf(q.grade) - 'naerl'.indexOf(p.grade) || itemPower(q) - itemPower(p));
+
+/** GROWTH §3-6: ★ 영웅 장비 중 가장 가까운 목표 (남은 단계가 적은 것 → 가루가 적게 드는 것) */
+export function favGoal(): { it: Item; who: string; goal: number; text: string } | null {
+  let best: { it: Item; who: string; goal: number; steps: number; cost: number } | null = null;
+  const cap = transcendOpen() ? CONFIG.smith.transcend.max : CONFIG.smith.maxEnhance;
+  for (const a of favActors())
+    for (const sl of SLOTS) {
+      const it = P.bag.find((x) => x.id === a.equip?.[sl]);
+      if (!it || it.enh >= cap) continue;
+      const goal = CONFIG.growth.goals.find((g) => g > it.enh && g <= cap) ?? cap;
+      let cost = 0;
+      for (let e = it.enh; e < goal; e++) cost += e < CONFIG.smith.maxEnhance ? enhanceCost({ ...it, enh: e } as Item) : transcendCost({ ...it, enh: e } as Item).dust;
+      const steps = goal - it.enh;
+      if (!best || steps < best.steps || (steps === best.steps && cost < best.cost)) best = { it, who: a.name, goal, steps, cost };
+    }
+  if (!best) return null;
+  const it = best.it;
+  return { it, who: best.who, goal: best.goal, text: `${best.who} ${SLOT_NAME[it.slot]} +${best.goal}까지 — ${DUST_NAME[it.grade]} ${fmt(best.cost)} · ${pityText(it).replace('다음 ', '')}` };
+}
+function goalLine(): string {
+  const g = favGoal();
+  if (!g) return '<p class="note goalln">🎯 다음 목표: 손님 창에서 ☆를 눌러 「아끼는 영웅」을 정하면 여기서 바로 강화해요</p>';
+  return `<div class="goalln"><span>🎯 다음 목표 · ${esc(g.text)}</span><button id="sGoal">바로 강화</button></div>`;
+}
+/** 강화·초월 탭 체크칸: 🧿 부적 · 🪨 숫돌 */
+function useHtml(): string {
+  const G = P.growth;
+  return `<div class="enhuse"><label class="tog"><input type="checkbox" id="sCharm" ${enhUse.charm ? 'checked' : ''} ${G.charm > 0 ? '' : 'disabled'}> 🧿 부적 쓰기 <small>(${G.charm}개)</small></label><label class="tog"><input type="checkbox" id="sWhet" ${enhUse.whet ? 'checked' : ''} ${G.whet > 0 ? '' : 'disabled'}> 🪨 숫돌 쓰기 <small>(${G.whet}개)</small></label></div>`;
+}
 
 export function openSmith(o: Building, tab = smTab) {
   smTab = tab;
@@ -46,10 +86,10 @@ export function openSmith(o: Building, tab = smTab) {
         const bc = enhanceBossCost(it);
         const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
         const bossTxt = bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : '';
-        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, false)}" ${P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${nextGoal(it.enh, false)}까지</button>`}<button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
+        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${favOf(it) < 99 ? '★ ' : ''}${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · ${pityText(it)}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, false)}" ${P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${nextGoal(it.enh, false)}까지</button>`}<button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
       })
       .join('');
-    body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요 · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p><button class="bigbtn sm" id="bulkEnh">일괄 강화…</button><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
+    body = `<p class="note">비용 (현재 강화+1)² × 10 · +1만 확정 · +${CONFIG.growth.enhance.dropFrom}~+10 실패는 ${Math.round(CONFIG.growth.enhance.dropChance * 100)}% 확률로 1단계 하락(🧿 부적이 막음) · 실패마다 그 장비 +${Math.round(CONFIG.growth.enhance.pity * 100)}%p · 대성공 ${Math.round(CONFIG.growth.enhance.great * 100)}%(+2) · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p>${useHtml()}<button class="bigbtn sm" id="bulkEnh">일괄 강화…</button><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
   } else if (tab === 3) {
     // ECONOMY §2: 초월 +11 ~ +20 (+10 장비만)
     const T = CONFIG.smith.transcend;
@@ -64,11 +104,13 @@ export function openSmith(o: Building, tab = smTab) {
           const short = S.gold < c.gold || (P.mats[it.region] ?? 0) < c.mats || (P.bossMats[c.boss.id] ?? 0) < c.bossMats || (P.dust[it.grade] ?? 0) < c.dust;
           const reg = REGIONS.find((r) => r.id === it.region)!;
           const need = max ? '극의에 닿았어요' : `금화 ${fmt(c.gold)} · ${reg.mat} ${c.mats}/${P.mats[it.region] ?? 0} · ${c.boss.mat} ${c.bossMats}/${P.bossMats[c.boss.id] ?? 0} · ${DUST_NAME[it.grade]} ${c.dust}/${fmt(P.dust[it.grade] ?? 0)}`;
-          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>성공 ${pct(transcendRate(it))}${it.tPity ? ` (실패 보너스 +${Math.round(it.tPity * 100)}%p)` : ''}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, true)}" ${short ? 'disabled' : ''}>+${nextGoal(it.enh, true)}까지</button>`}<button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
+          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>${pityText(it)}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, true)}" ${short ? 'disabled' : ''}>+${nextGoal(it.enh, true)}까지</button>`}<button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
         })
         .join('');
-      body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(T.pity * 100)}%p</p><button class="bigbtn sm" id="bulkTr">일괄 초월…</button><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
+      body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(CONFIG.growth.transcend.pity * 100)}%p (+11 ${Math.round(CONFIG.growth.transcend.rates[0] * 100)}% → +20 ${Math.round(CONFIG.growth.transcend.rates[9] * 100)}%)</p>${useHtml()}<button class="bigbtn sm" id="bulkTr">일괄 초월…</button><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
     }
+  } else if (tab === 4) {
+    body = reforgeTab(sorted());
   } else {
     const c = craftCost(craftRegion);
     const regs = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
@@ -81,10 +123,11 @@ export function openSmith(o: Building, tab = smTab) {
     ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
     ${ashShort(craftRegion) > 0 && swappableAsh() > 0 ? `<button class="bigbtn sm" id="cFill">가루 바꾸기로 채우기 (${DUST_NAME.n} ${fmt(ashShort(craftRegion))} 모자람)</button>` : ''}
     <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
+    <div class="crow2 whetrow"><span>🪨 <b>행운의 숫돌</b> <small>(가진 것 ${P.growth.whet}) · 다음 1회 강화·초월 성공률 +${Math.round(CONFIG.growth.whet.add * 100)}%p<br>${DUST_NAME.n} ${whetCost(craftRegion).ash}/${fmt(P.dust.n)} · ${reg.mat} ${whetCost(craftRegion).mats}/${P.mats[reg.id]} · 금화 ${fmt(whetCost(craftRegion).gold)}</small></span><button id="cWhet">만들기</button></div>
     <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
     ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
   }
-  openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작', '초월'], tab, 'smT')}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
+  openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작', '초월', '재련'], tab, 'smT')}${goalLine()}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
   bindTabs('smT', (i) => openSmith(o, i));
   $$('#winB .ic[data-id]').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!, () => openSmith(o))));
   $$('[data-sal]').forEach(
@@ -101,8 +144,9 @@ export function openSmith(o: Building, tab = smTab) {
     (b) =>
       (b.onclick = () => {
         const it = P.bag.find((x) => x.id === +b.dataset.enh!)!;
-        const r = enhance(it);
-        toast(r === 'ok' ? `강화 성공! ${it.name} +${it.enh}` : r === 'fail' ? '강화 실패… (장비는 그대로)' : r === 'poor' ? '가루가 모자라요' : r === 'boss' ? bossHint(enhanceBossCost(it)!.boss.id) : '강화할 수 없어요');
+        const before = it.enh;
+        const r = enhance(it, { ...enhUse });
+        toast(enhMsg(it, r, before));
         openSmith(o);
       }),
   );
@@ -110,7 +154,7 @@ export function openSmith(o: Building, tab = smTab) {
     (b) =>
       (b.onclick = () => {
         const it = P.bag.find((x) => x.id === +b.dataset.tr!)!;
-        const r = transcend(it);
+        const r = transcend(it, { ...enhUse });
         const msg: Record<string, string> = { ok: `초월 성공! ${it.name} +${it.enh}`, fail: '초월 실패… 단계는 그대로 · 다음 시도 성공률 ↑', gold: '금화가 모자라요', mats: '지역 재료가 모자라요 · 사냥터에서 모아요', boss: '보스 재료가 모자라요', dust: '가루가 모자라요', max: '최고 단계예요', locked: '대장간 Lv.5에 열려요', notten: '+10 장비만 초월할 수 있어요' };
         toast(msg[r]);
         openSmith(o);
@@ -173,6 +217,25 @@ export function openSmith(o: Building, tab = smTab) {
         openSmith(o);
       }),
   );
+  // GROWTH: 다음 목표 · 부적·숫돌 체크칸 · 숫돌 만들기 · 재련
+  const sg = document.getElementById('sGoal');
+  if (sg)
+    sg.onclick = () => {
+      const g = favGoal();
+      if (g) openEnhance(g.it, () => openSmith(o));
+    };
+  const sc = document.getElementById('sCharm') as HTMLInputElement | null;
+  if (sc) sc.onchange = () => (enhUse.charm = sc.checked);
+  const sw = document.getElementById('sWhet') as HTMLInputElement | null;
+  if (sw) sw.onchange = () => (enhUse.whet = sw.checked);
+  const cw = document.getElementById('cWhet');
+  if (cw)
+    cw.onclick = () => {
+      const err = craftWhet(craftRegion);
+      toast(err ?? `🪨 행운의 숫돌 완성! (가진 것 ${P.growth.whet})`);
+      openSmith(o);
+    };
+  $$('[data-rf]').forEach((b) => (b.onclick = () => openReforge(P.bag.find((x) => x.id === +b.dataset.rf!)!, () => openSmith(o, 4))));
   const up = document.getElementById('smUp');
   if (up) up.onclick = () => (game.upgrade(o), openSmith(o));
   appendMoveButton(o);

@@ -1,4 +1,5 @@
 // 토벌전 화면 (3단계 2~4장): 준비 창(파티·권장 전투력·경고) → 와이프 전환 → 옆에서 보는 도트 전투장 → 결과
+import { dropFanfare } from './fanfare';
 import { av } from '../engine/ver';
 import { battleMusic } from './sound';
 // 시안(raid_battle.html)의 전투를 옮겼다. 피해량은 「자동 기대 피해량」에 맞춰 보정한다:
@@ -781,7 +782,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
   const html = `<h2>${esc(title)}</h2><div class="big">${fmt(out.damage)}</div>
     <div class="stars">${mode === 'sweep' ? '소탕' : `등급 ${out.rank}`}</div>
     <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
-    <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
+    <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.charm ? '<span class="g">🧿 강화 보호 부적 +1 (주간 참여)</span>' : ''}${(out.items ?? []).map((it) => `<span class="g">✦ ${esc(it.name)}</span>`).join('')}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
     <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>
     <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${R.triesPerDay})</button><button class="b" id="rHome">마을로</button></div>`;
@@ -792,6 +793,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     document.getElementById('rResult')!.hidden = false;
   } else openWin('토벌 결과', `<div class="res">${html}</div>`);
   if (out.firstKill) toast(`트로피 「${b.trophy}」 획득! 건설 목록에서 무료로 놓을 수 있어요`);
+  dropFanfare(out.items);
   if (rec?.online && rec.ok)
     void mine('raidWeek', P.raid.week).then(({ row, total }) => {
       const el = document.getElementById('rMyRank');

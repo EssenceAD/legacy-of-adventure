@@ -37,6 +37,12 @@ import { bossLineFor, deepDefeatCut, markBossShown, takeEnterLines, wantDeepVoic
 import { routePreDone, setFlag } from '../world/routes';
 import { storyHooks } from '../world/story';
 import { playStory } from './story';
+import { dropFanfare } from './fanfare';
+import { openFishing } from './fishing';
+import { openSmith } from './smith';
+import { craftMax } from '../world/bulk';
+import { enhanceBossCost, enhanceCost, smithObj } from '../world/craft';
+import type { Item } from '../world/state';
 
 const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
@@ -80,7 +86,7 @@ export function openHunt(region?: RegionId) {
   const reg = REGIONS[regionIdx(curRegion)];
   openWin(
     '사냥터',
-    `<div class="tabs">${tabs}</div>
+    `<div class="tabs">${tabs}${huntRegionOpen(5) ? '<button class="tab fishtab" id="hFish" title="해안 낚시">🎣</button>' : ''}</div>
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap" style="--rc:${themeOf(curRegion).band}">${cells}</div>
     <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
@@ -97,6 +103,8 @@ export function openHunt(region?: RegionId) {
       }),
   );
   $$('[data-s]').forEach((el) => (el.onclick = () => openHuntPrep(curRegion, +el.dataset.s!)));
+  const hf = document.getElementById('hFish');
+  if (hf) hf.onclick = () => openFishing('sea');
   const st = document.getElementById('hStop');
   if (st)
     st.onclick = () => {
@@ -564,9 +572,19 @@ void LH;
 
 // ───────── 전투 개편 1차: 쿼터뷰 필드 액션 · 소탕 ─────────
 
+/** GROWTH §3-6: 「대장간에서 쓸 수 있는 것: 강화 3 · 제작 1」 (누르면 대장간) */
+export function smithLine(): string {
+  if (!smithObj()) return '';
+  const enh = P.bag.filter((it) => it.owner != null && it.enh < CONFIG.smith.maxEnhance && P.dust[it.grade] >= enhanceCost(it) && (!enhanceBossCost(it) || (P.bossMats[enhanceBossCost(it)!.boss.id] ?? 0) >= enhanceBossCost(it)!.n)).length;
+  const cr = REGIONS.filter((x, i) => (i < BASE_REGIONS || huntRegionOpen(i)) && craftMax(x.id) > 0).length;
+  if (!enh && !cr) return '';
+  return `<button class="b smithln" id="cSmith">⚒️ 대장간에서 쓸 수 있는 것: 강화 ${enh} · 제작 ${cr}</button>`;
+}
+let lastLoot: Item[] = [];
 function lootHtml(r: RegionId, out: HuntReward): string {
+  lastLoot = out.items;
   const items = out.items.map((it) => itemCell(it)).join('');
-  return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${upgradeBtn(out.items)}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}`;
+  return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${upgradeBtn(out.items)}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}${smithLine()}`;
 }
 
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
@@ -584,6 +602,7 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
     if (bossLine && res.win) markBossShown(r);
     const html = settleHunt(r, s, ms, res);
     showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
+    dropFanfare(lastLoot);
   }, { ...(bossLine ? { bossLine } : {}), ...(voice ? { talkHalf: (done: () => void) => playStory(DEEP_VOICE, done) } : {}) });
 }
 
@@ -655,6 +674,10 @@ function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], clos
     close();
     openHunt(r);
   });
+  on('cSmith', () => {
+    close();
+    goSmith();
+  });
   on('cAgain', () => {
     close();
     openHuntPrep(r, s);
@@ -663,6 +686,13 @@ function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], clos
     close();
     openHuntPrep(r, s + 1);
   });
+}
+
+/** 대장간 창 열기 (없으면 안내) */
+function goSmith() {
+  const o = smithObj();
+  if (!o) return toast('대장간이 필요해요');
+  openSmith(o);
 }
 
 // ───────── 핫픽스 10 §13: 접기 ─────────
@@ -698,6 +728,7 @@ export function settleFolded(): boolean {
   const html = settleHunt(r, fo.stage, ms, res);
   openWin('사냥 결과 (접어 둔 판)', `<div class="res huntres">${html}</div>`);
   bindResult($('#winB'), r, fo.stage, ms, closeWin);
+  dropFanfare(lastLoot);
   return true;
 }
 
@@ -710,6 +741,9 @@ function sweep(r: RegionId, s: number, ms: Actor[]) {
     `소탕 · ${stageName(r, s)}`,
     `<p class="sub">전투 없이 바로 결과 · 기본 보상의 ${Math.round(CONFIG.combat.sweep * 100)}%</p>${lootHtml(r, out)}<div class="btnrow"><button class="bigbtn" id="swAgain">한 번 더 소탕</button><button class="bigbtn ghost" id="swBack">준비로</button></div>`,
   );
+  dropFanfare(out.items);
+  const sm = document.getElementById('cSmith');
+  if (sm) sm.onclick = goSmith;
   document.getElementById('swAgain')!.onclick = () => sweep(r, s, ms);
   document.getElementById('swBack')!.onclick = () => openHuntPrep(r, s);
 }

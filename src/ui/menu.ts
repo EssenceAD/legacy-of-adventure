@@ -287,7 +287,7 @@ export function openShop() {
   const row = (id: string, daily: boolean) => {
     const it = [...SHOP_POOL, ...SHOP_FIXED].find((x) => x.id === id)!;
     const sold = daily && P.meta.shop.bought.includes(id);
-    return `<div class="irow shopi ${sold ? 'sold' : ''}"><img src="${iconSrc(it.icon as IconKey)}" alt=""><span>${esc(it.name)}<small>${esc(it.desc)}</small></span><button data-buy="${id}" ${sold ? 'disabled' : ''}>${sold ? '품절' : `${fmt(it.cost)}G`}</button></div>`;
+    return `<div class="irow shopi ${sold ? 'sold' : ''}"><img src="${iconSrc(it.icon as IconKey)}" alt=""><span>${esc(it.name)}<small>${esc(it.desc)}</small></span><button data-buy="${id}" ${sold ? 'disabled' : ''}>${sold ? '품절' : it.tokens ? `증표 ${it.tokens}` : `${fmt(it.cost)}G`}</button></div>`;
   };
   openWin(
     '상점',
@@ -314,7 +314,7 @@ export function openSettings() {
   openWin(
     '설정',
     `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p></div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
+    <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
@@ -327,6 +327,10 @@ export function openSettings() {
   );
   bindAutoSalvage('mAuto');
   ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
+  ($('#mBrag') as HTMLInputElement).onchange = (e) => {
+    P.growth.bragOff = (e.target as HTMLInputElement).checked;
+    markDirty();
+  };
   ($('#mSaver') as HTMLInputElement).onchange = (e) => {
     setSaver((e.target as HTMLInputElement).checked);
     trackEv('saver', { on: saverOn() });
