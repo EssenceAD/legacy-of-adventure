@@ -221,6 +221,21 @@ await p.locator('[data-cook="minnow"]').click();
 await W(300);
 ok(await p.evaluate(() => (window.__P.growth.meal?.v ?? 0) > 0), '요리 → 원정 버프');
 await settle();
+// §3-6 사냥 결과(소탕) 「대장간에서 쓸 수 있는 것」 줄 → 대장간
+await p.evaluate(() => { for (const g of ['n', 'r', 'e', 'l']) window.__P.dust[g] += 100000; window.__openHunt('forest'); });
+await W(300);
+await p.locator('.hst[data-s="10"]').click();
+await W(400);
+await p.locator('#hSweep').click();
+await W(500);
+const sl = p.locator('#cSmith');
+const slText = (await sl.count()) ? (await sl.textContent()).trim() : '';
+ok(/대장간에서 쓸 수 있는 것: 강화 \d+ · 제작 \d+/.test(slText), `사냥 결과 줄 「${slText}」`);
+await shot('16_hunt_smithline');
+await sl.click();
+await W(400);
+ok((await p.locator('#winT').textContent()).includes('대장간'), '줄을 누르면 대장간');
+await settle();
 // 박제 → 건설 목록에 무료 장식
 p.on('dialog', (d) => d.accept());
 await p.evaluate(() => { window.__P.growth.fish.bag.kingkoi = 1; window.__fish.open('pond'); });

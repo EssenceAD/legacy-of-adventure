@@ -1,5 +1,5 @@
 // 실제 저장 리플레이 2단계: 저장 하나하나를 새 빌드(dist-bot 4190)로 불러와서 줄어든 게 있으면 실패
-//  비교: 건물 수 · 아이템 수 · 금화(우편함의 받을 금화 포함) · 영웅(영입) 수 · 땅 단계 — 불러오기 전(저장 JSON) vs 후(게임 안)
+//  비교: 건물 수 · 아이템 수 · 장비 강화 수치(GROWTH: 하나라도 낮아지면 실패) · 금화(우편함의 받을 금화 포함) · 영웅(영입) 수 · 땅 단계 — 불러오기 전(저장 JSON) vs 후(게임 안)
 //  플레이 기록은 끄고(telemetry false) · 로그인 없이 · 저장은 그 브라우저 안에서만
 //  실행: node scripts/replay-saves.mjs <저장 폴더>
 //  LAND2: BASE=<옛 빌드 주소> SHIFT=8 이면 같은 저장을 옛 빌드에서도 불러와 건물마다 자리(+SHIFT)·레벨·공사 상태까지 그대로인지 본다
@@ -69,7 +69,7 @@ for (const f of files) {
       const objs = W.home?.objs ?? W.objs;
       const mailGold = P.meta.mail.filter((m) => !m.claimed).reduce((t, m) => t + (m.reward?.gold ?? 0), 0);
       const heroes = Object.values(P.dex.heroes).filter((h) => h?.recruited).length + Object.values(P.legends).filter((l) => l?.st === 'joined').length;
-      return { buildings: objs.length, items: P.bag.length, gold: Math.floor(S.gold), mailGold, heroes, land: S.land };
+      return { buildings: objs.length, items: P.bag.length, gold: Math.floor(S.gold), mailGold, heroes, land: S.land, enh: P.bag.map((it) => [it.id, it.enh]) };
     });
   } catch (e) {
     errs.push('불러오기 실패: ' + String(e).slice(0, 120));
@@ -82,6 +82,10 @@ for (const f of files) {
     if (after.gold + after.mailGold < before.gold) lost.push(`금화 ${before.gold}→${after.gold}(+우편 ${after.mailGold})`);
     if (after.heroes < before.heroes) lost.push(`영웅 ${before.heroes}→${after.heroes}`);
     if (after.land < before.land) lost.push(`땅 ${before.land}→${after.land}`);
+    const em = new Map(after.enh);
+    const down = (s.progress?.bag ?? []).filter((it) => em.has(it.id) && em.get(it.id) < it.enh);
+    if (down.length) lost.push(`강화 수치 낮아짐 ${down.length}개`);
+    else before.enhSum = (s.progress?.bag ?? []).reduce((t, it) => t + (it.enh ?? 0), 0);
   }
   if (errs.length) lost.push('에러: ' + errs.join(' | '));
   // LAND2: 옛 빌드와 건물마다 비교 (자리 +SHIFT · 레벨 · 공사 상태)
@@ -99,7 +103,7 @@ for (const f of files) {
     }
   }
   if (lost.length) fail++;
-  rows.push(`${lost.length ? '✗' : '✓'} ${f} v${s.version} · 건물 ${before.buildings}→${after?.buildings ?? '?'} · 아이템 ${before.items}→${after?.items ?? '?'} · 금화 ${before.gold}→${after?.gold ?? '?'}${after?.mailGold ? `(+우편 ${after.mailGold})` : ''} · 영웅 ${before.heroes}→${after?.heroes ?? '?'} · 땅 ${before.land}→${after?.land ?? '?'}${lost.length ? '  ← ' + lost.join(', ') : ''}`);
+  rows.push(`${lost.length ? '✗' : '✓'} ${f} v${s.version} · 건물 ${before.buildings}→${after?.buildings ?? '?'} · 아이템 ${before.items}→${after?.items ?? '?'} · 금화 ${before.gold}→${after?.gold ?? '?'}${after?.mailGold ? `(+우편 ${after.mailGold})` : ''} · 영웅 ${before.heroes}→${after?.heroes ?? '?'} · 땅 ${before.land}→${after?.land ?? '?'}${before.enhSum != null ? ` · 강화 합 ${before.enhSum} 그대로` : ''}${lost.length ? '  ← ' + lost.join(', ') : ''}`);
   await ctx.close();
 }
 console.log(rows.join('\n'));
