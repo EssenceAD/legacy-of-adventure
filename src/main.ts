@@ -137,7 +137,8 @@ function loadFonts() {
 }
 
 function resize() {
-  resizeCanvas(cv, host, S.zoom, screen.devicePx);
+  // 렌더 메모리: 마을 캔버스는 CSS 1px당 기기 픽셀 2배까지 (배터리 절약 1.5배) — 도트라 눈에 차이가 없다
+  resizeCanvas(cv, host, S.zoom, screen.devicePx, saverOn() ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
 }
 
 // ───────── 루프 ─────────

@@ -330,6 +330,8 @@ export function openSettings() {
   ($('#mSaver') as HTMLInputElement).onchange = (e) => {
     setSaver((e.target as HTMLInputElement).checked);
     trackEv('saver', { on: saverOn() });
+    // 마을 캔버스 배율 상한이 바뀐다 (절약 1.5배) — 화면 크기 다시 맞추기
+    dispatchEvent(new Event('resize'));
   };
   $('#mLetter').onclick = () => openReport();
   $('#mKeys').onclick = () => openKeys();
