@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { bestOf } from './town';
+import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
 import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
 import { CONFIG } from '../data/config';
@@ -172,6 +173,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
   P.counters.expeditions++;
+  funnel('first_run');
   if (q.tier === 0 && !q.tutorial) P.counters.quickRuns++;
   track('expeditionSent');
   ownerGain('expedition');

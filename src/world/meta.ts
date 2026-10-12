@@ -1,5 +1,7 @@
 // 5단계 4장: 업적 · 칭호 · 출석(7일·28일) · 상점(일일 진열) · 우편함 — 가볍게, 전부 progress 안이라 클라우드 저장에도 같이
 import { sfx } from '../audio/sfx';
+import type { Grade } from '../data/items';
+import { addToBag, makeItem } from './items';
 import { postMailMult } from './facilities';
 import { ACHIEVEMENTS, type AchDef, type AchStat } from '../data/achieve';
 import { evalTitles } from './evaluation';
@@ -112,7 +114,7 @@ export function addMail(m: Omit<Mail, 'id' | 'at' | 'claimed'>) {
   markDirty();
 }
 export const mailWaiting = () => P.meta.mail.filter((m) => !m.claimed && hasReward(m)).length;
-const hasReward = (m: Mail) => !!(m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco);
+const hasReward = (m: Mail) => !!(m.reward.gear || m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco);
 export function claimMail(id: number): Mail['reward'] | null {
   const m = P.meta.mail.find((x) => x.id === id);
   if (!m || m.claimed) return null;
@@ -136,6 +138,8 @@ export function claimMail(id: number): Mail['reward'] | null {
   if (r.dustR) P.dust.r += r.dustR;
   if (r.cheer) P.meta.cheerBonus = (P.meta.cheerBonus ?? 0) + r.cheer;
   if (r.deco) P.meta.giftDeco[r.deco] = (P.meta.giftDeco[r.deco] ?? 0) + 1;
+  // ONBOARDING §4: 장비 한 개 (가방이 꽉 차면 다음에)
+  if (r.gear) addToBag(makeItem('forest', r.gear as Grade));
   if (m.ver) track('gift_claim', { ver: m.ver });
   markDirty();
   return r;
@@ -146,7 +150,7 @@ export function claimAllMail(): number {
   return n;
 }
 export const rewardLine = (r: Mail['reward']) =>
-  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '', r.dustR ? `푸른 가루 ${r.dustR}` : '', r.cheer ? `모모의 응원 ${r.cheer}회` : '', r.deco ? `${(CATALOG as Record<string, { name: string }>)[r.deco]?.name ?? '장식'} 1개` : '']
+  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '', r.dustR ? `푸른 가루 ${r.dustR}` : '', r.cheer ? `모모의 응원 ${r.cheer}회` : '', r.deco ? `${(CATALOG as Record<string, { name: string }>)[r.deco]?.name ?? '장식'} 1개` : '', r.gear ? '희귀 장비 1개' : '']
     .filter(Boolean)
     .join(' · ');
 

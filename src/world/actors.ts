@@ -148,7 +148,7 @@ function ownerChoose(a: Actor) {
   });
 }
 
-function goTo(a: Actor, tx: number, ty: number, then: () => void) {
+export function goTo(a: Actor, tx: number, ty: number, then: () => void) {
   // 핫픽스 11 §9-2: 목적지가 건물 발판 칸이면(「손님 옆」「모닥불 옆」이 가로등 칸인 경우 등) 가장 가까운 빈 칸으로
   if (blockedAt(tx, ty)) {
     const n = nearestWalkable(tx, ty);

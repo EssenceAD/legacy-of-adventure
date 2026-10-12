@@ -96,6 +96,8 @@ export interface Actor {
   xp: number;
   /** 방문 손님(묵음) / 단골(내 모험가) / 영웅 / 지나가는 손님(낮에만 들렀다 저녁 전에 떠남) */
   status: 'visitor' | 'regular' | 'hero' | 'passer';
+  /** ONBOARDING §2: 첫 손님 (누르면 체크인) */
+  firstGuest?: boolean;
   /** 방문 손님이 떠나는 날 */
   leaveDay: number;
   /** 머무는 동안 기분 평균 (단골 제안·일찍 떠나기 판단) */
@@ -298,6 +300,8 @@ export function freshProgress() {
       relicEver: 0,
       // 5단계: 임무 확인용
       guestTalks: 0,
+      /** ONBOARDING §2: 첫 손님 체크인 */
+      checkins: 0,
       quickRuns: 0,
       goalsClaimed: 0,
       salvaged: 0,
@@ -420,6 +424,10 @@ export function freshProgress() {
       /** PHOTO_SPEC: 첫 사진 모모 한마디 */
       photoHint: false,
       showerWeek: '',
+      /** ONBOARDING §4·§5: 내일 선물 약속한 날 · 받았나 · 홈 화면 안내 편지 */
+      d2Promise: '',
+      d2Given: false,
+      a2hs: false,
       /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
       sorryDupe: false,
       giftDeco: {} as Record<string, number>,
@@ -519,7 +527,7 @@ export interface Mail {
   from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
   title: string;
   body: string;
-  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string };
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string };
   /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
   ver?: string;
   at: number;
@@ -527,6 +535,8 @@ export interface Mail {
 }
 
 export interface OwnerState {
+  /** ONBOARDING §1: 아직 「출신 고르기」 전 (기본 주인 · 출신 보너스·연결 영웅 없음) */
+  pending?: boolean;
   name: string;
   gender: 'm' | 'f';
   job: 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';

@@ -146,19 +146,37 @@ async function run(size) {
     }
   }
   await click('#tStart', 1200);
-  await click('[data-j=warrior]', 600);
-  await p.fill('#cName', '루비');
-  await W(300);
-  await shot('02_owner');
-  // 주인공 만들기: 「이 사람으로 시작」이 화면 안에 보이고 눌려야 한다 (핫픽스 8 — 아이폰에서 잘림)
-  await expectReach('#cOk', '주인공 만들기');
-  if (!(await click('#cOk', 600))) ui.push('주인공 만들기: 이 사람으로 시작을 못 누름');
+  // ONBOARDING: 오프닝 3줄 → 여관 이름 → 바로 마을 (주인 만들기는 장부 1장 뒤)
   await talk();
   L('새 게임 시작');
+  let ownerDone = false;
   // ── 장부 1장 (임무 카드만 보고) ──
   for (let i = 0; i < 400 && Date.now() - t0 < 6 * 60 * 1000; i++) {
     await talk();
+    // ONBOARDING: 장부 1장을 끝내면 「당신은 누구였나요?」
+    if (!ownerDone && (await vis('#cName'))) {
+      await click('[data-j=warrior]', 600);
+      await p.fill('#cName', '루비');
+      await W(300);
+      await shot('02_owner');
+      // 주인공 만들기: 「이 사람으로 시작」이 화면 안에 보이고 눌려야 한다 (핫픽스 8 — 아이폰에서 잘림)
+      await expectReach('#cOk', '주인공 만들기');
+      if (!(await click('#cOk', 600))) ui.push('주인공 만들기: 이 사람으로 시작을 못 누름');
+      ownerDone = true;
+      await talk();
+      L('주인 만들기 (장부 1장 뒤)');
+      continue;
+    }
     const m = await mission();
+    if (/체크인/.test(m) && !(await winOn())) {
+      const xy = await p.evaluate(() => window.__guestXY?.());
+      if (xy) {
+        await p.mouse.click(xy[0], xy[1]);
+        await W(700);
+        L('첫 손님 체크인');
+      } else await W(800);
+      continue;
+    }
     if (/장부 2장/.test(m)) break;
     const done = await p.evaluate(() => [...document.querySelectorAll('#runbar button.done')].some((x) => x.textContent.includes('보고서')));
     if (done && !(await winOn())) {

@@ -1,5 +1,9 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { funnel } from './net/funnel';
+import { createPendingOwner } from './world/owner';
+import { talkTagged } from './ui/dialogue';
+import { migrateOnboarding } from './world/guide';
 import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
@@ -25,7 +29,7 @@ import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type 
 import { addObj, astar, blocksDoor, buildCost, canPlace, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
-import { openCreate, openingFor, syncOwnerButton } from './ui/owner';
+import { openCreate, openingFor, openingShort, syncOwnerButton } from './ui/owner';
 import { sanitizeAlbum, sanitizeOwner } from './world/owner';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
@@ -134,8 +138,12 @@ export function newGame() {
   S.night = true;
   S.nightT = 1;
   showHud(false);
-  // 4단계: 「당신은 누구였나요?」 → 출신 컷 → 오프닝(버나드가 출신을 알아본다) → 여관 이름
-  openCreate('new', () => talk(openingFor(), () => {
+  // ONBOARDING §1: 기본 주인으로 바로 — 오프닝 3줄 → 여관 이름 → 마을 (「당신은 누구였나요?」는 장부 1장 뒤)
+  createPendingOwner();
+  funnel('opening_start');
+  talkTagged('opening', openingShort(), () => {
+    funnel('opening_end');
+    funnel('inn_named', { custom: !['별빛', '달빛', '솔바람', '들꽃', '은하수', '모닥불', '바람결', '이슬', '햇살', '오솔길', '구름', '꽃마루'].includes(S.innName.replace(/\s*여관$/, '')) });
     S.started = true;
     showHud(true);
     // 1일차 06:00부터
@@ -151,22 +159,21 @@ export function newGame() {
     for (const a of world.actors) if (a.st === 'in') leave(a);
     keeperExit(keeper);
     addOwner();
-    // 땅 개편 §4: 「보이는 만큼 지을 수 있다」 — 울타리를 따라 반짝이는 점이 한 바퀴 → 모모 한마디
+    // 땅 개편 §4: 울타리를 따라 반짝이는 점이 한 바퀴
     landHint.fenceUntil = performance.now() + 2600;
-    queueEvent(() => later(2.6, () => talk([['post', '울타리 안은 전부 사장님 땅이에요! 숲을 베어 내면 더 넓어져요~']])));
-    // 첫 원정 안내: 원정 버튼이 반짝이고, 30초짜리 「숲 입구 정찰」이 기다린다
-    queueEvent(() =>
-      talk([
-        ['me', '단골들이 몸이 근질근질한가 봐. 첫 원정을 보내 볼까?'],
-        ['narr', '아래 「원정」 → ★ 숲 입구 정찰 (30초 · 희귀 장비 확정)'],
-      ]),
-    );
+    // ONBOARDING §2: 장부 1장 컷은 건너뛰고 바로 첫 손님 → 체크인 · 모닥불 · 30초 의뢰 (손가락 가이드)
+    P.guide.cut = 1;
+    funnel('village_first');
+    onboardHooks.start();
     syncOwnerButton();
     syncHud();
     writeSave();
     setTimeout(refreshNoticeDot, 1500);
-  }));
+  });
 }
+
+/** ONBOARDING §2: 첫 손님·손가락 가이드 (ui/onboard가 채운다) */
+export const onboardHooks = { start: () => {}, resume: () => {} };
 
 /** 노주인 퇴장: 마을 앞쪽 끝까지 걸어가 사라진다 */
 function keeperExit(k: (typeof world.actors)[number]) {
@@ -190,6 +197,10 @@ export function continueGame() {
   applySave(save);
   // STORY_V1: 옛 저장은 진행도로 막 추정 · 유산 포인트·기억 채우기
   initStory(false);
+  // ONBOARDING: 장부 1장 개편 — 예전 저장의 임무 번호 맞추기
+  migrateOnboarding();
+  // ONBOARDING §4·§5: 이틀째 선물 · 두 번째 세션부터 홈 화면에 추가 편지
+  onboardHooks.resume();
   // HOTFIX17 §2: 토벌 도전 횟수 오류 복구 (오늘 횟수 한 번 돌려주기)
   repairRaidTries();
   // HOTFIX18 §3: 케미 알림 「전부」 → 「중요만」 (한 번)
@@ -287,6 +298,9 @@ export function refreshTitle() {
   const b = $<HTMLButtonElement>('#tCont');
   b.disabled = !save;
   $('#tContSub').textContent = save ? `${save.innName || '내 여관'} · ${save.day}일차` : '저장된 마을이 없어요';
+  // ONBOARDING §1: 처음이면 [시작하기] 한 번에
+  const st = document.getElementById('tStart');
+  if (st) st.innerHTML = save ? '새 여관 열기<small>처음부터 다시</small>' : '시작하기<small>바로 내 여관으로</small>';
 }
 
 /** 메뉴의 "오프닝 다시 보기": 마을은 그대로, 대사만 다시 (이름은 바꿀 수 있다) */
@@ -412,6 +426,7 @@ export function placeBuilding(pl: Placement): boolean {
   rebuildPaths();
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '뚝딱뚝딱!', 'big');
   markDirty();
+  funnel('first_build', { kind: pl.kind });
   return true;
 }
 
