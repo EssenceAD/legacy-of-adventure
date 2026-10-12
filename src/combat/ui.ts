@@ -1,5 +1,6 @@
 // 전투 화면: 정수 배율 캔버스 · 왼쪽 절반 가상 조이스틱 · 오른쪽 아래 공격(꾹=연속)·회피·스킬 2·필살기 · AUTO · 초상화로 조종 바꾸기
 //  PC: WASD 이동 · J 공격 · K 회피 · U·I 스킬 · O 필살기. 위쪽 HUD는 웨이브·시간만 (큰 글자 없음)
+import { josa } from '../data/josa';
 import { CONFIG } from '../data/config';
 import { clearOverlays } from '../ui/overlays';
 import type { RegionId } from '../data/items';
@@ -187,6 +188,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   bindInput();
   buildParty();
   syncSkillButtons(false);
+  shownMe = F!.me;
   last = performance.now();
   raf = requestAnimationFrame(frame);
 }
@@ -345,6 +347,17 @@ function hud() {
     // 토벌: 체력 30% 아래 → 「마지막 일격」 음악
     if (f.mode === 'raid' && boss.hp / boss.max < 0.3) battleMusic.raidLow = true;
   }
+  // 조종 캐릭터가 바뀌면 (대장이 쓰러짐 · 교대) 스킬 바·아이콘·이름 다시 · 쓰러져서 넘어가면 0.8초 안내
+  if (f.me !== shownMe) {
+    const prev = shownMe;
+    shownMe = f.me;
+    syncSkillButtons(true);
+    if (prev && prev.dead && prev.actor && f.me.actor) {
+      const n = f.me.actor.name;
+      f.banner = `${prev.actor.name}${josa(prev.actor.name, '이')} 쓰러졌어요 — 이제 ${n}${josa(n, '이')} 싸워요`;
+      f.bannerT = 0.8;
+    }
+  }
   const bn = $('#cbBanner');
   if (f.bannerT > 0) {
     if (bn.textContent !== f.banner) bn.textContent = f.banner;
@@ -410,6 +423,8 @@ function buildParty() {
   void PORTRAITS;
 }
 let namesT = 0;
+/** 스킬 바가 지금 보여 주는 조종 캐릭터 */
+let shownMe: Unit | null = null;
 /** 조종 캐릭터의 직업 아이콘·테두리 색 · 바꿀 때 0.3초 효과 + 스킬 이름 1초 */
 function syncSkillButtons(swap: boolean) {
   const me = F!.me;
