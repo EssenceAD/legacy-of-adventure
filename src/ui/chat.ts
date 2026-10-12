@@ -238,8 +238,11 @@ export function openChat() {
 
 /** [알림]: 로그인했으면 서버가 문장을 만들어 모두에게 (실시간으로 돌아온다), 아니면 내 화면에만 */
 export function announce(text: string, kind?: 'legend' | 'boss_kill' | 'rank1' | 'brag', arg?: string) {
-  // GROWTH §3-5: 자랑은 서버가 「brag」를 받으면 모두에게, 아직 못 받으면(옛 서버) 내 화면에만
-  if (online() && kind === 'brag') void postNotice('brag', arg ?? text).then((ok) => ok || net.chat.announce(text));
+  // GROWTH §3-5: 자랑은 서버(post_notice 'brag')를 거쳐서만 — 서버가 아직 못 받거나 오프라인이면 조용히 없음
+  if (kind === 'brag') {
+    if (online()) void postNotice('brag', arg ?? text).catch(() => {});
+    return;
+  }
   else if (online() && kind) void postNotice(kind, arg ?? '');
   else net.chat.announce(text);
 }
