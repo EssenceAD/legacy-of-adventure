@@ -1,5 +1,6 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
+import { pendingWith, runFirstWith } from '../world/events';
 import { unseenDrops } from '../world/decodrop';
 import { canUndo, decorView, noteMove, undo } from '../world/decor';
 import { notePlace, takeOut } from '../world/store';
@@ -35,8 +36,8 @@ import { openGuests } from './guests';
 import { openVillage } from './neighbors';
 import { saveZoom, zoomsNow } from './screen';
 import { tickTimers } from './common';
-import { buildHooks, openBuild, openLand, toast, toastHtml } from './windows';
-import { talk } from './dialogue';
+import { buildHooks, isWinOpen, openBuild, openLand, toast, toastHtml } from './windows';
+import { isTalking, talk } from './dialogue';
 import { applyTidy, planTidy } from '../world/tidy';
 import { openGridMenu } from './menu';
 import { achReady, mailWaiting } from '../world/meta';
@@ -652,6 +653,24 @@ export function tickHud() {
     syncGuide();
     // 메뉴 빨간 점: 받을 업적 · 우편
     $('#bMenu2 .ndot').hidden = !(achReady() + mailWaiting());
+    // HOTFIX20 §2: 미뤄 둔 단골 제안 — 누르면 바로 제안 대화
+    const np = S.visiting ? 0 : pendingWith('prop');
+    let pb = document.getElementById('propBadge');
+    if (!pb && np) {
+      pb = document.createElement('button');
+      pb.id = 'propBadge';
+      pb.className = 'px';
+      pb.onclick = () => {
+        if (isTalking() || isWinOpen()) return;
+        runFirstWith('prop');
+      };
+      $('#hud').appendChild(pb);
+    }
+    if (pb) {
+      pb.hidden = !np;
+      const t = `💌 단골 제안 ${np}`;
+      if (pb.textContent !== t) pb.textContent = t;
+    }
     // DECO_DROP §3: 건설 버튼에 안 본 장식 수
     const nn = S.visiting ? 0 : unseenDrops().length;
     let nb = document.querySelector<HTMLElement>('#bBuild .nbadge');

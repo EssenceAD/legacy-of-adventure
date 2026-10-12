@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { clearOverlays } from './ui/overlays';
 import { isDropKind, newAtLand, noteBought, ownedDrops } from './world/decodrop';
 import { funnel } from './net/funnel';
 import { createPendingOwner } from './world/owner';
@@ -576,6 +577,8 @@ function fade(fn: () => void) {
 }
 
 export function visit(v: Neighbor) {
+  // HOTFIX20 §1: 이웃 방문 — 남은 오버레이 정리
+  clearOverlays('visit');
   closeWin();
   fade(() => {
     if (!S.visiting) world.home = { objs: world.objs, actors: world.actors, land: S.land };

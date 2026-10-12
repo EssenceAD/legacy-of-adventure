@@ -1,5 +1,6 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
 import { CONFIG } from '../data/config';
+import { clearOverlays } from './overlays';
 import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { PORTRAITS } from '../engine/assets';
@@ -69,6 +70,8 @@ function photoThumb() {
   }
 }
 export function playStory(src: SLine[], done?: () => void) {
+  // HOTFIX20 §1: 컷신 — 남은 오버레이 정리 (끊긴 제안은 대기열로)
+  clearOverlays('story');
   // 유안 초상화 = 휴먼 기사 손님 초상화
   if (!PORTRAITS.yuan && PORTRAITS.g_knight_human) PORTRAITS.yuan = PORTRAITS.g_knight_human;
   const sl = storyLines(src);

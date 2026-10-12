@@ -9,6 +9,21 @@ export function queueEvent(run: () => void, key?: string) {
 }
 
 export const pendingEvents = () => queue.length;
+/** HOTFIX20 §2: 끊긴 제안은 대기열 맨 앞으로 (같은 키가 있으면 그걸 앞으로) */
+export function queueEventFront(run: () => void, key?: string) {
+  const i = key ? queue.findIndex((q) => q.key === key) : -1;
+  if (i >= 0) queue.splice(i, 1);
+  queue.unshift({ key, run });
+}
+/** 키가 이 앞머리로 시작하는 대기 이벤트 수 */
+export const pendingWith = (prefix: string) => queue.filter((q) => q.key?.startsWith(prefix)).length;
+/** 그 앞머리의 첫 이벤트를 바로 실행 (배지 누르기) */
+export function runFirstWith(prefix: string): boolean {
+  const i = queue.findIndex((q) => q.key?.startsWith(prefix));
+  if (i < 0) return false;
+  queue.splice(i, 1)[0].run();
+  return true;
+}
 
 /** busy가 아니면 하나 꺼내 실행 */
 export function pumpEvents(busy: boolean) {

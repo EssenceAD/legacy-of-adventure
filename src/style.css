@@ -1390,3 +1390,6 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 #loading .lbar i{display:block;height:100%;background:#ffd36b;transition:width .2s}
 #loading small{display:block;text-align:center}
 #loading .tip{margin-top:10px;color:#9aa6d8}
+/* HOTFIX20 §2: 미뤄 둔 단골 제안 배지 */
+#propBadge{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);z-index:4;padding:6px 10px;border:0;font-size:var(--f-small);color:var(--cream);cursor:pointer}
+.talking #propBadge,body.decor #propBadge{display:none}

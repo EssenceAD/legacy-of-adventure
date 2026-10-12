@@ -1,5 +1,6 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { overlayHold } from './ui/overlays';
 import * as decodrop from './world/decodrop';
 import { initLuxury } from './ui/luxury';
 import { initOnboard, promiseTomorrow, tapFirstGuest } from './ui/onboard';
@@ -34,7 +35,7 @@ import { getPref, readSave, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, onNightChange, tickDayNight } from './world/daynight';
-import { pendingEvents, pumpEvents } from './world/events';
+import { pendingEvents, pendingWith, pumpEvents } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
@@ -148,7 +149,8 @@ function update(dt: number) {
   t = mark('jobs', t);
   if (!photoFrozen()) updActors(dt);
   t = mark('actors', t);
-  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid');
+  // HOTFIX20 §2: 마을 화면에서 창·전투·대화·사진·이웃 방문·꾸미기가 없을 때만 대기 이벤트(단골 제안 등)를 꺼낸다
+  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid') || combatOn() || teaserOn() || photoOn() || !!S.visiting || decorView.on || overlayHold();
   tickDayNight(dt);
   t = mark('daynight', t);
   if (!S.started) wasStarted = false;
@@ -873,7 +875,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave,
+  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

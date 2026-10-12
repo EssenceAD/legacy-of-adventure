@@ -184,6 +184,18 @@ function askChoice() {
   box.hidden = false;
 }
 
+/** HOTFIX20: 화면 전환으로 대화를 끊는다 (done은 부르지 않음 — 부른 쪽이 다시 대기열에) */
+export function abortTalk() {
+  if (!DQ) return;
+  clearInterval(DQ.iv);
+  DQ = null;
+  $('#dlg').hidden = true;
+  $('#dDuo').hidden = true;
+  $('#dChoice').hidden = true;
+  $('#dlg').classList.remove('duo');
+  $('#view').classList.remove('talking');
+}
+
 function endTalk() {
   if (!DQ) return;
   const d = DQ.done;

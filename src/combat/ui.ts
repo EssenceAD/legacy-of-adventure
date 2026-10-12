@@ -1,6 +1,7 @@
 // 전투 화면: 정수 배율 캔버스 · 왼쪽 절반 가상 조이스틱 · 오른쪽 아래 공격(꾹=연속)·회피·스킬 2·필살기 · AUTO · 초상화로 조종 바꾸기
 //  PC: WASD 이동 · J 공격 · K 회피 · U·I 스킬 · O 필살기. 위쪽 HUD는 웨이브·시간만 (큰 글자 없음)
 import { CONFIG } from '../data/config';
+import { clearOverlays } from '../ui/overlays';
 import type { RegionId } from '../data/items';
 import { PORTRAITS } from '../engine/assets';
 import { pic } from '../ui/common';
@@ -118,6 +119,8 @@ export function unfoldCombat() {
 
 
 export async function startCombat(region: RegionId, stage: number, members: Actor[], auto: boolean, done: (r: CombatResult) => void, opts: FieldOpts = {}) {
+  // HOTFIX20 §1: 사냥·토벌 화면으로 — 남은 오버레이(단골 제안 카드 등) 정리
+  clearOverlays('combat');
   // 핫픽스 10 §13: 접어 둔 판이 있으면 새 전투는 그게 끝난 뒤에
   if (folded) {
     if (!foldEnded) return uiHooks.toast('접어 둔 사냥이 끝나면 시작할 수 있어요 · 아래 줄을 눌러 펼쳐요');

@@ -1,6 +1,7 @@
 // PHOTO_SPEC: 사진 모드 — UI 없이 마을만 · 틀(폰 9:19.5 · 1:1 · 16:9) · 시간(지금·아침·노을·밤) · 손님 보이기/숨기기 · 멈추기 · 여관 이름 글씨
 //  셔터 → 같은 renderFrame을 오프스크린에 그려 틀만큼 자르고 정수 배율로 크게(폰 배경은 세로 2532px 근처) → 공유 / 다운로드 / 새 창
 import { sfx } from '../audio/sfx';
+import { clearOverlays } from './overlays';
 import { view } from '../engine/iso';
 import { photoState, renderFrame } from '../world/render';
 import { markDirty, P, S } from '../world/state';
@@ -45,6 +46,8 @@ function applyTime() {
 }
 
 export function enterPhoto() {
+  // HOTFIX20 §1: 사진 모드 — 남은 오버레이 정리
+  clearOverlays('photo');
   if (photoState.on) return;
   photoState.on = true;
   applyTime();

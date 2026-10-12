@@ -9,7 +9,9 @@ import { pairOf } from '../world/chem';
 import { roleOf } from '../world/party';
 import { P, world, type Actor, type TalkChoice, type TalkLine } from '../world/state';
 import { esc, fmt, portrait } from './common';
-import { talk } from './dialogue';
+import { abortTalk, isTalking, talk } from './dialogue';
+import { onClearOverlays } from './overlays';
+import { queueEventFront } from '../world/events';
 import { showActor } from './guests';
 import { closeWin, isWinOpen, openWin } from './windows';
 
@@ -46,6 +48,8 @@ export function cardHtml(a: Actor, compact: boolean): string {
 }
 
 let cardEl: HTMLDivElement | null = null;
+/** HOTFIX20: 지금 떠 있는 제안 (전환으로 끊기면 다시 대기열 맨 앞으로) */
+let current: { key: string; again: () => void } | null = null;
 function showCard(a: Actor) {
   hideCard();
   const compact = propCardMode() === 'simple' || a.rarity === 'common';
@@ -63,6 +67,8 @@ function place() {
   const ch = document.getElementById('dChoice');
   const box = document.querySelector('#dlg .box') ?? document.getElementById('dlg');
   const anchor = ch && !ch.hidden && ch.offsetParent ? ch : box;
+  // HOTFIX20 §1: 카드는 제안 대화에 묶인다 — 대화가 닫히면(어떤 이유든) 카드도 닫는다
+  if (!isTalking() || document.getElementById('dlg')?.hidden) return hideCard();
   const top = anchor ? anchor.getBoundingClientRect().top : view.bottom - 250;
   cardEl.style.bottom = Math.max(8, Math.round(view.bottom - top + 8)) + 'px';
   requestAnimationFrame(place);
@@ -71,6 +77,8 @@ function hideCard() {
   cardEl?.remove();
   cardEl = null;
 }
+/** 고르기로 끝났으면 제안도 끝 */
+const settled = () => (current = null);
 
 /** 창이 닫힐 때까지 기다렸다가 */
 function afterWin(fn: () => void) {
@@ -82,14 +90,24 @@ function afterWin(fn: () => void) {
 }
 
 export function initPropCard() {
+  // HOTFIX20 §1: 화면 전환 — 카드를 닫고, 끊긴 제안은 대기열 맨 앞으로 (선택하지 않은 제안이 날아가지 않게)
+  onClearOverlays(() => {
+    hideCard();
+    const c = current;
+    if (!c) return;
+    current = null;
+    abortTalk();
+    queueEventFront(c.again, c.key);
+  });
   proposeUi.show = (a: Actor, lines: TalkLine[], choices: TalkChoice[], again: () => void, swap?: { weak: Actor; ok: () => void }) => {
-    showCard(a);
+    current = { key: 'prop' + a.id, again: () => world.actors.includes(a) && !a.leaving && a.status === 'visitor' && again() };
     const cs: TalkChoice[] = choices.map((c, i) =>
       i === 0 && swap
         ? {
             label: c.label,
             fn: () => {
               hideCard();
+              settled();
               openWin(
                 '단골 바꾸기',
                 `<p class="sub">${esc(swap.weak.name)} 대신 ${esc(a.name)}${josa(a.name, '을')} 단골로 받을까요?</p><p class="note">${esc(swap.weak.name)}${josa(swap.weak.name, '는')} 대기 명단으로 가요. 자리가 나면 다시 찾아와요.</p>
@@ -105,17 +123,20 @@ export function initPropCard() {
               afterWin(() => !done && again());
             },
           }
-        : { label: c.label, fn: () => (hideCard(), c.fn()) },
+        : { label: c.label, fn: () => (hideCard(), settled(), c.fn()) },
     );
     // [자세히]: 손님 상세 창 → 닫으면 제안 대화로 (선택 그대로)
     cs.splice(cs.length - 1, 0, {
       label: '자세히',
       fn: () => {
         hideCard();
+        settled();
         showActor(a);
         afterWin(again);
       },
     });
-    talk(lines, hideCard, cs);
+    talk(lines, () => (hideCard(), settled()), cs);
+    // 카드는 대화가 열린 뒤에 (대화가 닫히면 같이 닫힌다)
+    showCard(a);
   };
 }
