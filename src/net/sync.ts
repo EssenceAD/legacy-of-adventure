@@ -56,6 +56,8 @@ let ready = false;
 export function setCloudReady(on: boolean) {
   ready = on;
 }
+/** 저장 맞추기가 끝났나 (서버 저장 고르기 창이 떠 있으면 false — 그 사이 넣은 것은 덮일 수 있다) */
+export const cloudReady = () => ready;
 /** 이 기기 저장이 어느 계정 것인지 (그 계정으로 올린 적이 있으면 그 사람 것) */
 const OWNER = 'cloudOwner';
 /** 이 기기 저장이 이미 어떤 계정 것인가 (그 계정이 로그아웃·만료됐을 때 게스트로 올리지 않게) */

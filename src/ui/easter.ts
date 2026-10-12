@@ -1,5 +1,7 @@
 // EASTER 화면: 금빛 편지 → 컷신(낭독 · 마을 입구로 카메라 · 장식 「쿵」 · 칭호 배너) · 카메오 손님 대사·선물 · 개척자 장식 연출
 import { LETTERS, PIONEERS, type PioneerId } from '../data/story/easter';
+import { writeSave } from '../save/save';
+import { cloudReady, pushNow } from '../net/sync';
 import { def, type Kind } from '../data/catalog';
 import { sfx } from '../audio/sfx';
 import * as game from '../game';
@@ -20,15 +22,32 @@ const E = () => (P.meta.easter ??= {});
 export const COMMON_TITLE = '베타 개척자';
 
 /** 로그인(또는 게스트)으로 이어진 뒤: 개척자 계정이면 금빛 편지 한 번 */
-export async function checkPioneer() {
+//  EASTER 버그 수정: 「보냈다」 플래그 대신 켤 때마다 — 개척자 && 장식 미지급(got 없음) && 우편함에 안 연 금빛 편지 없음 → 다시 넣는다
+//  (편지를 넣은 직후 서버 저장 고르기·강제 새로고침이 덮어써 편지가 사라졌던 일) · 저장 맞추기가 끝난 뒤에만 넣고, 넣자마자 저장 + 클라우드
+export async function checkPioneer(tries = 0) {
   if (!online()) return;
   void pioneers();
   const id = await myPioneer();
-  if (!isPioneer(id) || E().mail || E().got) return;
+  if (!isPioneer(id) || E().got) return;
+  // 장식을 이미 받았으면 (마을·보관함) 편지는 끝난 것
+  const kind = PIONEERS[id].deco;
+  if (world.objs.some((o) => o.kind === kind) || (P.decor.store ?? []).some((x) => x.kind === kind)) {
+    E().got = id;
+    markDirty();
+    return;
+  }
+  if (P.meta.mail.some((m) => m.reward?.pioneer === id && !m.claimed)) return;
+  // 서버 저장 고르기 중이면 끝난 뒤에 (최대 10분)
+  if (!cloudReady() || !S.started) {
+    if (tries < 120) setTimeout(() => void checkPioneer(tries + 1), 5000);
+    return;
+  }
   E().mail = id;
   addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: '아주 특별한 편지예요. 열어 보세요!', reward: { pioneer: id } });
   markDirty();
-  trackEv('pioneer_mail', { id });
+  writeSave();
+  void pushNow();
+  trackEv('pioneer_mail', { id, again: !!tries });
 }
 
 /** 편지를 열면: 컷신 (fx 'drop'에서 장식이 「쿵」) → 칭호 배너 — 한 번만 */
