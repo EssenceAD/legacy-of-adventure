@@ -7,7 +7,7 @@ import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals
 import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
 import { BASE_REGIONS, REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
-import { RACES, RARITIES, GUEST_KINDS } from '../data/classes';
+import { RACES, RARITIES, GUEST_KINDS, BASE_GUEST_KINDS } from '../data/classes';
 import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
 
 // ───────── 평판 ★ ─────────
@@ -34,7 +34,12 @@ export function repToNext(): number {
 // ───────── 도감 ─────────
 
 export const guestDexKey = (a: Pick<Actor, 'race' | 'kind' | 'rarity'>) => `${a.race}|${a.kind}|${a.rarity}`;
-export const GUEST_DEX_TOTAL = RACES.length * GUEST_KINDS.length * RARITIES.length;
+//  PARTY §1: 비율(보상·기념비·완성률)은 처음 다섯 직업 칸으로 — 사냥꾼 칸은 전투력 보너스만 더한다 (옛 진행이 깎이지 않게)
+export const GUEST_DEX_TOTAL = RACES.length * BASE_GUEST_KINDS.length * RARITIES.length;
+/** 사냥꾼까지 모든 칸 (표시용) */
+export const GUEST_DEX_ALL = RACES.length * GUEST_KINDS.length * RARITIES.length;
+/** 처음 다섯 직업 칸 수 */
+export const baseDexGuests = () => P.dex.guests.filter((k) => (BASE_GUEST_KINDS as readonly string[]).includes(k.split('|')[1])).length;
 /** 유물은 심연에서만 → 칸 수: 지역5×부위3×등급4 + 심연 유물 3 */
 //  REGIONS2: 비율(보상·기념비·전설 조건)은 처음 다섯 지역 칸으로 — 새 지역 칸은 전투력 보너스만 더한다 (옛 진행이 깎이지 않게)
 export const ITEM_DEX_TOTAL = BASE_REGIONS * SLOTS.length * 4 + SLOTS.length;
@@ -93,7 +98,7 @@ export function monumentUnlocked(): boolean {
   return dexRatio('guests') >= 1 || dexRatio('items') >= 1 || HEROES.every((h) => P.dex.heroes[h.id]?.recruited);
 }
 export function dexRatio(book: 'guests' | 'items') {
-  return book === 'guests' ? P.dex.guests.length / GUEST_DEX_TOTAL : baseDexItems() / ITEM_DEX_TOTAL;
+  return book === 'guests' ? baseDexGuests() / GUEST_DEX_TOTAL : baseDexItems() / ITEM_DEX_TOTAL;
 }
 
 // ───────── 오늘의 목표 (현실 날짜) ─────────

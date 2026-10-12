@@ -3,7 +3,7 @@
 // 처음 얻으면 [알림] 채팅 + 도감 「고유 장비」 칸. 같은 것 두 번째부터는 분해 시 별빛 가루 2배.
 // opt: 기존 OptKey 그대로(값은 일반 최대치의 1.5~2배) · special: 새 효과 키(코드에서 구현) — 없으면 null
 export interface UniqueDef {
-  id: string; region: string; slot: 'weapon' | 'armor' | 'acc'; wkind?: 'sword' | 'axe' | 'staff' | 'dagger' | 'book';
+  id: string; region: string; slot: 'weapon' | 'armor' | 'acc'; wkind?: 'sword' | 'axe' | 'staff' | 'dagger' | 'book' | 'bow';
   name: string; lore: string;
   opt: { k: 'atkPct' | 'timeCut' | 'goldPct' | 'hpSave' | 'regionDmg' | 'chemPct' | 'xpPct'; v: number };
   special: { key: string; text: string } | null;

@@ -8,7 +8,7 @@ import { BOSSES } from '../data/bosses';
 import { BASE_REGIONS, REGIONS } from '../data/items';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
-import { GUEST_KINDS, RACES } from '../data/classes';
+import { BASE_GUEST_KINDS, RACES } from '../data/classes';
 import { canvas, hsl, hslToRgb } from './pixel';
 import { canvasAlive, drawable, Lru } from './lru';
 
@@ -101,8 +101,8 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   Object.assign(WINDOWS, windows);
   const keys = Object.keys(meta);
   const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id), ...LEGENDS.map((l) => 'legend_' + l.key), ...JOBS.flatMap((j) => [mcPortrait(j, 'm'), mcPortrait(j, 'f')]),
-    // 초상화 작업: 손님 초상화 20장 (직업 5 × 종족 4)
-    ...GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`)),
+    // 초상화 작업: 손님 초상화 20장 (직업 5 × 종족 4) — PARTY §1: 사냥꾼은 아직 일러스트가 없다 → 도트 얼굴 (portrait()가 알아서)
+    ...BASE_GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`)),
     // EASTER §5: 베타 개척자 4인 초상화
     'p_woongs', 'p_gonu', 'p_warmnight', 'p_ikamolly'];
   let done = 0;

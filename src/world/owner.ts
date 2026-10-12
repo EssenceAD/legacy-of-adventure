@@ -650,7 +650,7 @@ export function legacyPower(a: Actor): number {
 export function bonusText(e: EndingDef): string {
   const b = e.bonus;
   const pct = `+${Math.round(b.v * 100)}%`;
-  if (b.k === 'kindPower') return `${({ knight: '기사', mage: '마법사', dwarf: '전사', rogue: '도적', cleric: '사제' } as const)[b.kind]} 계열 전투력 ${pct}`;
+  if (b.k === 'kindPower') return `${({ knight: '기사', mage: '마법사', dwarf: '전사', rogue: '도적', cleric: '사제', hunter: '사냥꾼' } as const)[b.kind]} 계열 전투력 ${pct}`;
   return ({ power: '모든 전투력', rep: '평판', gold: '모든 건물 수입', xp: '경험치', mood: '손님 기분', tavern: '주점 수입' } as const)[b.k] + ' ' + pct;
 }
 export const albumCount = () => `${P.legacy.album.length}/${ENDINGS.length}`;

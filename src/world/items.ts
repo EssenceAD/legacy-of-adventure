@@ -210,6 +210,12 @@ export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'>):
     } else if (w === 'dagger') {
       for (let i = 0; i < 4; i++) p.px(6 + i, 10 - i, metal);
       p.rect(4, 10, 3, 2, mat);
+    } else if (w === 'bow') {
+      // PARTY §1: 활 — 나무 활대(호) + 시위 + 소재 색 손잡이
+      for (let i = 0; i < 9; i++) p.px(4 + i, 12 - i, metal);
+      for (const [x, y] of [[4, 11], [4, 10], [5, 8], [6, 6], [8, 5], [10, 4], [11, 4], [12, 4], [13, 3]] as const) p.px(x, y, '#8a5a34');
+      for (const [x, y] of [[5, 12], [7, 12], [9, 11], [11, 9], [12, 7], [13, 5]] as const) p.px(x, y, '#8a5a34');
+      p.rect(7, 7, 2, 2, mat);
     } else {
       p.rect(4, 4, 8, 9, mat);
       p.rect(5, 5, 6, 7, dk(mat, 0.35));

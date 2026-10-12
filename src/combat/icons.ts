@@ -80,17 +80,25 @@ const GLYPH: Record<string, (p: Px) => void> = {
       for (let r = 6; r <= 9; r++) p(Math.round(12 + c * r), Math.round(12 + s * r));
     }
   },
-  // 사냥꾼: 연속 사격 (화살 셋) · 덫 (이빨 덫)
+  // PARTY §1 사냥꾼: 연사 (부채꼴 화살 셋) · 화살비 (내리꽂히는 화살 + 바닥 원)
   hunter0: (p) => {
-    for (const dy of [-5, 0, 5]) {
-      for (let x = 4; x <= 18; x++) p(x, 12 + dy, x > 15);
-      p(17, 11 + dy), p(17, 13 + dy), p(5, 11 + dy), p(5, 13 + dy);
+    for (const a of [-0.5, 0, 0.5]) {
+      const th = -Math.PI / 4 + a;
+      const c = Math.cos(th);
+      const s = Math.sin(th);
+      for (let r = 0; r <= 14; r++) p(Math.round(5 + c * r), Math.round(18 + s * r), r > 11);
+      // 화살촉
+      p(Math.round(5 + c * 13 - s), Math.round(18 + s * 13 + c), true);
+      p(Math.round(5 + c * 13 + s), Math.round(18 + s * 13 - c), true);
     }
   },
   hunter1: (p) => {
-    for (let x = 4; x <= 20; x++) p(x, 16, false), p(x, 17);
-    for (let i = 0; i < 5; i++) for (let k = 0; k < 3; k++) p(5 + i * 3 + 1, 15 - k, k === 2), p(5 + i * 3 + 1, 18 + k);
-    p(12, 8), p(12, 9), p(11, 10), p(13, 10);
+    for (const [x, y0] of [[6, 3], [12, 1], [18, 4]] as const) {
+      for (let y = y0; y <= y0 + 9; y++) p(x, y, y > y0 + 7);
+      p(x - 1, y0 + 8, true), p(x + 1, y0 + 8, true);
+      p(x - 1, y0, false), p(x + 1, y0, false);
+    }
+    for (let a = 0; a < Math.PI * 2; a += 0.2) p(Math.round(12 + Math.cos(a) * 9), Math.round(18 + Math.sin(a) * 3), false);
   },
   // 필살기: 네 갈래 빛
   ult: (p) => {

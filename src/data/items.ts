@@ -6,7 +6,7 @@ export type StatKey = 'atk' | 'def' | 'mag' | 'agi' | 'luk';
 export type RegionId = 'forest' | 'swamp' | 'mine' | 'ice' | 'abyss' | 'coast' | 'dune' | 'ember' | 'sky' | 'deep';
 /** REGIONS2: 처음 다섯 지역 (그 뒤 6~10은 별의 심연 x-10 뒤에 하나씩 열린다 · 10곳에서 끝) */
 export const BASE_REGIONS = 5;
-export type WeaponKind = 'sword' | 'axe' | 'staff' | 'dagger' | 'book';
+export type WeaponKind = 'sword' | 'axe' | 'staff' | 'dagger' | 'book' | 'bow';
 
 export const GRADES: Grade[] = ['n', 'r', 'e', 'l', 'a'];
 export const GRADE_INFO: Record<Grade, { name: string; color: string; dark: string }> = {
@@ -83,7 +83,7 @@ export const REGIONS: Region[] = [
 export const regionById = (id: RegionId) => REGIONS.find((r) => r.id === id)!;
 
 /** 아이템 이름: 지역 × 부위 × (무기 종류) */
-const WEAPON_NAMES: Record<WeaponKind, string> = { sword: '검', axe: '도끼', staff: '지팡이', dagger: '단검', book: '마도서' };
+const WEAPON_NAMES: Record<WeaponKind, string> = { sword: '검', axe: '도끼', staff: '지팡이', dagger: '단검', book: '마도서', bow: '활' };
 const ARMOR_NAMES = ['흉갑', '로브', '가죽옷', '갑옷'];
 const ACC_NAMES = ['반지', '목걸이', '부적', '귀걸이'];
 const REGION_ADJ: Record<RegionId, string[]> = {
@@ -98,7 +98,8 @@ const REGION_ADJ: Record<RegionId, string[]> = {
   sky: ['구름', '바람결', '하늘 정원의'],
   deep: ['별을 삼킨', '심연 바닥의', '되찾은 별빛'],
 };
-export const WEAPON_KINDS: WeaponKind[] = ['sword', 'axe', 'staff', 'dagger', 'book'];
+/** PARTY §1: 활까지 (드롭·제작·고유 장비 모두 이 목록에서) */
+export const WEAPON_KINDS: WeaponKind[] = ['sword', 'axe', 'staff', 'dagger', 'book', 'bow'];
 
 export function itemName(region: RegionId, slot: Slot, wkind: WeaponKind | undefined, seed: number): string {
   const adj = REGION_ADJ[region][seed % REGION_ADJ[region].length];

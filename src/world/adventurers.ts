@@ -9,6 +9,7 @@ import {
   type ClassDef, type ClassKey, type Face, type GuestKind, type Race, type Rarity,
 } from '../data/classes';
 import { CONFIG } from '../data/config';
+import { HUNTER_NAMES } from '../data/story/hunter';
 import { heroById } from '../data/heroes';
 import { GRADE_INFO, STATS, type StatKey } from '../data/items';
 import { P, pick, S, world, type Actor, type Item } from './state';
@@ -39,7 +40,9 @@ export function makeAdventurer(x: number, y: number, opt: { kind?: GuestKind; ra
   const roll = Math.random();
   const rarity: Rarity = opt.rarity ?? (roll < G.legendChance ? 'legend' : roll < G.legendChance + G.rareChance ? 'special' : 'common');
   const used = new Set(world.actors.map((a) => a.name));
-  const pool = RACE_NAMES[race].filter((n) => !used.has(n));
+  // PARTY §1: 사냥꾼은 사냥꾼 이름표에서 (다 쓰였으면 종족 이름)
+  const names = kind === 'hunter' ? [...HUNTER_NAMES] : RACE_NAMES[race];
+  const pool = names.filter((n) => !used.has(n));
   const a = blankActor(kind, pool.length ? pick(pool) : pick(RACE_NAMES[race]), x, y);
   a.id = P.nextAdvId++;
   a.race = race;

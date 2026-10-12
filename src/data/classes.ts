@@ -1,5 +1,6 @@
 // 직업(색·얼굴·무기) — reference/core.js의 CLASSES 이식. 이름 목록과 케미 짝도 여기.
 import type { StatKey, WeaponKind } from './items';
+import { HUNTER_CHEM, HUNTER_LINES, HUNTER_NAMES } from './story/hunter';
 
 export interface Face {
   eyes?: 'dot' | 'calm' | 'squint' | 'sly' | 'happy' | 'round' | 'sparkle';
@@ -51,7 +52,7 @@ export interface ClassDef {
   glassesColor?: string;
 }
 
-export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'keeper' | 'post' | 'hero';
+export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'hunter' | 'keeper' | 'post' | 'hero';
 
 export const CLASSES: Record<ClassKey, ClassDef> = {
   knight: { name: '기사', face: { eyes: 'dot', brow: 'angry', mouth: 'flat', scar: true }, hair: '#7a4a2c', style: 'short', cloth: '#3f6fd1', arm: '#b9c3d6', pants: '#8e98ad', boots: '#6b4128', accent: '#e8b94a', weapon: 'sword', shield: true },
@@ -59,16 +60,21 @@ export const CLASSES: Record<ClassKey, ClassDef> = {
   dwarf: { name: '전사', face: { eyes: 'squint', brow: 'bushy', nose: 'big', mouth: 'none', brow2: 1 }, hair: '#e0702a', style: 'none', cloth: '#8a5a34', arm: '#9aa3b5', pants: '#5d4030', boots: '#4a2f20', accent: '#c9a04a', weapon: 'axe', dwarf: true, beard: '#e0702a', helm: '#a7afbf' },
   rogue: { name: '도적', face: { eyes: 'sly', mouth: 'smirk', freckle: true }, hair: '#c98a4a', style: 'short', cloth: '#7a4a2a', arm: '#e8d4b0', pants: '#3a3040', boots: '#5b3a26', accent: '#b8873e', weapon: 'dagger', hood: '#4f8a3a', elf: true, dual: true },
   cleric: { name: '사제', face: { eyes: 'sparkle', mouth: 'tiny', brow: 'up' }, hair: '#f3d36b', style: 'braid', cloth: '#f4f0e6', arm: '#f4f0e6', pants: '#d8cdb4', boots: '#8a6040', accent: '#e0a93a', weapon: 'holy', robe: true, cape: '#f8f4ec' },
+  /** PARTY §1: 아래 HUNTER_DEF로 채운다 (같은 겉모습) */
+  hunter: undefined as unknown as ClassDef,
   keeper: { name: '노주인', face: { eyes: 'happy', mouth: 'none', glasses: true, nose: 'big', blush: true }, hair: '#d8d8d8', style: 'bald', cloth: '#7a4a2c', arm: '#f2ead8', pants: '#4a3a30', boots: '#3e2a1e', accent: '#efe6cf', weapon: null, apron: '#efe6cf', stache: '#f4f4f4' },
   post: { name: '우체부', face: { eyes: 'round', mouth: 'o', freckle: true }, hair: '#d9542e', style: 'short', cloth: '#3f6fd1', arm: '#3f6fd1', pants: '#2f3f6a', boots: '#5b3a26', accent: '#e8b94a', weapon: null, bandana: '#2f57b0' },
   hero: { name: '나', face: { eyes: 'dot', brow: 'angry', mouth: 'grin', scar: true }, hair: '#5a3424', style: 'short', cloth: '#8a5a34', arm: '#efe0bf', pants: '#4a3f5a', boots: '#5b3a26', accent: '#4f9a4a', weapon: null, bandana: '#4f9a4a', apron: '#e9dcc0' },
 };
 
-/** 리마스터: 사냥꾼 겉모습 (활 + 화살통) — 손님 직업은 아니고 전투·비교용 */
+/** 리마스터: 사냥꾼 겉모습 (활 + 화살통) — PARTY §1: 여섯 번째 손님 직업 「사냥꾼」도 이 겉모습 */
 export const HUNTER_DEF: ClassDef = { name: '사냥꾼', face: { eyes: 'dot', mouth: 'grin', freckle: true }, hair: '#7a4a2a', style: 'short', cloth: '#4f6a3a', arm: '#e8d4b0', pants: '#5d4030', boots: '#5b3a26', accent: '#8a6040', weapon: 'bow', quiver: true, bandana: '#4f8a3a' };
+CLASSES.hunter = HUNTER_DEF;
 
-/** 손님으로 오는 직업 */
-export const GUEST_KINDS = ['knight', 'dwarf', 'mage', 'rogue', 'cleric'] as const;
+/** 손님으로 오는 직업 — PARTY §1: 사냥꾼까지 6개 (주인 출신과 같은 6개에서 닫는다) */
+export const GUEST_KINDS = ['knight', 'dwarf', 'mage', 'rogue', 'cleric', 'hunter'] as const;
+/** 처음 다섯 직업 (도감 비율·보상은 이 칸으로 — 새 직업 칸은 전투력 보너스만 더한다) */
+export const BASE_GUEST_KINDS: readonly GuestKind[] = ['knight', 'dwarf', 'mage', 'rogue', 'cleric'];
 export type GuestKind = (typeof GUEST_KINDS)[number];
 
 export const NAMES: Record<GuestKind, string[]> = {
@@ -77,6 +83,7 @@ export const NAMES: Record<GuestKind, string[]> = {
   dwarf: ['브롬', '두린', '토르'],
   rogue: ['피핀', '릭', '네모'],
   cleric: ['세레나', '마리엘', '루나'],
+  hunter: HUNTER_NAMES.slice(0, 3),
 };
 
 /** 케미 짝: [A, B, A의 대사, B의 대답] */
@@ -86,6 +93,7 @@ export const CHEM: [GuestKind, GuestKind, string, string][] = [
   ['mage', 'rogue', '내 지팡이 어디 갔지?', '…몰라요?'],
   ['dwarf', 'knight', '방패 좀 빌려줘', '갑옷이 더 단단해!'],
   ['cleric', 'mage', '차 한잔 해요', '좋지요~'],
+  ...(HUNTER_CHEM as [GuestKind, GuestKind, string, string][]),
 ];
 
 /** 대화창 이름표 */
@@ -116,9 +124,10 @@ export const CLASS_STATS: Record<GuestKind, Record<StatKey, number>> = {
   dwarf: { atk: 12, def: 8, mag: 1, agi: 5, luk: 4 },
   rogue: { atk: 7, def: 4, mag: 3, agi: 12, luk: 8 },
   cleric: { atk: 3, def: 7, mag: 10, agi: 4, luk: 6 },
+  hunter: { atk: 10, def: 4, mag: 2, agi: 10, luk: 7 },
 };
 /** 직업별 기본 무기 (장비가 없을 때 그림) */
-export const CLASS_WEAPON: Record<GuestKind, WeaponKind> = { knight: 'sword', mage: 'staff', dwarf: 'axe', rogue: 'dagger', cleric: 'book' };
+export const CLASS_WEAPON: Record<GuestKind, WeaponKind> = { knight: 'sword', mage: 'staff', dwarf: 'axe', rogue: 'dagger', cleric: 'book', hunter: 'bow' };
 
 /** 직업마다 어울리는 종족 (방문 손님 뽑을 때 가중치) */
 export const CLASS_RACES: Record<GuestKind, Race[]> = {
@@ -127,6 +136,7 @@ export const CLASS_RACES: Record<GuestKind, Race[]> = {
   dwarf: ['dwarf', 'dwarf', 'human'],
   rogue: ['elf', 'halfling', 'human', 'halfling'],
   cleric: ['human', 'halfling', 'elf'],
+  hunter: ['human', 'elf', 'elf', 'halfling'],
 };
 
 export const RACE_NAMES: Record<Race, string[]> = {
@@ -143,6 +153,9 @@ export const FACE_POOL = {
   brow: [undefined, 'angry', 'bushy', 'up'] as const,
 };
 export const HAIR_COLORS = ['#7a4a2c', '#dfe3f2', '#e0702a', '#c98a4a', '#f3d36b', '#3a2a3a', '#b03a2a', '#5a7ac8', '#2f2a26', '#e8a0c8'];
+
+/** PARTY §1: 직업별 말풍선 (손님 idle 대사에 섞는다 · 지금은 사냥꾼만) */
+export const KIND_LINES: Partial<Record<string, string[]>> = { hunter: HUNTER_LINES };
 
 /** 희귀 손님 고유 대사 */
 export const RARE_LINES: Record<Rarity, string[]> = {

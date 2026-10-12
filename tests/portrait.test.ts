@@ -1,7 +1,7 @@
 // 초상화 작업: 손님 대화창·정보 창 초상화 = 직업×종족 일러스트 (작은 목록 아이콘은 도트 그대로)
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import { GUEST_KINDS, RACES } from '../src/data/classes';
+import { BASE_GUEST_KINDS as GUEST_KINDS, RACES } from '../src/data/classes';
 import { PORTRAITS } from '../src/engine/assets';
 import { pic, portrait } from '../src/ui/common';
 import type { Actor } from '../src/world/state';

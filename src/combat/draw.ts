@@ -10,6 +10,11 @@ import { GRADE_COLOR, quarterOf, screenDx, type Field, type Unit } from './field
 import { deepen, placeProps, PROP_IMG, themeOf, type GroundPal, type Theme } from './theme';
 import { saverOn } from '../engine/fps';
 
+/** PARTY §3: 4인 + 보스 + 부하에서 그리기가 30fps 아래로 떨어지면 이펙트 줄이기 (배터리 절약과 같은 가벼운 그림) — ui.ts가 잰다 */
+let autoLite = false;
+export const setFxLite = (v: boolean) => (autoLite = v);
+export const fxLite = () => saverOn() || autoLite;
+
 const C = CONFIG.combat;
 export const sheets: Partial<Record<string, MonSheet>> = {};
 
@@ -269,6 +274,8 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     const [X, Y] = W(fx.x, fx.y);
     const p = fx.t / fx.dur;
     if (fx.kind === 'trap') ellipse(ctx, X, Y, 8, 4, 'rgba(160,120,60,.6)', '#c9a24a');
+    // PARTY §1 화살비: 바닥 원 (깜빡이지 않게 테두리만 밝게)
+    if (fx.kind === 'rain') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2), (fx.r ?? 1) * (TH / 2), 'rgba(122,208,106,.14)', p < 0.85 ? '#7ad06a' : '#3a6a3a');
     if (fx.kind === 'ring') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * p, (fx.r ?? 1) * (TH / 2) * p, null, p < 0.5 ? '#ffffff' : '#ffd36b');
     if (fx.kind === 'heal') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * Math.min(1, p * 2), (fx.r ?? 1) * (TH / 2) * Math.min(1, p * 2), 'rgba(120,255,140,.18)', '#8fe08f');
     if (fx.kind === 'boom') ellipse(ctx, X, Y, (fx.r ?? 1) * (TW / 2) * (0.4 + p * 0.6), (fx.r ?? 1) * (TH / 2) * (0.4 + p * 0.6), `rgba(255,160,60,${0.5 * (1 - p)})`, p < 0.6 ? '#ffd36b' : '#ff8a3a');
@@ -308,7 +315,7 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
       draw: () => {
         const [X, Y] = W(pr.x, pr.y);
         const gl = T.glow[pr.k];
-        if (gl && !saverOn()) glowAt(ctx, X, Y - im.height / 2, Math.max(im.width, im.height) * 0.9, gl, 0.22 + Math.sin(performance.now() / 600 + pr.x) * 0.05);
+        if (gl && !fxLite()) glowAt(ctx, X, Y - im.height / 2, Math.max(im.width, im.height) * 0.9, gl, 0.22 + Math.sin(performance.now() / 600 + pr.x) * 0.05);
         dotShadow(ctx, X, Y + 1, Math.round(im.width / 3), 2);
         ctx.drawImage(im, X - Math.round(im.width / 2), Y - im.height + 3);
       },
@@ -402,6 +409,21 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     }
     if (fx.kind === 'spr' && (fx.oy ?? 12) > 2) fxDraw(ctx, fx.spr!, X, Y - (fx.oy ?? 12), p, fx.q ?? 0);
     if (fx.kind === 'ring' && (fx.r ?? 0) >= 1.5) fxDraw(ctx, 'smokering', X, Y, p);
+    // PARTY §1 화살비: 원 안에 화살이 비처럼 (가벼운 선 몇 개 · 이펙트 줄이기 단계면 더 적게)
+    if (fx.kind === 'rain') {
+      const n = fxLite() ? 4 : 9;
+      const rr = fx.r ?? 1;
+      for (let i = 0; i < n; i++) {
+        const ph = (fx.t * 2.2 + i * 0.37) % 1;
+        const a = i * 2.39996;
+        const k = Math.sqrt(((i * 0.618) % 1)) * rr * 0.9;
+        const [GX, GY] = W(fx.x + Math.cos(a) * k, fx.y + Math.sin(a) * k);
+        const top = GY - 46 + Math.round(ph * 44);
+        line(ctx, GX, top - 7, GX, top, '#efe2c6');
+        ctx.fillStyle = '#7ad06a';
+        ctx.fillRect(GX - 1, top, 2, 2);
+      }
+    }
   }
   // 핫픽스 8 (2-7): 탄 그림 — 마법탄 · 화염구 · 화살 · 쿠나이 (날아가는 쪽으로 90° 단위 회전)
   const PROJ_SPR: Record<string, string> = { bolt: 'p_energy', fire: 'p_fire', arrow: 'p_arrow', dagger: 'p_kunai' };
@@ -717,7 +739,7 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
   const now = performance.now();
   const dt = Math.min(0.1, Math.max(0, (now - lastT) / 1000));
   lastT = now;
-  const low = saverOn();
+  const low = fxLite();
   // ── 빛 (입자 아래) ──
   const [MX, MY] = W(f.me.x, f.me.y);
   if (T.light === 'sun' && !deep) {
@@ -909,7 +931,7 @@ function starMarks(ctx: CanvasRenderingContext2D, f: Field, W: (x: number, y: nu
     const [X, Y] = W(N / 2 + dx, N / 2 + dy);
     const on = i < lit;
     if (glow) {
-      if (on && !saverOn()) glowAt(ctx, X, Y, 22, '255,226,140', 0.32 + Math.sin(performance.now() / 300 + i) * 0.06);
+      if (on && !fxLite()) glowAt(ctx, X, Y, 22, '255,226,140', 0.32 + Math.sin(performance.now() / 300 + i) * 0.06);
       if (!on) return;
     }
     // 다섯 갈래 별 모양 (점)
@@ -948,7 +970,7 @@ function codeBoss(ctx: CanvasRenderingContext2D, m: Unit, sh: MonSheet, img: HTM
   }
   // 눈: 금빛으로 살짝 (깜빡이듯 숨쉼)
   const eyes = (sh.meta as unknown as { eyes?: [number, number][] }).eyes ?? [];
-  if (!saverOn())
+  if (!fxLite())
     for (const [ex, ey] of eyes) {
       const ix = left ? W0 - 1 - ex : ex;
       glowAt(ctx, x0 + ix, y0 + ey + breath, 5, '255,211,107', 0.45 + Math.sin(now / 400) * 0.15);

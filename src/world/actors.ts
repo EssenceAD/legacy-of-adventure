@@ -4,7 +4,7 @@ import { def, INSIDE_TEXT, type Act } from '../data/catalog';
 import { copyIncomeMult } from './town';
 import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
-import { GUEST_KINDS, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
+import { GUEST_KINDS, KIND_LINES, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
@@ -258,7 +258,11 @@ function choose(a: Actor) {
     a.t = 1 + Math.random() * 2;
     const deco = world.objs.some((o) => (o.kind === 'well' || o.kind === 'tree' || o.kind === 'pine') && Math.abs(o.tx - a.x) + Math.abs(o.ty - a.y) <= 2);
     if (deco) a.mood = clamp(a.mood + NE.decoMood / 3);
-    if (Math.random() < A.idleTalkChance) say(a, pick(a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : LINES.idle));
+    if (Math.random() < A.idleTalkChance) {
+      // PARTY §1: 사냥꾼은 절반쯤 자기 말풍선
+      const kl = KIND_LINES[a.kind];
+      say(a, pick(kl && Math.random() < 0.5 ? kl : a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : LINES.idle));
+    }
     chem(a);
   });
 }
@@ -542,6 +546,11 @@ export function arrive(a?: Actor): Actor | null {
   const tag = a.rarity !== 'common' ? `<b style="color:${RARITY_INFO[a.rarity].color}">${RARITY_INFO[a.rarity].name}</b> ` : '';
   const what = back ? '다시 찾아온 손님' : a.status === 'passer' ? '지나가는 손님' : '새 손님';
   uiHooks.toastHtml(`<span>${tag}${what} ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
+  // PARTY §1: 사냥꾼 출신 주인 — 첫 사냥꾼 손님이 오면 한 줄 (한 번)
+  if (a.kind === 'hunter' && P.owner?.job === 'hunter' && !P.meta.hunterMet && S.started && !S.visiting) {
+    P.meta.hunterMet = true;
+    queueEvent(() => uiHooks.talk([['hero', '…그 활 쥐는 법, 숲 경계에서 배웠지?']]), 'hunterMet');
+  }
   // 입구에서 여관 문까지 걸어 들어온다 (지나가는 손님은 바로 할 일을 찾는다)
   const inn = findKind('inn');
   const who = a;

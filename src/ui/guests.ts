@@ -7,7 +7,7 @@ import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
 import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
-import { CLASS_WEAPON, CLASSES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
+import { CLASS_WEAPON, CLASSES, KIND_LINES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { doingText, regularNeed } from '../world/actors';
@@ -136,7 +136,8 @@ export function talkGuest(a: Actor) {
   track('guestTalk');
   P.counters.guestTalks++;
   markDirty();
-  const pool = a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
+  const kl = KIND_LINES[a.kind];
+  const pool = kl && Math.random() < 0.5 ? kl : a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
   // GROWTH §2: 단골 말 걸기에 가끔 선물 힌트 (직업별 좋아하는 것)
   const hint = a.status === 'regular' && !a.heroId && !a.legendId ? guestHint(a) : null;
   const line = hint ?? (a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0]);

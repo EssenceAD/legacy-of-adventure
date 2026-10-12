@@ -2,7 +2,8 @@
 //  다른 world 모듈이 import해도 꼬이지 않게: state · data · progress · owner(함수만)만 쓴다.
 import { CONFIG } from '../data/config';
 import { BONDS, bondById, GIFTS, type GiftKey } from '../data/bonds';
-import { GIFT_HINTS, GUEST_GIFT } from '../data/story/gift_hints';
+import { GIFT_HINTS, GUEST_GIFT as BASE_GUEST_GIFT } from '../data/story/gift_hints';
+import { HUNTER_GIFT } from '../data/story/hunter';
 import { UNIQUES } from '../data/story/uniques';
 import { FISH } from '../data/story/fish';
 import { josa } from '../data/josa';
@@ -203,6 +204,8 @@ export function rumorHint(avail: (id: string) => boolean, rng: () => number = Ma
 
 // ───────── §2 단골 선물 (BONDS에 없는 일반 단골 · 직업별 좋아하는 것 1개) ─────────
 
+/** PARTY §1: 사냥꾼 단골 선물 (사냥 육포) 합치기 */
+const GUEST_GIFT = { ...BASE_GUEST_GIFT, hunter: HUNTER_GIFT };
 type GuestKindKey = keyof typeof GUEST_GIFT;
 export const guestLikes = (a: Pick<Actor, 'kind'>): GiftKey | null => (GUEST_GIFT[a.kind as GuestKindKey]?.likes as GiftKey) ?? null;
 /** 단골 말 걸기에 섞는 힌트 (30%) */

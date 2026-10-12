@@ -1,7 +1,7 @@
 // 게임 ↔ 서버 이어 붙이기: 클라우드 저장(1분마다·앱 내릴 때) · 마을 모습 · 토벌 기록 · 하루 한 번 통계 · 주간 순위 판정
 // 로그인 안 한 손님은 여기 함수들이 아무것도 안 한다 (지금처럼 로컬).
 import { CONFIG } from '../data/config';
-import { GUEST_DEX_TOTAL, ITEM_DEX_TOTAL, today } from '../world/progress';
+import { baseDexGuests, GUEST_DEX_TOTAL, ITEM_DEX_TOTAL, today } from '../world/progress';
 import { HEROES } from '../data/heroes';
 import { powerOf } from '../world/adventurers';
 import { markDirty, P, S, world, type RaidRecord } from '../world/state';
@@ -44,7 +44,7 @@ export function villageSnapshot() {
 
 /** 도감 완성률(%) = 손님·아이템·영웅 도감 평균 */
 export function codexPct(): number {
-  const g = P.dex.guests.length / GUEST_DEX_TOTAL;
+  const g = baseDexGuests() / GUEST_DEX_TOTAL;
   const i = P.dex.items.length / ITEM_DEX_TOTAL;
   const h = HEROES.filter((x) => P.dex.heroes[x.id]?.recruited).length / HEROES.length;
   return Math.min(100, ((g + i + h) / 3) * 100);
