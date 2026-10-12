@@ -17,6 +17,8 @@ import { feature } from './guide';
 import { track as trackEv } from '../net/telemetry';
 import { addCharm } from './growth';
 import { rollUnique } from './uniques';
+import { partySynMult, synDamageMult, synergyFx } from './synergy';
+import { roleMult } from './party';
 import type { Item } from './state';
 
 const R = CONFIG.raid;
@@ -162,13 +164,20 @@ export interface RaidExpect {
 
 const affinityOf = (a: Actor, b: BossDef) => (b.weak.includes(a.kind as never) ? R.weakMult : b.resist.includes(a.kind as never) ? R.resistMult : 1);
 
+/**
+ * 기대 피해 — PARTY §2: 조합 보너스(역할 +10% · 공격 + · 한 우물 · 치명타 · 보스 피해 · 스킬 대기)를 포함한다.
+ *  필드 전투에서 실제로 더 들어가는 만큼 기대치도 올려서, 조합 덕에 S/A가 쉬워지지 않게 · §3: 4명이면 4명 기준 (사람 수만큼 더한다)
+ */
 export function expectOf(members: Actor[], b: BossDef): RaidExpect {
   const pw = members.map((m) => powerOf(m));
-  const power = pw.reduce((s, v) => s + v, 0);
+  const fx = synergyFx(members);
+  const synM = partySynMult(members, pw, fx) * roleMult(members);
+  const power = pw.reduce((s, v) => s + v, 0) * synM;
   const chem = partyChemMult(members);
-  const affinity = power ? members.reduce((s, m, i) => s + pw[i] * affinityOf(m, b), 0) / power : 1;
+  const raw = pw.reduce((s, v) => s + v, 0);
+  const affinity = raw ? members.reduce((s, m, i) => s + pw[i] * affinityOf(m, b), 0) / raw : 1;
   // 4단계: 전사 출신 토벌 피해 +5%
-  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult() * (1 + hfx('dmg') + hfx('raidDmg'));
+  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult() * (1 + hfx('dmg') + hfx('raidDmg')) * synDamageMult(fx);
   return {
     power: Math.round(power * chem),
     chem,
@@ -245,7 +254,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   // 보상: 깎은 체력만큼 (실패해도) + 처치 보너스
   const ratio = damage / Math.max(1, b.power * R.seconds * R.dmgPerPowerSec);
   // EASTER: 붉은 무사의 투구 — 토벌 금화 +3%
-  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult());
+  // PARTY §2: 뒷골목 싸움 금화 +8%
+  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold));
   const mats = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));
   S.gold += gold;

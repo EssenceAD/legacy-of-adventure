@@ -20,6 +20,9 @@ import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
 import { partySpecial, specialSum } from '../world/uniques';
+import { memberSynMult, synergyFx, type SynFx } from '../world/synergy';
+
+const HC = CONFIG.hunter;
 
 const C = CONFIG.combat;
 export type Job = 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';
@@ -31,7 +34,8 @@ export const SKILL_NAMES: Record<Job, [string, string]> = {
   rogue: ['그림자 찌르기', '독 단검'],
   mage: ['화염구', '점멸'],
   priest: ['치유의 빛', '신성 일격'],
-  hunter: ['연속 사격', '덫'],
+  // PARTY §1: 손님 직업 사냥꾼 — 연사(앞쪽 부채꼴 3발) · 화살비(원 범위 2초)
+  hunter: ['연사', '화살비'],
 };
 
 export interface Area {
@@ -124,6 +128,13 @@ export interface Unit {
   stunFirst?: boolean;
   bounce?: number;
   firstHit?: boolean;
+  /** PARTY §1: 사냥꾼 뒤로 구르기 방향 (바라보는 쪽은 그대로) · 카이팅이 막힌 시간 · 빠져나가는 방향과 남은 초 */
+  rollDir?: [number, number];
+  kiteStuck?: number;
+  kiteLast?: [number, number];
+  escape?: { x: number; y: number; t: number };
+  /** PARTY §2: 스킬 대기 시간 (조합 「별빛 기도」로 줄어든 값) */
+  cdMax?: [number, number];
 }
 export interface Proj {
   x: number;
@@ -137,7 +148,9 @@ export interface Proj {
   hit: Set<Unit>;
 }
 export interface Fx {
-  kind: 'slash' | 'puff' | 'ring' | 'heal' | 'boom' | 'trap' | 'spr';
+  kind: 'slash' | 'puff' | 'ring' | 'heal' | 'boom' | 'trap' | 'spr' | 'rain';
+  /** PARTY §1 화살비: 다음 피해까지 남은 초 */
+  tick?: number;
   /** 핫픽스 8 (2-7): Ninja Adventure 이펙트 그림 · 90° 회전 수 · 바닥에서 띄울 높이(도트) */
   spr?: string;
   q?: number;
@@ -257,6 +270,8 @@ export interface Field {
   /** REGIONS2: 보스 체력 50%에서 한 번 (지역 10 「목소리」) · 보스가 쓰러질 때 한 줄 */
   half?: () => void;
   bossLine?: string;
+  /** PARTY §2: 이 판의 조합 보너스 */
+  syn?: SynFx;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -290,7 +305,8 @@ const pxToTile = (px: number) => px / 14;
 // ───────── 만들기 ─────────
 
 /** 동료 자리: 나를 기준으로 서로 다른 방향 (왼쪽 뒤 · 오른쪽 뒤) */
-const SLOTS = [0, Math.PI * 0.75, -Math.PI * 0.25 + Math.PI * 1.5];
+//  PARTY §3: 4번째 동료는 오른쪽 앞
+const SLOTS = [0, Math.PI * 0.75, -Math.PI * 0.25 + Math.PI * 1.5, Math.PI * 0.25];
 export interface FieldOpts {
   mode?: 'hunt' | 'raid';
   /** 토벌 보스 그림·이름 · 보스 체력(필드 단위) · 제한 시간 */
@@ -302,23 +318,27 @@ export interface FieldOpts {
 }
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
-  // 핫픽스 12 §2-2: 탱·힐·딜이 고루 있으면 전투력 ×1.10
-  const rm = roleMult(members.slice(0, 3));
+  // PARTY §3: 4번째 자리가 열리면 4명까지 (파티 창이 인원을 정한다)
+  const ms = members.slice(0, CONFIG.party4.max);
+  // 핫픽스 12 §2-2: 방어·공격·회복이 고루 있으면 전투력 ×1.10
+  const rm = roleMult(ms);
+  // PARTY §2: 조합 보너스 (공격 + · 한 우물 · 치명타 + · 받는 피해 − · 스킬 대기 − · 보스 피해 +)
+  const syn = synergyFx(ms);
   // GROWTH §3-4 고유 효과 「파티 전원 받는 피해 −N%」
-  const partyCut = partySpecial(members.slice(0, 3), 'partyHp');
+  const partyCut = partySpecial(ms, 'partyHp');
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
     const { key, def } = appearance(a);
     const max = Math.round(C.hpBase + a.lvl * C.hpPerLv);
     return {
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
-      actor: a, job, power: powerOf(a) * rm * (1 + buffOf('power')) * mythicAtk(members.slice(0, 3), region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
-      combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
-      critAdd: (optSum(a, 'critPct') + specialSum(a, 'crit')) / 100, dmgCut: Math.min(0.5, (optSum(a, 'dmgCut') + partyCut) / 100),
+      actor: a, job, power: powerOf(a) * rm * memberSynMult(a, syn) * (1 + buffOf('power')) * mythicAtk(ms, region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
+      combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], cdMax: [C.skillCd[0] * (1 - syn.cdCut), C.skillCd[1] * (1 - syn.cdCut)], taunt: 0, guard: 0, atkAnim: 0,
+      critAdd: (optSum(a, 'critPct') + specialSum(a, 'crit')) / 100 + syn.crit, dmgCut: Math.min(0.5, (optSum(a, 'dmgCut') + partyCut) / 100 + syn.dmgCut),
       spd: specialSum(a, 'speed') / 100, revive: specialSum(a, 'reviveOnce') / 100, stunFirst: specialSum(a, 'firstHitStun') > 0, bounce: specialSum(a, 'bounce') / 100,
     };
   };
-  const allies = members.slice(0, 3).map(mk);
+  const allies = ms.map(mk);
   const props: Field['props'] = [];
   // 가장자리 숲 · 안쪽 바위 몇 개 (부딪힘)
   // 안쪽은 낮은 바위만 (큰 나무는 캐릭터를 가린다 · 나무는 가장자리 숲)
@@ -334,6 +354,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   };
   f.half = opts.half;
   f.bossLine = opts.bossLine;
+  f.syn = syn;
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -452,6 +473,8 @@ export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: bo
     f.hitT = C.hitWindow;
     dmg *= 1 + hitBonus(f.hit);
   }
+  // PARTY §2: 철벽 돌격 — 보스·정예 피해 +
+  if ((m.boss || m.elite) && f.syn?.bossDmg) dmg *= 1 + f.syn.bossDmg;
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg;
   if (f.mode === 'raid' && m.boss) f.raidDmg += Math.min(dmg, Math.max(0, m.hp + dmg));
@@ -534,7 +557,8 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
     u.hp = 0;
     u.dead = true;
     if (isMe(f, u)) {
-      const next = f.allies.find((a) => !a.dead);
+      // PARTY §3: 4번째 동료(AI 전용)는 셋이 다 쓰러졌을 때만 넘겨받는다
+      const next = f.allies.slice(0, 3).find((a) => !a.dead) ?? f.allies.find((a) => !a.dead);
       if (next) f.me = next;
     }
   }
@@ -587,7 +611,9 @@ const powerHit = (f: Field, u: Unit, mult: number) => {
 export function attack(f: Field, u: Unit) {
   if (u.dead || (u.swing ?? 0) > 0 || (u.dodge ?? 0) > 0 || u.stun > 0) return;
   const stickDir = u === f.me && Math.hypot(f.stick.x, f.stick.y) > 0.2 ? norm(...screenToWorld(f.stick.x, f.stick.y)) : undefined;
-  const t = aimTarget(f, u, RANGED.has(u.job!) ? 5 : 2.6, stickDir);
+  // PARTY §1: 직접 조작하는 사냥꾼은 누르는 방향으로 쏜다 (자동 조준 없이) · 아니면 사거리 4칸 안의 적
+  const bowDir = u.job === 'hunter' && u === f.me && !f.auto ? stickDir : undefined;
+  const t = bowDir ? null : aimTarget(f, u, u.job === 'hunter' ? HC.range + 0.4 : RANGED.has(u.job!) ? 5 : 2.6, stickDir);
   if (t) faceTo(u, t);
   else if (stickDir) [u.ax, u.ay] = stickDir;
   // 직업별 기본 공격 (핫픽스 7): 빠르기·힘·사거리·부채꼴 폭이 다르다
@@ -601,7 +627,7 @@ export function attack(f: Field, u: Unit) {
   if (RANGED.has(u.job!)) {
     const sp = J.speed ?? 7;
     const kind = u.job === 'mage' ? 'bolt' : 'arrow';
-    f.proj.push({ x: u.x, y: u.y, vx: u.ax * sp, vy: u.ay * sp, life: 5.6 / sp, dmg: mult, owner: u, kind, hit: new Set() });
+    f.proj.push({ x: u.x, y: u.y, vx: u.ax * sp, vy: u.ay * sp, life: (u.job === 'hunter' ? HC.range : 5.6) / sp, dmg: mult, owner: u, kind, hit: new Set() });
     return;
   }
   // 근접: 앞쪽 부채꼴 — 핫픽스 8 (2-7): 직업마다 다른 베기 (기사 찌르기 · 전사 도끼 내리찍기 · 도적 쌍단검 · 사제 지팡이 빛)
@@ -625,6 +651,16 @@ export function attack(f: Field, u: Unit) {
 export function dodge(f: Field, u: Unit, dir?: [number, number]) {
   if (u.dead || (u.dodgeCd ?? 0) > 0 || u.stun > 0) return;
   let d = dir;
+  // PARTY §1: 사냥꾼은 막기 대신 「뒤로 구르기」 — 바라보는 쪽은 그대로 두고 등 뒤로 (짧은 무적)
+  if (u.job === 'hunter') {
+    const b: [number, number] = d ?? [-u.ax, -u.ay];
+    u.rollDir = roomyDir(u, b);
+    u.dodge = C.dodge.dur;
+    u.inv = C.dodge.inv;
+    u.dodgeCd = C.dodge.cd;
+    u.swing = 0;
+    return;
+  }
   if (!d) {
     const s = u === f.me && Math.hypot(f.stick.x, f.stick.y) > 0.2 ? norm(...screenToWorld(f.stick.x, f.stick.y)) : null;
     d = s ?? [u.ax, u.ay];
@@ -643,7 +679,7 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
   const stickDir = u === f.me && Math.hypot(f.stick.x, f.stick.y) > 0.2 ? norm(...screenToWorld(f.stick.x, f.stick.y)) : undefined;
   const t = aimTarget(f, u, 5, stickDir);
   if (t) faceTo(u, t);
-  u.cd![i] = C.skillCd[i];
+  u.cd![i] = u.cdMax?.[i] ?? C.skillCd[i];
   u.castAnim = 0.3;
   if (u === f.me) {
     f.castTxt = SKILL_NAMES[u.job!][i];
@@ -760,21 +796,31 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
         hurtMob(f, t, P(2.5).dmg, u, { stun: 0.8, crit: true, silent: true });
       }
       break;
-    case 'hunter0':
-      // 연속 사격: 화살 3발을 0.12초 간격으로
-      for (let k = 0; k < 3; k++)
-        (f.later ??= []).push({
-          t: k * 0.12,
-          fn: () => {
-            if (u.dead) return;
-            u.castAnim = 0.12;
-            f.proj.push({ x: u.x, y: u.y, vx: u.ax * 8, vy: u.ay * 8, life: 0.7, dmg: 1, owner: u, kind: 'arrow', hit: new Set() });
-          },
-        });
+    case 'hunter0': {
+      // PARTY §1 연사: 앞쪽 부채꼴로 화살 3발 (직접 조작이면 누르는 방향)
+      if (u === f.me && !f.auto && stickDir) [u.ax, u.ay] = stickDir;
+      const F = HC.fan;
+      for (let k = 0; k < F.n; k++) {
+        const a = (k - (F.n - 1) / 2) * F.spread;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        f.proj.push({ x: u.x, y: u.y, vx: (u.ax * c - u.ay * s) * F.speed, vy: (u.ax * s + u.ay * c) * F.speed, life: HC.range / F.speed, dmg: F.dmg, owner: u, kind: 'arrow', hit: new Set() });
+      }
       break;
-    case 'hunter1':
-      f.fx.push({ kind: 'trap', x: u.x + u.ax * 1.2, y: u.y + u.ay * 1.2, t: 0, dur: 6, r: 0.6, owner: u });
+    }
+    case 'hunter1': {
+      // PARTY §1 화살비: 조준한 적(없으면 앞쪽) 원 범위에 2초 동안 화살이 쏟아진다
+      const R = HC.rain;
+      const aim = u === f.me && !f.auto && stickDir ? null : aimTarget(f, u, R.reach, stickDir);
+      const dir = aim ? norm(aim.x - u.x, aim.y - u.y) : u === f.me && stickDir ? stickDir : ([u.ax, u.ay] as [number, number]);
+      const reach = aim ? Math.min(R.reach, dist(u, aim)) : 2.5;
+      const N = C.field;
+      const x = Math.max(0.8, Math.min(N - 0.8, u.x + dir[0] * reach));
+      const y = Math.max(0.8, Math.min(N - 0.8, u.y + dir[1] * reach));
+      [u.ax, u.ay] = dir;
+      f.fx.push({ kind: 'rain', x, y, t: 0, dur: R.dur, r: R.r, owner: u, tick: 0.05 });
       break;
+    }
   }
 }
 
@@ -850,6 +896,8 @@ function aiAlly(f: Field, u: Unit, dt: number) {
     }
     return;
   }
+  // PARTY §1: 사냥꾼은 적과 3칸 거리를 두고 쏜다 (벽·필드 끝에서 끼지 않게)
+  if (u.job === 'hunter') return kite(f, u, t, dt);
   const ranged = RANGED.has(u.job!) || u.role === 'heal';
   let gx = t.x;
   let gy = t.y;
@@ -869,6 +917,90 @@ function aiAlly(f: Field, u: Unit, dt: number) {
     else attack(f, u);
   }
 }
+// ───────── PARTY §1: 사냥꾼 카이팅 ─────────
+
+/** 필드 안쪽 여유 (벽에서 이만큼은 떨어져서 물러난다) */
+const roomOf = () => [HC.wallPad, C.field - HC.wallPad] as const;
+/**
+ * 물러날 방향 바로잡기: 벽 쪽 성분은 지운다(벽을 따라 미끄러짐). 둘 다 막혔거나(구석) 거의 0이면 필드 가운데 쪽으로 옆걸음
+ */
+export function roomyDir(u: { x: number; y: number }, d: [number, number]): [number, number] {
+  const [lo, hi] = roomOf();
+  let [x, y] = norm(d[0], d[1]);
+  if ((u.x <= lo && x < 0) || (u.x >= hi && x > 0)) x = 0;
+  if ((u.y <= lo && y < 0) || (u.y >= hi && y > 0)) y = 0;
+  if (Math.hypot(x, y) < 0.35) {
+    // 구석: 가운데로 향하되 적에게서 먼 쪽 옆으로
+    const c = C.field / 2;
+    const [cx, cy] = norm(c - u.x, c - u.y);
+    const [px, py] = [-d[1], d[0]];
+    const side = px * cx + py * cy >= 0 ? 1 : -1;
+    return norm(cx * 0.6 + px * side, cy * 0.6 + py * side);
+  }
+  return norm(x, y);
+}
+function kite(f: Field, u: Unit, t: Unit, dt: number) {
+  const d = dist(u, t);
+  // 빠져나가는 중 (막혔을 때 잠깐 옆으로)
+  if (u.escape && u.escape.t > 0) {
+    u.escape.t -= dt;
+    moveToward(f, u, u.x + u.escape.x, u.y + u.escape.y, dt);
+    if ((u.swing ?? 0) <= 0 && d <= HC.range) attack(f, u);
+    return;
+  }
+  // 가까운 적들(2.5칸 안) 무게 중심에서 멀어지는 쪽
+  let ax = 0;
+  let ay = 0;
+  for (const m of mobsAlive(f)) {
+    const md = dist(u, m);
+    if (md > 2.5 || md < 0.001) continue;
+    const w = 1 / Math.max(0.3, md);
+    ax += ((u.x - m.x) / md) * w;
+    ay += ((u.y - m.y) / md) * w;
+  }
+  if (!ax && !ay) [ax, ay] = norm(u.x - t.x, u.y - t.y);
+  const tooClose = d < HC.kiteMin;
+  const want = d < HC.kite * 0.85;
+  if (tooClose || want) {
+    const [rx, ry] = roomyDir(u, [ax, ay]);
+    // 아주 가깝고 구르기가 되면 뒤로 구르기 (벽 쪽이면 옆으로)
+    if (tooClose && d < 1.1 && (u.dodgeCd ?? 0) <= 0) {
+      dodge(f, u, [rx, ry]);
+      return;
+    }
+    const x0 = u.kiteLast?.[0] ?? u.x;
+    const y0 = u.kiteLast?.[1] ?? u.y;
+    moveToward(f, u, u.x + rx, u.y + ry, dt);
+    // 막힘 감지: 물러나려는데 (지난 걸음부터) 거의 못 움직였으면 쌓인다 → 0.5초면 옆으로 빠져나간다
+    const moved = Math.hypot(u.x - x0, u.y - y0);
+    u.kiteLast = [u.x, u.y];
+    u.kiteStuck = moved < 0.25 * C.move * 0.75 * dt * 0.62 ? (u.kiteStuck ?? 0) + dt : Math.max(0, (u.kiteStuck ?? 0) - dt);
+    if ((u.kiteStuck ?? 0) > 0.5) {
+      u.kiteStuck = 0;
+      const c = C.field / 2;
+      const [cx, cy] = norm(c - u.x, c - u.y);
+      const [px, py] = [-ay, ax];
+      const side = px * cx + py * cy >= 0 ? 1 : -1;
+      const [ex, ey] = norm(cx + px * side, cy + py * side);
+      u.escape = { x: ex, y: ey, t: 0.8 };
+    }
+    // 물러나면서도 쏜다 (다시 적을 본다)
+    if ((u.swing ?? 0) <= 0 && d <= HC.range) attack(f, u);
+    return;
+  }
+  u.kiteStuck = 0;
+  u.kiteLast = undefined;
+  if (d > HC.range - 0.3) {
+    // 사거리 밖: 3칸 거리까지 다가간다
+    moveToward(f, u, t.x, t.y, dt);
+    return;
+  }
+  faceTo(u, t);
+  if (u.cd![0] <= 0 && Math.random() < 0.02) skill(f, u, 0);
+  else if (u.cd![1] <= 0 && Math.random() < 0.015) skill(f, u, 1);
+  else attack(f, u);
+}
+
 function moveToward(_f: Field, u: Unit, x: number, y: number, dt: number) {
   const [nx, ny] = norm(x - u.x, y - u.y);
   // 화면 속도로 맞춘 이동 속도 (가로·세로 고르게)
@@ -1146,10 +1278,12 @@ export function step(f: Field, dt: number) {
       u.cd = [Math.max(0, u.cd![0] - dt), Math.max(0, u.cd![1] - dt)];
       if ((u.dodge ?? 0) > 0) {
         u.dodge! -= dt;
-        const sp = C.dodge.dist / C.dodge.dur;
-        u.x += u.ax * sp * dt * 0.62;
-        u.y += u.ay * sp * dt * 0.62;
+        const sp = (C.dodge.dist / C.dodge.dur) * (u.rollDir ? HC.rollBack : 1);
+        const [rx, ry] = u.rollDir ?? [u.ax, u.ay];
+        u.x += rx * sp * dt * 0.62;
+        u.y += ry * sp * dt * 0.62;
         u.moving = true;
+        if (u.dodge! <= 0) u.rollDir = undefined;
       } else if (u.stun <= 0) {
         if (u === f.me && !f.auto) {
           const m = Math.hypot(f.stick.x, f.stick.y);
@@ -1229,6 +1363,18 @@ export function step(f: Field, dt: number) {
     }
   }
   f.proj = f.proj.filter((p) => p.life > 0);
+  // PARTY §1 화살비: 원 안의 적에게 0.25초마다
+  for (const fx of f.fx)
+    if (fx.kind === 'rain' && fx.owner) {
+      fx.tick = (fx.tick ?? 0) - dt;
+      if (fx.tick > 0) continue;
+      fx.tick += HC.rain.tick;
+      for (const m of mobsAlive(f))
+        if (Math.hypot(m.x - fx.x, m.y - fx.y) <= (fx.r ?? 1) + m.r) {
+          const h = powerHit(f, fx.owner, HC.rain.dmg);
+          hurtMob(f, m, h.dmg, fx.owner, { crit: h.crit, knock: 0.2, silent: true });
+        }
+    }
   // 덫: 밟은 적 2초 묶기
   for (const fx of f.fx)
     if (fx.kind === 'trap')

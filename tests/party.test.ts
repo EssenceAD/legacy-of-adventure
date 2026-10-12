@@ -61,7 +61,7 @@ describe('멘토 경험치', () => {
     resolveRun(run, []);
     // 레벨이 오를 수 있으니 「누적 경험치」로 비교: 멘티 쪽이 더 받아야 함 → lvl 3의 xp 진행이 0이 아니다
     expect(lo.lvl > 3 || lo.xp > 0).toBe(true);
-    expect(hi.hp).toBe(Math.max(1, Math.round(100 - CONFIG.expedition.winHp * (1 - PC.roleHpSave))));
+    expect(hi.hp).toBe(Math.max(1, Math.round(100 - CONFIG.expedition.winHp * (1 - PC.roleHpSave) * (1 - CONFIG.synergy.guard.dmgCut))));  // PARTY §2: 기사+사제 「수호의 맹세」 체력 소모 −8%
   });
 });
 
@@ -125,7 +125,7 @@ describe('추천 편성', () => {
     const r = recommendParty(world.actors, { power: need, region: 'forest', min: 1, max: 4 })!;
     expect(r.members).not.toContain(big);
     expect(balanced(r.members)).toBe(true);
-    expect(r.reasons.join(' ')).toMatch(/탱·힐·딜/);
+    expect(r.reasons.join(' ')).toMatch(/방어·공격·회복/);
   });
   it('같은 조건이면 레벨 낮은 애 우선', () => {
     const a = mk('mage', 8);

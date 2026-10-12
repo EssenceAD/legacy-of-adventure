@@ -72,7 +72,7 @@ import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
 import { combatOn, foldedTick } from './combat/ui';
-import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom } from './combat/ui';
+import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom, combatFps } from './combat/ui';
 import * as audioEngine from './audio/engine';
 import * as audioMusic from './audio/music';
 import * as audioSfx from './audio/sfx';
@@ -82,7 +82,7 @@ import * as evalW from './world/evaluation';
 import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
-import { checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
+import { checkParty4, checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
 import { showActor } from './ui/guests';
 import { openPersonMenu } from './ui/personMenu';
 import { initFishingUI } from './ui/fishing';
@@ -188,6 +188,8 @@ function update(dt: number) {
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
       welcomeMail();
       checkSlot5(true);
+      // PARTY §3: 사냥·토벌 4번째 자리 (훈련장 Lv5 + 장부)
+      checkParty4();
       // HOTFIX14 §5: 업데이트 선물 (원래 하던 플레이어만 — 장부를 하나라도 받았거나 2일차 이상)
       //  지금 버전 이하에서 가장 새 선물 (그 버전을 건너뛰고 올라와도 받게 · 선물 버전으로 한 번만)
       void loadPatchNotes().then((n) => {
@@ -845,6 +847,8 @@ async function boot() {
     if (!S.started) return;
     // ECONOMY §1: 어제 금화 출처 집계 보내기
     flushGoldLog();
+    // PARTY §3: 훈련장·장부가 조건을 채웠으면 (1분마다 · 이웃 방문 중엔 기다림)
+    if (!S.visiting) checkParty4();
     playMin++;
     // ONBOARDING §0·§4: 5분 버팀 · 첫 세션이면 「내일 또 오시면 선물!」
     if (playMin === 5) {
@@ -955,7 +959,7 @@ async function boot() {
       __gradeAnim: (a: number, b: number) => startGradeAnim(a, b),
       __eval: { ...evalW, beginTour, openEval },
       __settle: showSettlement,
-      __combat: { advance: combatAdvance, field: combatField, zoom: combatZoom },
+      __combat: { advance: combatAdvance, field: combatField, zoom: combatZoom, fps: combatFps },
       __teaserCut: teaserCut,
       __audio: { engine: audioEngine, music: audioMusic, sfx: audioSfx, battle: battleMusic },
       __event: forceSpectacle,

@@ -311,6 +311,8 @@ export function freshProgress() {
       items: [] as string[],
       /** 발견한 케미 짝 id */
       chem: [] as string[],
+      /** PARTY §2: 켜 본 파티 조합 id (도감 「파티」 8칸) */
+      syn: [] as string[],
       heroes: {} as Record<string, { appeared: boolean; recruited: boolean; stars: number }>,
       claimed: [] as string[],
     },
@@ -456,6 +458,12 @@ export function freshProgress() {
       /** 핫픽스 12 §3: 원정 5번째 자리 (폐광 의뢰 3번 성공 또는 폐광 사냥 1-10 돌파) · 파티 창 「열림!」을 봤나 */
       slot5: false,
       slot5Seen: false,
+      /** PARTY §3: 사냥·토벌 4번째 자리 (훈련장 Lv5 + 장부) 열림 · 모모 편지 보냈나 · 파티 창 빈 칸 반짝을 봤나 */
+      party4: false,
+      party4Seen: false,
+      /** PARTY §2: 처음 켜진 조합 한 줄을 보여 준 id · §1 사냥꾼 출신 주인이 첫 사냥꾼 손님을 만났나 */
+      synLine: [] as string[],
+      hunterMet: false,
       /** CONSTRUCTION_SPEC §4: 「모모의 응원」을 쓴 날 · HOTFIX14 §5 선물로 받은 추가 횟수 */
       cheerDay: '',
       cheerBonus: 0,

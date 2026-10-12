@@ -579,6 +579,49 @@ export const CONFIG = {
     /** 하루 의뢰 중 태그가 붙는 수 [최소, 최대] */
     tagsPerDay: [1, 2] as [number, number],
   },
+  /**
+   * PARTY §2: 파티 조합 보너스 (여러 개 동시에 · 합산 · 케미 짝과 따로)
+   *  power=전투력 · dmgCut=받는 피해 − · crit=치명타 + · cdCut=스킬 대기 − · bossDmg=보스(정예) 피해 + · atk=공격(전투력) + · gold=금화 + · stat=그 직업 기본 능력치 +
+   *  균형 잡힌 파티의 전투력 +10%는 원래 있던 역할 보너스(party.rolePowerPct)와 같은 것 (두 번 더하지 않는다)
+   */
+  synergy: {
+    balanced: { power: 0.1, dmgCut: 0.1 },
+    guard: { dmgCut: 0.08 },
+    shadow: { crit: 0.08 },
+    starlight: { cdCut: 0.1 },
+    ironwall: { bossDmg: 0.08 },
+    barrage: { atk: 0.06 },
+    alley: { gold: 0.08 },
+    same: { stat: 0.15, n: 3 },
+    /** 받는 피해 − 합의 상한 · 토벌 기대 피해에 넣을 때 스킬 몫(대기 −가 늘리는 피해 비율) */
+    dmgCutMax: 0.3,
+    skillShare: 0.3,
+  },
+  /**
+   * PARTY §1: 손님 직업 「사냥꾼」 — 원정 시간 −5% · 숲·정원 지역 피해 +10% (구름 정원 = sky)
+   *  전투: 화살 사거리 4칸 · 적과 3칸 거리를 두고 쏜다 · 연사 3발 부채꼴 · 화살비 2초 원 범위 · 뒤로 구르기
+   */
+  hunter: {
+    timeCut: 0.05,
+    regionDmg: 0.1,
+    regions: ['forest', 'sky'] as string[],
+    range: 4,
+    kite: 3,
+    /** 이보다 가까우면 물러난다 · 벽·필드 끝에서 이만큼 안쪽으로만 물러난다 */
+    kiteMin: 2.2,
+    wallPad: 1.1,
+    fan: { n: 3, spread: 0.3, dmg: 1.1, speed: 9 },
+    rain: { r: 1.6, dur: 2, tick: 0.25, dmg: 0.45, reach: 4 },
+    /** 뒤로 구르기 거리 배 (기본 구르기 대비) */
+    rollBack: 1,
+  },
+  /**
+   * PARTY §3: 4번째 자리 — 훈련장 Lv · 장부 장 (장부가 이보다 짧으면 마지막 장까지)
+   *  사냥·토벌 기본 3명 → 4명 · 원정은 원래대로
+   */
+  party4: { trainingLv: 5, chapter: 8, base: 3, max: 4 },
+  /** PARTY §3: 4인 전투 그리기가 이 fps 아래로 (2초 창 두 번 연속) 떨어지면 이펙트 줄이기 */
+  party4Fps: { min: 30 },
   chem: {
     /** 친밀도 단계(2~5)에 필요한 누적 경험치 */
     levels: [0, 30, 80, 150, 250],

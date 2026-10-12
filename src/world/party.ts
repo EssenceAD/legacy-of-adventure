@@ -8,15 +8,16 @@ import { powerOf } from './adventurers';
 import { bondOf } from './chem';
 import { equippedItems, optSum } from './items';
 import type { Actor, Quest, QuestTag } from './state';
+import { isBalanced, partySynMult, role3, SYN_INFO, synergyFx } from './synergy';
 
 const C = CONFIG.party;
 export type Role = 'tank' | 'heal' | 'dps';
 export const ROLE_ICON: Record<Role, string> = { tank: '🛡', heal: '✚', dps: '⚔' };
-export const ROLE_NAME: Record<Role, string> = { tank: '탱', heal: '힐', dps: '딜' };
-/** 기사=탱, 사제=힐, 마법사·도적·전사=딜 (영웅·전설도 자기 직업 그대로) */
-export const roleOf = (a: Pick<Actor, 'kind'>): Role => (a.kind === 'knight' ? 'tank' : a.kind === 'cleric' ? 'heal' : 'dps');
-/** 탱 1 + 힐 1 + 딜 1 이상 */
-export const balanced = (ms: Pick<Actor, 'kind'>[]) => (['tank', 'heal', 'dps'] as Role[]).every((r) => ms.some((m) => roleOf(m) === r));
+export const ROLE_NAME: Record<Role, string> = { tank: '방어', heal: '회복', dps: '공격' };
+/** PARTY §2: 방어=기사·전사, 회복=사제, 공격=도적·사냥꾼·마법사 (영웅·전설도 자기 직업 그대로) */
+export const roleOf = (a: Pick<Actor, 'kind'>): Role => role3(a);
+/** 방어·공격·회복 각 1명 이상 (전사는 방어가 이미 있으면 공격 자리도 — synergy.isBalanced) */
+export const balanced = (ms: Pick<Actor, 'kind'>[]) => isBalanced(ms);
 /** 역할 조합 배율 (전투력 · 성공률용) */
 export const roleMult = (ms: Pick<Actor, 'kind'>[]) => (balanced(ms) ? 1 + C.rolePowerPct : 1);
 /** 역할 조합이면 체력 소모 −20% */
@@ -29,7 +30,7 @@ export const isMentee = (a: Actor, ms: Actor[]) => ms.length > 1 && a.lvl <= Mat
 export const xpMultIn = (a: Actor, ms: Actor[]) => (isMentee(a, ms) ? C.mentorXp : 1);
 
 // ───────── 의뢰 조건 태그 ─────────
-const KIND_NAME: Record<string, string> = { knight: '기사', mage: '마법사', dwarf: '전사', rogue: '도적', cleric: '사제' };
+const KIND_NAME: Record<string, string> = { knight: '기사', mage: '마법사', dwarf: '전사', rogue: '도적', cleric: '사제', hunter: '사냥꾼' };
 /** 하루 1~2개 의뢰에 붙는 가벼운 조건 */
 export function rollTag(rand: () => number = Math.random): QuestTag {
   const races = Object.keys(RACE_NAME);
@@ -101,8 +102,11 @@ const regionSet = (a: Actor, r: RegionId) => equippedItems(a).filter((it) => it.
 export function scoreParty(ms: Actor[], t: RecTarget, pw: Map<Actor, number>): { score: number; power: number; reasons: string[] } {
   const chem = chemOf(ms);
   let raw = 0;
-  for (const m of ms) raw += (pw.get(m) ?? powerOf(m)) * (1 + (optSum(m, 'regionDmg', t.region) + optSum(m, 'anyDmg')) / 100);
-  const power = Math.round(raw * chem.mult * roleMult(ms));
+  const fx = synergyFx(ms);
+  const pws = ms.map((m) => (pw.get(m) ?? powerOf(m)) * (1 + (optSum(m, 'regionDmg', t.region) + optSum(m, 'anyDmg')) / 100));
+  for (const v of pws) raw += v;
+  // PARTY §2: 조합 보너스 (공격 + · 한 우물)
+  const power = Math.round(raw * partySynMult(ms, pws, fx) * chem.mult * roleMult(ms));
   const reach = Math.min(1, power / Math.max(1, t.power));
   const over = Math.max(0, power / Math.max(1, t.power) - 1);
   const reasons: string[] = [];
@@ -110,7 +114,13 @@ export function scoreParty(ms: Actor[], t: RecTarget, pw: Map<Actor, number>): {
   let s = 100 * reach + 4 * Math.min(1, over) - 6 * Math.max(0, over - 0.5);
   if (balanced(ms)) {
     s += 8;
-    reasons.push(`탱·힐·딜 조합 +${Math.round(C.rolePowerPct * 100)}%`);
+    reasons.push(`방어·공격·회복 조합 +${Math.round(C.rolePowerPct * 100)}%`);
+  }
+  // PARTY §2: 다른 조합도 하나에 +1.5점 (같은 점수대에서 조합이 켜지는 쪽)
+  const extra = fx.ids.filter((id) => id !== 'balanced');
+  if (extra.length) {
+    s += 1.5 * extra.length;
+    reasons.push(extra.map((id) => `「${SYN_INFO[id].name}」`).join(' '));
   }
   if (chem.names.length) {
     s += 2 * Math.round((chem.mult - 1) / CONFIG.chem.partyBonusPerLevel);

@@ -25,7 +25,9 @@ import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
 import { upgradeBtn } from './guests';
 import { recommendParty } from '../world/party';
-import { mentorBadge, recButton, roleIcon, roleRow } from './partyUi';
+import { mentorBadge, recButton, roleIcon, roleRow, slotRow, synRow } from './partyUi';
+import { huntPartyMax } from '../world/party4';
+import { checkParty4 } from '../world/meta';
 import { checkSlot5 } from '../world/meta';
 import { queueEvent } from '../world/events';
 import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
@@ -126,10 +128,13 @@ function awayNote(): string {
 /** 핫픽스 12 §2: 마지막 「추천 편성」 이유 */
 let huntWhy = { k: '', text: '' };
 function openHuntPrep(r: RegionId, s: number) {
+  // PARTY §3: 4번째 자리 (훈련장 Lv5 + 장부) — 열리는 순간이면 모모 편지
+  checkParty4();
+  const max = huntPartyMax();
   const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id));
   // 직접 고친 파티가 아니면, 빈자리는 돌아온 단골 중 가장 센 순서로 채운다
-  if (!manualPick) for (const a of crew) if (picked.length < 3 && !picked.includes(a.id)) picked.push(a.id);
+  if (!manualPick) for (const a of crew) if (picked.length < max && !picked.includes(a.id)) picked.push(a.id);
   const ms = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const rec = recPower(r, s);
   const pw = ms.length ? partyPower(ms) : 0;
@@ -158,8 +163,8 @@ function openHuntPrep(r: RegionId, s: number) {
     `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
     <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티 ${prepLine('hunt', pw)}</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
-    <p class="sub">파티 ${ms.length}/3 · 첫 번째가 대장</p>
-    ${crew.length ? recButton('hRec', huntWhy.k === `${r}-${s}` ? huntWhy.text : '') : ''}${roleRow(ms)}
+    <p class="sub">파티 ${ms.length}/${max} · 첫 번째가 대장${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(ms, max)}
+    ${crew.length ? recButton('hRec', huntWhy.k === `${r}-${s}` ? huntWhy.text : '') : ''}${roleRow(ms)}${synRow(ms, crew, max, 'hunt')}
     <div class="plist">${rows || `<p class="note">${awayNote()}</p>`}</div>
     <div class="hopts">${hopts.join('')}</div>
     <button class="bigbtn ghost sm" id="hBack">지도로</button>`,
@@ -168,7 +173,7 @@ function openHuntPrep(r: RegionId, s: number) {
     (el) =>
       (el.onclick = () => {
         const id = +el.dataset.id!;
-        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < 3 ? [...picked, id] : picked;
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < max ? [...picked, id] : picked;
         manualPick = true;
         keepScroll(() => openHuntPrep(r, s));
       }),
@@ -176,7 +181,7 @@ function openHuntPrep(r: RegionId, s: number) {
   const hr = document.getElementById('hRec');
   if (hr)
     hr.onclick = () => {
-      const best = recommendParty(crew.filter((a) => a.hp >= 1), { power: rec, region: r, min: 1, max: 3 });
+      const best = recommendParty(crew.filter((a) => a.hp >= 1), { power: rec, region: r, min: 1, max });
       if (!best) return;
       // 대장은 가장 센 사람
       picked = best.members.sort((a, b) => powerOf(b) - powerOf(a)).map((m) => m.id);

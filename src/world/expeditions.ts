@@ -17,6 +17,7 @@ import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, RUN_BEATS
 import type { GuestKind } from '../data/classes';
 import { gainXp, powerOf, xpToNext } from './adventurers';
 import { roleHpMult, roleMult, rollTag, tagGoldMult, xpMultIn } from './party';
+import { expHpCut, hunterRegionPct, hunterTimeCut, partySynMult, recordSynergies, synergyFx } from './synergy';
 import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
 import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
@@ -164,13 +165,14 @@ export interface PartyInfo {
 export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   const chemPct = Math.max(0, ...members.map((m) => optSum(m, 'chemPct')));
   const chem = partyChemMult(members, chemPct);
-  let power = 0;
-  for (const m of members) power += powerOf(m) * (1 + (optSum(m, 'regionDmg', q.region) + optSum(m, 'anyDmg')) / 100);
+  // PARTY §1: 사냥꾼은 숲·정원 지역 피해 +10% · §2: 조합 보너스 (공격 + · 한 우물)
+  const pws = members.map((m) => powerOf(m) * (1 + (optSum(m, 'regionDmg', q.region) + optSum(m, 'anyDmg')) / 100 + hunterRegionPct(m, q.region)));
+  let power = pws.reduce((s, v) => s + v, 0) * partySynMult(members, pws);
   // BUILDINGS_SPEC §3: 힘의 물약
   power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')) * mythicAtk(members, q.region));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut() + mythicTimeCut(members));
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut() + mythicTimeCut(members) + hunterTimeCut(members));
   return {
     power,
     chem,
@@ -202,6 +204,8 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   P.quests.list = P.quests.list.filter((x) => x.id !== q.id);
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
+  // PARTY §2: 켜 본 조합 → 도감 「파티」
+  recordSynergies(members);
   P.counters.expeditions++;
   funnel('first_run');
   if (q.tier === 0 && !q.tutorial) P.counters.quickRuns++;
@@ -239,7 +243,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
   // GROWTH: 고유 효과 「밤에 끝난 원정 금화 +15%」 · 물고기 요리 (원정 금화 +)
   const nightG = S.night ? partySpecial(members, 'nightGold') / 100 : 0;
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()));
+  // PARTY §2: 조합 보너스 — 뒷골목 싸움 금화 + · 수호의 맹세 체력 소모 −
+  const syn = synergyFx(members);
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()) * (1 + syn.gold));
   // MYTHIC 루나 부탁: 밤에 출발한 의뢰 성공
   if (win && nightStart(run.start)) P.counters.nightWins = (P.counters.nightWins ?? 0) + 1;
   tieRun(members);
@@ -249,7 +255,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   for (const m of members) {
     // 핫픽스 12 §2-3: 파티 최고 레벨 −5 이하는 경험치 ×1.5 · §2-2: 탱·힐·딜이면 체력 소모 −20%
     if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
-    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members);
+    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members) * (1 - expHpCut(syn));
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
@@ -335,7 +341,8 @@ function buildReport(members: Actor[], region: RegionId, win: boolean, items: { 
   lines.push(['narr', fill(pick(REGION_OPEN[region]), a.name, b.name, reg)]);
   const c = pick(members);
   // 핫픽스 9: 「○○가 …했다」는 그 사람의 대사가 아니라 서술 — narr
-  lines.push(['narr', fill(pick(CLASS_EVENT[c.kind as GuestKind] ?? CLASS_EVENT.knight), c.name, b.name, reg)]);
+  // PARTY §1: 사냥꾼은 아직 직업 사건 문장이 없다 → 건너뜀
+  if (CLASS_EVENT[c.kind as GuestKind]) lines.push(['narr', fill(pick(CLASS_EVENT[c.kind as GuestKind]!), c.name, b.name, reg)]);
   // 짝이 같이 갔으면 케미 문장
   outer: for (const x of members)
     for (const y of members)
@@ -392,7 +399,7 @@ export function runLog(run: Run, now = Date.now(), max = 40): LogLine[] {
     const m = pk(ms);
     // 첫 줄은 늘 도착 (RUN_BEATS[지역][0]), 그다음은 지역·공통·직업 사건 섞어서
     const beats = RUN_BEATS[run.quest.region];
-    const s = out.length === 1 ? beats[0] : r < 0.55 ? pk(beats.slice(1)) : r < 0.8 || !m ? pk(RUN_COMMON) : pk(CLASS_EVENT[m.kind as GuestKind] ?? CLASS_EVENT.knight).replace('{a}', '{m}');
+    const s = out.length === 1 ? beats[0] : r < 0.55 ? pk(beats.slice(1)) : r < 0.8 || !m || !CLASS_EVENT[m.kind as GuestKind] ? pk(RUN_COMMON) : pk(CLASS_EVENT[m.kind as GuestKind]!).replace('{a}', '{m}');
     out.push({ at: t, text: fillNames(s, { a, b, r: reg, m: m?.name ?? a }) });
   }
   if (el >= total) out.push({ at: total, text: '임무 끝! 마을로 돌아가는 중…' });

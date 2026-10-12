@@ -13,7 +13,7 @@ import { skipFrame } from '../engine/fps';
 import { ACTION_NAME, actionOf, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, type Action } from '../engine/keys';
 import { getPref, setPref } from '../save/save';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
-import { digits, draw, drawVignette, labelsOut, loadFx, numsOut, sheets } from './draw';
+import { digits, draw, drawVignette, fxLite, labelsOut, loadFx, numsOut, setFxLite, sheets } from './draw';
 import { loadHuntProps } from './theme';
 import { monDef, REGION_BOSS, stageMons } from './mons';
 import { JOB_COLOR, skillIcon } from './icons';
@@ -21,6 +21,7 @@ import { afterBusy } from '../ui/update';
 import { flushScene } from '../audio/scene';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
+import { SYN_INFO, takeSynergyLine } from '../world/synergy';
 
 const C = CONFIG.combat;
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -54,6 +55,28 @@ export const devAdvance = (sec: number) => {
   if (F) render();
 };
 export const devField = () => F;
+
+// ───────── PARTY §3: 그리기 fps 재기 (2초마다) — 4인 + 보스 + 부하에서 30 아래면 이펙트 줄이기 ─────────
+const fpsWin = { n: 0, t0: 0, work: 0, fps: 0, ms: 0, low: 0 };
+/** 마지막 2초 동안 실제로 그린 횟수(초당) · 한 장 그리는 데 든 ms · 이펙트 줄이기 켜졌나 */
+export const combatFps = () => ({ fps: fpsWin.fps, ms: fpsWin.ms, lite: fxLite(), allies: F?.allies.length ?? 0 });
+function noteFrame(now: number, work: number) {
+  if (!fpsWin.t0) fpsWin.t0 = now;
+  fpsWin.n++;
+  fpsWin.work += work;
+  const el = now - fpsWin.t0;
+  if (el < 2000) return;
+  fpsWin.fps = Math.round((fpsWin.n * 1000 * 10) / el) / 10;
+  fpsWin.ms = Math.round((fpsWin.work / fpsWin.n) * 100) / 100;
+  fpsWin.n = 0;
+  fpsWin.work = 0;
+  fpsWin.t0 = now;
+  // 4명일 때만 (3인 화면은 그대로) · 두 번 연속 30 아래면 이 판 끝까지 줄인다
+  if (F && F.allies.length >= 4 && !fxLite()) {
+    fpsWin.low = fpsWin.fps < CONFIG.party4Fps.min ? fpsWin.low + 1 : 0;
+    if (fpsWin.low >= 2) setFxLite(true);
+  }
+}
 
 // ───────── 핫픽스 10 §13: 사냥 「접기」 — 화면은 닫고 그 판은 AUTO로 마저 (같은 step · 새 규칙 없음) ─────────
 let folded = false;
@@ -167,6 +190,9 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   } } : opts);
   combatTalk = userHalf ?? ((d) => d());
   onEnd = done;
+  // PARTY §3: 판마다 처음엔 이펙트 그대로 (재다가 느리면 줄인다)
+  setFxLite(false);
+  Object.assign(fpsWin, { n: 0, t0: 0, work: 0, fps: 0, ms: 0, low: 0 });
   root = document.createElement('div');
   // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
   root.id = opts.mode === 'raid' ? 'raid' : 'hunt';
@@ -194,7 +220,8 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbcut" id="cbCut" hidden></div>
     <div class="cbres" id="cbRes" hidden></div>
     <div class="cbpause" id="cbPause" hidden><div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div></div>
-    <div class="cbkeycard" id="cbKeyCard" hidden></div>`;
+    <div class="cbkeycard" id="cbKeyCard" hidden></div>
+    <div class="cbsyn" id="cbSyn" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
   fit();
   addEventListener('resize', fit);
@@ -202,8 +229,23 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   buildParty();
   syncSkillButtons(false);
   shownMe = F!.me;
+  synBand(F!);
   last = performance.now();
   raf = requestAnimationFrame(frame);
+}
+
+/** PARTY §2: 조합이 처음 켜진 판 — 시작 화면 하단 띠에 한 줄 (조합마다 한 번) · 켜진 조합은 도감 「파티」에 적힌다 */
+function synBand(f: Field) {
+  const ms = f.allies.map((u) => u.actor!).filter(Boolean);
+  const got = takeSynergyLine(ms);
+  const el = document.getElementById('cbSyn');
+  if (!got || !el) return;
+  const i = SYN_INFO[got.id];
+  el.innerHTML = `<b>${i.icon} ${i.name}</b><span>${got.line[1].replace(/[<>&]/g, '')}</span>`;
+  el.hidden = false;
+  window.setTimeout(() => {
+    if (el.isConnected) el.hidden = true;
+  }, 5200);
 }
 
 // ───────── 캔버스 (정수 배율) ─────────
@@ -303,8 +345,10 @@ function frame(now: number) {
   // rAF 시각은 performance.now()보다 조금 앞설 수 있다 (음수 dt 금지)
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000 || 0));
   last = now;
+  const w0 = performance.now();
   tick(dt);
   render();
+  noteFrame(now, performance.now() - w0);
   raf = requestAnimationFrame(frame);
 }
 function render() {
@@ -396,8 +440,8 @@ function hud() {
     const em = b.querySelector('em');
     if (em) em.textContent = left > 0 ? String(Math.ceil(left)) : '';
   };
-  cdBtn('#cbS1', me.cd![0], C.skillCd[0]);
-  cdBtn('#cbS2', me.cd![1], C.skillCd[1]);
+  cdBtn('#cbS1', me.cd![0], me.cdMax?.[0] ?? C.skillCd[0]);
+  cdBtn('#cbS2', me.cd![1], me.cdMax?.[1] ?? C.skillCd[1]);
   cdBtn('#cbDodge', me.dodgeCd ?? 0, C.dodge.cd);
   ($('#cbUlt').querySelector('.ring') as HTMLElement).style.background = `conic-gradient(#ff7aa8 ${f.chem * 3.6}deg, rgba(255,255,255,.12) 0)`;
   $('#cbUlt').classList.toggle('ready', f.chem >= 100);
@@ -420,13 +464,15 @@ function hud() {
 function buildParty() {
   const f = F!;
   $('#cbParty').innerHTML = f.allies
-    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name} 조종"><img src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
+    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name}${i >= 3 ? ' (자동)' : ' 조종'}" class="${i >= 3 ? 'ai4' : ''}"><img src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
     .join('');
   document.querySelectorAll<HTMLElement>('[data-ally]').forEach(
     (b) =>
       (b.onpointerdown = (e) => {
         e.stopPropagation();
         const u = f.allies[+b.dataset.ally!];
+        // PARTY §3: 4번째 동료는 AI만 (조작은 지금처럼 대장과 셋 중에서)
+        if (+b.dataset.ally! >= 3) return uiHooks.toast('4번째 동료는 알아서 싸워요 (AI)');
         if (!u.dead && u !== f.me) {
           f.me = u;
           syncSkillButtons(true);

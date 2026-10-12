@@ -29,6 +29,11 @@ import { closeWin, openWin, toast } from './windows';
 import { RAID_LOOK_OF, RAID_LOOKS, type BossLook } from '../combat/mons';
 import { abs } from './kit';
 import { closeCombat, startCombat } from '../combat/ui';
+import { roleRow, slotRow, synRow } from './partyUi';
+import { huntPartyMax } from '../world/party4';
+import { checkParty4 } from '../world/meta';
+import { partySynMult, synDamageMult, synergyFx } from '../world/synergy';
+import { roleMult } from '../world/party';
 import { skipFrame } from '../engine/fps';
 
 const R = CONFIG.raid;
@@ -49,9 +54,12 @@ export function bossPic(b: BossDef): string {
 }
 
 export function openRaidPrep(t: RaidTarget) {
+  // PARTY §3: 4번째 자리
+  checkParty4();
+  const max = huntPartyMax();
   const crew = raidCrew().sort((a, b) => powerOf(b) - powerOf(a));
-  picked = picked.filter((id) => crew.some((a) => a.id === id));
-  if (!picked.length) picked = crew.slice(0, R.partySize).map((a) => a.id);
+  picked = picked.filter((id) => crew.some((a) => a.id === id)).slice(0, max);
+  if (!picked.length) picked = crew.slice(0, max).map((a) => a.id);
   const members = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const b = t.boss;
   const ex = expectOf(members, b);
@@ -77,7 +85,7 @@ export function openRaidPrep(t: RaidTarget) {
     </div></div>
     <div class="pw"><span>권장 전투력</span><em>${fmt(b.power)}</em><span>우리 파티 (케미 ×${ex.chem.toFixed(2)}) ${prepLine('raid', ex.power)}</span><em class="${low ? 'bad' : ex.power >= b.power ? 'good' : ''}">${fmt(ex.power)}</em><span>예상 피해량</span><em>${fmt(ex.target)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
-    <p class="sub">파티 ${members.length}/${R.partySize} · 첫 번째가 대장(직접 조작)</p>
+    <p class="sub">파티 ${members.length}/${max} · 첫 번째가 대장(직접 조작)${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(members, max)}${roleRow(members)}${synRow(members, crew, max, 'raid')}
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
     <div class="btnrow raidgo">
       <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 토벌</button>
@@ -90,7 +98,7 @@ export function openRaidPrep(t: RaidTarget) {
     (el) =>
       (el.onclick = () => {
         const id = +el.dataset.id!;
-        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < R.partySize ? [...picked, id] : picked;
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < max ? [...picked, id] : picked;
         keepScroll(() => openRaidPrep(t));
       }),
   );
@@ -732,7 +740,12 @@ export function raidLook(t: RaidTarget): BossLook {
   return RAID_LOOKS.find((l) => l.id === id) ?? RAID_LOOKS[0];
 }
 /** 필드 피해 → 토벌 피해 단위: 「자동으로 버틴 파티가 R.seconds 동안 넣는 필드 피해」를 기대 피해량에 맞춘다 */
-export const fieldExpect = (members: Actor[]) => members.reduce((s, m) => s + powerOf(m), 0) * CONFIG.combat.dmgK * CONFIG.combat.raidFieldDps * R.seconds;
+//  PARTY §2: 기대 피해(expectOf)에 조합 보너스가 들어가므로 필드 기대치에도 같은 배율 — 조합이 실제 피해를 올린 만큼 기대치도 올라 등급 비율은 그대로
+export const fieldExpect = (members: Actor[]) => {
+  const pw = members.map((m) => powerOf(m));
+  const fx = synergyFx(members);
+  return pw.reduce((s, v) => s + v, 0) * partySynMult(members, pw, fx) * roleMult(members) * synDamageMult(fx) * CONFIG.combat.dmgK * CONFIG.combat.raidFieldDps * R.seconds;
+};
 
 function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect, run: number) {
   notePrep('raid', ex.power);

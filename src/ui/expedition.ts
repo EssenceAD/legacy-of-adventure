@@ -28,7 +28,7 @@ import { upgradeBtn } from './guests';
 import { checkSlot5 } from '../world/meta';
 import { track as trackEv } from '../net/telemetry';
 import { recommendParty } from '../world/party';
-import { mentorBadge, recButton, roleIcon, roleRow, tagLine } from './partyUi';
+import { mentorBadge, recButton, roleIcon, roleRow, synRow, tagLine } from './partyUi';
 import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
@@ -150,7 +150,7 @@ function openParty(q: Quest, picked: number[] = []) {
   openWin(
     questName(q),
     `${slot5Banner()}<p class="sub">파티 ${pmin}~${partyMax()}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
-    ${tagLine(q.tag, sel)}${list.length ? recButton('pRec', recWhy.q === q.id ? recWhy.text : '') : ''}${roleRow(sel)}
+    ${tagLine(q.tag, sel)}${list.length ? recButton('pRec', recWhy.q === q.id ? recWhy.text : '') : ''}${roleRow(sel)}${synRow(sel, list.filter((a) => !canSend(a)), partyMax(), 'exp')}
     <div class="plist">${rows || '<p class="note">단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요</p>'}</div>
     <div class="psum">${
       info

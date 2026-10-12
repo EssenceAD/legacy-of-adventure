@@ -16,6 +16,7 @@ import { track } from '../net/telemetry';
 import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
 import { partySpecial, rollUnique } from './uniques';
+import { partySynMult, synergyFx } from './synergy';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -56,7 +57,11 @@ export function huntRegionOpen(i: number): boolean {
 export const stageOpen = (r: string, s: number) => huntRegionOpen(regionIdx(r)) && s <= best(r) + 1;
 
 /** 파티 전투력 (케미 배율 포함) */
-export const partyPower = (ms: Actor[]) => Math.round(ms.reduce((s, m) => s + powerOf(m), 0) * partyChemMult(ms) * roleMult(ms) * (1 + buffOf('power')));
+export const partyPower = (ms: Actor[]) => {
+  const pw = ms.map((m) => powerOf(m));
+  // PARTY §2: 조합 보너스 (공격 + · 한 우물)
+  return Math.round(pw.reduce((s, v) => s + v, 0) * partySynMult(ms, pw) * partyChemMult(ms) * roleMult(ms) * (1 + buffOf('power')));
+};
 
 /** 사냥에 갈 수 있는 손님 (단골·영웅, 원정 중 아님) */
 export const huntCrew = () => homeActors().filter((a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero') && a.runId == null);
@@ -79,7 +84,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const ri = regionIdx(r);
   // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
   const EC = CONFIG.economy;
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold);
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold));
   const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult);
   // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
   const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult) + (mult >= 1 ? partySpecial(members, 'matPlus') : 0);

@@ -20,6 +20,7 @@ import { stars, today } from './progress';
 import { regionFirstDone, regionGuideDone } from './regions2';
 import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
+import { party4Ready } from './party4';
 import { chem5Titles, title5 } from './chemNews';
 
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -268,6 +269,18 @@ export function checkSlot5(login = false): boolean {
     addMail({ from: 'system', title: '모모의 편지 · 원정 자리 하나 더!', body: '그동안 고생하셨어요 — 원정 자리 하나 더! 폐광까지 다녀온 사장님네 단골이라면 다섯 명도 거뜬해요.', reward: {} });
     uiHooks.toast('모모 편지: 원정 5번째 자리가 열렸어요!');
   } else uiHooks.talk([['post', '폐광까지 다녀오셨네요! 이제 원정에 다섯 명까지 데려갈 수 있어요~ 파티 창을 열어 봐요!']]);
+  return true;
+}
+
+/**
+ * PARTY §3: 사냥·토벌 4번째 자리 (훈련장 Lv5 + 장부) — 열리는 순간 모모 편지 한 번 (접속 때·파티 창·건물·장부 때 확인)
+ */
+export function checkParty4(): boolean {
+  if (P.meta.party4 || !party4Ready()) return false;
+  P.meta.party4 = true;
+  markDirty();
+  addMail({ from: 'system', title: '모모의 편지 · 4번째 자리', body: '훈련장 교관이 그러는데, 이제 넷이서도 손발이 맞는대요!', reward: {} });
+  uiHooks.toast('모모 편지: 사냥·토벌 4번째 자리가 열렸어요!');
   return true;
 }
 

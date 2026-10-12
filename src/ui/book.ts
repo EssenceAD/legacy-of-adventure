@@ -21,7 +21,7 @@ import { itemIcon } from '../world/items';
 import { UNIQUES } from '../data/story/uniques';
 import { FISH } from '../data/story/fish';
 import {
-  claimGoal, DEX_REWARDS, monumentUnlocked, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
+  claimGoal, DEX_REWARDS, monumentUnlocked, dexBonus, dexRatio, ensureGoals, GUEST_DEX_ALL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
 } from '../world/progress';
 import { markDirty, P, S, world } from '../world/state';
 import { LEGENDS } from '../data/legends';
@@ -33,8 +33,11 @@ import { CHEM_TALKS_PER_DAY, chemUnread, readChemNews, title5, ultName5 } from '
 import { openWin, thumbOf, toast } from './windows';
 import { def } from '../data/catalog';
 import { openPlace, type Place } from './nav';
+import { SYN_IDS, SYN_INFO } from '../world/synergy';
 
 let dTab = 0;
+/** PARTY §1: 손님 도감 직업 필터 ('' = 전체) */
+let gKind = '';
 
 function rewardsRow(book: 'guests' | 'items') {
   const r = dexRatio(book);
@@ -50,25 +53,29 @@ function rewardsRow(book: 'guests' | 'items') {
 export function openDex(tab = dTab) {
   // REGIONS2: 「지역」 칸은 별이 흩어진 뒤부터
   // GROWTH: 「고유 장비」 · 「낚시」 칸은 맨 뒤 (지역 칸이 없을 때도 이름으로 찾는다)
-  const NAMES = ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시'];
+  //  PARTY §2: 「파티」(켜 본 조합 8칸)는 맨 뒤
+  const NAMES = ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시', '파티'];
   if (tab >= NAMES.length) tab = 0;
   dTab = tab;
   const tname = NAMES[tab];
   let body = '';
   if (tname === '고유 장비') body = uniqueDexHtml();
   else if (tname === '낚시') body = fishDexHtml();
+  else if (tname === '파티') body = partyDexHtml();
   else if (tab === 0) {
+    const kinds = GUEST_KINDS.filter((k) => !gKind || k === gKind);
+    const filt = `<div class="pty-kf">${['', ...GUEST_KINDS].map((k) => `<button data-gk="${k}" class="${k === gKind ? 'on' : ''}">${k ? CLASSES[k as keyof typeof CLASSES].name : '전체'}</button>`).join('')}</div>`;
     const grid = RACES.map(
       (race) =>
-        `<div class="dexrow"><span>${RACE_NAME[race]}</span>${GUEST_KINDS.map((k) =>
+        `<div class="dexrow"><span>${RACE_NAME[race]}</span>${kinds.map((k) =>
           RARITIES.map((rr) => {
             const has = P.dex.guests.includes(`${race}|${k}|${rr}`);
             return `<i class="${has ? 'on' : ''}" style="--c:${RARITY_INFO[rr].color}" title="${has ? `${RACE_NAME[race]} ${CLASSES[k].name} (${RARITY_INFO[rr].name})` : '???'}">${has ? CLASSES[k].name[0] : '?'}</i>`;
           }).join(''),
         ).join('')}</div>`,
     ).join('');
-    body = `<p class="sub">손님 도감 ${P.dex.guests.length}/${GUEST_DEX_TOTAL} · 칸마다 전투력 +${pct(CONFIG.dex.guestCellPct, 1)}</p>
-      <p class="note">종족 × 직업(${GUEST_KINDS.map((k) => CLASSES[k].name).join('·')}) × 희귀도(평범·특별·전설)</p><div class="dexg">${grid}</div>${rewardsRow('guests')}${diaryBlock()}`;
+    body = `<p class="sub">손님 도감 ${P.dex.guests.length}/${GUEST_DEX_ALL} · 칸마다 전투력 +${pct(CONFIG.dex.guestCellPct, 1)}</p>
+      <p class="note">종족 × 직업(${GUEST_KINDS.map((k) => CLASSES[k].name).join('·')}) × 희귀도(평범·특별·전설) · 보상 비율은 처음 다섯 직업 칸으로</p>${filt}<div class="dexg">${grid}</div>${rewardsRow('guests')}${diaryBlock()}`;
   } else if (tab === 1) {
     const grades: Grade[] = ['n', 'r', 'e', 'l'];
     // REGIONS2: 새 지역 줄은 열린 뒤에만 · 유물 칸은 유물이 있는 지역 (별의 심연 · 심연의 바닥)
@@ -183,6 +190,11 @@ export function openDex(tab = dTab) {
     '도감',
     `${tabs(NAMES, tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
+  // PARTY §1: 손님 도감 직업 필터
+  $$('[data-gk]').forEach((b) => (b.onclick = () => keepScroll(() => {
+    gKind = (b as HTMLElement).dataset.gk ?? '';
+    openDex(0);
+  })));
   bindTabs('dT', openDex);
   $$('[data-db]').forEach(
     (b) =>
@@ -345,5 +357,16 @@ function ago(t: number): string {
 function diaryBlock(): string {
   const ds = diaryList();
   if (!diaryOpen() && !ds.length) return '<p class="note">서재 Lv3부터 단골들의 「손님 일기」를 모을 수 있어요</p>';
-  return `<h4>손님 일기 ${ds.length}권</h4>${ds.length ? ds.map((d) => `<details class="diary"><summary>${esc(d.title)} <small>${d.pages.length}/${d.total}장</small></summary>${d.pages.map((p, i) => `<p><b>${i + 1}.</b> ${esc(p)}</p>`).join('')}</details>`).join('') : '<p class="note">단골끼리 케미가 오르면 일기가 한 장씩 나와요</p>'}`;
+  return `<h4>손님 일기 ${ds.length}권</h4>${ds.length ? ds.map((d) => `<details class="diary"><summary>${esc(d.title)} <small>${d.pages.length}/${d.total}장</small></summary>${d.pages.map((p, i) => `<p><b>${i + 1}.</b> ${esc(p.replace(/\{inn\}/g, S.innName || '여관'))}</p>`).join('')}</details>`).join('') : '<p class="note">단골끼리 케미가 오르면 일기가 한 장씩 나와요</p>'}`;
+}
+
+/** PARTY §2: 도감 「파티」 — 켜 본 조합 8칸 (조건은 늘 보이고, 켜 본 칸은 효과까지) */
+function partyDexHtml(): string {
+  const seen = P.dex.syn ?? [];
+  const cells = SYN_IDS.map((id) => {
+    const i = SYN_INFO[id];
+    const on = seen.includes(id);
+    return `<div class="pty-dex${on ? ' on' : ''}" data-syn="${id}"><i>${on ? i.icon : '?'}</i><b>${on ? esc(i.name) : '???'}</b><small>${esc(i.cond)}</small>${on ? `<small class="g">${esc(i.eff)}</small>` : ''}</div>`;
+  }).join('');
+  return `<p class="sub">파티 조합 ${seen.filter((x) => (SYN_IDS as string[]).includes(x)).length}/${SYN_IDS.length} · 사냥·토벌·원정에 그 조합으로 가면 기록돼요</p><p class="note">여러 개가 함께 켜지고(합산), 케미 짝 보너스와도 따로 더해져요</p><div class="pty-dexg">${cells}</div>`;
 }
