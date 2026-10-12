@@ -4,3 +4,5 @@ dist
 audio_raw
 asset_raw
 dist-bot
+screenshots/**/v_*.jpg
+screenshots/**/chk_*.jpg
