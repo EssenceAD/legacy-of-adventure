@@ -22,8 +22,9 @@ import { addObj, rebuildPaths, startTown } from '../src/world/town';
 import { grantUnique, makeUnique, rollUnique, rollUniqueAny, specialSum } from '../src/world/uniques';
 import { migrate } from '../src/save/save';
 
-const reg = (lvl = 5): Actor => {
-  const a = makeAdventurer(5, 5, { status: 'regular' });
+const reg = (lvl = 5, kind: Actor['kind'] = 'knight'): Actor => {
+  // 직업이 무작위면 무기 궁합이 달라 순서가 흔들린다 → 기본 기사로 고정
+  const a = makeAdventurer(5, 5, { status: 'regular', kind: kind as never, race: 'human', rarity: 'common' });
   a.lvl = lvl;
   world.actors.push(a);
   return a;
@@ -169,7 +170,11 @@ describe('§3-1 ★ 아끼는 영웅 · 가장 좋은 걸로 · 누가 끼면 �
   });
   it('누가 끼면 좋을까: 상위 3명 (▲ 큰 순)', () => {
     const xs = [reg(5), reg(20), reg(40), reg(60)];
-    const it = makeItem('ice', 'l', 'weapon', false);
+    // 맨 앞 손님은 이미 더 좋은 무기 → 얻는 게 가장 적다
+    const better = makeItem('abyss', 'l', 'weapon', false);
+    P.bag.push(better);
+    equip(xs[0], better);
+    const it = makeItem('ice', 'r', 'weapon', false);
     P.bag.push(it);
     const w = whoWears(it);
     expect(w.length).toBe(3);

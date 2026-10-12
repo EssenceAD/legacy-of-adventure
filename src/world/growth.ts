@@ -131,7 +131,8 @@ export function bragAllowed(kind: BragKind, now = Date.now()): boolean {
 export function brag(kind: BragKind, it?: Pick<Item, 'name'> | null, extra = ''): boolean {
   if (!bragAllowed(kind)) return false;
   const text = bragText(kind, it, extra);
-  uiHooks.announce(text, 'brag', text);
+  // 서버는 「종류|이름」만 받아 문장을 직접 만든다 (아무 글이나 공지에 못 올리게)
+  uiHooks.announce(text, 'brag', `${kind}|${(it?.name ?? extra).slice(0, 24)}`);
   return true;
 }
 
