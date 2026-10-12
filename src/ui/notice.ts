@@ -33,6 +33,11 @@ export interface Highlight {
   go: HighlightGo;
 }
 export const HIGHLIGHTS: Record<string, Highlight[]> = {
+  '0.17.2-beta': [
+    { icon: '🎨', text: '꾸미기 모드 — 길을 직접 그리고, 연못·꽃밭 바닥, 장식 여러 개 한 번에 옮기기', label: '꾸며 보기', go: 'decor' },
+    { icon: '🏘️', text: '이웃 마을 다섯 곳이 새 단장 — 정자·풍차·벚나무 장식 구경', label: '구경 가기', go: 'village' },
+    { icon: '📸', text: '사진 모드 — 내 마을을 배경화면 크기로 한 장', label: '찍어 보기', go: 'photo' },
+  ],
   '0.17.1-beta': [
     { icon: '🎨', text: '꾸미기 모드 — 길을 직접 그리고, 연못·꽃밭 바닥, 장식 여러 개 한 번에 옮기기', label: '꾸며 보기', go: 'decor' },
     { icon: '🏘️', text: '이웃 마을 다섯 곳이 새 단장 — 정자·풍차·벚나무 장식 구경', label: '구경 가기', go: 'village' },
