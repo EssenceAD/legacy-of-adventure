@@ -5,6 +5,8 @@ import { communityCard } from './community';
 import { openWin } from './windows';
 import { listNotices } from '../net/server';
 import { loadPatchNotes, notesListHtml } from './update';
+import { loadNext, nextCardHtml } from './nextCard';
+import { letterCredits } from '../net/direction';
 
 interface Notice {
   id: number;
@@ -87,11 +89,16 @@ export function openNotices() {
   dot().hidden = true;
   openWin(
     '새 소식',
-    `<div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
+    `<div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
       (n, i) => `<button class="nrow" data-i="${i}"><span class="tg"></span>[${n.tag}] ${n.t}</button>`,
     ).join('')}</div><div class="nbody" id="nbody"></div>`,
     'wide',
   );
+  // DIRECTION §3-2: 맨 위 「다음 업데이트」 카드 (public/next.json · 없으면 안 보임)
+  void loadNext().then((n) => {
+    const el = document.getElementById('nxCard');
+    if (el) el.innerHTML = nextCardHtml(n);
+  });
   const rows = [...document.querySelectorAll<HTMLElement>('.nrow')];
   const show = (i: number) => {
     const n = NOTICES[i];
@@ -110,7 +117,11 @@ export function openNotices() {
         list.hidden = t.dataset.t === '패치노트';
         document.getElementById('kPin')!.hidden = t.dataset.t !== '전체' && t.dataset.t !== '공지';
         if (t.dataset.t === '패치노트') {
-          void loadPatchNotes().then((n) => (document.getElementById('nbody')!.innerHTML = notesListHtml(n)));
+          // DIRECTION §2-1: 버전마다 반영 크레딧 줄 (서버가 없으면 없이)
+          void Promise.all([loadPatchNotes(), letterCredits()]).then(([n, c]) => {
+            const el = document.getElementById('nbody');
+            if (el) el.innerHTML = notesListHtml(n, c);
+          });
           return;
         }
         rows.forEach((r) => (r.hidden = t.dataset.t !== '전체' && NOTICES[+r.dataset.i!].tag !== t.dataset.t));

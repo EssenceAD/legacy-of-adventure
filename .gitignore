@@ -9,3 +9,10 @@ screenshots/**/chk_*.jpg
 
 # 실제 유저 저장은 로컬 전용 (이름은 real_*)
 tests/fixtures/real_*
+
+# DIRECTION §3-3: 운영 도구 비밀 키 · 운영 요약 (로컬 전용 · .env.production의 공개 키는 그대로 추적)
+.env
+.env.local
+.env.*.local
+.env.ops
+reports/
