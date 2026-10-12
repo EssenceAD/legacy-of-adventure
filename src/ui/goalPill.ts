@@ -92,19 +92,36 @@ export function syncGoalPill() {
   else pill.querySelector<HTMLElement>('.ndot')!.hidden = !any;
   pill.classList.toggle('ready', any);
   pill.classList.toggle('over', allGot);
-  // 자리: 풍경(평가) 줄이 보이면 그 오른쪽, 아니면 그 자리
+  placePill(pill);
+}
+
+const shown = (e: HTMLElement | null): e is HTMLElement => !!e && !e.hidden && e.offsetParent !== null;
+/**
+ * 알약 자리 (따밤 신고: 412px 폰에서 장부 카드 뒤로 숨음): 실제 화면 상자로 겹침을 재서 고른다
+ *  1) 풍경(평가) 줄이 보이면 그 오른쪽 — 화면 오른쪽 끝을 넘거나 장부 카드·오른쪽 버튼과 겹치면 2)로
+ *  2) 왼쪽 위 카드들(상태·장부·풍경) 맨 아래 바로 밑
+ */
+function placePill(pill: HTMLElement) {
+  const hud = document.getElementById('hud');
+  if (!hud) return;
+  const H = hud.getBoundingClientRect();
   const ev = $('#evalbar');
-  const evOn = !!ev && !ev.hidden && ev.offsetParent !== null;
-  if (evOn) {
-    pill.style.top = `${ev!.offsetTop + Math.round((ev!.offsetHeight - pill.offsetHeight) / 2)}px`;
-    pill.style.left = `${ev!.offsetLeft + ev!.offsetWidth + 6}px`;
-  } else {
-    // 장부 카드가 두 줄·세 줄로 길어져도 그 아래에 (겹치지 않게)
-    const mc = $('#mission');
-    const mOn = !!mc && !mc.hidden && mc.offsetParent !== null;
-    pill.style.top = mOn ? `${mc!.offsetTop + mc!.offsetHeight + 6}px` : '';
-    pill.style.left = '';
+  const left = [$('.top .stat'), $('#mission'), ev].filter(shown).map((e) => e.getBoundingClientRect());
+  const blocks = [...left, ...[...document.querySelectorAll<HTMLElement>('.top button, #bHarm, #hSpk')].filter(shown).map((e) => e.getBoundingClientRect())];
+  const w = pill.offsetWidth;
+  const h = pill.offsetHeight;
+  const gap = 6;
+  const hits = (x: number, y: number) => x + w > H.width - gap || blocks.some((b) => H.left + x < b.right && H.left + x + w > b.left && H.top + y < b.bottom && H.top + y + h > b.top);
+  const spots: [number, number][] = [];
+  if (shown(ev)) {
+    const r = ev.getBoundingClientRect();
+    spots.push([r.right + gap - H.left, r.top + (r.height - h) / 2 - H.top]);
   }
+  const low = left.length ? Math.max(...left.map((b) => b.bottom)) : 0;
+  const under: [number, number] = [left.length ? Math.min(...left.map((b) => b.left)) - H.left : 10, low ? low + gap - H.top : NaN];
+  const [x, y] = spots.find(([x, y]) => !hits(x, y)) ?? under;
+  pill.style.left = Number.isFinite(x) ? `${Math.round(x)}px` : '';
+  pill.style.top = Number.isFinite(y) ? `${Math.round(y)}px` : '';
 }
 
 export function initGoalPill() {
@@ -114,6 +131,14 @@ export function initGoalPill() {
   pill.hidden = true;
   pill.setAttribute('aria-label', '오늘의 목표');
   document.getElementById('hud')!.appendChild(pill);
+  // 왼쪽 위 카드 크기가 바뀌면(장부 줄 수·글자 크기·풍경 줄 켜짐) 1초 기다리지 않고 바로 자리 다시
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => !pill.hidden && placePill(pill));
+    for (const sel of ['.top .stat', '#mission', '#evalbar']) {
+      const e = $(sel);
+      if (e) ro.observe(e);
+    }
+  }
   const toggle = () => (panel ? closeGoalPanel() : openGoalPanel());
   pill.onclick = (e) => (e.stopPropagation(), toggle());
   // 왼쪽 위 여관 정보 카드 (전투력 버튼은 따로)

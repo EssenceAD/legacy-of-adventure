@@ -1278,7 +1278,7 @@ body.photo #view>*:not(#scene):not(#photoBar):not(#photoFrame):not(.photoflash):
 #propCard .role{font-style:normal;background:#3a3460;padding:1px 6px;box-shadow:0 0 0 1px #1c1018}
 #propCard .pc5 small{color:#ff9ab8}
 /* HOTFIX16 §2: 「🎯 오늘 2/4」 알약 · 펼침 패널 */
-#goalPill{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);z-index:3;padding:3px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;white-space:nowrap}
+#goalPill{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);z-index:5;padding:3px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;white-space:nowrap}
 html:not([data-size="phone"]) #goalPill{top:calc(env(safe-area-inset-top,0px) + 150px)}
 #goalPill.ready{color:#ffd36b;animation:mglow 1s steps(2) infinite}
 #goalPill.over{color:#8a8fa8;filter:grayscale(.6)}
