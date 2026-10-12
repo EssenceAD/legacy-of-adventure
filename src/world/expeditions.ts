@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { bestOf } from './town';
+import { pioneerExpCut, useExpCoupon } from './easter';
 import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
 import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
@@ -142,7 +143,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut());
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut());
   return {
     power,
     chem,
@@ -169,6 +170,8 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   const now = Date.now();
   const run: Run = { id: P.nextRunId++, quest: q, members: members.map((m) => m.id), start: now, end: now + info.minutes * 60000 * scale };
   P.runs.push(run);
+  // EASTER: 이카몰리 선물(다음 의뢰 −10%)은 한 번 쓰면 끝
+  useExpCoupon();
   P.quests.list = P.quests.list.filter((x) => x.id !== q.id);
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;

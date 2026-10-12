@@ -1,5 +1,6 @@
 // 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, 24시간) · 하루 3번 · 소탕 · 보상
 import { BOSSES, bossById, type BossDef } from '../data/bosses';
+import { pioneerRaidMult } from './easter';
 import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
@@ -174,8 +175,13 @@ export function expectOf(members: Actor[], b: BossDef): RaidExpect {
   };
 }
 
-export function rankOf(damage: number, target: number): 'S' | 'A' | 'B' | 'C' {
-  const r = damage / Math.max(1, target);
+export function rankOf(damage: number, target: number, kill?: { killed: boolean; secs?: number }): 'S' | 'A' | 'B' | 'C' {
+  let r = damage / Math.max(1, target);
+  // 토벌 등급 버그: 일찍 처치할수록 피해가 60초 기대치보다 적다 → 처치하면 걸린 시간으로 보정(60 ÷ 걸린 초) · 최소 A
+  if (kill?.killed) {
+    r *= R.seconds / Math.max(R.killMinSecs, Math.min(R.seconds, kill.secs ?? R.seconds));
+    return r >= R.rankS ? 'S' : 'A';
+  }
   return r >= R.rankS ? 'S' : r >= R.rankA ? 'A' : r >= R.rankB ? 'B' : 'C';
 }
 
@@ -196,7 +202,7 @@ export interface RaidOutcome {
   record?: { ok: boolean; reason?: string };
 }
 
-export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'auto' | 'manual' | 'sweep', ex: RaidExpect, runId: number): RaidOutcome {
+export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'auto' | 'manual' | 'sweep', ex: RaidExpect, runId: number, secs?: number): RaidOutcome {
   // HOTFIX17 §2: 같은 판을 두 번 정산하지 않는다 (도전 차감은 시작 때 beginRaid)
   if (P.raid.lastSettled === runId && lastOut) {
     trackEv('raid_settle', { runId, dup: true, mode });
@@ -226,11 +232,12 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
     P.trophies.push(b.id);
     if (!P.titles.includes(b.title)) P.titles.push(b.title);
   }
-  const rank = mode === 'sweep' ? 'B' : rankOf(damage, ex.target);
+  const rank = mode === 'sweep' ? 'B' : rankOf(damage, ex.target, { killed, secs });
   trackEv('raid_end', { boss: b.id, dmg: damage, mode });
   // 보상: 깎은 체력만큼 (실패해도) + 처치 보너스
   const ratio = damage / Math.max(1, b.power * R.seconds * R.dmgPerPowerSec);
-  const gold = Math.round(b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0));
+  // EASTER: 붉은 무사의 투구 — 토벌 금화 +3%
+  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult());
   const mats = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));
   S.gold += gold;

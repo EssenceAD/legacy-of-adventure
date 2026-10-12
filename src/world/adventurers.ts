@@ -1,5 +1,6 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
 import { sfx } from '../audio/sfx';
+import { CAMEO_DEF } from './easter';
 import { libraryXp } from './facilities';
 import {
   CLASS_RACES, CLASS_STATS, CLASS_WEAPON, CLASSES, FACE_POOL, GUEST_KINDS, HAIR_COLORS, RACE_NAMES, RARITY_INFO,
@@ -168,6 +169,8 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
   def.weaponColor = w && w.grade !== 'n' ? GRADE_INFO[w.grade].color : undefined;
   // 전설 ★5: 전용 「유산 무기」 (금빛)
   if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
+  // EASTER §2·§5: 놀러 온 개척자 — 고정 소품
+  if (a.cameo && a.cameo in CAMEO_DEF) return { key: 'cameo|' + a.cameo, def: { ...def, ...CAMEO_DEF[a.cameo as keyof typeof CAMEO_DEF] } };
   const key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
   return { key, def };
 }

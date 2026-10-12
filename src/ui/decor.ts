@@ -203,7 +203,7 @@ export function openStore() {
   const rows = list
     .map(
       (s, i) =>
-        `<div class="irow"><img class="sthumb" src="${thumbOf(s.kind)}" alt=""><span><b>${esc(def(s.kind).name)}${s.lvl > 1 ? ` Lv.${s.lvl}` : ''}</b><small>${s.fromProp ? '마을 등급 장식' : `팔면 💰${refundOfStored(s).toLocaleString('ko-KR')}`}</small></span><button data-out="${i}">꺼내 놓기</button><button class="ghost" data-sell="${i}">팔기</button></div>`,
+        `<div class="irow"><img class="sthumb" src="${thumbOf(s.kind)}" alt=""><span><b>${esc(def(s.kind).name)}${s.lvl > 1 ? ` Lv.${s.lvl}` : ''}</b><small>${def(s.kind).pioneerDeco ? '개척자 전용 · 팔 수 없어요' : s.fromProp ? '마을 등급 장식' : `팔면 💰${refundOfStored(s).toLocaleString('ko-KR')}`}</small></span><button data-out="${i}">꺼내 놓기</button>${def(s.kind).pioneerDeco ? '' : `<button class="ghost" data-sell="${i}">팔기</button>`}</div>`,
     )
     .join('');
   openWin(
@@ -453,6 +453,11 @@ export const decorInput = {
 export function initDecor() {
   buildHooks.decor = enterDecor;
   buildHooks.redraw = () => draw();
+  buildHooks.pathTool = () => {
+    ui.pathMode = 'brush';
+    setTool('path');
+    toast('🖌 마을의 붓 — 길 붓을 들었어요');
+  };
   // BUILDUX §5 (PC): Esc · R 반전 · Ctrl+Z / Ctrl+Y · Delete 넣어 두기 · Enter 확정
   addEventListener('keydown', (e) => {
     const tag = (e.target as HTMLElement)?.tagName;

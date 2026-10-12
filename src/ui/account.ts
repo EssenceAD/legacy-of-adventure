@@ -1,6 +1,7 @@
 // 계정 창: 로그인 · 가입(복구 코드) · 비밀번호 찾기 · 내 계정(로그아웃·복구 코드 다시 받기) · 저장 고르기
 // 화면에 '이메일'이라는 말은 안 나온다. 로그인 안 해도 게임은 그대로 (손님 플레이).
 import * as game from '../game';
+import { checkPioneer } from './easter';
 import { checkLastWeek, compareSaves, dailyStats, flushOutbox, pushNow, setCloudReady, useServerSave, type SaveChoice } from '../net/sync';
 import { isGuest, linkGuest, loadBlocks, login, logout, me, online, recover, regenRecovery, sb, signUp } from '../net/server';
 import { setPref } from '../save/save';
@@ -172,7 +173,9 @@ export async function afterLogin(justSignedUp = false) {
     await pushNow();
   }
   const f = await flushOutbox();
-  if (f.ok || f.rejected) toast(`쌓여 있던 토벌 기록 ${f.ok}개를 올렸어요${f.rejected ? ` (거부 ${f.rejected})` : ''}`);
+  if (f.ok) toast(`쌓여 있던 토벌 기록 ${f.ok}개를 올렸어요`);
+  // EASTER: 개척자 계정이면 금빛 편지
+  void checkPioneer();
   await loadBlocks();
   await dailyStats();
   await checkLastWeek();

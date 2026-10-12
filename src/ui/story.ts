@@ -1,5 +1,6 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
 import { CONFIG } from '../data/config';
+import { PIONEER_CREDIT } from '../data/story/easter';
 import { clearOverlays } from './overlays';
 import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
@@ -35,6 +36,8 @@ function fxClear() {
   fxEl = null;
 }
 /** 연출 키: dawn · night · seasons · ledger · photo */
+/** EASTER: 컷신 연출을 바깥에서 (drop = 개척자 장식이 「쿵」) */
+export const storyFx = { drop: () => {} };
 function fx(k: string) {
   const b = fxBox();
   if (k === 'night' || k === 'dawn') {
@@ -47,6 +50,7 @@ function fx(k: string) {
     b.className = (b.className.includes('night') ? 'night ' : '') + 'ledger';
     b.innerHTML = `<img class="ledg" src="${iconSrc('m_quest')}" alt="">`;
   } else if (k === 'photo') photoThumb();
+  else if (k === 'drop') storyFx.drop();
 }
 /** 엔딩 사진: 사진 모드로 마을 한 장 → 앨범 썸네일 (이 기기에만) */
 let lastThumb = '';
@@ -272,7 +276,7 @@ export function playRetireEnding() {
   if (P.story.heir !== 1 || isTalking()) return;
   closeWin();
   lastThumb = '';
-  playStory(STORY_END.retire.cut, () => {
+  playStory([...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]], () => {
     const r = finishStory('retire');
     if (lastThumb) setPref('storyThumb.' + r.id, lastThumb);
     syncYuan();
@@ -389,7 +393,7 @@ export function bindStoryAlbum(back: () => void) {
     (b) =>
       (b.onclick = () => {
         closeWin();
-        playStory(STORY_END.retire.cut, back);
+        playStory([...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]], back);
       }),
   );
   $$('[data-mem]').forEach((b) => (b.onclick = () => readMemory(+b.dataset.mem!, true, back)));

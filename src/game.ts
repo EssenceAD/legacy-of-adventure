@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { decoCoupon, useDecoCoupon } from './world/easter';
 import { clearOverlays } from './ui/overlays';
 import { isDropKind, newAtLand, noteBought, ownedDrops } from './world/decodrop';
 import { funnel } from './net/funnel';
@@ -400,7 +401,9 @@ export function placeBuilding(pl: Placement): boolean {
   const d = def(pl.kind);
   // 베타: 마을 등급 장식을 마을 안으로 옮기면 무료 (그 자리 장식은 사라진다)
   // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ (CONFIG.town.copyCost)
-  const cost = pl.prop ? 0 : buildCost(pl.kind);
+  // EASTER: 고느끼 선물 — 장식 하나 10% 할인 (다음 장식 한 번)
+  const coupon = !pl.prop && d.deco && d.cost > 0 ? decoCoupon() : 0;
+  const cost = pl.prop ? 0 : Math.round(buildCost(pl.kind) * (1 - coupon));
   if (S.gold < cost) {
     toast('금화가 모자라요');
     return false;
@@ -417,6 +420,10 @@ export function placeBuilding(pl: Placement): boolean {
     return false;
   }
   S.gold -= cost;
+  if (coupon) {
+    useDecoCoupon();
+    toast(`할인 쿠폰을 썼어요 (−${Math.round(coupon * 100)}%)`);
+  }
   if (pl.prop) P.harmony.moved.push(pl.prop);
   // 땅 개편 §4: 첫 건설 초록 안내는 한 번
   P.buildTipSeen = true;

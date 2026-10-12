@@ -115,6 +115,8 @@ export function addMail(m: Omit<Mail, 'id' | 'at' | 'claimed'>) {
 }
 export const mailWaiting = () => P.meta.mail.filter((m) => !m.claimed && hasReward(m)).length;
 const hasReward = (m: Mail) => !!(m.reward.gear || m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco);
+/** EASTER: 편지를 열 때 화면 쪽이 하는 일 */
+export const mailHooks = { pioneer: (_id: string) => {} };
 export function claimMail(id: number): Mail['reward'] | null {
   const m = P.meta.mail.find((x) => x.id === id);
   if (!m || m.claimed) return null;
@@ -141,6 +143,8 @@ export function claimMail(id: number): Mail['reward'] | null {
   // ONBOARDING §4: 장비 한 개 (가방이 꽉 차면 다음에)
   if (r.gear) addToBag(makeItem('forest', r.gear as Grade));
   if (m.ver) track('gift_claim', { ver: m.ver });
+  // EASTER: 금빛 편지를 열면 컷신
+  if (r.pioneer) mailHooks.pioneer(r.pioneer);
   markDirty();
   return r;
 }

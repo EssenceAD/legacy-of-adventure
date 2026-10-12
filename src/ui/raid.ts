@@ -716,7 +716,7 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     damage = Math.round(damage);
     if (killedNow) view.cutin([pic(leader), bossPic(b)], `${b.name} 처치!`);
     sfx(killedNow ? 'win' : survived ? 'win' : 'lose');
-    const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex, run);
+    const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex, run, R.seconds - S.t);
     view.log(killedNow ? `${b.name} 처치!` : survived ? '시간 종료' : '파티가 쓰러졌어요…', killedNow ? 'wave' : survived ? 'kill' : 'bad');
     view.log(`가한 피해 ${fmt(damage)}`, 'loot');
     setTimeout(() => showResult(t, out, ex, manual ? 'manual' : 'auto', members, true, S.died, S.bestStreak), killedNow ? 1400 : 500);
@@ -754,7 +754,7 @@ function fieldRaid(t: RaidTarget, members: Actor[], ex: RaidExpect, run: number)
       // 랭킹 이론치 검사(기록 상한)를 넘지 않게
       damage = Math.round(Math.min(damage, ex.theory * R.recordCap * 0.99));
       const mode = res.autoUsed ? 'auto' : 'manual';
-      const out = settle(t, members, damage, mode, ex, run);
+      const out = settle(t, members, damage, mode, ex, run, R.seconds - (res.timeLeft ?? 0));
       void showFieldRaidResult(t, out, ex, mode, members, !survived);
     },
     { mode: 'raid', raid: { look, hp, seconds: R.seconds, power: t.boss.power } },
@@ -783,7 +783,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
     <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
-    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<b class="bad">기록 거부: ${esc(rec.reason ?? '')}</b>`) : '소탕은 랭킹에 안 들어가요')}</div>
+    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>
     <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${R.triesPerDay})</button><button class="b" id="rHome">마을로</button></div>`;
   markDirty();
   if (inBattle) {

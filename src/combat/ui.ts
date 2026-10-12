@@ -37,6 +37,8 @@ export interface CombatResult {
   /** 토벌: 보스에게 준 피해(필드 단위) · 보스를 쓰러뜨렸나 */
   raidDmg: number;
   bossDown: boolean;
+  /** 남은 시간(초) — 토벌 처치 등급 보정 */
+  timeLeft?: number;
 }
 
 let F: Field | null = null;
@@ -693,7 +695,7 @@ function finish() {
   finishedField = f;
   const res: CombatResult = {
     win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
-    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead,
+    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time),
   };
   onEnd?.(res);
 }

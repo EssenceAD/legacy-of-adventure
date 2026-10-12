@@ -4,8 +4,8 @@ import { CONFIG } from '../data/config';
 import { GUEST_DEX_TOTAL, ITEM_DEX_TOTAL, today } from '../world/progress';
 import { HEROES } from '../data/heroes';
 import { powerOf } from '../world/adventurers';
-import { P, S, world, type RaidRecord } from '../world/state';
-import { getPref, readSave, setPref, snapshot } from '../save/save';
+import { markDirty, P, S, world, type RaidRecord } from '../world/state';
+import { getPref, readSave, setPref, snapshot, writeSave } from '../save/save';
 import { validRecord } from './local';
 import { chaptersDone, townGrade } from '../world/guide';
 import { addMail, myTitle } from '../world/meta';
@@ -128,37 +128,87 @@ export function useServerSave(data: Record<string, unknown>) {
 
 // ───────── 토벌 기록 ─────────
 
+/** 같은 기록인가 (주·보스·피해·시각) */
+const recKey = (r: RaidRecord) => `${r.week}|${r.bossId}|${Math.round(r.damage)}|${r.at}`;
+const wasSent = (r: RaidRecord) => (P.raid.sent ?? []).includes(recKey(r));
+function markSent(r: RaidRecord) {
+  const s = (P.raid.sent ??= []);
+  if (!s.includes(recKey(r))) s.push(recKey(r));
+  if (s.length > 60) s.splice(0, s.length - 60);
+}
+/** outbox에 넣기 (같은 기록은 한 번만 · 최근 60개) */
+function toOutbox(r: RaidRecord) {
+  if (wasSent(r) || P.raid.outbox.some((x) => recKey(x) === recKey(r))) return;
+  P.raid.outbox.push(r);
+  if (P.raid.outbox.length > 60) P.raid.outbox.splice(0, P.raid.outbox.length - 60);
+}
+/** 서버가 거부한 기록은 몇 번까지 다시 올려 본다 (그 뒤엔 내려놓는다) */
+const MAX_TRIES = 3;
+const RETRY_TEXT = '랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요';
+/** 서버로 한 번 (보낸 기록은 표시 · 거부·오류면 outbox로) */
+async function sendOne(rec: RaidRecord): Promise<'ok' | 'retry' | 'drop'> {
+  if (wasSent(rec)) return 'ok';
+  const r = await submitRaid({ week: rec.week, bossId: rec.bossId, damage: rec.damage, power: rec.power, theory: rec.theory, manual: rec.mode === 'manual' });
+  if (r === 'ok') {
+    markSent(rec);
+    return 'ok';
+  }
+  if (r === 'rejected') {
+    rec.tries = (rec.tries ?? 0) + 1;
+    if (rec.tries >= MAX_TRIES) {
+      // 그래도 안 되면 내려놓는다 (같은 걸 계속 두드리지 않게)
+      markSent(rec);
+      return 'drop';
+    }
+  }
+  toOutbox(rec);
+  return 'retry';
+}
+
 /** 한 판 기록: 로그인했으면 서버로(서버가 다시 검사), 아니면 이 기기 outbox에 쌓아 두었다가 로그인 때 */
 export async function submitRecord(rec: RaidRecord): Promise<{ ok: boolean; reason?: string; online: boolean }> {
   const why = validRecord(rec);
   if (why) return { ok: false, reason: why, online: online() };
   if (!online()) {
-    P.raid.outbox.push(rec);
-    if (P.raid.outbox.length > 60) P.raid.outbox.splice(0, P.raid.outbox.length - 60);
+    toOutbox(rec);
     return { ok: true, online: false };
   }
-  const r = await submitRaid({ week: rec.week, bossId: rec.bossId, damage: rec.damage, power: rec.power, theory: rec.theory, manual: rec.mode === 'manual' });
-  if (r === 'error') {
-    P.raid.outbox.push(rec);
-    return { ok: true, reason: '서버에 못 올려서 나중에 다시 올려요', online: true };
-  }
+  // 올리는 중에 outbox 비우기가 같이 돌지 않게
+  await flushing;
+  const r = await sendOne(rec);
+  markDirty();
   if (r === 'ok') void checkRank1(rec.week);
-  return { ok: r === 'ok', reason: r === 'rejected' ? '서버가 기록을 거부했어요' : undefined, online: true };
+  // 토벌 기록 버그 2: 거부·오류여도 「약해서」가 아니다 — 다시 올려 본다는 안내만
+  return { ok: true, reason: r === 'ok' ? undefined : RETRY_TEXT, online: true };
 }
 
-/** 로그인 뒤 쌓인 기록을 한 번에 (거부된 건 버린다) */
-export async function flushOutbox(): Promise<{ ok: number; rejected: number }> {
-  let ok = 0;
-  let rejected = 0;
-  if (!online()) return { ok, rejected };
-  const list = P.raid.outbox.splice(0);
-  for (const rec of list) {
-    const r = await submitRaid({ week: rec.week, bossId: rec.bossId, damage: rec.damage, power: rec.power, theory: rec.theory, manual: rec.mode === 'manual' });
-    if (r === 'ok') ok++;
-    else if (r === 'rejected') rejected++;
-    else P.raid.outbox.push(rec);
-  }
-  return { ok, rejected };
+/** 로그인 뒤 쌓인 기록을 한 번에 — 동시에 두 번 돌지 않게 잠그고, 꺼낸 즉시 저장 (다시 켜도 또 보내지 않게) */
+let flushing: Promise<{ ok: number; rejected: number }> = Promise.resolve({ ok: 0, rejected: 0 });
+let flushRunning = false;
+export function flushOutbox(): Promise<{ ok: number; rejected: number }> {
+  if (flushRunning) return flushing;
+  flushRunning = true;
+  flushing = (async () => {
+    let ok = 0;
+    let rejected = 0;
+    try {
+      if (!online()) return { ok, rejected };
+      const list = P.raid.outbox.splice(0);
+      markDirty();
+      writeSave();
+      for (const rec of list) {
+        const r = await sendOne(rec);
+        if (r === 'ok') ok++;
+        else if (r === 'drop') rejected++;
+      }
+      markDirty();
+      writeSave();
+      return { ok, rejected };
+    } finally {
+      flushRunning = false;
+    }
+  })();
+  return flushing;
 }
 
 /** 주간 토벌 1위가 되면 [알림] (주에 한 번) */

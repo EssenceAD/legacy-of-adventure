@@ -1,5 +1,7 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
 import { CHEM_PAIRS } from '../data/chem';
+import { PIONEERS } from '../data/story/easter';
+import { PIONEER_IDS } from '../world/easter';
 import { bookSteps, claimBook, DROP_KINDS, groupOf, ownedDrops, seasonLock } from '../world/decodrop';
 import { tokenNeed } from '../world/legends';
 import { heroCtx } from '../world/progress';
@@ -129,7 +131,11 @@ export function openDex(tab = dTab) {
       return `<div class="hset ${done ? 'on' : ''}"><b>${s.name}</b> — ${s.members.map((m) => (P.dex.heroes[m]?.appeared ? HEROES.find((h) => h.id === m)!.name : '???')).join(' · ')}<small>${done ? `칭호 「${s.title}」 · +${Math.round(s.bonus * 100)}%` : `모두 모으면 칭호 「${s.title}」`}</small></div>`;
     }).join('');
     const titles = heroTitles();
+    // EASTER §3: 영웅 탭 맨 아래 「개척자」 — 카메오로 만나면 밝아진다
+    const met = new Set(P.meta.easter?.met ?? []);
+    const pioneerBox = `<p class="sub g">개척자</p><div class="pion">${PIONEER_IDS.map((id) => `<div class="pcell ${met.has(id) ? 'on' : ''}"><img src="${PORTRAITS['p_' + id] ?? ''}" alt=""><span><b>${esc(PIONEERS[id].name)}</b><small>「${esc(PIONEERS[id].title)}」</small><small>${esc(PIONEERS[id].intro)}</small></span></div>`).join('')}</div>`;
     body = `<p class="sub">방랑자의 서 · ${Object.values(P.dex.heroes).filter((h) => h.recruited).length}/${HEROES.length} 동료${titles.length ? ` · 칭호 ${titles.join(', ')}` : ''}</p><div class="heroes">${cards}</div>${sets}`;
+    body += pioneerBox;
   }
   openWin(
     '도감',

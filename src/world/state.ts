@@ -110,6 +110,10 @@ export interface Actor {
   status: 'visitor' | 'regular' | 'hero' | 'passer';
   /** ONBOARDING §2: 첫 손님 (누르면 체크인) */
   firstGuest?: boolean;
+  /** EASTER §2: 놀러 온 베타 개척자 (금색 이름표 · 누르면 대사 · 단골 불가) · 몇 번째 대사 · 선물 줬나 */
+  cameo?: string;
+  cameoI?: number;
+  cameoGift?: boolean;
   /** 방문 손님이 떠나는 날 */
   leaveDay: number;
   /** 머무는 동안 기분 평균 (단골 제안·일찍 떠나기 판단) */
@@ -152,6 +156,8 @@ export interface RaidRecord {
   theory: number;
   mode: 'auto' | 'manual';
   at: number;
+  /** 서버가 거부해서 다시 올려 본 횟수 */
+  tries?: number;
 }
 
 /** 단골 대기 목록에 보관하는 손님 (다시 찾아올 때 이 모습 그대로) */
@@ -355,6 +361,8 @@ export function freshProgress() {
       weeksKilled: 0,
       /** 서버로 올릴 기록 (로그인 안 했을 때 쌓아 두고 로그인 뒤 한꺼번에 올린다) */
       outbox: [] as RaidRecord[],
+      /** 서버에 이미 올린 기록 (주·보스·피해·시각) — 같은 기록을 두 번 보내지 않게 (최근 60개) */
+      sent: [] as string[],
       /** 주간 토벌 상위 30% 든 주 수 (진의 소문 조건) · 지난주 · 판정한 주 · 1위 알림 낸 주 */
       topWeeks: 0,
       prevWeek: '',
@@ -445,6 +453,8 @@ export function freshProgress() {
       giftDeco: {} as Record<string, number>,
       /** GUEST_SPEC: 게스트에게 「계정 연결」 편지를 보냈나 */
       linkMail: false,
+      /** EASTER: 금빛 편지(보냄·받음) · 카메오 일정 · 만난 개척자 · 선물 쿠폰 */
+      easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean },
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     hunt: {
@@ -544,7 +554,7 @@ export interface Mail {
   from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
   title: string;
   body: string;
-  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string };
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string; /** EASTER: 개척자 금빛 편지 */ pioneer?: string };
   /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
   ver?: string;
   at: number;

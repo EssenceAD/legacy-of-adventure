@@ -40,6 +40,8 @@ export interface BuildingDef {
   showcase?: boolean;
   /** DECO_DROP §2: 뽐내기 장식 (건설 창 「특별 장식」 탭 · 금화만 · 하나씩) */
   luxury?: boolean;
+  /** EASTER: 베타 개척자 전용 장식 (그 사람만 · 건설 목록에 없음 · 팔 수 없음) */
+  pioneerDeco?: boolean;
   desc: string;
 }
 
@@ -112,6 +114,11 @@ export const CATALOG = {
   dragon_fossil: { name: '용 뼈 화석', sprite: 'dragon_fossil', size: [3, 3], cost: 3000000, deco: true, unique: true, luxury: true, unlock: 1, desc: '별의 심연 10(보스)을 깨야 살 수 있어요' },
   gold_sign: { name: '여관 금빛 간판', sprite: 'gold_sign', size: [1, 1], cost: 5000000, deco: true, unique: true, luxury: true, unlock: 1, desc: '금판에 여관 이름이 새겨져요' },
   firework_stand: { name: '축제 불꽃', sprite: 'firework_stand', size: [1, 1], cost: 100000, deco: true, unique: true, luxury: true, unlock: 1, desc: '누르면 불꽃놀이 10초 (한 번에 100,000G)' },
+  // EASTER: 베타 개척자 4인 전용 장식 (asset_raw/easter)
+  duck_spa: { name: '온천 오리상', sprite: 'duck_spa', size: [2, 2], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '절대 사라지지 않는 온천의 오리 · 근처 손님 기분 ↑ · 온천 옆이면 「쌍둥이 온천」' },
+  gold_brush: { name: '황금 붓', sprite: 'gold_brush', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '마을의 붓 · 근처 길이 은은히 반짝 · 꾸미기 모드에서 누르면 길 붓' },
+  red_helmet: { name: '붉은 무사의 투구', sprite: 'red_helmet', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '붉은 밤의 무사 · 밤엔 등불 · 토벌 금화 +3%' },
+  pinwheel_light: { name: '바람개비 등대', sprite: 'pinwheel_light', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '첫 바람 · 바람개비가 빙글빙글 · 의뢰 시간 −3%' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
   // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
   cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },

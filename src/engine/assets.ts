@@ -100,7 +100,9 @@ export async function loadAssets(onProgress?: (p: number) => void) {
   const keys = Object.keys(meta);
   const ports = ['cleric', 'dwarf', 'hero', 'keeper', 'knight', 'mage', 'post', 'rogue', ...HEROES.map((h) => 'hero_' + h.id), ...LEGENDS.map((l) => 'legend_' + l.key), ...JOBS.flatMap((j) => [mcPortrait(j, 'm'), mcPortrait(j, 'f')]),
     // 초상화 작업: 손님 초상화 20장 (직업 5 × 종족 4)
-    ...GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`))];
+    ...GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`)),
+    // EASTER §5: 베타 개척자 4인 초상화
+    'p_woongs', 'p_gonu', 'p_warmnight', 'p_ikamolly'];
   let done = 0;
   const total = keys.length + ports.length + 1;
   const tick = () => onProgress?.(++done / total);

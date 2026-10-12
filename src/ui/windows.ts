@@ -407,7 +407,7 @@ const thumb = (k: Kind) => THUMBS[k] ?? '';
 const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 'smith', garden: 'garden', cottage: 'cottage' };
 
 /** TOWN T2: 건설 창 「꾸미기 모드」 (ui/decor가 채운다) */
-export const buildHooks = { decor: () => {}, redraw: () => {} };
+export const buildHooks = { decor: () => {}, redraw: () => {}, pathTool: () => {} };
 /** BUILDUX: 보관함 등에서 쓰는 건설 썸네일 */
 export const thumbOf = (k: Kind) => thumb(k);
 export function openBuild() {
@@ -562,6 +562,8 @@ const portrait = (k: string) => PORTRAITS[k] || '';
 export const objExtra = { html: (_o: Building) => '' };
 
 export function showObj(o: Building) {
+  // EASTER: 꾸미기 모드에서 황금 붓을 누르면 길 붓 도구
+  if (o.kind === 'gold_brush' && document.body.classList.contains('decor')) return buildHooks.pathTool();
   const d = def(o.kind);
   if (!S.visiting) {
     if (o.kind === 'smith' && o.build === undefined) return openSmith(o);

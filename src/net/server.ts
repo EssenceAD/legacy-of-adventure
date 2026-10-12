@@ -202,6 +202,24 @@ export async function linkGuest(loginId: string, pw: string, nickname: string): 
   return { code };
 }
 
+// ───────── EASTER: 베타 개척자 (profiles.pioneer — 칸이 아직 없으면 조용히 없음) ─────────
+
+/** 내 계정의 개척자 값 */
+export async function myPioneer(): Promise<string | null> {
+  if (!sb || !me.profile) return null;
+  const r = await sb.from('profiles').select('pioneer').eq('id', me.profile.id).maybeSingle();
+  return r.error ? null : ((r.data as { pioneer?: string | null } | null)?.pioneer ?? null);
+}
+/** 개척자 계정들 (uid → pioneer) — 채팅 별 · 이웃 목록 금색 테두리 */
+let pioneerMap: Map<string, string> | null = null;
+export async function pioneers(): Promise<Map<string, string>> {
+  if (pioneerMap || !sb) return pioneerMap ?? new Map();
+  const r = await sb.from('profiles').select('id,pioneer').not('pioneer', 'is', null);
+  pioneerMap = new Map(r.error ? [] : (r.data ?? []).map((x) => [x.id as string, x.pioneer as string]));
+  return pioneerMap;
+}
+export const pioneerOfUid = (uid: string) => pioneerMap?.get(uid) ?? null;
+
 // ───────── 클라우드 저장 · 마을 모습 ─────────
 
 export async function pushSave(data: unknown, version: number) {

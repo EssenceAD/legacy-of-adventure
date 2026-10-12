@@ -10,7 +10,7 @@ import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
-import { depthActor, depthBuilding, depthWild, sx, sy, TH, view } from '../engine/iso';
+import { depthActor, depthBuilding, depthWild, N, sx, sy, TH, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
@@ -24,7 +24,7 @@ import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
-import { doorOf, grid, groundVersion, inLand, landBounds, placing, spriteFor, spriteOrigin, type Placement } from './town';
+import { doorOf, grid, groundVersion, inLand, landBounds, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
 import { drawConstruction } from './conDraw';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
@@ -665,6 +665,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   drawLight(ctx, o.sprite, x, y);
   // DECO_DROP §2: 뽐내기 장식 — 밤 빛 · 동상 이름판 · 금빛 간판 여관 이름
   if (def(o.kind).luxury) drawLuxury(ctx, o, x, y, im);
+  // EASTER: 개척자 전용 장식 — 김 · 길 반짝 · 밤 등불 · 바람개비
+  if (def(o.kind).pioneerDeco) drawPioneer(ctx, o, x, y, im);
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
   if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
   // BUILDINGS_SPEC §3: 다 자란 텃밭 위 「수확!」
@@ -883,6 +885,20 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
     p.rect(X - 1, Y - 37 + b, 3, 1, c);
     p.rect(X, Y - 38 + b, 1, 3, c);
   } else if (a.rarity === 'legend' && Math.random() < 0.03) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
+  // EASTER §2: 놀러 온 개척자 — 금색 이름표
+  if (a.cameo && fade === 1) {
+    ctx.font = '8px "Galmuri9"';
+    ctx.textAlign = 'center';
+    const tw = Math.ceil(ctx.measureText(a.name).width) + 6;
+    const ty = Y - 44 + Math.round(Math.sin(T * 2 + a.ph));
+    ctx.fillStyle = '#5a3a10';
+    ctx.fillRect(X - tw / 2 - 1, ty - 9, tw + 2, 12);
+    ctx.fillStyle = '#e8b84a';
+    ctx.fillRect(X - tw / 2, ty - 8, tw, 10);
+    ctx.fillStyle = '#3a2408';
+    ctx.fillText(a.name, X, ty);
+    if (Math.random() < 0.03) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
+  }
   // 우체부 머리 위 !
   if (a.role === 'npc') {
     const b = Math.round(Math.sin(T * 5) * 1.5);
@@ -1074,4 +1090,47 @@ function drawLuxury(ctx: CanvasRenderingContext2D, o: Building, x: number, y: nu
   ctx.fillRect(X - tw / 2, Y - 8, tw, 10);
   ctx.fillStyle = '#3a2408';
   ctx.fillText(text, X, Y);
+}
+
+function drawPioneer(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {
+  const T = S.T;
+  if (o.kind === 'duck_spa') {
+    // 김 모락모락
+    if (Math.random() < 0.12) puff(x - view.OX + im.width * (0.3 + Math.random() * 0.4), y - view.OY + im.height * 0.35, '#f4f4f4', (Math.random() - 0.5) * 4, -10, 1.2, 2);
+  } else if (o.kind === 'gold_brush') {
+    // 근처(3칸) 길 칸이 은은하게 반짝
+    if (Math.random() < 0.25) {
+      const dx = Math.round(Math.random() * 6 - 3);
+      const dy = Math.round(Math.random() * 6 - 3);
+      const tx = o.tx + dx;
+      const ty = o.ty + dy;
+      if (tx >= 0 && ty >= 0 && tx < N && ty < N && pathT.has(ty * N + tx)) puff(sx(tx + 0.5, ty + 0.5) + (Math.random() * 10 - 5), sy(tx + 0.5, ty + 0.5) + 4, '#ffe9a0', 0, -3, 0.8, 1);
+    }
+  } else if (o.kind === 'red_helmet') {
+    // 밤에 등불
+    const night = NL / CONFIG.dayNight.tintSteps;
+    if (night > 0.2) {
+      const cx = x + im.width * 0.75;
+      const cy = y + im.height * 0.45;
+      const r = 26 + Math.sin(T * 3) * 2;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, `rgba(255,170,90,${0.45 * night})`);
+      g.addColorStop(1, 'rgba(255,170,90,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+    }
+  } else if (o.kind === 'pinwheel_light') {
+    // 바람개비: 날개 끝 네 점이 빙글빙글
+    const cx = x + im.width * 0.38;
+    const cy = y + im.height * 0.14;
+    const cols = ['#ff7a6a', '#ffd36b', '#8fd0ff', '#9af08a'];
+    for (let i = 0; i < 4; i++) {
+      const a = T * 6 + (i * Math.PI) / 2;
+      ctx.fillStyle = cols[i];
+      ctx.fillRect(Math.round(cx + Math.cos(a) * 5), Math.round(cy + Math.sin(a) * 5), 2, 2);
+    }
+  }
 }

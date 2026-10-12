@@ -2,6 +2,7 @@
 // 지금 흘러가는 건 [소문] — 마을 사람(NPC)의 가짜 수다. 실유저 채팅([세계])이 붙어도 헷갈리지 않게
 // 말머리·글자색을 따로 하고 이름 옆에 '마을 사람'을 붙인다. 문장은 data/chat_pool.json.
 import { CLASSES, GUEST_KINDS } from '../data/classes';
+import { pioneerOfUid, pioneers } from '../net/server';
 import { CONFIG } from '../data/config';
 import { HEROES } from '../data/heroes';
 import { REGIONS } from '../data/items';
@@ -82,7 +83,7 @@ const line = (m: Msg) =>
     ? `<span class="ch ch-notice">[알림]</span> <b class="notice">${esc(m.text)}</b>`
     : m.ch === '소문'
     ? `<span class="ch ch-rumor">[소문]</span> <b class="rumor-who">${esc(m.who)}</b><small class="npc">마을 사람</small> <span class="rumor">${esc(m.text)}</span>`
-    : `<span class="ch">[세계]</span> ${face(m.hero)}<b>${esc(m.who)}</b>: ${esc(m.text)}`;
+    : `<span class="ch">[세계]</span> ${face(m.hero)}${m.uid && pioneerOfUid(m.uid) ? '<i class="pstar" title="베타 개척자">★</i>' : ''}<b>${esc(m.who)}</b>: ${esc(m.text)}`;
 
 /** 마지막 [세계] 말이 온 시각 — 2분 넘게 조용해야 [소문]이 흐른다 */
 let lastWorld = 0;
@@ -156,6 +157,8 @@ const fromRow = (r: ChatRow): Msg =>
     : { ch: '세계', who: r.nickname, text: r.body, id: r.id, uid: r.user_id ?? undefined, hero: r.rep_hero };
 
 export async function initChat() {
+  // EASTER: 개척자 표시(★)용 목록을 미리
+  void pioneers();
   // 로그인 안 했을 때의 [알림](내 마을 일)은 net.chat에서 온다
   net.chat.subscribe((m) => push({ ch: m.ch, who: m.who, text: m.text }));
   document.getElementById('chatlog')!.onclick = openChat;

@@ -1,5 +1,6 @@
 // 4단계 화면: 「당신은 누구였나요?」(주인 만들기·출신 컷) · 주인 정보창(6각형·달력) · 인연 목록 · 선물 · 엔딩 앨범 · 엔딩 카드
 import { BONDS, bondById, GIFT_KEYS, GIFTS, type BondDef, type GiftKey } from '../data/bonds';
+import { PIONEER_CREDIT } from '../data/story/easter';
 import { backupCycle, bindMemoryRow, bindStoryAlbum, giftsHtml, newInn, playCycleOpening, storyAlbumHtml, storyUi } from './story';
 import { lastGrant, rememberFav, startCycle, storyLines } from '../world/story';
 import { MEMORIES } from '../data/story/v1';
@@ -423,6 +424,8 @@ function playEnding(ids: string[], partner: string | null, rel: 'lover' | 'comra
   const g = lastGrant;
   const mem = g.mem >= 0 ? MEMORIES[g.mem] : null;
   if (mem) lines.push(['narr', `기억 조각을 얻었다 — ${mem.title}`], ...storyLines(mem.lines).map((x) => x.line));
+  // EASTER §3: 모든 엔딩 컷 마지막 한 줄
+  lines.push(['narr', PIONEER_CREDIT]);
   const p = partner ? bondById(partner) : null;
   const show = () => {
     openWin(

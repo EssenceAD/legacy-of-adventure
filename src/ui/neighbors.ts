@@ -4,7 +4,7 @@ import { CATALOG } from '../data/catalog';
 import { NEIGHBORS, type Neighbor } from '../data/neighbors';
 import * as game from '../game';
 import { PORTRAITS } from '../engine/assets';
-import { getVillage, likeVillage, listVillages, myVillage, online, sb, type VillageRow } from '../net/server';
+import { getVillage, likeVillage, listVillages, myVillage, online, pioneerOfUid, pioneers, sb, type VillageRow } from '../net/server';
 import { CONFIG } from '../data/config';
 import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
@@ -64,7 +64,7 @@ export async function openVillage() {
     const realRows = real
       .map(
         (v, i) =>
-          `<button class="stp real" data-r="${i}"><img src="${(v.repHero && PORTRAITS[v.repHero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(v.name)}</b><small>${esc(ownerLine(v))} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like)}</em></button>`,
+          `<button class="stp real${v.uid && pioneerOfUid(v.uid) ? ' pioneer' : ''}" data-r="${i}"><img src="${(v.repHero && PORTRAITS[v.repHero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(v.name)}</b><small>${esc(ownerLine(v))} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like)}</em></button>`,
       )
       .join('');
     openWin(
@@ -81,7 +81,7 @@ export async function openVillage() {
   };
   const load = async (n: number) => {
     page = n;
-    const [rows, mine] = await Promise.all([listVillages(n), myVillage()]);
+    const [rows, mine] = await Promise.all([listVillages(n), myVillage(), pioneers()]);
     more = rows.length > n;
     real = rows.slice(0, n).map(toNeighbor).filter((x): x is Neighbor => !!x);
     mineRow = mine ? toNeighbor(mine) : null;
