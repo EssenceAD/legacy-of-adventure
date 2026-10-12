@@ -104,6 +104,11 @@ export const CATALOG = {
   trophy_golem: { name: '붉은 무사 투구', sprite: 'trophy_golem', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_wyvern: { name: '텐구 가면', sprite: 'trophy_wyvern', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   trophy_eye: { name: '심연의 눈 조각', sprite: 'trophy_eye', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  // REGIONS2 §3: 지역 6~9 토벌 트로피
+  trophy_leviathan: { name: '등대 불씨', sprite: 'trophy_leviathan', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_sandblade: { name: '검귀의 가면', sprite: 'trophy_sandblade', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_magma: { name: '식은 용암 왕관', sprite: 'trophy_magma', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
+  trophy_skydragon: { name: '구름 왕관', sprite: 'trophy_skydragon', size: [1, 1], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 처치 트로피 · 이웃이 방문하면 보여요' },
   monument: { name: '유산의 기념비', sprite: 'monument', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '도감 100% 보상 · 밤엔 책이 은은하게 빛나요' },
   // DECO_DROP §2 (ECONOMY §3): 뽐내기 장식 8종 (asset_raw/luxury)
   gold_fountain: { name: '황금 분수', sprite: 'gold_fountain', size: [2, 2], cost: 300000, deco: true, unique: true, luxury: true, unlock: 1, desc: '밤에 금빛으로 빛나요' },

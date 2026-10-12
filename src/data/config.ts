@@ -679,6 +679,15 @@ export const CONFIG = {
     /** [세계]가 이만큼(ms) 조용할 때만 [소문]이 흐른다 */
     rumorQuietMs: 120000,
   },
+  /**
+   * REGIONS2: 사냥 지역 6~10 — 길잡이 별 수 · 지역 업적 금화(첫 발자국 · 길잡이, 지역 6→10 순)
+   * 권장 전투력·보상은 hunt/expedition/economy 곡선을 그대로 이어 간다 (지역 배수 · 방치 상한 같음)
+   */
+  regions2: {
+    starsNeed: 4,
+    firstGold: [20000, 40000, 80000, 160000, 320000] as number[],
+    guideGold: [60000, 120000, 240000, 480000, 1000000] as number[],
+  },
   /** 5단계 2장: 사냥 (스테이지 돌파형) */
   hunt: {
     stages: 10,

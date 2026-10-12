@@ -13,6 +13,8 @@ export interface MonDef {
   /** 통통 튀며 다가온다 (슬라임류) · 날아다닌다 (그림자를 작게) */
   hop?: boolean;
   fly?: boolean;
+  /** REGIONS2: 붙어 있으면 아군 회복이 반으로 (길 잃은 마음) */
+  noHeal?: boolean;
   /** 공격 사거리 · 예고 원 반지름 */
   reach: number;
   hitR: number;
@@ -46,6 +48,33 @@ export const MONS: MonDef[] = [
   m('na_skullblue', '푸른 해골', 'abyss', 1.15, 1.2, 1.5),
   m('na_octopus2', '심연 문어', 'abyss', 1.35, 1.15, 1.1, { hitR: 0.8 }),
   m('na_spirit2', '그림자 정령', 'abyss', 1.0, 1.3, 1.9, { fly: true }),
+  // REGIONS2 §2: 지역 6~10 (Ninja Adventure 안 쓴 그림 · 체력 0.8~1.5 · 빠르기 1.0~2.4)
+  m('na_fish', '등대 물고기', 'coast', 0.9, 1.0, 1.4),
+  m('na_fishred', '붉은 쏨뱅이', 'coast', 0.8, 1.1, 2.3),
+  m('na_kappa', '물갓파', 'coast', 1.05, 1.15, 1.5),
+  m('na_mollusc', '소라게', 'coast', 1.45, 1.0, 1.0, { hitR: 0.74 }),
+  m('na_octopusg', '해초 문어', 'coast', 1.2, 1.2, 1.2, { hitR: 0.78 }),
+  m('na_lizard', '모래 도마뱀', 'dune', 0.95, 1.05, 1.7),
+  m('na_snake3', '사막뱀', 'dune', 0.8, 1.2, 2.4),
+  m('na_mouse', '유적 쥐', 'dune', 0.8, 0.95, 2.0),
+  m('na_spiderred', '붉은 전갈거미', 'dune', 1.0, 1.25, 1.9),
+  m('na_reptile', '돌비늘', 'dune', 1.5, 1.1, 1.0, { hitR: 0.76 }),
+  m('na_flam2', '잿불 도깨비', 'ember', 0.85, 1.25, 2.1, { fly: true }),
+  m('na_reptile2', '용암 비늘', 'ember', 1.15, 1.15, 1.4),
+  m('na_mole2', '불두더지', 'ember', 1.0, 1.1, 1.7),
+  m('na_trex', '잿불 공룡', 'ember', 1.5, 1.3, 1.0, { hitR: 0.8 }),
+  m('na_slime3', '용암 슬라임', 'ember', 0.95, 1.05, 1.1, { hop: true, reach: 1.25 }),
+  m('na_butterfly', '구름 나비', 'sky', 0.8, 1.0, 2.2, { fly: true }),
+  m('na_butterflyb', '바람 나비', 'sky', 0.85, 1.1, 2.3, { fly: true }),
+  m('na_owl', '하늘 부엉이', 'sky', 1.0, 1.15, 2.0, { fly: true }),
+  m('na_lantern', '떠도는 등불', 'sky', 1.15, 1.2, 1.2, { fly: true }),
+  m('na_heart', '길 잃은 마음', 'sky', 1.3, 1.1, 1.3, { hitR: 0.74, noHeal: true }),
+  m('na_slime4', '그림자 슬라임', 'deep', 0.95, 1.1, 1.1, { hop: true, reach: 1.25 }),
+  m('na_snake4', '별 삼킨 뱀', 'deep', 0.85, 1.25, 2.3),
+  m('na_larva2', '심연 애벌레', 'deep', 1.5, 1.05, 0.9, { hitR: 0.74 }),
+  m('na_mouseblack', '그림자 쥐', 'deep', 0.8, 1.0, 2.2),
+  m('na_beast2', '잃어버린 짐승', 'deep', 1.25, 1.3, 1.6, { hitR: 0.78 }),
+  m('na_cyclope2', '눈먼 외눈이', 'deep', 1.45, 1.35, 1.1, { hitR: 0.8 }),
   // 1차 코드 그림 (예비)
   m('slime', '슬라임', 'any', 0.9, 0.9, 0.95, { hop: true, reach: 1.25, hitR: 0.62 }),
   m('goblin', '고블린', 'any', 1.15, 1.1, 1.9, { r: 0.32, hitR: 0.72 }),
@@ -78,6 +107,11 @@ export const REGION_BOSS: Record<RegionId, BossLook> = {
   mine: { id: 'nb_cyclop', name: '외눈 마귀', pats: ['돌진', '주먹 찍기', '박쥐 부르기'], r: 0.65, minion: 'na_bluebat' },
   ice: { id: 'nb_spirit', name: '얼음 정령왕', pats: ['눈보라 돌진', '얼음 폭발', '정령 부르기'], r: 0.65, minion: 'na_spirit' },
   abyss: { id: 'nb_squid', name: '심연 오징어', pats: ['먹물 돌진', '촉수 내려치기', '문어 부르기'], r: 0.8, minion: 'na_octopus2' },
+  coast: { id: 'nb_squidg', name: '해초 크라켄', pats: ['먹물 돌진', '해일 찍기', '소라게 부르기'], r: 0.8, minion: 'na_mollusc' },
+  dune: { id: 'nb_racoongold', name: '황금 너구리 파라오', pats: ['금화 굴리기', '모래 폭풍 찍기', '쥐 떼 부르기'], r: 0.7, minion: 'na_mouse' },
+  ember: { id: 'nb_flam', name: '불꽃 거인', pats: ['화염 돌진', '분화 찍기', '도깨비 부르기'], r: 0.65, minion: 'na_flam2' },
+  sky: { id: 'nb_tengub', name: '푸른 텐구', pats: ['돌풍 급강하', '회오리 찍기', '나비 부르기'], r: 0.75, minion: 'na_butterfly' },
+  deep: { id: 'nb_deep', name: '별을 삼킨 것', pats: ['별빛 흡수', '어둠 내려찍기', '그림자 부르기'], r: 0.8, minion: 'na_slime4' },
 };
 /** 토벌 주간 보스 그림 (주마다 돌아가며) */
 export const RAID_LOOKS: BossLook[] = [
@@ -87,6 +121,11 @@ export const RAID_LOOKS: BossLook[] = [
   { id: 'nb_slime', name: '왕슬라임', pats: ['굴러오기', '내려 앉기', '분열'], r: 0.75, minion: 'na_slime_green' },
   // 심연의 눈: 새 그림 4종에 없어 옛 그림 한 장 그대로 (전투에서도 같은 그림)
   { id: 'old_eye', name: '심연의 눈', pats: ['응시 돌진', '촉수 내려치기', '그림자 부르기'], r: 0.8, minion: 'na_spirit2' },
+  // REGIONS2 §3: 패턴 4개 중 앞의 셋이 필드 패턴 (돌진 · 내려찍기 · 부하) — 넷째(특수)는 분노 때 이름으로
+  { id: 'nb_dragong', name: '바다 용 렌', pats: ['물기둥 돌진', '꼬리 찍기', '크라켄 새끼'], r: 0.85, minion: 'na_octopusg' },
+  { id: 'nb_samuraib', name: '모래의 검귀', pats: ['모래 베기', '칼날 폭풍', '미라 졸개'], r: 0.8, minion: 'na_reptile' },
+  { id: 'nb_cyclop2', name: '용암 마귀', pats: ['용암 돌진', '분화', '불두더지'], r: 0.7, minion: 'na_mole2' },
+  { id: 'nb_dragonb', name: '하늘 용', pats: ['급강하', '번개 숨결', '나비 떼'], r: 0.85, minion: 'na_butterflyb' },
 ];
 /** 토벌 보스(옛 id) → 그림 (핫픽스 8: 주마다 돌리지 않고 보스마다 고정 — 이름·초상과 맞게) */
-export const RAID_LOOK_OF: Record<string, string> = { boar: 'nb_racoon', mushroom: 'nb_slime', golem: 'nb_samurai', wyvern: 'nb_tengu', eye: 'old_eye' };
+export const RAID_LOOK_OF: Record<string, string> = { boar: 'nb_racoon', mushroom: 'nb_slime', golem: 'nb_samurai', wyvern: 'nb_tengu', eye: 'old_eye', leviathan: 'nb_dragong', sandblade: 'nb_samuraib', magma: 'nb_cyclop2', skydragon: 'nb_dragonb' };

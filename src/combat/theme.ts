@@ -16,8 +16,8 @@ export interface GroundPal {
   /** 보스 무대 문양 색 */
   rune: string;
 }
-export type Particle = 'leaf' | 'spore' | 'dust' | 'snow' | 'star';
-export type Light = 'sun' | 'fog' | 'lamp' | 'cold' | 'rise';
+export type Particle = 'leaf' | 'spore' | 'dust' | 'snow' | 'star' | 'spray' | 'sand' | 'ember' | 'petal' | 'upfall';
+export type Light = 'sun' | 'fog' | 'lamp' | 'cold' | 'rise' | 'dusk' | 'noon' | 'lava' | 'skylight' | 'dark';
 export interface Theme {
   pal: GroundPal;
   /** 필드 안 바닥 한 점 (wx, wy = 필드 칸 좌표 · h = 점마다 난수 · n = 큰 얼룩 노이즈) */
@@ -26,7 +26,7 @@ export interface Theme {
   outside: (edge: number, wx: number, wy: number, h: number, P: GroundPal) => string;
   /** 숲 가장자리 나무 줄 (마을 나무 그림) */
   trees?: boolean;
-  /** 둘레 소품 4종 (assets/combat/props/{key}.png · 아래 가운데 기준) */
+  /** 둘레 소품 4~5종 (assets/combat/props/{key}.png · 아래 가운데 기준) */
   props: string[];
   /** 은은하게 빛나는 소품 → 빛 색 */
   glow: Record<string, string>;
@@ -157,6 +157,131 @@ export const THEMES: Record<string, Theme> = {
     rock: ['#2e3a64', '#4a5a90', '#141a34'],
     band: '#ffd36b',
   },
+  // ───────── REGIONS2 §4 ─────────
+  // 가라앉은 등대 해안: 젖은 모래 + 얕은 물(반사 잔점) + 조개 · 파도 치는 바다 · 물보라 · 해 질 녘 주황 + 등대 회전 빛
+  coast: {
+    pal: { a: '#c9b48a', b: '#d6c296', c: '#b39e74', dirt: '#5fb0c4', dirtD: '#3d8aa2', edge: '#2a6a8a', void: '#0e2c44', x1: '#e8f6ff', x2: '#f2e2d0', rune: '#9ae8ff' },
+    floor: (wx, wy, h, n, _N, P, fbm) => {
+      const w = fbm(wx * 0.55 + 31, wy * 0.55 + 4);
+      // 얕은 물 칸: 반사 잔점 + 가장자리 물거품
+      if (w < 0.24) return h < 0.03 ? P.x1 : h < 0.3 ? P.dirtD : P.dirt;
+      if (w < 0.26) return h < 0.3 ? P.x1 : P.c;
+      // 조개 (드문 밝은 점) · 젖은 모래 얼룩
+      if (h < 0.006) return P.x2;
+      if (h < 0.01) return '#e89a8a';
+      return n > 0.62 ? (h < 0.2 ? P.c : P.a) : h < 0.08 ? P.c : h < 0.18 ? P.b : P.a;
+    },
+    outside: (e, wx, wy, h, P) => {
+      if (e >= -0.15) return h < 0.5 ? P.x1 : P.dirt;
+      // 파도: 줄무늬 물결 + 흰 거품
+      const wave = fr((wx + wy) * 0.45 + Math.sin(wx * 0.7) * 0.3);
+      if (wave < 0.05 && h < 0.4) return P.x1;
+      return e < -1.2 ? (h < 0.1 ? P.edge : P.void) : h < 0.3 ? P.dirtD : P.edge;
+    },
+    props: ['coast_wreck', 'coast_lighthouse', 'coast_net', 'coast_coral', 'coast_rock'],
+    glow: { coast_lighthouse: '255,230,150' },
+    particle: 'spray',
+    light: 'dusk',
+    rock: ['#8a8070', '#b8ad98', '#5a5248'],
+    band: '#4fb3c8',
+  },
+  // 모래시계 유적: 금빛 모래 + 깨진 석판 · 무너진 기둥 · 모래 바람 · 강한 정오 햇빛
+  dune: {
+    pal: { a: '#e2bf72', b: '#ecca7e', c: '#cfa95e', dirt: '#b8a07e', dirtD: '#8a7658', edge: '#a8844a', void: '#3a2a14', x1: '#f6e2a8', x2: '#d4c4a0', rune: '#ffe08a' },
+    floor: (wx, wy, h, n, _N, P, fbm) => {
+      // 석판: 큰 사각 칸 (깨진 금 · 이음매)
+      const s = fbm(wx * 0.4 + 7, wy * 0.4 + 19);
+      if (s > 0.57) {
+        if (fr(wx * 0.9) < 0.07 || fr(wy * 0.9) < 0.07) return P.dirtD;
+        if (h < 0.03) return P.dirtD;
+        return h < 0.25 ? P.x2 : P.dirt;
+      }
+      // 모래 물결
+      const rip = fr(wx * 0.6 + wy * 0.25 + fbm(wx, wy) * 0.8);
+      if (rip < 0.045 && h < 0.8) return P.c;
+      if (rip > 0.92 && h < 0.5) return P.x1;
+      return n > 0.6 ? P.b : h < 0.06 ? P.c : P.a;
+    },
+    outside: (e, _x, _y, h, P) => (e < -0.7 ? (h < 0.2 ? P.edge : P.void) : e < -0.15 ? (h < 0.5 ? P.c : P.edge) : h < 0.6 ? P.a : P.c),
+    props: ['dune_statue', 'dune_hourglass', 'dune_pots', 'dune_pillar', 'dune_cactus'],
+    glow: {},
+    particle: 'sand',
+    light: 'noon',
+    rock: ['#b89a6a', '#e0c890', '#7a6040'],
+    band: '#e0b45a',
+  },
+  // 잿불 화산: 검은 현무암 + 빛나는 용암 균열 · 용암 강 · 불티 · 아래에서 올라오는 붉은 빛
+  ember: {
+    pal: { a: '#2c2628', b: '#352e30', c: '#221d20', dirt: '#ff7a2a', dirtD: '#c43a14', edge: '#401812', void: '#120808', x1: '#ffd36b', x2: '#4a3e3e', rune: '#ff9a4a' },
+    floor: (wx, wy, h, n, _N, P, fbm) => {
+      const k = Math.abs(fbm(wx * 0.75 + 13, wy * 0.75 + 2) - 0.5);
+      if (k < 0.014) return h < 0.3 ? P.x1 : P.dirt;
+      if (k < 0.03) return h < 0.5 ? P.dirtD : P.c;
+      if (h < 0.02) return P.x2;
+      return n > 0.62 ? P.b : h < 0.1 ? P.c : P.a;
+    },
+    outside: (e, wx, wy, h, P) => {
+      if (e >= -0.2) return h < 0.6 ? P.edge : P.c;
+      // 용암 강: 밝은 줄이 흐른다
+      const flow = fr((wx - wy) * 0.35);
+      if (e < -0.5 && e > -1.6) return flow < 0.12 ? P.x1 : h < 0.4 ? P.dirt : P.dirtD;
+      return h < 0.05 ? P.dirtD : P.void;
+    },
+    props: ['ember_boulder', 'ember_crystal', 'ember_anvil', 'ember_vent', 'ember_tree'],
+    glow: { ember_crystal: '255,150,70', ember_vent: '255,110,50', ember_tree: '255,120,60' },
+    particle: 'ember',
+    light: 'lava',
+    rock: ['#3a3236', '#5a4e50', '#1a1416'],
+    band: '#e0603a',
+  },
+  // 구름 정원: 구름 바닥 + 떠 있는 풀섬 + 돌다리 · 끝없는 하늘 · 꽃잎·깃털 · 밝은 하늘빛 + 구름 그림자
+  sky: {
+    pal: { a: '#f2f6ff', b: '#ffffff', c: '#dce6f6', dirt: '#7cc05a', dirtD: '#5a9a44', edge: '#a8cdf0', void: '#6aa8e8', x1: '#c8c0b0', x2: '#a89e8c', rune: '#ffe08a' },
+    floor: (wx, wy, h, n, N, P, fbm) => {
+      // 돌다리: 가운데 한 줄
+      const br = Math.abs(wy - N * 0.5 - Math.sin(wx * 0.4) * 0.6);
+      if (br < 0.55) return fr(wx * 1.4) < 0.1 ? P.x2 : h < 0.2 ? P.x2 : P.x1;
+      // 풀섬
+      const g = fbm(wx * 0.5 + 3, wy * 0.5 + 27);
+      if (g > 0.66) return h < 0.04 ? '#ffd0e0' : h < 0.25 ? P.dirtD : P.dirt;
+      if (g > 0.63) return P.dirtD;
+      // 구름 (몽글몽글 밝은 얼룩)
+      return n > 0.58 ? P.b : h < 0.1 ? P.c : P.a;
+    },
+    outside: (e, wx, wy, h, P) => {
+      if (e >= -0.2) return h < 0.6 ? P.c : P.edge;
+      // 끝없는 하늘: 구름 띠 · 멀리 다른 섬 (드문 초록 점)
+      const cl = fr((wx + wy * 0.3) * 0.18);
+      if (cl < 0.12) return h < 0.6 ? '#eaf4ff' : P.edge;
+      if (h < 0.004) return '#7cc05a';
+      return e > -0.9 ? P.edge : P.void;
+    },
+    props: ['sky_windmill', 'sky_island', 'sky_flowers', 'sky_lantern', 'sky_cloud'],
+    glow: { sky_lantern: '255,220,140' },
+    particle: 'petal',
+    light: 'skylight',
+    rock: ['#c8c0b0', '#eae4d8', '#8a8274'],
+    band: '#bfe3ff',
+  },
+  // 심연의 바닥: 별이 꺼진 검은 돌 + 희미한 별 자국 · 위로 아득한 입구 · 거꾸로 떨어지는 빛 가루 · 아주 어둡게
+  deep: {
+    pal: { a: '#141220', b: '#191626', c: '#0e0c18', dirt: '#3a3466', dirtD: '#24203e', edge: '#08070e', void: '#020205', x1: '#6a5ab0', x2: '#c8c0ff', rune: '#8a7ae0' },
+    floor: (wx, wy, h, n, _N, P, fbm) => {
+      // 희미한 별 자국 (꺼진 별 모양 얼룩)
+      const k = Math.abs(fbm(wx * 0.6 + 41, wy * 0.6 + 8) - 0.5);
+      if (k < 0.012) return h < 0.15 ? P.x1 : P.dirt;
+      if (k < 0.025) return P.dirtD;
+      if (h < 0.004) return P.x2;
+      return n > 0.62 ? P.b : h < 0.1 ? P.c : P.a;
+    },
+    outside: (e, _x, _y, h, P) => (e >= -0.2 ? (h < 0.5 ? P.edge : P.c) : h < 0.003 ? '#4a4280' : P.void),
+    props: ['deep_star', 'deep_gear', 'deep_lantern', 'deep_slab', 'deep_chain'],
+    glow: { deep_slab: '170,150,255' },
+    particle: 'upfall',
+    light: 'dark',
+    rock: ['#24203a', '#3a3460', '#0c0a16'],
+    band: '#6a4fd0',
+  },
 };
 export const themeOf = (region: string): Theme => THEMES[region] ?? THEMES.forest;
 
@@ -196,7 +321,7 @@ export function placeProps(region: string, stage: number, N: number): { x: numbe
   };
   const out: { x: number; y: number; k: string }[] = [];
   const pick = (low: boolean) => {
-    const pool = low ? t.props.filter((k) => !/cave|pillar|stairs|cliff|banner|bigmush|beam/.test(k)) : t.props;
+    const pool = low ? t.props.filter((k) => !/cave|pillar|stairs|cliff|banner|bigmush|beam|lighthouse|wreck|hourglass|cactus|windmill|island|lantern|vent|tree|chain/.test(k)) : t.props;
     return (pool.length ? pool : t.props)[Math.floor(rnd() * (pool.length || t.props.length))];
   };
   // 뒤쪽 (화면 위): y = -1.2~-2.2 줄 · x = -1.2~-2.2 줄

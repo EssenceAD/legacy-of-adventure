@@ -27,6 +27,10 @@ export interface BossDef {
   float?: number;
   /** 보상 기준 금화 (권장 전투력으로 한 판 했을 때) */
   gold: number;
+  /** REGIONS2: 새 보스 (옛 그림 sprites/boss_{id}.png 없음 — 얼굴은 assets/mon/{그림}/face.png) */
+  fresh?: boolean;
+  /** 토벌 순환·떠돌이에 안 나온다 (별을 삼킨 것 — 엔딩 전용 · 사냥 x-10 보스 재료만) */
+  noRaid?: boolean;
 }
 
 export const BOSSES: BossDef[] = [
@@ -61,6 +65,40 @@ export const BOSSES: BossDef[] = [
     mat: '심연의 눈물', trophy: '심연의 눈 조각', title: '심연을 마주 본 자',
     weak: ['cleric', 'knight'], resist: ['mage'], float: 12, gold: 23500,
   },
+  // REGIONS2 §3: 지역 6~9 주간 토벌 (패턴 4개 = 돌진 · 내려찍기 · 부하 · 특수 — 필드 전투는 앞의 셋)
+  {
+    id: 'leviathan', name: '바다 용 렌', region: 'coast', alarm: '가라앉은 등대 너머로 물기둥이 솟았다! 바다 용 렌이 해안을 휘감는다!',
+    power: 15000, hp: 6000000, patterns: ['물기둥 돌진', '꼬리 찍기', '크라켄 새끼', '해일'],
+    mat: '용의 비늘', trophy: '등대 불씨', title: '등대에 불을 다시 켠 자',
+    weak: ['mage', 'cleric'], resist: ['rogue'], float: 6, gold: 50000, fresh: true,
+  },
+  {
+    id: 'sandblade', name: '모래의 검귀', region: 'dune', alarm: '멈춘 모래시계 아래에서 칼 뽑는 소리가 났다! 모래의 검귀가 깨어났다!',
+    power: 32000, hp: 12800000, patterns: ['모래 베기', '칼날 폭풍', '미라 졸개', '시간 멈춤'],
+    mat: '녹슨 모래시계', trophy: '검귀의 가면', title: '멈춘 시간을 벤 자',
+    weak: ['dwarf', 'knight'], resist: ['mage'], gold: 107000, fresh: true,
+  },
+  {
+    id: 'magma', name: '용암 마귀', region: 'ember', alarm: '잿불 화산이 으르렁거린다! 용암 마귀가 분화구에서 기어 나왔다!',
+    power: 68000, hp: 27000000, patterns: ['용암 돌진', '분화', '불두더지', '대폭발'],
+    mat: '마귀의 뿔', trophy: '식은 용암 왕관', title: '화산을 잠재운 자',
+    weak: ['knight', 'cleric'], resist: ['dwarf'], gold: 228000, fresh: true,
+  },
+  {
+    id: 'skydragon', name: '하늘 용', region: 'sky', alarm: '구름 정원 위로 번개가 갈라졌다! 하늘 용이 날개를 펼쳤다!',
+    power: 140000, hp: 56000000, patterns: ['급강하', '번개 숨결', '나비 떼', '폭풍'],
+    mat: '하늘 용의 뿔', trophy: '구름 왕관', title: '하늘 끝에 닿은 자',
+    weak: ['rogue', 'mage'], resist: ['knight'], float: 8, gold: 470000, fresh: true,
+  },
+  {
+    // 지역 10 사냥 보스 (토벌 순환에 넣지 않는다 · 엔딩 전용) — 세트 제작·초월 보스 재료만 준다
+    id: 'devourer', name: '별을 삼킨 것', region: 'deep', alarm: '',
+    power: 300000, hp: 1, patterns: ['별빛 흡수', '어둠 내려찍기', '그림자 부르기'],
+    mat: '그림자 껍질', trophy: '', title: '',
+    weak: [], resist: [], gold: 0, fresh: true, noRaid: true,
+  },
 ];
+/** 토벌(주간·떠돌이)에 나오는 보스 */
+export const RAID_BOSSES = BOSSES.filter((b) => !b.noRaid);
 
 export const bossById = (id: string) => BOSSES.find((b) => b.id === id);
