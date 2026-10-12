@@ -162,6 +162,10 @@ export function initStoryUI() {
     Object.assign(window, {
       __story: {
         playAct, openLetter, playRetireEnding, newInn, queue,
+        /** STORY v2·v3 시험용: 루트 목표 창 · 루트 엔딩 컷 */
+        goals: openRouteGoals,
+        letter: openLetter,
+        cut: (r: string) => playStory(routeCut(r as RouteId as never)),
         /** 시험용: 장부 전부 완료 */
         ledgerAll: () => {
           for (const m of MISSIONS) if (!P.guide.claimed.includes(m.id)) P.guide.claimed.push(m.id);
