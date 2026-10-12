@@ -14,7 +14,7 @@ import { recPower } from '../world/hunt';
 import { bondOf, pairOf } from '../world/chem';
 import { roleMult } from '../world/party';
 import { ultName5 } from '../world/chemNews';
-import { addToBag, makeItem, rollGrade } from '../world/items';
+import { addToBag, makeItem, optSum, rollGrade } from '../world/items';
 import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
@@ -113,6 +113,9 @@ export interface Unit {
   jump?: { t: number; dur: number; x0: number; y0: number; x1: number; y1: number; land: () => void };
   trail?: { x: number; y: number; t: number }[];
   alertT?: number;
+  /** REGIONS2 세트: 치명타 확률 + · 받는 피해 − (0~1) */
+  critAdd?: number;
+  dmgCut?: number;
 }
 export interface Proj {
   x: number;
@@ -243,6 +246,9 @@ export interface Field {
   bannerT: number;
   /** 핫픽스 8: 조금 뒤에 할 일 (사냥꾼 연속 사격 등) */
   later?: { t: number; fn: () => void }[];
+  /** REGIONS2: 보스 체력 50%에서 한 번 (지역 10 「목소리」) · 보스가 쓰러질 때 한 줄 */
+  half?: () => void;
+  bossLine?: string;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -281,6 +287,10 @@ export interface FieldOpts {
   mode?: 'hunt' | 'raid';
   /** 토벌 보스 그림·이름 · 보스 체력(필드 단위) · 제한 시간 */
   raid?: { look: BossLook; hp: number; seconds: number; power: number };
+  /** REGIONS2: 보스 체력 50%에서 한 번 · 보스가 쓰러질 때 띠에 한 줄 */
+  half?: () => void;
+  talkHalf?: (done: () => void) => void;
+  bossLine?: string;
 }
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
@@ -294,6 +304,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
       actor: a, job, power: powerOf(a) * rm * (1 + buffOf('power')) * mythicAtk(members.slice(0, 3), region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], taunt: 0, guard: 0, atkAnim: 0,
+      critAdd: optSum(a, 'critPct') / 100, dmgCut: Math.min(0.5, optSum(a, 'dmgCut') / 100),
     };
   };
   const allies = members.slice(0, 3).map(mk);
@@ -310,6 +321,8 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
     wave: 0, waveLeft: 0, time: opts.raid ? opts.raid.seconds : C.timeLimit, stop: 0, shake: 0, shakeAmp: 0, chem: 0, ult: 0, ultName: '', hitsTaken: 0, autoUsed: auto, auto, kills: 0, chain: 0, chainT: 0,
     done: '', doneT: 0, stick: { x: 0, y: 0 }, holdAtk: 0, nextId: 100, stats: { teleIn: 0, dodged: 0 }, castTxt: '', castT: 0, props: props.filter((p) => Math.hypot(p.x - N / 2, p.y - N / 2) > 2.2),
   };
+  f.half = opts.half;
+  f.bossLine = opts.bossLine;
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -477,7 +490,7 @@ function killMob(f: Field, m: Unit) {
 function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
   if (u.dead || (u.inv ?? 0) > 0) return;
   // BUILDINGS_SPEC §3: 돌피부 물약 — 받는 피해 −15%
-  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
+  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
   u.hp -= dmg;
   u.flash = 1 / 30 + 0.001;
   u.hurtT = 0.22;
@@ -538,7 +551,7 @@ const faceTo = (u: Unit, t: { x: number; y: number }) => {
   u.ay = ny;
 };
 const powerHit = (f: Field, u: Unit, mult: number) => {
-  const crit = Math.random() < C.critChance;
+  const crit = Math.random() < C.critChance + (u.critAdd ?? 0);
   return { dmg: (u.power ?? 50) * C.dmgK * mult * (crit ? 2 : 1) * (u === f.me ? 1 : C.allyDmg), crit };
 };
 
@@ -703,7 +716,9 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
       f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.6, r: 2.5 });
       for (const a of f.allies)
         if (!a.dead && dist(a, u) <= 2.5) {
-          const h = Math.round(a.max * 0.3 * mythicHeal(f.allies.map((x) => x.actor!).filter(Boolean)));
+          // REGIONS2: 「길 잃은 마음」이 곁에 붙어 있으면 회복이 반으로
+          const blocked = f.units.some((m) => m.team === 'mob' && !m.dead && monDef(m.mon ?? '').noHeal && m.mon && dist(m, a) < 1.6);
+          const h = Math.round(a.max * 0.3 * mythicHeal(f.allies.map((x) => x.actor!).filter(Boolean)) * (blocked ? 0.5 : 1));
           a.hp = Math.min(a.max, a.hp + h);
           f.nums.push({ x: a.x, y: a.y, text: '+' + h * 10, crit: false, heal: true, t: 0, dx: 0 });
         }
@@ -1199,6 +1214,18 @@ export function step(f: Field, dt: number) {
         }
   stepFx(f, dt);
   // 전투 2차: 무리가 줄면 가장자리에서 새 무리 · 목표를 채우면 정예/보스 · 정예/보스를 쓰러뜨리면 끝
+  // REGIONS2: 보스 체력 50% (한 번) · 보스가 쓰러지면 한 줄
+  const eb = f.elite?.boss ? f.elite : null;
+  if (eb && f.half && !eb.dead && eb.hp <= eb.max * 0.5) {
+    const h = f.half;
+    f.half = undefined;
+    h();
+  }
+  if (eb && eb.dead && f.bossLine) {
+    f.banner = f.bossLine;
+    f.bannerT = 4;
+    f.bossLine = undefined;
+  }
   if (f.mode === 'hunt') {
     const alive = f.units.filter((u) => u.team === 'mob' && !u.dead && !u.minion).length;
     if (!f.elite && f.spawned < f.killGoal && alive < C.refillBelow) spawnPack(f, true);

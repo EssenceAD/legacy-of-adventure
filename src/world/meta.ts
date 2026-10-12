@@ -16,6 +16,7 @@ import { gainXp } from './adventurers';
 import { chaptersDone, feature, townGrade } from './guide';
 import { regionUnlocked, slot5Ready } from './expeditions';
 import { stars, today } from './progress';
+import { regionFirstDone, regionGuideDone } from './regions2';
 import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
 import { chem5Titles, title5 } from './chemNews';
@@ -24,7 +25,7 @@ const homeActors = () => world.home?.actors ?? world.actors;
 
 // ───────── 업적 ─────────
 
-function stat(k: AchStat): number {
+function stat(k: AchStat, d?: AchDef): number {
   const C = P.counters;
   switch (k) {
     case 'expeditions': return C.expeditions;
@@ -59,11 +60,13 @@ function stat(k: AchStat): number {
     case 'evalBest': return P.evaluation.best;
     case 'taps': return P.counters.taps ?? 0;
     case 'photos': return P.counters.photos ?? 0;
+    case 'regFirst': return d?.region && regionFirstDone(d.region) ? 1 : 0;
+    case 'regGuide': return d?.region && regionGuideDone(d.region) ? 1 : 0;
   }
 }
 
 export function achProgress(d: AchDef) {
-  const cur = stat(d.stat);
+  const cur = stat(d.stat, d);
   return { cur: Math.min(cur, d.need), need: d.need, done: cur >= d.need, claimed: P.meta.ach.includes(d.id) };
 }
 /** 숨김 업적이 보이나: 이뤘거나 장부 7장을 마쳤으면 */

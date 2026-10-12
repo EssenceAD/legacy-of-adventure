@@ -9,7 +9,7 @@ import { CONFIG } from '../data/config';
 import { BOSSES, bossById } from '../data/bosses';
 import { josa } from '../data/josa';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
-import { addToBag, itemPower, makeItem, rollGrade, TEST } from './items';
+import { addToBag, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
 import { enhanceBonus, ownerGain, stat } from './owner';
@@ -122,7 +122,9 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
 /** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
-export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance') + towerEnhance()));
+export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance') + towerEnhance() + setEnhance()));
+/** REGIONS2: 「불꽃 대장장이」 세트 — 마을 단골 중 가장 높은 강화 성공 + */
+export const setEnhance = () => Math.max(0, ...(world.home?.actors ?? world.actors).filter((a) => !a.role && a.equip).map((a) => optSum(a, 'enhPct'))) / 100;
 
 export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
   if (!smithObj()) return 'nosmith';
@@ -162,7 +164,7 @@ export function transcendCost(it: Item) {
 export function transcendRate(it: Item): number {
   const n = it.enh + 1;
   const lv = smithObj()?.lvl ?? 0;
-  return Math.max(0.05, Math.min(1, TR().rate - TR().step * (n - 11) + TR().perSmithLv * lv + (it.tPity ?? 0)));
+  return Math.max(0.05, Math.min(1, TR().rate - TR().step * (n - 11) + TR().perSmithLv * lv + (it.tPity ?? 0) + setEnhance()));
 }
 export type TranscendResult = 'ok' | 'fail' | 'max' | 'locked' | 'notten' | 'gold' | 'mats' | 'boss' | 'dust';
 export function transcend(it: Item): TranscendResult {
@@ -212,6 +214,8 @@ export const enhanceBossCost = (it: Item) => (it.enh + 1 >= SM.bossEnhanceFrom ?
 /** 보스 재료가 모자랄 때 안내 */
 export const bossHint = (id: string) => {
   const m = bossById(id)?.mat ?? '보스 재료';
+  // REGIONS2: 별을 삼킨 것은 토벌에 안 나온다 → 심연의 바닥 x-10 사냥
+  if (bossById(id)?.noRaid) return `${m}${josa(m, '는')} 「심연의 바닥 10」 보스 사냥에서 얻을 수 있어요`;
   return `${m}${josa(m, '는')} 「${bossById(id)?.name ?? '보스'}」 토벌에서 얻을 수 있어요`;
 };
 

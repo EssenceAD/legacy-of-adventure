@@ -6,7 +6,7 @@ import { heroById } from '../data/heroes';
 import { CLASS_WEAPON, GUEST_KINDS, type GuestKind } from '../data/classes';
 import { legendByKey } from '../data/legends';
 import {
-  GRADE_INFO, OPT_INFO, REGIONS, SLOT_STATS, SLOTS, WEAPON_KINDS, itemName, regionById,
+  GRADE_INFO, OPT_INFO, REGIONS, ROLL_KEYS, BASE_REGIONS, SLOT_STATS, SLOTS, WEAPON_KINDS, itemName, regionById,
   type Grade, type OptKey, type RegionId, type Slot, type StatKey,
 } from '../data/items';
 import { canvas, dk, lt, P as Paint } from '../engine/pixel';
@@ -22,6 +22,8 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 export const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1';
 export const pityLimit = () => (TEST ? CONFIG.test.pity : E.pity);
 
+/** 유물(a) 등급이 나오는 지역: 별의 심연 · 심연의 바닥 (REGIONS2) */
+const relicOf = (r: RegionId) => !!regionById(r).relic;
 /** 등급 굴리기. 지역 단계·의뢰 길이에 따라 상위 등급 확률이 오르고, 천장에 닿으면 전설 확정 */
 export function rollGrade(region: RegionId, tier: number, boost = 1): Grade {
   const ri = regionIdx(region);
@@ -29,14 +31,14 @@ export function rollGrade(region: RegionId, tier: number, boost = 1): Grade {
   P.pity[region]++;
   if (P.pity[region] >= pityLimit()) {
     P.pity[region] = 0;
-    return region === 'abyss' && Math.random() < 0.3 ? 'a' : 'l';
+    return relicOf(region) && Math.random() < 0.3 ? 'a' : 'l';
   }
   const r = Math.random();
   const pl = E.baseDrop.l * m;
   const pe = E.baseDrop.e * m;
   const pr = E.baseDrop.r * m;
   let g: Grade = 'n';
-  if (r < pl) g = region === 'abyss' && Math.random() < 0.3 ? 'a' : 'l';
+  if (r < pl) g = relicOf(region) && Math.random() < 0.3 ? 'a' : 'l';
   else if (r < pl + pe) g = 'e';
   else if (r < pl + pe + pr) g = 'r';
   if (g === 'l' || g === 'a') P.pity[region] = 0;
@@ -51,12 +53,12 @@ export function makeItem(region: RegionId, grade: Grade, slot: Slot = pick(SLOTS
   stats[s1] = Math.round(scale * rnd(0.85, 1.15));
   stats[s2] = Math.round(scale * 0.5 * rnd(0.7, 1.2));
   const opts: ItemOpt[] = [];
-  const keys = Object.keys(OPT_INFO) as OptKey[];
+  const keys = ROLL_KEYS;
   for (let i = 0; i < I.gradeOpts[grade]; i++) {
     const k = pick(keys.filter((x) => !opts.some((o) => o.k === x)));
     const inf = OPT_INFO[k];
     const v = Math.round(rnd(inf.min, inf.max) * (1 + 0.25 * ri));
-    opts.push(k === 'regionDmg' ? { k, v, region: pick(REGIONS).id } : { k, v });
+    opts.push(k === 'regionDmg' ? { k, v, region: pick(REGIONS.slice(0, Math.max(BASE_REGIONS, ri + 1))).id } : { k, v });
   }
   const wkind = slot === 'weapon' ? pick(WEAPON_KINDS) : undefined;
   const it: Item = {

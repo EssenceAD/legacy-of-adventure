@@ -5,7 +5,7 @@ import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES, type GoalEvent, type GoalTemplate } from '../data/goals';
 import { HERO_SETS, HEROES, type HeroCtx } from '../data/heroes';
-import { REGIONS, SLOTS, type RegionId } from '../data/items';
+import { BASE_REGIONS, REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS } from '../data/classes';
 import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
@@ -36,7 +36,11 @@ export function repToNext(): number {
 export const guestDexKey = (a: Pick<Actor, 'race' | 'kind' | 'rarity'>) => `${a.race}|${a.kind}|${a.rarity}`;
 export const GUEST_DEX_TOTAL = RACES.length * GUEST_KINDS.length * RARITIES.length;
 /** 유물은 심연에서만 → 칸 수: 지역5×부위3×등급4 + 심연 유물 3 */
-export const ITEM_DEX_TOTAL = REGIONS.length * SLOTS.length * 4 + SLOTS.length;
+//  REGIONS2: 비율(보상·기념비·전설 조건)은 처음 다섯 지역 칸으로 — 새 지역 칸은 전투력 보너스만 더한다 (옛 진행이 깎이지 않게)
+export const ITEM_DEX_TOTAL = BASE_REGIONS * SLOTS.length * 4 + SLOTS.length;
+const BASE_IDS = new Set(REGIONS.slice(0, BASE_REGIONS).map((r) => r.id as string));
+/** 처음 다섯 지역 도감 칸 수 */
+export const baseDexItems = () => P.dex.items.filter((k) => BASE_IDS.has(k.split('|')[0])).length;
 
 /** 손님을 만나면 도감 칸이 채워진다. 새 칸이면 true */
 export function dexAddGuest(a: Actor): boolean {
@@ -89,7 +93,7 @@ export function monumentUnlocked(): boolean {
   return dexRatio('guests') >= 1 || dexRatio('items') >= 1 || HEROES.every((h) => P.dex.heroes[h.id]?.recruited);
 }
 export function dexRatio(book: 'guests' | 'items') {
-  return book === 'guests' ? P.dex.guests.length / GUEST_DEX_TOTAL : P.dex.items.length / ITEM_DEX_TOTAL;
+  return book === 'guests' ? P.dex.guests.length / GUEST_DEX_TOTAL : baseDexItems() / ITEM_DEX_TOTAL;
 }
 
 // ───────── 오늘의 목표 (현실 날짜) ─────────

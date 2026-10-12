@@ -227,6 +227,8 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
   ctx.fillStyle = deep ? deepen(T.pal.void, 0.32) : T.pal.void;
   ctx.fillRect(0, 0, LW, LH);
   if (ground) ctx.drawImage(ground, ox - ground.width / 2, oy - 20 - 3 * TH - TH / 2 + TH / 2);
+  // REGIONS2 §4: 심연의 바닥 — 바닥 별 자국 넷 (보스 체력 25%마다 하나씩 켜짐)
+  if (T.light === 'dark') starMarks(ctx, f, W, false);
 
   // 예고 범위 (발밑 빨간 타원 · 정수 줄로 그려 도트 유지)
   for (const m of f.units) {
@@ -523,6 +525,10 @@ function drawMob(ctx: CanvasRenderingContext2D, m: Unit, W: (x: number, y: numbe
   const img = m.flash > 0 ? fr.w : left ? fr.l : fr.r;
   const [ax, ay] = sh.meta.anchor;
   const px = left ? sh.meta.frameW - ax : ax;
+  if (sh.meta.code) {
+    codeBoss(ctx, m, sh, img, X - px, Y - ay, left);
+    return;
+  }
   ctx.globalAlpha = m.dead ? Math.max(0, 1 - m.deadT * 1.8) : 1;
   ctx.drawImage(img, X - px, Y - ay);
   ctx.globalAlpha = 1;
@@ -674,7 +680,7 @@ const MOTES = 24;
 function spawnMote(p: Theme['particle'], LW: number, LH: number, anywhere: boolean): Mote {
   const R = Math.random;
   const x = R() * LW;
-  const y = anywhere ? R() * LH : p === 'spore' || p === 'star' ? LH + 4 : p === 'dust' ? R() * LH : -4;
+  const y = anywhere ? R() * LH : p === 'spore' || p === 'star' || p === 'spray' || p === 'ember' || p === 'upfall' ? LH + 4 : p === 'dust' || p === 'sand' ? R() * LH : -4;
   switch (p) {
     case 'leaf':
       // 나뭇잎 팔랑 · 가끔 반딧불
@@ -689,6 +695,22 @@ function spawnMote(p: Theme['particle'], LW: number, LH: number, anywhere: boole
       return { x, y, vx: -3 + R() * 4, vy: 10 + R() * 10, t: 0, life: 10 + R() * 6, c: R() < 0.7 ? '#ffffff' : '#cfe8ff', s: R() < 0.3 ? 2 : 1 };
     case 'star':
       return { x, y, vx: (R() - 0.5) * 3, vy: -(6 + R() * 8), t: 0, life: 8 + R() * 6, c: R() < 0.6 ? '#ffd36b' : '#fff3c0', s: 1 };
+    // REGIONS2 §4
+    case 'spray':
+      // 물보라: 아래에서 튀어 오르다 사라짐 · 가끔 갈매기 그림자 (큰 점, 가로로)
+      return R() < 0.15
+        ? { x: anywhere ? x : -6, y: R() * LH, vx: 22 + R() * 10, vy: (R() - 0.5) * 3, t: 0, life: 12, c: 'rgba(20,40,60,.35)', s: 3 }
+        : { x, y, vx: (R() - 0.5) * 6, vy: -(10 + R() * 10), t: 0, life: 2 + R() * 3, c: R() < 0.6 ? '#e8f6ff' : '#9ad8ee', s: 1 };
+    case 'sand':
+      // 모래 바람 줄기: 옆으로 빠르게
+      return { x: anywhere ? x : -4, y, vx: 30 + R() * 25, vy: (R() - 0.5) * 4, t: 0, life: 6 + R() * 4, c: R() < 0.6 ? '#f6e2a8' : '#cfa95e', s: R() < 0.3 ? 2 : 1 };
+    case 'ember':
+      return { x, y, vx: (R() - 0.5) * 8, vy: -(12 + R() * 14), t: 0, life: 5 + R() * 5, c: R() < 0.5 ? '#ffb040' : R() < 0.6 ? '#ff6a2a' : '#ffe08a', s: 1 };
+    case 'petal':
+      return { x, y, vx: 6 + R() * 8, vy: 6 + R() * 6, t: 0, life: 10 + R() * 6, c: R() < 0.45 ? '#ffd0e0' : R() < 0.6 ? '#ffffff' : '#c8e8ff', s: R() < 0.4 ? 2 : 1 };
+    case 'upfall':
+      // 거꾸로 떨어지는 빛 가루: 아주 느리게 위로
+      return { x, y, vx: (R() - 0.5) * 2, vy: -(3 + R() * 4), t: 0, life: 14 + R() * 8, c: R() < 0.6 ? '#b8a8ff' : '#fff3c0', s: 1 };
   }
 }
 function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean, LW: number, LH: number, W: (x: number, y: number) => [number, number]) {
@@ -760,6 +782,71 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
     ctx.fillStyle = g;
     ctx.fillRect(0, (LH * 0.4) | 0, LW, Math.ceil(LH * 0.6));
   }
+  else if (T.light === 'dusk') {
+    // 해 질 녘 주황 (위에서 아래로) + 등대 회전 빛
+    const g = ctx.createLinearGradient(0, 0, 0, LH);
+    g.addColorStop(0, `rgba(255,140,60,${deep ? 0.08 : 0.16})`);
+    g.addColorStop(1, 'rgba(120,60,90,0.06)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, LH);
+    if (!low)
+      for (const pr of edgeProps) if (pr.k === 'coast_lighthouse') {
+        const [X, Y] = W(pr.x, pr.y);
+        const a = now / 1400 + pr.x;
+        const L = Math.max(LW, LH) * 0.6;
+        const ly = Y - 40;
+        ctx.fillStyle = 'rgba(255,236,170,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(X, ly);
+        ctx.lineTo(X + Math.cos(a - 0.12) * L, ly + Math.sin(a - 0.12) * L * 0.5);
+        ctx.lineTo(X + Math.cos(a + 0.12) * L, ly + Math.sin(a + 0.12) * L * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        glowAt(ctx, X, ly, 14, '255,236,170', 0.5);
+      }
+  } else if (T.light === 'noon') {
+    // 강한 정오 햇빛 · 가장자리 그림자 짙게
+    ctx.fillStyle = 'rgba(255,244,210,0.10)';
+    ctx.fillRect(0, 0, LW, LH);
+    const g = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.75);
+    g.addColorStop(0, 'rgba(60,30,0,0)');
+    g.addColorStop(1, 'rgba(60,30,0,0.28)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, LH);
+  } else if (T.light === 'lava') {
+    // 아래에서 올라오는 붉은 빛 + 붉은 비네트
+    const g = ctx.createLinearGradient(0, LH, 0, LH * 0.3);
+    g.addColorStop(0, `rgba(255,80,30,${deep ? 0.24 : 0.18})`);
+    g.addColorStop(1, 'rgba(255,80,30,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, (LH * 0.3) | 0, LW, Math.ceil(LH * 0.7));
+    const v = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.75);
+    v.addColorStop(0, 'rgba(90,10,0,0)');
+    v.addColorStop(1, 'rgba(90,10,0,0.35)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, LW, LH);
+  } else if (T.light === 'skylight') {
+    // 밝은 하늘빛 + 흐르는 구름 그림자
+    ctx.fillStyle = 'rgba(190,225,255,0.08)';
+    ctx.fillRect(0, 0, LW, LH);
+    if (!low)
+      for (let i = 0; i < 3; i++) {
+        const x = (((now / 70 + i * 160) % (LW + 200)) - 100) | 0;
+        const y = ((i * 0.31 + 0.15) * LH) | 0;
+        ctx.fillStyle = 'rgba(40,70,120,0.08)';
+        ctx.beginPath();
+        ctx.ellipse(x, y, 60, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+  } else if (T.light === 'dark') {
+    // 아주 어둡게 · 위로 아득한 입구에 작은 빛 하나 · 켜진 별 자국만 빛난다
+    ctx.fillStyle = `rgba(2,2,10,${deep ? 0.42 : 0.32})`;
+    ctx.fillRect(0, 0, LW, LH);
+    glowAt(ctx, LW / 2, 4, 26, '220,210,255', 0.35);
+    ctx.fillStyle = '#fff3c0';
+    ctx.fillRect((LW / 2) | 0, 3, 1, 1);
+    starMarks(ctx, f, W, true);
+  }
   // 깊은 곳: 가장자리를 더 어둡게
   if (deep) {
     const g = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.3, LW / 2, LH / 2, Math.max(LW, LH) * 0.7);
@@ -778,7 +865,7 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
   for (let i = 0; i < motes.length; i++) {
     const m = motes[i];
     m.t += dt;
-    const sway = T.particle === 'leaf' && m.s === 2 ? Math.sin(m.t * 3 + i) * 8 : T.particle === 'snow' ? Math.sin(m.t * 2 + i) * 4 : 0;
+    const sway = (T.particle === 'leaf' && m.s === 2) || T.particle === 'petal' ? Math.sin(m.t * 3 + i) * 8 : T.particle === 'snow' || T.particle === 'upfall' ? Math.sin(m.t * 2 + i) * 4 : 0;
     m.x += (m.vx + sway) * dt;
     m.y += m.vy * dt;
     if (m.t > m.life || m.x < -8 || m.x > LW + 8 || m.y < -8 || m.y > LH + 8) {
@@ -786,7 +873,7 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
       continue;
     }
     // 반딧불·별 가루는 깜빡
-    const blink = (T.particle === 'leaf' && m.s === 1) || T.particle === 'star' ? Math.sin(m.t * 5 + i) > -0.3 : true;
+    const blink = (T.particle === 'leaf' && m.s === 1) || T.particle === 'star' || T.particle === 'upfall' || T.particle === 'ember' ? Math.sin(m.t * 5 + i) > -0.3 : true;
     if (!blink) continue;
     ctx.fillStyle = m.c;
     ctx.fillRect(Math.round(m.x), Math.round(m.y), m.s, m.s);
@@ -803,3 +890,67 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
   }
 }
 let darkCv: HTMLCanvasElement | null = null;
+
+// ───────── REGIONS2: 심연의 바닥 별 자국 · 「별을 삼킨 것」 코드 연출 ─────────
+
+/** 별 자국 네 자리 (필드 칸) */
+const MARKS: [number, number][] = [[0.5, -3.4], [3.4, 0.4], [-0.4, 3.4], [-3.4, -0.5]];
+/** 켜진 별 자국 수: 지역 10 보스전이면 체력 25%마다 하나 (보스가 쓰러지면 넷) */
+export function marksLit(f: Field): number {
+  const b = f.elite?.boss ? f.elite : null;
+  if (!b || f.stage < 10) return 0;
+  if (b.dead) return 4;
+  return Math.max(0, Math.min(4, Math.floor((1 - b.hp / b.max) * 4 + 1e-6)));
+}
+function starMarks(ctx: CanvasRenderingContext2D, f: Field, W: (x: number, y: number) => [number, number], glow: boolean) {
+  const N = C.field;
+  const lit = marksLit(f);
+  MARKS.forEach(([dx, dy], i) => {
+    const [X, Y] = W(N / 2 + dx, N / 2 + dy);
+    const on = i < lit;
+    if (glow) {
+      if (on && !saverOn()) glowAt(ctx, X, Y, 22, '255,226,140', 0.32 + Math.sin(performance.now() / 300 + i) * 0.06);
+      if (!on) return;
+    }
+    // 다섯 갈래 별 모양 (점)
+    const c1 = on ? '#fff3c0' : '#2e2850';
+    const c2 = on ? '#ffd36b' : '#211c3a';
+    ctx.fillStyle = c2;
+    for (const [x, y] of [[-3, 0], [3, 0], [0, -2], [-2, 2], [2, 2]] as [number, number][]) ctx.fillRect(X + x, Y + y, 1, 1);
+    ctx.fillStyle = c1;
+    ctx.fillRect(X - 1, Y, 3, 1);
+    ctx.fillRect(X, Y - 1, 1, 3);
+  });
+}
+const dieAt = new WeakMap<Unit, number>();
+/** 「별을 삼킨 것」: 대기·공격 두 장뿐 — 숨쉬기(위아래 1px) · 피격 흰 번쩍(공통) · 금빛 눈 · 죽으면 아래부터 별빛으로 흩어진다 */
+function codeBoss(ctx: CanvasRenderingContext2D, m: Unit, sh: MonSheet, img: HTMLCanvasElement, x0: number, y0: number, left: boolean) {
+  const now = performance.now();
+  const breath = m.dead ? 0 : Math.round(Math.sin(m.t * 2.4));
+  const W0 = sh.meta.frameW;
+  const H0 = sh.meta.frameH;
+  if (!m.dead) {
+    ctx.drawImage(img, x0, y0 + breath);
+  } else {
+    if (!dieAt.has(m)) dieAt.set(m, now);
+    const p = Math.min(1, (now - dieAt.get(m)!) / 1400);
+    const keep = Math.round(H0 * (1 - p));
+    if (keep > 0) ctx.drawImage(img, 0, 0, W0, keep, x0, y0, W0, keep);
+    // 흩어지는 줄: 금빛·흰 점이 위로
+    if (p < 1)
+      for (let i = 0; i < 14; i++) {
+        const sx = x0 + ((i * 37 + Math.floor(now / 60) * 13) % W0);
+        const rise = ((now / 18 + i * 11) % 20) | 0;
+        ctx.fillStyle = i % 3 ? '#ffd36b' : '#ffffff';
+        ctx.fillRect(sx, y0 + keep - rise, 1, 1);
+      }
+    return;
+  }
+  // 눈: 금빛으로 살짝 (깜빡이듯 숨쉼)
+  const eyes = (sh.meta as unknown as { eyes?: [number, number][] }).eyes ?? [];
+  if (!saverOn())
+    for (const [ex, ey] of eyes) {
+      const ix = left ? W0 - 1 - ex : ex;
+      glowAt(ctx, x0 + ix, y0 + ey + breath, 5, '255,211,107', 0.45 + Math.sin(now / 400) * 0.15);
+    }
+}

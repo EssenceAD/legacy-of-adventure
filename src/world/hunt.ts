@@ -13,6 +13,8 @@ import { addRep } from './progress';
 import { addToBag, makeItem, rollGrade } from './items';
 import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type Item } from './state';
 import { track } from '../net/telemetry';
+import { newRegionOpen } from './regions2';
+import { BASE_REGIONS } from '../data/items';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -26,6 +28,11 @@ export const MOBS: Record<RegionId, string[]> = {
   mine: ['bat', 'kobold'],
   ice: ['iceimp', 'snowwolf'],
   abyss: ['shadow'],
+  coast: ['frog', 'slime'],
+  dune: ['kobold', 'bat'],
+  ember: ['iceimp', 'shadow'],
+  sky: ['bat', 'iceimp'],
+  deep: ['shadow'],
 };
 export const MOB_NAME: Record<string, string> = {
   slime: '슬라임', wolf: '늑대', goblin: '고블린', mushimp: '버섯 도깨비', frog: '늪 개구리', bat: '박쥐', kobold: '코볼트', iceimp: '얼음 도깨비', snowwolf: '눈늑대', shadow: '그림자',
@@ -41,6 +48,8 @@ export const best = (r: string) => P.hunt.best[r] ?? 0;
 export function huntRegionOpen(i: number): boolean {
   if (!feature('hunt')) return false;
   if (i === 0) return true;
+  // REGIONS2: 6~10 (별의 심연 x-10 → 해안 … → 길잡이 별 4개 → 심연의 바닥)
+  if (i >= BASE_REGIONS) return newRegionOpen(i);
   return best(REGIONS[i - 1].id) >= H.stages;
 }
 export const stageOpen = (r: string, s: number) => huntRegionOpen(regionIdx(r)) && s <= best(r) + 1;

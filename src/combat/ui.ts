@@ -75,6 +75,7 @@ export function foldCombat() {
   stickOn = false;
   folded = true;
   foldEnded = false;
+  F.half = undefined;
   cancelAnimationFrame(raf);
   removeEventListener('resize', fit);
   removeEventListener('keydown', onKey);
@@ -152,7 +153,19 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   if ([...ids].some((id) => !sheets[id])) await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
-  F = makeField(region, stage, members, auto, opts);
+  // REGIONS2: 50% 컷 — 전투를 멈추고 (일시정지 창 없이) 대화창을 전투 위에 · 끝나면 이어서
+  const userHalf = opts.talkHalf;
+  F = makeField(region, stage, members, auto, userHalf ? { ...opts, half: () => {
+    paused = true;
+    holding = false;
+    keys.clear();
+    document.body.classList.add('cbtalk');
+    combatTalk(() => {
+      document.body.classList.remove('cbtalk');
+      paused = false;
+    });
+  } } : opts);
+  combatTalk = userHalf ?? ((d) => d());
   onEnd = done;
   root = document.createElement('div');
   // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
@@ -743,4 +756,6 @@ export function closeCombat() {
   flushScene();
 }
 export const combatOn = () => !!F && !folded;
+/** REGIONS2: 50% 컷을 트는 쪽 (ui/hunt가 넘긴 half(done)) */
+let combatTalk: (done: () => void) => void = (d) => d();
 export type { Unit };

@@ -1,5 +1,5 @@
 // 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, 24시간) · 하루 3번 · 소탕 · 보상
-import { BOSSES, bossById, type BossDef } from '../data/bosses';
+import { BOSSES, bossById, RAID_BOSSES, type BossDef } from '../data/bosses';
 import { pioneerRaidMult } from './easter';
 import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
@@ -34,7 +34,8 @@ const weekIndex = () => {
 
 /** 이번 주 보스: 열린 지역의 보스 중에서 주마다 돌아가며 */
 function pickWeekly(): BossDef {
-  const open = BOSSES.filter((b) => regionUnlocked(regionIdx(b.region)));
+  // REGIONS2: 별을 삼킨 것은 넣지 않는다 (엔딩 전용)
+  const open = RAID_BOSSES.filter((b) => regionUnlocked(regionIdx(b.region)));
   const list = open.length ? open : [BOSSES[0]];
   return list[weekIndex() % list.length];
 }
@@ -130,7 +131,7 @@ export function wanderTarget(): RaidTarget | null {
 /** 원정 승리 때: 그 지역 보스를 떠돌이로 만날 수도 (24시간) */
 export function maybeWander(region: RegionId): BossDef | null {
   if (wanderTarget() || Math.random() >= R.wanderChance) return null;
-  const b = BOSSES.find((x) => x.region === region);
+  const b = RAID_BOSSES.find((x) => x.region === region);
   if (!b) return null;
   const max = Math.round(b.hp * R.wanderHpShare);
   P.raid.wander = { bossId: b.id, until: Date.now() + R.wanderHours * 36e5, hpLeft: max, max };

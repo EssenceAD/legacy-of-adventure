@@ -101,7 +101,7 @@ const regionSet = (a: Actor, r: RegionId) => equippedItems(a).filter((it) => it.
 export function scoreParty(ms: Actor[], t: RecTarget, pw: Map<Actor, number>): { score: number; power: number; reasons: string[] } {
   const chem = chemOf(ms);
   let raw = 0;
-  for (const m of ms) raw += (pw.get(m) ?? powerOf(m)) * (1 + optSum(m, 'regionDmg', t.region) / 100);
+  for (const m of ms) raw += (pw.get(m) ?? powerOf(m)) * (1 + (optSum(m, 'regionDmg', t.region) + optSum(m, 'anyDmg')) / 100);
   const power = Math.round(raw * chem.mult * roleMult(ms));
   const reach = Math.min(1, power / Math.max(1, t.power));
   const over = Math.max(0, power / Math.max(1, t.power) - 1);

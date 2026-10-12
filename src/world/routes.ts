@@ -18,6 +18,11 @@ Object.assign(ROUTES.love, { open: true, goals: ROUTE_LOVE.goals, pickLines: ROU
 Object.assign(ROUTES.legend, { open: true, goals: ROUTE_LEGEND.goals, pickLines: ROUTE_LEGEND.pickLines });
 Object.assign(ROUTES.town, { open: true, goals: ROUTE_TOWN.goals, pickLines: ROUTE_TOWN.pickLines });
 Object.assign(ROUTES.true, { goals: ROUTE_TRUE.goals, pickLines: TRUE_PICK });
+// REGIONS2 §0: 지역 10이 들어가면서 목표 조정 — 용사 「심연의 바닥 x-9 돌파」 · 진 엔딩 「심연의 바닥 x-10 (열쇠 지참)」
+//  (대사 파일은 그대로 두고 여기서 제목만 바꾼다 · 이미 이룬 목표는 이룬 그대로 — goalSeen)
+export const GOAL_TITLE_R2: Record<string, string> = { h_abyss: '심연의 바닥 x-9 돌파', x_abyss: '심연의 바닥 x-10 (열쇠 지참)' };
+ROUTES.hero.goals = ROUTES.hero.goals!.map((g) => (GOAL_TITLE_R2[g.id] ? { ...g, title: GOAL_TITLE_R2[g.id] } : g));
+ROUTES.true.goals = ROUTES.true.goals!.map((g) => (GOAL_TITLE_R2[g.id] ? { ...g, title: GOAL_TITLE_R2[g.id] } : g));
 
 const R = () => CONFIG.story.routes;
 const st = () => P.story;
@@ -52,6 +57,9 @@ export const routeHooks = { atticGear: () => {}, atticItem: (): { enh: number } 
 // ───────── 목표 판정 ─────────
 
 const mk = (id: string, title: string, cur: number, need: number, text?: string): Goal => ({ id, title, cur: Math.min(cur, need), need, done: cur >= need, text: text ?? `${Math.min(cur, need)}/${need}` });
+/** REGIONS2 §0: 이번 회차에 이미 이룬 목표(완료 줄을 본 것)는 조건이 바뀌어도 이룬 그대로 */
+const goalSeen = (id: string) => st().seen.includes('goal:' + id);
+const kept = (g: Goal): Goal => (g.done || !goalSeen(g.id) ? g : { ...g, cur: g.need, done: true, text: '완료' });
 const goalTitle = (route: RouteId, i: number) => ROUTES[route].goals![i].title;
 
 /** 짝 (케미 단계 높은 순) — 사랑 루트의 @a / @b */
@@ -78,7 +86,7 @@ export function routeGoals(route: RouteId): Goal[] {
     const it = routeHooks.atticItem();
     return [
       mk('h_gear', t(0), it?.enh ?? 0, 5, it ? `+${it.enh}/+5 · 대장간에서 「다락의 옛 칼」을 강화해요` : '다락의 옛 칼'),
-      mk('h_abyss', t(1), P.hunt.best.abyss ?? 0, 10),
+      kept(mk('h_abyss', t(1), P.hunt.best.deep ?? 0, 9, `심연의 바닥 ${Math.min(9, P.hunt.best.deep ?? 0)}/9`)),
       mk('h_party', t(2), maxChem(), 4, `가장 깊은 케미 ${maxChem()}/4단계`),
       mk('h_final', t(3), flag('final') ? 1 : 0, 1, flag('final') ? '완료' : '앞의 목표를 마치면 최종 토벌'),
     ];
@@ -116,7 +124,7 @@ export function routeGoals(route: RouteId): Goal[] {
   return [
     mk('x_shards', t(0), shards, R().trueShards),
     mk('x_room', t(1), inn, 10, `본관 Lv.${inn}/10`),
-    mk('x_abyss', t(2), P.hunt.best.abyss ?? 0, 10),
+    kept(mk('x_abyss', t(2), P.hunt.best.deep ?? 0, 10, `심연의 바닥 ${Math.min(10, P.hunt.best.deep ?? 0)}/10`)),
     mk('x_night', t(3), flag('night') ? 1 : 0, 1, flag('night') ? '완료' : '밤에 「불 켜 두기」'),
   ];
 }

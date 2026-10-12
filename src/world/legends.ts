@@ -5,12 +5,11 @@ import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
 import { josa } from '../data/josa';
 import { LEGENDS, legendByKey, type BondEvent, type LegendCtx, type RequestEvent } from '../data/legends';
-import { REGIONS } from '../data/items';
 import { makeLegend } from './adventurers';
 import { arrive, sendAway } from './actors';
 import { onNightFlip } from './clock';
 import { queueEvent } from './events';
-import { dexBonus, heroCtx, stars, today } from './progress';
+import { dexBonus, dexRatio, heroCtx, stars, today } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
 import { entrance, bestOf } from './town';
 import { towerStars } from './facilities';
@@ -43,7 +42,7 @@ export function legendCtx(scale = 1): LegendCtx {
     forestSends: P.counters.forestSends,
     moodTopDays: P.counters.moodTopDays,
     goldTotal: P.counters.goldTotal,
-    itemDexRatio: P.dex.items.length / Math.max(1, REGIONS.length * 3 * 4 + 3),
+    itemDexRatio: dexRatio('items'),
     relicEver: P.counters.relicEver > 0 || P.bag.some((it) => it.grade === 'a'),
     bossKills: (id) => (id ? P.raid.kills[id] ?? 0 : Object.values(P.raid.kills).reduce((s, v) => s + v, 0)),
     heroOwned: (id) => !!P.dex.heroes[id]?.recruited,

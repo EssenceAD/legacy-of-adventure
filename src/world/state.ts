@@ -2,7 +2,9 @@
 import { CONFIG } from '../data/config';
 import type { Kind } from '../data/catalog';
 import type { ClassKey, Race, Rarity, Face } from '../data/classes';
-import type { Grade, OptKey, RegionId, Slot, StatKey, WeaponKind } from '../data/items';
+import { REGIONS, type Grade, type OptKey, type RegionId, type Slot, type StatKey, type WeaponKind } from '../data/items';
+/** 지역마다 0 (REGIONS2: 새 지역 칸도 같이) */
+const perRegion = () => Object.fromEntries(REGIONS.map((r) => [r.id, 0])) as Record<RegionId, number>;
 import type { Neighbor } from '../data/neighbors';
 
 /** BUILDUX §2-3: 보관함에 넣어 둔 건물·장식 (레벨·색·방향 그대로) */
@@ -284,7 +286,7 @@ export function freshProgress() {
     rep: 0,
     bag: [] as Item[],
     dust: { n: 0, r: 0, e: 0, l: 0, a: 0 } as Record<Grade, number>,
-    mats: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+    mats: perRegion(),
     /** 텃밭 수확물 (주점 식사 품질) */
     pantry: 0,
     /** BUILDINGS_SPEC §3: 수확물 창고 (작물별 개수) · 물약 칸 · 켜진 물약 */
@@ -295,7 +297,7 @@ export function freshProgress() {
     runs: [] as Run[],
     nextRunId: 1,
     /** 지역별: 마지막 전설 이후 장비 수 (천장) */
-    pity: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+    pity: perRegion(),
     dex: {
       /** 종족|직업|희귀도 */
       guests: [] as string[],
@@ -315,7 +317,7 @@ export function freshProgress() {
       harvests: 0,
       trains: 0,
       crafted: {} as Record<string, number>,
-      regionWins: { forest: 0, swamp: 0, mine: 0, ice: 0, abyss: 0 } as Record<RegionId, number>,
+      regionWins: perRegion(),
       expeditions: 0,
       // 3단계: 전설 영웅 소문 조건용
       forestSends: 0,
@@ -471,6 +473,8 @@ export function freshProgress() {
       easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean },
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
+    /** REGIONS2: 지역 6~10 — 흩어진 별 컷 · 길잡이 별 · 첫 입장 · 보스 한 줄 · 편지 · 심연의 바닥 · 별을 삼킨 것 처치 수 (world/regions2.ts) */
+    regions2: { scatter: false, stars: [] as string[], entered: [] as string[], bossShown: [] as string[], letters: [] as { id: string; day: number }[], deepOpen: false, deepKills: 0 },
     hunt: {
       best: {} as Record<string, number>,
       firstClear: [] as string[],

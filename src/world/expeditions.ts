@@ -11,7 +11,8 @@ import { fillNames, josa } from '../data/josa';
 import { hourNow } from './clock';
 import { maybeWander } from './raid';
 import { pairById } from '../data/chem';
-import { REGIONS, GRADE_INFO, SLOT_NAME, regionById, type RegionId } from '../data/items';
+import { REGIONS, BASE_REGIONS, GRADE_INFO, SLOT_NAME, regionById, type RegionId } from '../data/items';
+import { newRegionOpen } from './regions2';
 import { CHEM_EVENT, CLASS_EVENT, FAIL_LINES, LOOT_LINES, REGION_OPEN, RUN_BEATS, RUN_COMMON, WIN_LINES } from '../data/reports';
 import type { GuestKind } from '../data/classes';
 import { gainXp, powerOf, xpToNext } from './adventurers';
@@ -33,6 +34,8 @@ const homeObjs = () => world.home?.objs ?? world.objs;
 /** 지역 i가 열렸나: 앞 지역 3번 성공 또는 평판 ★(i+1) */
 export function regionUnlocked(i: number): boolean {
   if (i === 0) return true;
+  // REGIONS2: 6~10은 사냥과 같은 조건 (평판 ★·의뢰 성공으로는 안 열린다)
+  if (i >= BASE_REGIONS) return newRegionOpen(i);
   // 5단계: 앞 지역 사냥 보스(x-10)를 깨도 열린다
   return (P.counters.regionWins[REGIONS[i - 1].id] ?? 0) >= 3 || stars() >= i + 1 || (P.hunt.best[REGIONS[i - 1].id] ?? 0) >= CONFIG.hunt.stages;
 }
@@ -139,7 +142,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   const chemPct = Math.max(0, ...members.map((m) => optSum(m, 'chemPct')));
   const chem = partyChemMult(members, chemPct);
   let power = 0;
-  for (const m of members) power += powerOf(m) * (1 + optSum(m, 'regionDmg', q.region) / 100);
+  for (const m of members) power += powerOf(m) * (1 + (optSum(m, 'regionDmg', q.region) + optSum(m, 'anyDmg')) / 100);
   // BUILDINGS_SPEC §3: 힘의 물약
   power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')) * mythicAtk(members, q.region));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
@@ -181,7 +184,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   if (q.tier === 0 && !q.tutorial) P.counters.quickRuns++;
   track('expeditionSent');
   ownerGain('expedition');
-  if (q.region === 'ice' || q.region === 'abyss') ownerGain('dangerRun');
+  if (ri(q.region) >= 3) ownerGain('dangerRun');
   // 전설 인연 활동: 숲 원정 · 밤(20~04시) 출발 · 오스윈과 함께
   if (q.region === 'forest') {
     P.counters.forestSends++;

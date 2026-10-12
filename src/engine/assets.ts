@@ -5,7 +5,7 @@ import { HEROES } from '../data/heroes';
 import { LEGENDS } from '../data/legends';
 import { JOBS, mcPortrait } from '../data/origins';
 import { BOSSES } from '../data/bosses';
-import { REGIONS } from '../data/items';
+import { BASE_REGIONS, REGIONS } from '../data/items';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
 import { GUEST_KINDS, RACES } from '../data/classes';
@@ -116,8 +116,8 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     }),
     // 토벌전: 옛 보스 그림(지금은 심연의 눈만 씀 — 나머지는 핫픽스 8부터 Ninja Adventure 그림) · 전투 배경 · 트로피
     // 토벌전: 보스 5마리 · 지역별 전투 배경 (트로피·기념비는 meta.json 건물 그림으로 같이 불러온다)
-    ...BOSSES.map((b) => loadImage(`${BASE}sprites/boss_${b.id}.png`).then((im) => (BOSS_IMG[b.id] = toCanvas(im)))),
-    ...REGIONS.map((r) => loadImage(`${BASE}sprites/${r.id === 'forest' ? 'raid_bg' : 'raid_bg_' + r.id}.png`).then((im) => (RAID_BG[r.id] = im))),
+    ...BOSSES.filter((b) => !b.fresh).map((b) => loadImage(`${BASE}sprites/boss_${b.id}.png`).then((im) => (BOSS_IMG[b.id] = toCanvas(im)))),
+    ...REGIONS.slice(0, BASE_REGIONS).map((r) => loadImage(`${BASE}sprites/${r.id === 'forest' ? 'raid_bg' : 'raid_bg_' + r.id}.png`).then((im) => (RAID_BG[r.id] = im))),
     // 5단계 사냥 몬스터 10종 (왼쪽을 봄) · 마을 등급 장식 8종
     ...MOB_KEYS.map((k) => loadImage(`${BASE}monsters/mob_${k}.png`).then((im) => named((MOB_IMG[k] = toCanvas(im)), 'mob:' + k))),
     ...PROP_KEYS.map((k) => loadImage(`${BASE}props/${k}.png`).then((im) => named((PROP_IMG[k] = toCanvas(im)), 'prop:' + k))),

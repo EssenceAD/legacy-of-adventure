@@ -13,6 +13,9 @@ export interface MonMeta {
   /** 바닥 기준점 (프레임 왼쪽 위 기준) */
   anchor: [number, number];
   anims: Record<string, MonAnim>;
+  /** REGIONS2: 걷기·피격·죽음을 코드로 그리는 보스 (별을 삼킨 것) · 눈 자리 */
+  code?: boolean;
+  eyes?: [number, number][];
 }
 export interface MonSheet {
   meta: MonMeta;
