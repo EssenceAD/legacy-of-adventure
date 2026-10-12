@@ -112,9 +112,18 @@ for (const night of [true, false]) {
     if (!hb.roof) console.error('    (', k, ': 바닥 칸 밖 그림 점을 못 찾음 — 그림 위 아무 점)');
     await press(xy[0], xy[1], 700);
     await W(250);
-    const pl = await placing();
+    let pl = await placing();
+    // 마을 사건(손님 도착 대사·카메라 이동)이 누르는 중에 끼면 한 번 더 (그때 탭이 막히는 건 정상)
+    if (pl?.move !== k) {
+      for (let j = 0; j < 10 && (await p.evaluate(() => !document.querySelector('#dlg').hidden)); j++) { await p.evaluate(() => document.querySelector('#dlg').click()); await W(250); }
+      await cancel();
+      const hb2 = await bodyXY(k);
+      await press(hb2.xy[0], hb2.xy[1], 700);
+      await W(250);
+      pl = await placing();
+    }
     if (pl?.move === k) lifted++;
-    else console.error('   ', k, '→', JSON.stringify(pl), await winOn());
+    else console.error('   ', k, '→', JSON.stringify(pl), await winOn(), await p.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return (e ? e.tagName + '#' + e.id + '.' + String(e.className).slice(0, 30) : 'none') + ' talk=' + !document.querySelector('#dlg').hidden + ' decor=' + window.__decor.view.on; }, xy));
     if (name.startsWith('tablet') && night && k === kinds[0] && pl) await p.screenshot({ path: `${dir}/${name}_move_pickup_night.png` });
     await cancel();
     await W(250);
@@ -125,6 +134,13 @@ for (const night of [true, false]) {
   const { xy } = await bodyXY(kinds[0]);
   await press(xy[0], xy[1], 60);
   await W(500);
+  if ((await placing())?.move !== kinds[0]) {
+    for (let j = 0; j < 10 && (await p.evaluate(() => !document.querySelector('#dlg').hidden)); j++) { await p.evaluate(() => document.querySelector('#dlg').click()); await W(250); }
+    await cancel();
+    const again = await bodyXY(kinds[0]);
+    await press(again.xy[0], again.xy[1], 60);
+    await W(500);
+  }
   ok((await placing())?.move === kinds[0], `${label}: 짧게 눌러도 바로 집힘 (${JSON.stringify(await placing())})`);
   await cancel();
   await W(300);
