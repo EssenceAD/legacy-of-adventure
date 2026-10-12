@@ -3,7 +3,7 @@
 //  실행: dist-bot 미리보기 4190 · node scripts/e2e-dupes.mjs
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8');
+const save = fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8');
 const b = await chromium.launch({ channel: 'chrome' });
 const ctx = await b.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await ctx.addInitScript((s) => {

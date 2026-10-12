@@ -102,8 +102,11 @@ describe('옛 저장 옮기기 (v6 → v7 → v8)', () => {
   });
 });
 
-describe('LAND2 저장 옮기기 (v7 → v8 · +8)', () => {
-  const v7 = () => JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+// 실제 유저 저장(real_*)은 로컬 전용 — 없으면 건너뜀
+const REAL = 'tests/fixtures/real_lotte.json';
+const hasReal = fs.existsSync(REAL);
+describe.skipIf(!hasReal)('LAND2 저장 옮기기 (v7 → v8 · +8)', () => {
+  const v7 = () => JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
   it('실제 v7 저장: 건물·손님 모두 +8 · 수·레벨 그대로 · 배치 옮김·뺌 0', () => {
     const old = v7();
     expect(old.version).toBe(7);
@@ -188,10 +191,10 @@ describe('여관 Lv.10 · 주점 Lv.6 (§11)', () => {
   });
 });
 
-describe('LAND2 이웃 마을 모습 (v2 → +8)', () => {
+describe.skipIf(!hasReal)('LAND2 이웃 마을 모습 (v2 → +8)', () => {
   it('옛 클라이언트가 올린 v2 모습: 보는 쪽에서 +8 · 배치 그대로', async () => {
     const { toNeighbor } = await import('../src/ui/neighbors');
-    const old = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+    const old = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
     const layout = old.buildings.map((b: { kind: string; tx: number; ty: number; lvl: number }) => [b.kind, b.tx, b.ty, b.lvl, null, false]);
     const v = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 2, land: old.land, innName: 'x', owner: 'o', layout } })!;
     expect(v.layout.length).toBe(layout.length);

@@ -3,7 +3,7 @@
 //  실행: URL=… node scripts/e2e-hotfix19.mjs → screenshots/hotfix19/*.png
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 const dir = 'screenshots/hotfix19';
 fs.mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ channel: 'chrome' });

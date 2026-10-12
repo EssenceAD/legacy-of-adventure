@@ -3,7 +3,7 @@
 //  실행: 미리보기(DEV) · URL=… node scripts/e2e-edge.mjs → screenshots/edge/*.png
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 const dir = 'screenshots/edge';
 fs.mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ channel: 'chrome' });

@@ -2,7 +2,7 @@
 //  실행: URL=… node scripts/e2e-community.mjs
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 const b = await chromium.launch({ channel: 'chrome' });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await ctx.addInitScript((s) => {

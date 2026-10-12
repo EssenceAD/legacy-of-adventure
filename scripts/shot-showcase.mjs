@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const name = process.argv[2] ?? 'phone';
 const only = process.argv.slice(3);
-const save = fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8');
+const save = fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8');
 const DEV = { phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, pc: { viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1 } };
 const dir = 'shots/showcase';
 const CLOSE = process.env.CLOSE ? process.env.CLOSE.split(',').map(Number) : null; // 설계 확인용 가까이 보기: CLOSE=x,y

@@ -2,7 +2,7 @@
 //  실행: URL=… node scripts/shot-library.mjs
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/ttabam_real.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_ttabam.json', 'utf8'));
 const dir = 'screenshots/feedback23';
 fs.mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ channel: 'chrome' });

@@ -1,5 +1,5 @@
 // 렌더 메모리 측정 + 회귀 확인 (따밤 Galaxy Z Flip4 · 삼성 인터넷 dpr 2.6 「건물이 사라지고 그림자만」 신고)
-//  · 따밤 실제 저장(tests/fixtures/ttabam_real.json, 저장 버전 7 → 게임이 옮김) · 땅 7단계로 올린 변형
+//  · 따밤 실제 저장(tests/fixtures/real_ttabam.json, 저장 버전 7 → 게임이 옮김) · 땅 7단계로 올린 변형
 //  · 412×915 · deviceScaleFactor 2.625 · 모바일 · 터치
 //  · 모든 배율 × 지도 전체 훑기 × 밤 단계 0~10 → 살아 있는 캔버스 수·픽셀 · 마을 캔버스 크기 · JS 힙
 //  · 확인: 마을 캔버스 기기 픽셀 ≤ CSS × 상한(2) · 그림 캐시 수 ≤ 상한 · 페이지 오류 0 · 건물이 실제로 그려짐 · 깨진 그림을 만나도 오류 없음
@@ -10,7 +10,7 @@ import fs from 'node:fs';
 const which = process.argv[2] ?? 'both';
 const measureOnly = process.argv.includes('--measure-only');
 const URL = process.env.URL ?? 'http://localhost:5193/';
-const raw = JSON.parse(fs.readFileSync('tests/fixtures/ttabam_real.json', 'utf8'));
+const raw = JSON.parse(fs.readFileSync('tests/fixtures/real_ttabam.json', 'utf8'));
 const DEV = { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true };
 const CAP_DPR = 2;
 let fail = 0;

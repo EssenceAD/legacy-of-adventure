@@ -6,3 +6,6 @@ asset_raw
 dist-bot
 screenshots/**/v_*.jpg
 screenshots/**/chk_*.jpg
+
+# 실제 유저 저장은 로컬 전용 (이름은 real_*)
+tests/fixtures/real_*

@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const name = process.argv[2] ?? 'phone';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 const DEV = { phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, pc: { viewport: { width: 1440, height: 900 } } };
 const dir = 'screenshots/bulk';
 fs.mkdirSync(dir, { recursive: true });

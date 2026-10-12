@@ -13,7 +13,7 @@ const DEV = {
   tablet1024: { viewport: { width: 1024, height: 768 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   tablet1366: { viewport: { width: 1366, height: 1024 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 };
-const save = JSON.parse(fs.readFileSync('tests/fixtures/ttabam_real.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_ttabam.json', 'utf8'));
 const dir = 'screenshots/feedback23';
 fs.mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ channel: 'chrome' });

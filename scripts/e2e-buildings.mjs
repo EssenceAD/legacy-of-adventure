@@ -2,7 +2,7 @@
 //  롯데캐슬(땅 5) 저장 위에서. 실행: dist-bot 미리보기 4190 · node scripts/e2e-buildings.mjs → screenshots/buildings/*.png
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = JSON.parse(fs.readFileSync('tests/fixtures/lotte_dupe.json', 'utf8'));
+const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 save.gold = 500000;
 save.progress.rep = 2000;
 const dir = 'screenshots/buildings';

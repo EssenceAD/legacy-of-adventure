@@ -2,7 +2,7 @@
 //  실행: URL=http://localhost:5193/ TAG=after node scripts/shot-goalcard.mjs
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const save = fs.readFileSync('tests/fixtures/ttabam_real.json', 'utf8');
+const save = fs.readFileSync('tests/fixtures/real_ttabam.json', 'utf8');
 const tag = process.env.TAG ?? 'run';
 const dir = 'screenshots/goalcard';
 fs.mkdirSync(dir, { recursive: true });

@@ -10,7 +10,7 @@ vi.mock('../src/net/sync', async (orig) => ({ ...(await orig<object>()), cloudRe
 import { checkPioneer } from '../src/ui/easter';
 import { P, S, world, resetProgress } from '../src/world/state';
 
-const W = 'tests/fixtures/woongs_lost_mail.json';
+const W = 'tests/fixtures/real_woongs.json';
 const pmail = () => P.meta.mail.filter((m) => m.reward?.pioneer);
 beforeEach(() => {
   resetProgress();
@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 describe('금빛 편지 다시 넣기', () => {
-  it('웅스 실제 저장(편지 사라짐 · mail 플래그 없음 · got 없음): 켜면 편지가 오고 바로 저장·클라우드', async () => {
+  it.skipIf(!fs.existsSync(W))('웅스 실제 저장(편지 사라짐 · mail 플래그 없음 · got 없음): 켜면 편지가 오고 바로 저장·클라우드', async () => {
     const sv = JSON.parse(fs.readFileSync(W, 'utf8'));
     Object.assign(P.meta, sv.progress.meta);
     if (sv.progress.decor) Object.assign(P.decor, sv.progress.decor);
