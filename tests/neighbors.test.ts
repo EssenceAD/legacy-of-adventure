@@ -5,7 +5,7 @@ import { def } from '../src/data/catalog';
 import { NEIGHBORS, type Neighbor } from '../src/data/neighbors';
 import { N } from '../src/engine/iso';
 import { S, world } from '../src/world/state';
-import { landBounds, pathT, placeLayout, rebuildPaths } from '../src/world/town';
+import { entrance, landBounds, pathT, placeLayout, rebuildPaths } from '../src/world/town';
 
 const LIGHTS = new Set(['fire', 'lamppost', 'double_lamp', 'string_lights', 'brazier', 'mushroom_lamp', 'mushroom_dark']);
 const SHOWCASE = ['moon', 'petal', 'market', 'moss', 'spa'];
@@ -58,6 +58,34 @@ describe('SHOWCASE: 예시 마을 꾸미기 규칙', () => {
       expect([...hues][0]).not.toBeNull();
       if (process.env.MAP) dump(v, free / ((b - a) * (b - a)));
     });
+  // SHOWCASE 다듬기: 큰길 끝(앞 가장자리 입구)에 정문 또는 장미 아치 + 쌍가로등 둘 + 이정표
+  for (const v of NEIGHBORS.filter((n) => SHOWCASE.includes(n.id)))
+    it(`${v.name}: 입구에 정문·장미 아치 + 쌍가로등 2 + 이정표`, () => {
+      place(v);
+      S.visiting = v as never;
+      rebuildPaths();
+      const [ex, ey] = entrance();
+      S.visiting = null as never;
+      const [, b] = landBounds(v.land);
+      expect(ey).toBe(b - 1);
+      const near = (k: string) =>
+        world.objs.filter((o) => o.kind === k && Math.max(0, o.tx - ex, ex - (o.tx + o.fw - 1)) <= 3 && Math.max(0, o.ty - ey, ey - (o.ty + o.fh - 1)) <= 3).length;
+      expect(near('gate') + near('rose_arch')).toBeGreaterThanOrEqual(1);
+      expect(near('double_lamp')).toBeGreaterThanOrEqual(2);
+      expect(near('signpost')).toBeGreaterThanOrEqual(1);
+    });
+  it('달빛 쉼터: 단풍·주황 잎 나무(maple·birch) 없음 — 남색·은색 테마', () => {
+    const moon = NEIGHBORS.find((v) => v.id === 'moon')!;
+    expect(moon.layout.filter(([k]) => k === 'maple' || k === 'birch')).toEqual([]);
+  });
+  it('달무리 온천: 눈사람 없음 · 단풍은 정자 둘레(발판에서 3칸 안)에만', () => {
+    const spa = NEIGHBORS.find((v) => v.id === 'spa')!;
+    expect(spa.layout.some(([k]) => k === 'snowman')).toBe(false);
+    const gz = spa.layout.filter(([k]) => k === 'gazebo');
+    expect(gz.length).toBeGreaterThan(0);
+    const nearGazebo = ([, x, y]: Neighbor['layout'][number]) => gz.some(([, gx, gy]) => Math.max(0, gx - x, x - (gx + 1)) <= 3 && Math.max(0, gy - y, y - (gy + 1)) <= 3);
+    expect(spa.layout.filter(([k]) => k === 'maple').filter((m) => !nearGazebo(m)).map(([, x, y]) => `${x},${y}`)).toEqual([]);
+  });
 });
 
 // ───────── 설계용 글자 지도 ─────────
