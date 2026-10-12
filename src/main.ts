@@ -177,7 +177,8 @@ function update(dt: number) {
       settleOfflineCons();
       // STARFALL §2: 금요일이면 「내일 밤 유성우래요~」
       showerLetter();
-      if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
+      // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
+      if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
     }
     // 단골 제안·케미 대화·원정 보고서: 다른 창이 없을 때 하나씩
     pumpEvents(busy);
@@ -187,7 +188,8 @@ function update(dt: number) {
         tickLegends();
         maybeAlarm();
         dailyOwner();
-        if (dailyAttend() != null) queueEvent(() => openAttend(), 'attend');
+        // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
+      if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
         void dailyStats();
         void checkLastWeek();
       }

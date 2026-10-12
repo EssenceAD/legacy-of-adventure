@@ -99,7 +99,10 @@ export function syncGoalPill() {
     pill.style.top = `${ev!.offsetTop + Math.round((ev!.offsetHeight - pill.offsetHeight) / 2)}px`;
     pill.style.left = `${ev!.offsetLeft + ev!.offsetWidth + 6}px`;
   } else {
-    pill.style.top = '';
+    // 장부 카드가 두 줄·세 줄로 길어져도 그 아래에 (겹치지 않게)
+    const mc = $('#mission');
+    const mOn = !!mc && !mc.hidden && mc.offsetParent !== null;
+    pill.style.top = mOn ? `${mc!.offsetTop + mc!.offsetHeight + 6}px` : '';
     pill.style.left = '';
   }
 }

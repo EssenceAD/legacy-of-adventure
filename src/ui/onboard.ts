@@ -20,13 +20,18 @@ import { isWinOpen, toast } from './windows';
 
 const OB = () => CONFIG.onboard;
 let guest: Actor | null = null;
+/** 손님을 부르는 중 (두 번 부르지 않게) */
+let spawning = false;
+let lastAsk = 0;
 let hand: HTMLImageElement | null = null;
 
 /** 첫 손님이 걸어 들어와 여관 문 앞에서 「방 있나요?」 */
 export function startFirstGuest() {
   if (S.visiting || (P.counters.checkins ?? 0) > 0) return;
-  if (guest && world.actors.includes(guest)) return;
+  if ((guest && world.actors.includes(guest)) || spawning) return;
+  spawning = true;
   setTimeout(() => {
+    spawning = false;
     if (!S.started || S.visiting) return;
     const [ex, ey] = entrance();
     const a = makeAdventurer(ex, ey, { status: 'visitor', rarity: 'special', lvl: 3, day: S.day });
@@ -69,6 +74,11 @@ function hideHand() {
 function syncHand() {
   const show = !!guest && !!guest.firstGuest && world.actors.includes(guest) && guest.st === 'idle' && !isTalking() && !isWinOpen() && !S.visiting;
   if (!show) return hideHand();
+  // 「방 있나요?」 말풍선은 체크인할 때까지 다시
+  if (!guest!.bub && performance.now() - lastAsk > 4000) {
+    lastAsk = performance.now();
+    say(guest!, '방 있나요?', 1);
+  }
   if (!hand) {
     hand = document.createElement('img');
     hand.id = 'obHand';
