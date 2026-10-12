@@ -1,0 +1,59 @@
+{
+ "frameW": 62,
+ "frameH": 82,
+ "anchor": [
+  31,
+  80
+ ],
+ "boss": true,
+ "code": true,
+ "eyes": [
+  [
+   40,
+   24
+  ],
+  [
+   31,
+   24
+  ]
+ ],
+ "source": "REGIONS2 별을 삼킨 것 (asset_raw/boss_deep)",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "move": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "attack": {
+   "row": 1,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "charge": {
+   "row": 1,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "hurt": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "die": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  }
+ }
+}

@@ -98,5 +98,130 @@
   "w": 30,
   "h": 29,
   "anchor": "bottom-center"
+ },
+ "coast_wreck": {
+  "w": 28,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "coast_lighthouse": {
+  "w": 24,
+  "h": 46,
+  "anchor": "bottom-center"
+ },
+ "coast_net": {
+  "w": 21,
+  "h": 34,
+  "anchor": "bottom-center"
+ },
+ "coast_coral": {
+  "w": 24,
+  "h": 23,
+  "anchor": "bottom-center"
+ },
+ "coast_rock": {
+  "w": 28,
+  "h": 23,
+  "anchor": "bottom-center"
+ },
+ "dune_statue": {
+  "w": 30,
+  "h": 27,
+  "anchor": "bottom-center"
+ },
+ "dune_hourglass": {
+  "w": 25,
+  "h": 44,
+  "anchor": "bottom-center"
+ },
+ "dune_pots": {
+  "w": 27,
+  "h": 31,
+  "anchor": "bottom-center"
+ },
+ "dune_pillar": {
+  "w": 28,
+  "h": 38,
+  "anchor": "bottom-center"
+ },
+ "dune_cactus": {
+  "w": 32,
+  "h": 38,
+  "anchor": "bottom-center"
+ },
+ "ember_boulder": {
+  "w": 33,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "ember_crystal": {
+  "w": 30,
+  "h": 34,
+  "anchor": "bottom-center"
+ },
+ "ember_anvil": {
+  "w": 33,
+  "h": 38,
+  "anchor": "bottom-center"
+ },
+ "ember_vent": {
+  "w": 30,
+  "h": 37,
+  "anchor": "bottom-center"
+ },
+ "ember_tree": {
+  "w": 30,
+  "h": 40,
+  "anchor": "bottom-center"
+ },
+ "sky_windmill": {
+  "w": 26,
+  "h": 42,
+  "anchor": "bottom-center"
+ },
+ "sky_island": {
+  "w": 28,
+  "h": 30,
+  "anchor": "bottom-center"
+ },
+ "sky_flowers": {
+  "w": 30,
+  "h": 30,
+  "anchor": "bottom-center"
+ },
+ "sky_lantern": {
+  "w": 26,
+  "h": 33,
+  "anchor": "bottom-center"
+ },
+ "sky_cloud": {
+  "w": 33,
+  "h": 29,
+  "anchor": "bottom-center"
+ },
+ "deep_star": {
+  "w": 34,
+  "h": 25,
+  "anchor": "bottom-center"
+ },
+ "deep_gear": {
+  "w": 42,
+  "h": 29,
+  "anchor": "bottom-center"
+ },
+ "deep_lantern": {
+  "w": 19,
+  "h": 31,
+  "anchor": "bottom-center"
+ },
+ "deep_slab": {
+  "w": 38,
+  "h": 26,
+  "anchor": "bottom-center"
+ },
+ "deep_chain": {
+  "w": 35,
+  "h": 24,
+  "anchor": "bottom-center"
  }
 }
