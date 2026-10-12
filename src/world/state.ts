@@ -293,7 +293,7 @@ export function freshProgress() {
     crops: {} as Record<string, number>,
     potions: {} as Record<string, number>,
     buff: null as null | { id: string; until: number },
-    quests: { day: '', list: [] as Quest[], refreshUsed: 0, nextId: 1 },
+    quests: { day: '', list: [] as Quest[], refreshUsed: 0, nextId: 1, t7: true as boolean | undefined },
     runs: [] as Run[],
     nextRunId: 1,
     /** 지역별: 마지막 전설 이후 장비 수 (천장) */

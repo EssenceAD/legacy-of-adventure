@@ -34,7 +34,7 @@ import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, m
 import { closeWin, openWin, toast } from './windows';
 
 const E = CONFIG.expedition;
-const TIER = ['짧은', '보통', '긴', '아주 긴'];
+const TIER = CONFIG.expedition.tierNames;
 const homeActors = () => world.home?.actors ?? world.actors;
 
 /** 원정 갈 수 있는 손님 (단골·영웅) */
@@ -54,7 +54,7 @@ const durText = (m: number) => (m < 1 ? `${Math.round(m * 60)}초` : minText(m))
 
 function questRow(q: Quest) {
   const reg = regionById(q.region);
-  const dc = dropChances(q.region, q.tier);
+  const dc = dropChances(q.region, CONFIG.expedition.tierGrade[q.tier] ?? q.tier);
   return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small>${q.tag ? `<small class="qtag">📜 ${esc(q.tag.text)}</small>` : ''}<small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
 }
 

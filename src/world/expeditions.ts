@@ -47,8 +47,8 @@ export function makeQuest(region: RegionId, tier: number): Quest {
     region,
     tier,
     power: Math.round(E.basePower * Math.pow(E.regionPower, r) * E.tierPower[tier]),
-    // 지역이 오를수록 시간 ×2 (단, 한 의뢰는 8시간을 넘지 않는다)
-    minutes: Math.min(E.tierMinutes[E.tierMinutes.length - 1], E.tierMinutes[tier] * Math.pow(E.regionTime, r)),
+    // GROWTH §1: 시간은 단계마다 고정 (지역 배수 없음)
+    minutes: E.tierMinutes[tier],
     gold: [
       Math.round(E.baseGold[0] * E.tierReward[tier] * Math.pow(CONFIG.economy.regionReward, r)),
       Math.round(E.baseGold[1] * E.tierReward[tier] * Math.pow(CONFIG.economy.regionReward, r)),
@@ -70,17 +70,37 @@ function ensureQuick(list: Quest[]) {
 /** 짧은 의뢰는 1명만 보내도 된다 */
 export const partyMinFor = (q: Quest) => (q.tier === 0 ? E.partyMinShort : E.partyMin);
 
+/** GROWTH §1: 단계에 맞는 지역 — 가장 높은 열린 지역이 모든 단계에 나온다 (1분·10분은 최고 지역 −1까지) */
+function regionFor(open: (typeof REGIONS)[number][], tier: number, top: boolean) {
+  const max = tier <= 1 && open.length > 1 ? open.length - 2 : open.length - 1;
+  const i = top ? max : Math.min(max, Math.floor(Math.pow(Math.random(), 0.7) * (max + 1)));
+  return open[i];
+}
+function rollTier(): number {
+  let t = Math.random();
+  for (let i = 0; i < E.tierWeights.length; i++) if ((t -= E.tierWeights[i]) < 0) return i;
+  return 0;
+}
 function rollQuests(): Quest[] {
   const open = REGIONS.filter((_, i) => regionUnlocked(i));
   const n = rnd(E.questsMin, E.questsMax);
   const list: Quest[] = [];
   // 새 게임 첫 원정은 「숲 입구 정찰」 30초
   if (P.counters.expeditions === 0) list.push(tutorialQuest());
+  // 짧은 · 중간 · 긴 하나씩 (긴 것은 늘 가장 높은 지역)
+  E.tierGroups.forEach((g, gi) => {
+    // 보장 칸은 짧은 쪽에 무게 (긴 칸: 2시간 > 4시간 > 8시간)
+    const w = E.groupWeights[gi];
+    let t = Math.random() * w.reduce((a, b) => a + b, 0);
+    let k = 0;
+    while (k < g.length - 1 && (t -= w[k]) >= 0) k++;
+    const tier = g[k];
+    list.push(makeQuest(regionFor(open, tier, false).id, tier));
+    void gi;
+  });
   while (list.length < n) {
-    const reg = open[Math.min(open.length - 1, Math.floor(Math.pow(Math.random(), 0.7) * open.length))];
-    const t = Math.random();
-    const tier = t < 0.35 ? 0 : t < 0.7 ? 1 : t < 0.9 ? 2 : 3;
-    list.push(makeQuest(reg.id, tier));
+    const tier = rollTier();
+    list.push(makeQuest(regionFor(open, tier, false).id, tier));
   }
   ensureQuick(list);
   // 핫픽스 12 §2-4: 하루 1~2개 의뢰에 조건 태그 (튜토리얼·1분 의뢰 제외)
@@ -93,6 +113,7 @@ function rollQuests(): Quest[] {
 
 /** 매일(현실 날짜) 아침 갱신 */
 export function ensureQuests() {
+  migrateTiers();
   if (P.quests.day === today()) return ensureQuick(P.quests.list);
   P.quests.day = today();
   P.quests.refreshUsed = 0;
@@ -100,7 +121,7 @@ export function ensureQuests() {
   // BUILDINGS_SPEC: 길드 Lv5 — 하루 1번 「길드 특별 의뢰」 (보스 재료)
   if (guildSpecial()) {
     const open = REGIONS.filter((_, i) => regionUnlocked(i));
-    const q = makeQuest(open[open.length - 1].id, 2);
+    const q = makeQuest(open[open.length - 1].id, 3);
     q.guild = true;
     q.name = '길드 특별 의뢰';
     P.quests.list.unshift(q);
@@ -202,6 +223,7 @@ const fill = (s: string, a: string, b: string, r: string, item = '') => fillName
 
 /** 끝난 원정의 결과를 정한다 (켜 있을 때·꺼져 있던 동안 모두) */
 export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
+  migrateTiers();
   const q = run.quest;
   const members = run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[];
   const info = partyInfo(members, q);
@@ -209,6 +231,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const win = q.tutorial || Math.random() < info.success;
   const r = ri(q.region);
   const tierR = E.tierReward[q.tier];
+  const tg = E.tierGrade[q.tier] ?? q.tier;
   const goldPct = members.reduce((s, m) => s + optSum(m, 'goldPct'), 0) / Math.max(1, members.length);
   // 케미 짝이 같이 가면 보상도 + (전투력 배율과 같은 비율)
   // 4단계: 주인 말솜씨 · 도적 출신 → 의뢰 금화 +
@@ -226,13 +249,13 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
-  const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + q.tier) * (win ? 1 : 0.5));
+  const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5));
   P.mats[q.region] += mats;
-  const nItems = win ? 1 + (q.tier >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
+  const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
   const items = [];
   for (let i = 0; i < nItems; i++) {
     // 첫 원정은 희귀 장비 확정 (바로 끼워서 전투력이 오르는 걸 보여 준다)
-    const it = makeItem(q.region, q.tutorial ? 'r' : rollGrade(q.region, q.tier));
+    const it = makeItem(q.region, q.tutorial ? 'r' : rollGrade(q.region, tg));
     addToBag(it);
     items.push(it);
   }
@@ -256,7 +279,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     extra.push(['legend_luna', '킁킁! 여기다! 루나가 덤불 밑에서 보물 상자를 찾아냈다!', '루나']);
     legendHooks.req('lunaTreasure');
   }
-  if (win && q.tier >= 3) legendHooks.req('longRunWin');
+  if (win && tg >= 3) legendHooks.req('longRunWin');
   if (win) {
     const wb = maybeWander(q.region);
     if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (24시간 동안 토벌 가능)`]);
@@ -425,4 +448,13 @@ export function powerTips(members: Actor[]): Tip[] {
 function nightStart(t: number): boolean {
   const h = new Date(t).getHours();
   return h >= 20 || h < 4;
+}
+
+/** GROWTH §1: 옛 4단계 저장의 게시판·진행 중 의뢰를 7단계 번호로 (한 번만 · 시간·금화는 그대로) */
+export function migrateTiers() {
+  if (P.quests.t7) return;
+  const map = E.oldTierMap;
+  for (const q of P.quests.list) if (!q.tutorial) q.tier = map[q.tier] ?? q.tier;
+  for (const r of P.runs) if (!r.quest.tutorial) r.quest.tier = map[r.quest.tier] ?? r.quest.tier;
+  P.quests.t7 = true;
 }

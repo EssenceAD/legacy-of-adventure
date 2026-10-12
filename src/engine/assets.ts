@@ -428,12 +428,17 @@ export function recolored(key: string, hue: number): HTMLCanvasElement {
   } else {
     hs.sort((a, b) => a - b);
     const base = hs[hs.length >> 1];
+    // GROWTH §6: 밑색과 먼 색 면(별채의 갈색 비탈·초록 지붕창)까지 바꿀 건물
+    const far = R.farKinds.includes(baseKey(key).replace(/\d+$/, ''));
     for (const j of inside) {
       const [h, s, l] = hsl(D[j], D[j + 1], D[j + 2]);
-      if (s < 0.15 || l > R.skipLightness) continue;
+      if (s < R.hueOnlyMinSat || l > R.skipLightness) continue;
+      // GROWTH §6: 색 있는 지붕은 색상(hue)만 바꾼다 (명도·채도 그대로) — 밑색과 가까운 색은 결을 살리고, 먼 색(별채 갈색 비탈·초록 지붕창)도 새 색으로
       const dh = Math.min(Math.abs(h - base), 360 - Math.abs(h - base));
-      if (dh > R.hueRange) continue;
-      const nh = (hue + (h - base) + 360) % 360;
+      // 밑색과 먼 색은 채도가 충분한 지붕 면만 (굴뚝·벽 같은 연한 베이지는 그대로)
+      if (dh > R.hueRange && (!far || s < R.farMinSat || l > R.farMaxLight)) continue;
+      const d0 = ((h - base + 540) % 360) - 180;
+      const nh = dh <= R.hueRange ? (hue + d0 * R.hueKeep + 360) % 360 : hue;
       const [r, g, b] = hslToRgb(nh, Math.min(1, s * 1.05), dark ? l * 0.8 : l);
       D[j] = r;
       D[j + 1] = g;
