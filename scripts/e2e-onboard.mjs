@@ -68,14 +68,16 @@ for (let i = 0; i < 40 && !guestAt; i++) {
   if (await p.evaluate(() => window.__world.actors.some((a) => a.firstGuest && a.st === 'idle'))) guestAt = (Date.now() - tTap) / 1000 - tVillage;
 }
 ok(guestAt > 0 && guestAt <= 8, `첫 손님 도착 ${guestAt.toFixed(1)}초 뒤 (말풍선까지)`);
-ok(await vis('#obHand'), '손님 위 손가락');
+await W(600);
+ok(await vis('#obHand'), '손님 위 손가락 ' + (await p.evaluate(() => JSON.stringify({ win: document.querySelector('#win').classList.contains('on') && document.querySelector('#winT').textContent, dlg: !document.querySelector('#dlg').hidden && document.querySelector('#dlg').textContent.slice(0, 40), g: window.__world.actors.filter((a) => a.firstGuest).map((a) => a.st) }))));
 ok(/체크인/.test(await mission()), '장부 카드: ' + (await mission()));
 await p.screenshot({ path: `${dir}/first_guest.png` });
 const g0 = await p.evaluate(() => window.__S.gold);
 const xy = await p.evaluate(() => window.__guestXY());
+const diag0 = await p.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); const a = window.__world.actors.find((q) => q.firstGuest); return { el: e && (e.id || e.tagName), st: a?.st, x: a?.x, y: a?.y }; }, xy);
 await p.mouse.click(xy[0], xy[1]);
 await W(700);
-ok((await p.evaluate(() => window.__S.gold)) > g0 && (await p.evaluate(() => window.__P.counters.checkins)) === 1, '손님을 누르면 체크인 · 금화');
+ok((await p.evaluate(() => window.__S.gold)) > g0 && (await p.evaluate(() => window.__P.counters.checkins)) === 1, '손님을 누르면 체크인 · 금화 ' + JSON.stringify(diag0) + JSON.stringify(await p.evaluate(() => { const a = window.__world.actors.find((q) => q.firstGuest); return a && { st: a.st, x: a.x, y: a.y }; })));
 // 장부 카드 받기 → 모닥불
 const claim = async () => {
   for (let i = 0; i < 10 && (await p.evaluate(() => document.querySelector('#mission')?.classList.contains('done'))); i++) {
