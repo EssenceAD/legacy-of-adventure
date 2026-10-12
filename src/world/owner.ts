@@ -10,7 +10,7 @@ import { ENDINGS, endingById, type EndingDef } from '../data/endings';
 import { HEROES } from '../data/heroes';
 import { fillNames, josa } from '../data/josa';
 import { LEGENDS } from '../data/legends';
-import { LEGACY_ORIGINS, OSTATS, originByKey, type Gender, type Job, type OStat, type OriginPerk } from '../data/origins';
+import { LEGACY_ORIGINS, OSTATS, originByKey, type Gender, type Job, type OStat, type OriginPerk, ORIGINS } from '../data/origins';
 import { onNightFlip } from './clock';
 import { queueEvent } from './events';
 import { repHook, stars, today } from './progress';
@@ -78,6 +78,19 @@ export function createOwner(name: string, gender: Gender, job: Job, origin: stri
     askAt: 0, season: 0, met: [], ended: null,
   };
   P.owner = o;
+  markDirty();
+  return o;
+}
+
+/** ONBOARDING §1: 첫 실행은 기본 주인(「주인장」 · 성별·직업 무작위 외형)으로 — 출신은 장부 1장을 끝낸 뒤 */
+export function createPendingOwner(): OwnerState {
+  const jobs: Job[] = ['knight', 'warrior', 'rogue', 'mage', 'priest', 'hunter'];
+  const job = jobs[(Math.random() * jobs.length) | 0];
+  const og = ORIGINS.find((x) => x.job === job)!;
+  const o = createOwner('주인장', Math.random() < 0.5 ? 'm' : 'f', job, og.key);
+  o.pending = true;
+  o.linked = [];
+  for (const k of OSTATS) o.stats[k] = 10;
   markDirty();
   return o;
 }
@@ -160,7 +173,7 @@ export function ownerBonus(): number {
   return (O.bonusMax * (stat('nerve') * w.nerve + stat('hp') * w.hp + stat('heart') * w.heart)) / 100;
 }
 
-const perkOf = (p: OriginPerk) => (P.owner && originByKey(P.owner.origin)?.perk === p ? (O.perk as Record<string, number>)[p] ?? 0 : 0);
+const perkOf = (p: OriginPerk) => (P.owner && !P.owner.pending && originByKey(P.owner.origin)?.perk === p ? (O.perk as Record<string, number>)[p] ?? 0 : 0);
 
 // ── 효과 (다른 모듈이 곱해 쓴다) ──
 const seasonNow = () => (P.owner ? calendar().season : -1);

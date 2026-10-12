@@ -5,6 +5,8 @@ import type { Kind } from './catalog';
 
 export interface GuideCtx {
   expeditions: number;
+  /** ONBOARDING §2: 첫 손님 체크인 (예전 저장은 손님·의뢰 기록이 있으면 한 것으로) */
+  checkins: number;
   /** HOTFIX14 §6: 사냥 스테이지 첫 돌파 수 */
   huntFirsts: number;
   quickRuns: number;
@@ -73,19 +75,21 @@ export const CHAPTERS: Chapter[] = [
   {
     no: 1, name: '낡은 간판', unlock: ['hunt'], rewardText: '사냥터 「숲 입구」가 열려요',
     cut: ['허허, 이 장부를 받게. 내가 여관을 하며 하나씩 적어 둔 「해야 할 일」이라네.', '첫 장은 간단해. 간판을 다시 달고, 손님을 맞을 준비를 하는 거지.'],
+    // ONBOARDING §2: 1장 = 첫 목표 3개 (체크인 → 모닥불 → 30초 의뢰). 예전 1장의 나머지는 2장 앞으로
     missions: [
-      { id: 'c1_scout', title: '첫 정찰 보내기', check: (c) => n(c.expeditions, 1), place: 'board', reward: { gold: 100 }, line: '잘했네. 단골들이 몸이 근질근질했을 거야.' },
+      { id: 'c1_checkin', title: '첫 손님 체크인', check: (c) => n(c.checkins, 1), place: 'inn', reward: { gold: 80 }, line: '어서 오세요, 한마디면 충분하지. 그게 여관 주인의 첫 일이야.' },
       { id: 'c1_fire', title: '모닥불 짓기', check: (c) => b(c.has('fire')), build: 'fire', place: 'fire', reward: { gold: 80 }, line: '밤에 불이 있으면 손님들이 모여 이야기를 하지. 여관의 시작이야.' },
-      { id: 'c1_talk', title: '손님에게 말 걸기', check: (c) => n(c.guestTalks, 1), place: 'guests', reward: { gold: 80 }, line: '손님 얼굴을 기억하는 주인. 그게 좋은 여관이야.' },
-      { id: 'c1_equip', title: '희귀 장비 장착하기', check: (c) => b(c.equippedRare), place: 'guests', reward: { gold: 100 }, line: '좋은 장비 하나가 목숨을 살리지. 장부에 적어 두게.' },
-      { id: 'c1_quick', title: '1분 의뢰 2번 보내기', check: (c) => n(c.quickRuns, 2), place: 'board', reward: { gold: 150, dust: 20 }, line: '짧은 의뢰는 자주, 긴 의뢰는 잘 때. 셈이 빠르군.' },
-      { id: 'c1_goal', title: '오늘의 목표 하나 받기', check: (c) => n(c.goalsClaimed, 1), place: 'goals', reward: { gold: 100 }, line: '매일의 목표를 챙기면 금고가 마르지 않지.' },
+      { id: 'c1_scout', title: '30초 정찰 의뢰 보내기', check: (c) => n(c.expeditions, 1), place: 'board', reward: { gold: 100 }, line: '잘했네. 단골들이 몸이 근질근질했을 거야.' },
     ],
   },
   {
     no: 2, name: '첫 손님들', unlock: [], grade: 1, rewardText: '마을 등급 「쉼터」',
     cut: ['숲 입구에 사냥터가 열렸네. 단골들을 데려가 몸을 풀게 하게.', '손님이 늘면 마을도 넓혀야지. 장부 둘째 장일세.'],
     missions: [
+      { id: 'c1_talk', title: '손님에게 말 걸기', check: (c) => n(c.guestTalks, 1), place: 'guests', reward: { gold: 80 }, line: '손님 얼굴을 기억하는 주인. 그게 좋은 여관이야.' },
+      { id: 'c1_equip', title: '희귀 장비 장착하기', check: (c) => b(c.equippedRare), place: 'guests', reward: { gold: 100 }, line: '좋은 장비 하나가 목숨을 살리지. 장부에 적어 두게.' },
+      { id: 'c1_quick', title: '1분 의뢰 2번 보내기', check: (c) => n(c.quickRuns, 2), place: 'board', reward: { gold: 150, dust: 20 }, line: '짧은 의뢰는 자주, 긴 의뢰는 잘 때. 셈이 빠르군.' },
+      { id: 'c1_goal', title: '오늘의 목표 하나 받기', check: (c) => n(c.goalsClaimed, 1), place: 'goals', reward: { gold: 100 }, line: '매일의 목표를 챙기면 금고가 마르지 않지.' },
       { id: 'c2_well', title: '우물 짓기', check: (c) => b(c.has('well')), build: 'well', place: 'well', reward: { gold: 100 }, line: '물이 있어야 사람이 모이지. 우물은 마을의 심장이야.' },
       { id: 'c2_harm', title: '첫 어울림 발견하기', check: (c) => n(c.harmonies, 1), place: 'build', reward: { gold: 150 }, line: '우물가에 벤치 하나 놓았을 뿐인데 손님들이 수다를 떠는군. 그게 어울림일세.', beta: true },
       { id: 'c2_hunt1', title: '사냥 1-1 돌파', check: (c) => n(c.huntBest('forest'), 1), place: 'hunt', reward: { gold: 120 }, line: '슬라임 정도야 식은 죽 먹기지. 허허.' },

@@ -61,7 +61,7 @@ export function syncOwnerButton() {
  * mode: new = 새 게임(오프닝 앞) · existing = 기존 저장에 한 번 · legacy = 유산을 잇는 다음 세대
  * 끝나면 출신 컷을 보여 주고 done
  */
-export function openCreate(mode: 'new' | 'existing' | 'legacy', done: () => void) {
+export function openCreate(mode: 'new' | 'existing' | 'legacy' | 'later', done: () => void) {
   let gender: Gender = 'm';
   let job: Job = 'knight';
   let origin: string = mode === 'legacy' ? 'disciple' : 'knight';
@@ -85,7 +85,7 @@ export function openCreate(mode: 'new' | 'existing' | 'legacy', done: () => void
     const linkedNames = info.linked.map((k) => bondById(k)?.name ?? k).join(' · ');
     openWin(
       mode === 'legacy' ? '다음 세대 — 당신은 누구인가요?' : '당신은 누구였나요?',
-      `<p class="sub">${mode === 'existing' ? '여관 주인인 「나」를 정해요. 마을과 진행은 그대로예요.' : mode === 'legacy' ? `${esc(prev?.name ?? '앞 주인')}의 여관을 이어받을 새 주인. 마을·영웅·도감은 그대로예요.` : '여관을 물려받기 전, 당신은 모험가였어요.'}</p>
+      `<p class="sub">${mode === 'later' ? '장부 첫 장을 끝냈어요! 여관 주인인 「나」의 이름과 지난날을 정해요. 출신 보너스가 이제부터 붙어요.' : mode === 'existing' ? '여관 주인인 「나」를 정해요. 마을과 진행은 그대로예요.' : mode === 'legacy' ? `${esc(prev?.name ?? '앞 주인')}의 여관을 이어받을 새 주인. 마을·영웅·도감은 그대로예요.` : '여관을 물려받기 전, 당신은 모험가였어요.'}</p>
       <div class="crow"><span>성별</span><div class="seg"><button data-g="m" class="${gender === 'm' ? 'on' : ''}">남</button><button data-g="f" class="${gender === 'f' ? 'on' : ''}">여</button></div></div>
       <div class="crow"><span>이름</span><input id="cName" maxlength="${CONFIG.owner.nameMax}" placeholder="${CONFIG.owner.nameMin}~${CONFIG.owner.nameMax}자" value="${esc(name)}" autocomplete="off"></div>
       <div class="crow col"><span>모험가 시절 직업</span><div class="jobs">${jobCards}</div></div>
@@ -148,6 +148,23 @@ function playCut(done: () => void) {
   const title = originTitle(o);
   const lines: TalkLine[] = [['narr', `${title} — ${o.name}`], ...info.cut.map((t) => ['me', fillT(t.replace('{호칭}', title))] as TalkLine)];
   talk(lines, done);
+}
+
+/** ONBOARDING §1: 첫 실행 오프닝 3줄 → 바로 여관 이름 (빠진 대사는 장부 1장 뒤 「출신 고르기」 장면으로) */
+export function openingShort(): TalkLine[] {
+  return [
+    ['narr', '목숨 걸고 번 돈이 숙박비로 사라지던 시절이 있었다.'],
+    ['keeper', '허리가 예전 같지 않아서 말일세. 이 여관, 자네가 맡아 주게.'],
+    ['keeper', '간판부터 새로 달지. 이름을 지어 주게.', 'name'],
+  ];
+}
+/** ONBOARDING §1: 장부 1장을 끝내면 — 버나드가 다락의 옛 장비 이야기를 꺼내며 「당신은 누구였나요?」 */
+export function ownerLaterLines(): TalkLine[] {
+  return [
+    ['keeper', '자네, 셈이 꽤 빠르더군. 내 장부 정리를 그렇게 빨리 하는 사람은 처음 봤네.'],
+    ['me', '하하, 맨날 돈이 모자라서 계산만 늘었죠.'],
+    ['keeper', '다락에 자네 옛 장비 둘 자리도 비워 뒀네. …그런데 자네, 원래 무얼 하던 사람인가?'],
+  ];
 }
 
 /** 새 게임 오프닝: 버나드 대사에 출신이 반영된다 */

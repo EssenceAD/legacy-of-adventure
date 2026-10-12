@@ -26,6 +26,8 @@ interface Talk {
   duo?: string;
   /** 인연 단계가 오르는 긴 대화 — 이때만 곡 15 */
   bondUp?: boolean;
+  /** ONBOARDING §0: 이 대화의 이름 (건너뛰기 기록) */
+  tag?: string;
   /** STORY_V1: 줄마다 연출(fx) · 이 시각(ms)까지 다음 줄로 못 넘김(wait) */
   onLine?: (i: number) => void;
   hold?: number;
@@ -58,6 +60,14 @@ export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
   $('#dlg').hidden = false;
   $('#view').classList.add('talking');
   showLine();
+}
+
+/** ONBOARDING §0: 건너뛰기를 누르면 (tag, 줄 번호) — main이 퍼널로 */
+export const dialogueHooks = { skip: (_tag: string, _i: number) => {} };
+/** 이름 붙은 대화 (건너뛰기를 퍼널로 기록) */
+export function talkTagged(tag: string, lines: Line[], done?: () => void) {
+  talk(lines, done);
+  if (DQ) DQ.tag = tag;
 }
 
 /** STORY_V1: 막 컷 · 엔딩 컷 — 줄이 뜰 때마다 onLine(줄 번호) (연출 · 기다림) */
@@ -210,6 +220,8 @@ export function nextLine() {
 /** 건너뛰기 — 이름을 아직 안 지었으면 이름 짓기 줄로 */
 export function skipTalk() {
   if (!DQ || DQ.wait) return;
+  // ONBOARDING §0: 몇 번째 줄에서 건너뛰었나
+  if (DQ.tag) dialogueHooks.skip(DQ.tag, DQ.i);
   clearInterval(DQ.iv);
   const nl = DQ.lines.findIndex((l) => l[2] === 'name');
   if (nl > DQ.i) {
@@ -239,7 +251,21 @@ function askName() {
   const nb = $('#namebox');
   nb.hidden = false;
   const inp = $<HTMLInputElement>('#nameIn');
-  inp.value = S.innName.replace(/\s*여관$/, '');
+  // ONBOARDING §1: 추천 이름 3개 (누르면 바로 결정) · 그대로 쓰기
+  const SUG = ['별빛', '달빛', '솔바람', '들꽃', '은하수', '모닥불', '바람결', '이슬', '햇살', '오솔길', '구름', '꽃마루'];
+  const pool = SUG.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+  inp.value = S.innName.replace(/\s*여관$/, '') || pool[0];
+  const sug = document.getElementById('nameSug');
+  if (sug) {
+    sug.innerHTML = pool.map((n) => `<button data-sug="${n}">${n}</button>`).join('');
+    sug.querySelectorAll<HTMLElement>('[data-sug]').forEach(
+      (b) =>
+        (b.onclick = (e) => {
+          inp.value = b.dataset.sug!;
+          ok(e);
+        }),
+    );
+  }
   setTimeout(() => inp.focus(), 50);
   const ok = (e?: Event) => {
     e?.stopPropagation();
@@ -270,6 +296,20 @@ export function initDialogue() {
     e.stopPropagation();
     skipTalk();
   };
+  // ONBOARDING §1: 길게 누르면 빨리 넘기기 (고르기·이름 칸에선 멈춤)
+  let holdT = 0;
+  let holdIv = 0;
+  const stopHold = () => {
+    clearTimeout(holdT);
+    clearInterval(holdIv);
+    holdT = holdIv = 0;
+  };
+  $('#dlg').addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('#dSkip, #dChoice, #namebox')) return;
+    stopHold();
+    holdT = window.setTimeout(() => (holdIv = window.setInterval(() => (DQ && !DQ.wait ? nextLine() : stopHold()), 110)), 450);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) $('#dlg').addEventListener(ev, stopHold);
   addEventListener('keydown', (e) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;

@@ -22,6 +22,7 @@ const land = (l: number) => () => void (S.land = l);
 /** 임무 → 행동 · 그 행동을 하는 코드가 값을 올리는 곳 */
 const TABLE: Record<string, Row> = {
   c1_scout: { act: () => void (C().expeditions = 1), sites: [['src/world/expeditions.ts', /counters\.expeditions\+\+|C\.expeditions\+\+/]] },
+  c1_checkin: { act: () => void (C().checkins = 1), sites: [['src/ui/onboard.ts', /counters.checkins = /]] },
   c1_fire: { act: build('fire') },
   c1_talk: { act: () => void (C().guestTalks = 1), sites: [['src/ui/guests.ts', /guestTalks\+\+/]] },
   c1_equip: { act: () => void P.bag.push({ id: 9e6, grade: 'r', owner: 1 } as never) },
