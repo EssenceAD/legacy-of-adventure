@@ -106,6 +106,7 @@ for (const night of [true, false]) {
   ok((await p.evaluate(() => window.__S.night)) === night, `${label}: S.night = ${night}`);
   let lifted = 0;
   for (const k of kinds) {
+  for (let j = 0; j < 10 && (await p.evaluate(() => !document.querySelector('#dlg').hidden)); j++) { await p.evaluate(() => document.querySelector('#dlg').click()); await W(250); }
     const hb = await bodyXY(k);
     const xy = hb.xy;
     if (!hb.roof) console.error('    (', k, ': 바닥 칸 밖 그림 점을 못 찾음 — 그림 위 아무 점)');
@@ -120,6 +121,7 @@ for (const night of [true, false]) {
   }
   ok(lifted === kinds.length, `${label}: 건물 그림(지붕·벽)을 꾹 → ${lifted}/${kinds.length}채 들림 (${kinds.join(', ')})`);
   // 그냥 누르면 정보 창 (들지 않음)
+  for (let j = 0; j < 10 && (await p.evaluate(() => !document.querySelector('#dlg').hidden)); j++) { await p.evaluate(() => document.querySelector('#dlg').click()); await W(250); }
   const { xy } = await bodyXY(kinds[0]);
   await press(xy[0], xy[1], 60);
   await W(500);
