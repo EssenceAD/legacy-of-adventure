@@ -1464,3 +1464,15 @@ img.port.pixel{image-rendering:pixelated}
 .glist .gpick + button{flex:1}
 .glist .grow{display:flex;align-items:stretch;gap:2px}
 .glist .grow > button{flex:1}
+
+/* REGIONS2: 컷 연출 (열기 · 등대 · 잿불 · 하늘 · 심연 바닥 · 고요) · 전투 중 50% 컷은 대화창을 전투 위로 */
+#storyFx.sfx-heat{background:linear-gradient(180deg,rgba(255,200,110,.22),rgba(224,180,90,.12));animation:sheat 2.4s ease-in-out infinite alternate}
+@keyframes sheat{0%{filter:blur(0)}100%{filter:blur(.6px)}}
+#storyFx.sfx-lighthouse{background:radial-gradient(ellipse at 50% 30%,rgba(255,236,170,.45),rgba(255,236,170,0) 45%),linear-gradient(180deg,rgba(14,44,68,.55),rgba(255,140,60,.15));animation:slh 2.6s ease-out}
+@keyframes slh{0%{opacity:0}30%{opacity:1}}
+#storyFx.sfx-ember{background:linear-gradient(0deg,rgba(255,80,30,.32),rgba(40,10,10,.35) 70%)}
+#storyFx.sfx-sky{background:linear-gradient(180deg,rgba(190,225,255,.35),rgba(255,255,255,.12))}
+#storyFx.sfx-deep{background:radial-gradient(circle at 50% 4%,rgba(220,210,255,.25),rgba(2,2,10,.88) 30%)}
+#storyFx.sfx-hush{background:rgba(2,2,10,.72);transition:background-color 1.2s}
+body.cbtalk #dlg{z-index:46}
+body.cbtalk #storyFx{z-index:45}

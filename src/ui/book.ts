@@ -13,7 +13,10 @@ import { CLASSES, GUEST_KINDS, RACE_NAME, RACES, RARITIES, RARITY_INFO } from '.
 import { CONFIG } from '../data/config';
 import { GOAL_TEMPLATES } from '../data/goals';
 import { HERO_SETS, HEROES } from '../data/heroes';
-import { GRADE_INFO, OPT_INFO, REGIONS, SLOT_NAME, SLOTS, type Grade } from '../data/items';
+import { BASE_REGIONS, GRADE_INFO, OPT_INFO, REGIONS, SLOT_NAME, SLOTS, type Grade } from '../data/items';
+import { REGION_TITLES } from '../data/story/regions';
+import { huntRegionOpen } from '../world/hunt';
+import { isStarRegion, regionFirstDone, regionGuideDone, starsHave } from '../world/regions2';
 import { itemIcon } from '../world/items';
 import {
   claimGoal, DEX_REWARDS, monumentUnlocked, dexBonus, dexRatio, ensureGoals, GUEST_DEX_TOTAL, heroStarBonus, heroTitles, ITEM_DEX_TOTAL, repToNext, stars,
@@ -43,6 +46,8 @@ function rewardsRow(book: 'guests' | 'items') {
 }
 
 export function openDex(tab = dTab) {
+  // REGIONS2: 「지역」 칸은 별이 흩어진 뒤부터
+  if (tab === 8 && !P.regions2.scatter) tab = 0;
   dTab = tab;
   let body = '';
   if (tab === 0) {
@@ -59,10 +64,11 @@ export function openDex(tab = dTab) {
       <p class="note">종족 × 직업(${GUEST_KINDS.map((k) => CLASSES[k].name).join('·')}) × 희귀도(평범·특별·전설)</p><div class="dexg">${grid}</div>${rewardsRow('guests')}${diaryBlock()}`;
   } else if (tab === 1) {
     const grades: Grade[] = ['n', 'r', 'e', 'l'];
-    const grid = REGIONS.map(
+    // REGIONS2: 새 지역 줄은 열린 뒤에만 · 유물 칸은 유물이 있는 지역 (별의 심연 · 심연의 바닥)
+    const grid = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map(
       (r) =>
         `<div class="dexrow"><span style="color:${r.color}">${r.name}</span>${SLOTS.map((s) =>
-          [...grades, ...(r.id === 'abyss' ? (['a'] as Grade[]) : [])]
+          [...grades, ...(r.relic ? (['a'] as Grade[]) : [])]
             .map((g) => {
               const has = P.dex.items.includes(`${r.id}|${s}|${g}`);
               return has
@@ -134,6 +140,17 @@ export function openDex(tab = dTab) {
       return `<div class="hcell"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
     }).join('');
     body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · 한 건물에 최대 ${CONFIG.harmony.perBuilding}개</p><div class="hgrid">${cells}</div>`;
+  } else if (tab === 8) {
+    // REGIONS2 §5-7: 지역 칸 — 열린 지역은 이름·재료·세트 · 첫 발자국 · 길잡이 (한 줄씩)
+    const cells = REGIONS.slice(BASE_REGIONS).map((r, k) => {
+      const i = BASE_REGIONS + k;
+      const T = REGION_TITLES[r.id as keyof typeof REGION_TITLES];
+      if (!huntRegionOpen(i)) return `<div class="hcell"><em>${i + 1}</em><b>???</b><small>${r.id === 'deep' ? '길잡이 별 넷이 가리키는 곳' : '별 하나가 떨어진 땅'}</small></div>`;
+      const f = regionFirstDone(r.id);
+      const g = regionGuideDone(r.id);
+      return `<div class="hcell on"><em>${i + 1}</em><b style="color:${r.color}">${esc(r.name)}</b><small>${esc(r.mat)} · 세트 「${esc(r.set.name)}」${r.relic ? ` · 유물 「${esc(r.relic)}」` : ''}</small><small class="${f ? 'g' : ''}">${f ? '✓' : '·'} 첫 발자국 — ${esc(T.first)}</small><small class="${g ? 'g' : ''}">${g ? '✓' : '·'} ${isStarRegion(r.id) ? '길잡이 별' : '별을 삼킨 것'} — ${esc(T.guide)}</small></div>`;
+    }).join('');
+    body = `<p class="sub">지역 · 길잡이 별 ${starsHave()}/4</p><p class="note">별의 심연에서 튕겨 나간 별 넷 — 별이 떨어진 땅마다 보스를 쓰러뜨리면 길잡이 별을 얻어요</p><div class="hgrid">${cells}</div>`;
   } else {
     // HOTFIX14 §6: 의뢰 게시판 조건은 진행 수 + [의뢰 게시판 가기]
     const hc = heroCtx();
@@ -157,7 +174,7 @@ export function openDex(tab = dTab) {
   }
   openWin(
     '도감',
-    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화'], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
+    `${tabs(['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : [])], tab, 'dT')}<p class="note">도감 보너스 합 전투력 +${pct(dexBonus() + heroStarBonus(), 1)}</p>${body}`,
   );
   bindTabs('dT', openDex);
   $$('[data-db]').forEach(

@@ -1,10 +1,13 @@
+import { CONFIG } from './config';
+import { BASE_REGIONS, REGIONS } from './items';
+import { REGION_TITLES } from './story/regions';
 // 5단계 4장: 업적 60개 (첫 ○○, ○○ 100번 …) — 보상 금화·가루·칭호. 숨김 업적은 장부 7장(유산의 시작)에서 모두 보인다
 export interface AchCtx {
   get: (k: AchStat) => number;
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos' | 'regFirst' | 'regGuide';
 
 export interface AchDef {
   id: string;
@@ -15,6 +18,8 @@ export interface AchDef {
   reward: { gold?: number; dust?: number; title?: string };
   /** 숨김: 이룰 때까지(또는 장부 7장까지) ??? */
   hidden?: boolean;
+  /** REGIONS2: 지역 업적의 지역 */
+  region?: string;
 }
 
 const A = (id: string, name: string, desc: string, stat: AchStat, need: number, reward: AchDef['reward'], hidden = false): AchDef => ({ id, name, desc, stat, need, reward, hidden });
@@ -111,4 +116,12 @@ export const ACHIEVEMENTS: AchDef[] = [
   // 땅 개편: 여관을 계속 키우는 맛
   A('inn5', '종탑이 선 여관', '여관 본관 Lv.5', 'innLv', 5, { gold: 1500 }),
   A('inn10', '전설의 여관', '여관 본관 Lv.10', 'innLv', 10, { gold: 8000, title: '전설의 여관주인' }),
+  // REGIONS2 §5-7: 지역 6~10 「첫 발자국」(첫 입장) · 「길잡이」(보스) — 금화 + 칭호 (열리기 전엔 숨김)
+  ...REGIONS.slice(BASE_REGIONS).flatMap((r, i) => {
+    const t = REGION_TITLES[r.id as keyof typeof REGION_TITLES];
+    return [
+      { ...A(`r2first_${r.id}`, `첫 발자국 · ${r.name}`, `${r.name}에 처음 들어가기`, 'regFirst', 1, { gold: CONFIG.regions2.firstGold[i], title: t.first }, true), region: r.id },
+      { ...A(`r2guide_${r.id}`, `길잡이 · ${r.name}`, r.id === 'deep' ? '심연의 바닥 10 「별을 삼킨 것」 처치' : `${r.name} 10 보스를 쓰러뜨리고 길잡이 별 얻기`, 'regGuide', 1, { gold: CONFIG.regions2.guideGold[i], title: t.guide }, true), region: r.id },
+    ];
+  }),
 ];

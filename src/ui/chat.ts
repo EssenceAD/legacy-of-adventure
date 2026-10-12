@@ -5,7 +5,8 @@ import { CLASSES, GUEST_KINDS } from '../data/classes';
 import { pioneerOfUid, pioneers } from '../net/server';
 import { CONFIG } from '../data/config';
 import { HEROES } from '../data/heroes';
-import { REGIONS } from '../data/items';
+import { BASE_REGIONS, REGIONS } from '../data/items';
+import { openNewRegions, regionRumor } from '../world/regions2';
 import { NEIGHBORS } from '../data/neighbors';
 import POOL from '../data/chat_pool.json';
 import { P } from '../world/state';
@@ -57,7 +58,7 @@ function fill(s: string): string {
   return s
     .replace(/\{영웅\}/g, () => pick(met.length ? met : HEROES).name)
     .replace(/\{여관\}/g, () => pick(NEIGHBORS).name)
-    .replace(/\{지역\}/g, () => pick(REGIONS).name)
+    .replace(/\{지역\}/g, () => pick([...REGIONS.slice(0, BASE_REGIONS), ...REGIONS.filter((r) => openNewRegions().includes(r.id))]).name)
     .replace(/\{직업\}/g, () => CLASSES[pick([...GUEST_KINDS])].name)
     .replace(/\{아이템\}/g, () => item)
     .replace(/\{숫자\}/g, () => String(2 + ((Math.random() * 40) | 0)))
@@ -131,6 +132,13 @@ function next() {
     const t = pick(THREADS);
     t.forEach(([who, text], i) => setTimeout(() => push({ ch: '소문', who, text: fill(text) }), i * C.threadGapMs));
     setTimeout(next, t.length * C.threadGapMs + rnd());
+    return;
+  }
+  // REGIONS2 §5-6: 새 지역이 열렸으면 가끔 그 지역 소문 (열린 뒤에만)
+  const rr = Math.random() < 0.2 ? regionRumor() : null;
+  if (rr) {
+    push({ ch: '소문', who: pick(SPEAKERS), text: rr });
+    setTimeout(next, rnd());
     return;
   }
   // 소문 열린 전설 영웅이 있으면 가끔 그 힌트

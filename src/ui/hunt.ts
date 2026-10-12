@@ -31,6 +31,12 @@ import { queueEvent } from '../world/events';
 import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
 import { iconSrc } from './kit';
 import { closeWin, openWin, toast } from './windows';
+import { BASE_REGIONS } from '../data/items';
+import { DEEP_VOICE } from '../data/story/regions';
+import { bossLineFor, deepDefeatCut, markBossShown, takeEnterLines, wantDeepVoice } from '../world/regions2';
+import { routePreDone, setFlag } from '../world/routes';
+import { storyHooks } from '../world/story';
+import { playStory } from './story';
 
 const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
@@ -57,6 +63,8 @@ export function openHunt(region?: RegionId) {
   // 전투 2차: 5지역 × 10스테이지 모두 새 전투
   const tabs = REGIONS.map((r, i) => {
     const open = huntRegionOpen(i);
+    // REGIONS2: 6~10번 탭은 열린 뒤에만 (흩어진 별 → 해안 탭 등장)
+    if (i >= BASE_REGIONS && !open) return '';
     return `<button class="tab ${r.id === curRegion ? 'on' : ''} ${open ? '' : 'locked'}" data-r="${r.id}" style="--rc:${themeOf(r.id).band}">${open ? r.name : `🔒 ${r.name}`}</button>`;
   }).join('');
   const b = best(curRegion);
@@ -562,14 +570,33 @@ function lootHtml(r: RegionId, out: HuntReward): string {
 }
 
 function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
+  // REGIONS2 §5-2: 새 지역 첫 입장 — 사냥 시작 전 한 번
+  const enter = takeEnterLines(r);
+  if (enter) return playStory(enter, () => beginCombat(r, s, ms, auto));
   notePrep('hunt', partyPower(ms));
   trackEv('hunt_start', { stage: `${r}-${s}`, mode: auto ? 'auto' : 'manual' });
   P.hunt.folded = null;
   funnel('first_hunt', { r, s });
+  // REGIONS2: 지역 6~9 보스 첫 처치 한 줄 · 지역 10 보스 체력 50% 「목소리」
+  const bossLine = isBoss(s) ? bossLineFor(r) : null;
+  const voice = r === 'deep' && isBoss(s) && wantDeepVoice();
   void startCombat(r, s, ms, auto, (res) => {
+    if (bossLine && res.win) markBossShown(r);
     const html = settleHunt(r, s, ms, res);
     showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
-  });
+  }, { ...(bossLine ? { bossLine } : {}), ...(voice ? { talkHalf: (done: () => void) => playStory(DEEP_VOICE, done) } : {}) });
+}
+
+/** 지역 10 보스 처치 뒤 컷 (마을로 돌아가면 대사 차례에) */
+export function deepDefeat(finalRaid = false): boolean {
+  const heroReady = P.story.route === 'hero' && routePreDone('hero') && !P.story.flags?.final;
+  const cut = deepDefeatCut(heroReady || finalRaid);
+  if (cut?.hero) {
+    setFlag('final');
+    trackEv('route_event', { route: 'hero', ev: 'final', via: finalRaid ? 'goal' : 'hunt' });
+  }
+  if (cut && !finalRaid) storyHooks.say(cut.lines);
+  return !!cut?.hero;
 }
 
 /** 한 판 끝: 보상 · 기록 → 결과 카드 HTML (전투 화면 · 접은 판 · 다시 켰을 때 정산 공통) */
@@ -588,7 +615,9 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): str
   // 핫픽스 10 (11-4): 처음 깼을 때 한 번 — 모모가 「맡겨 두기」를 알려 준다 (계정당 1번)
   // HOTFIX14 §3: 지역 보스(x-10)를 처음 깨면 다음 지역이 열린다 → 결과 화면에 크게
   const ri = regionIdx(r);
-  const newRegion = res.win && !!out.first && s === H.stages && ri + 1 < REGIONS.length ? REGIONS[ri + 1] : null;
+  const newRegion = res.win && !!out.first && s === H.stages && ri + 1 < REGIONS.length && huntRegionOpen(ri + 1) ? REGIONS[ri + 1] : null;
+  // REGIONS2 §5-5: 별을 삼킨 것 처치 → 용사 루트(최종 토벌 앞까지 마침)면 HERO 컷 + 최종 토벌 완료 · 아니면 PLAIN (회차마다 한 번)
+  if (res.win && r === 'deep' && s === H.stages) deepDefeat();
   if (newRegion) trackEv('region_open', { region: newRegion.id });
   // 사냥 창이 뒤에 열려 있었으면 끝난 뒤 다시 그린다 (탭·스테이지 칸이 🔒 그대로 남지 않게)
   queueEvent(() => {

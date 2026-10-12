@@ -1,5 +1,6 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import { openNotices } from './ui/notice';
+import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
 import { debugMythic, mythicProgress } from './world/mythic';
@@ -99,7 +100,7 @@ import { initKit } from './ui/kit';
 import { initGuide } from './ui/guide';
 import { gradeDev, startGradeAnim, stepGradeAnim } from './world/grade';
 import { navHooks } from './ui/nav';
-import { _huntAdvance, openHunt, settleFolded } from './ui/hunt';
+import { _huntAdvance, deepDefeat, openHunt, settleFolded } from './ui/hunt';
 import { openDex, openGoals } from './ui/book';
 import { skipDone } from './world/guide';
 import { afterLogin } from './ui/account';
@@ -976,6 +977,8 @@ async function boot() {
         return s;
       },
       __openHunt: openHunt,
+      // REGIONS2 시험용: 다음 컷 · 새 지역 열림 · 지역 10 보스 처치 컷
+      __reg2: { next: nextRegionCut, open: openNewRegions, defeat: deepDefeat },
       // 전투 2차 시험: 사람처럼 조작하는 봇으로 n판 (평가 비율·시간)
       __sim: async (region: string, stage: number, n = 20, powerK = 1, skillLv = 0.7, auto = false) => {
         const { simulate } = await import('./combat/sim');

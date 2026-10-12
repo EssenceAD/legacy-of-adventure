@@ -1,4 +1,6 @@
 // 원정 창: 의뢰 게시판(목록·진행 중 파티·천장) → 파티 고르기(전투력·성공률·전투력 올리기 안내) → 보고서 · 방치 요약
+import { BASE_REGIONS } from '../data/items';
+import { huntRegionOpen } from '../world/hunt';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { GRADE_INFO, GRADES, REGIONS, regionById, type Grade } from '../data/items';
@@ -75,13 +77,13 @@ export function openBoard() {
   const pity = REGIONS.filter((_, i) => regionUnlocked(i))
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)
     .join(' · ');
-  const locked = REGIONS.map((r, i) => (regionUnlocked(i) ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 의뢰 3번 성공 · ${REGIONS[i - 1].name} 사냥 10 돌파 · 평판 ★${i + 1} 중 하나</div>`)).join('');
+  const locked = REGIONS.map((r, i) => (regionUnlocked(i) || i >= BASE_REGIONS ? '' : `<div class="qlock">🔒 ${r.name} — ${REGIONS[i - 1].name} 의뢰 3번 성공 · ${REGIONS[i - 1].name} 사냥 10 돌파 · 평판 ★${i + 1} 중 하나</div>`)).join('');
   const wk = weeklyTarget();
   const wd = wanderTarget();
   const raidCard = (t: RaidTarget, id: string) =>
     `<button class="raidcard" id="${id}"><img src="${bossPic(t.boss)}" alt=""><span><b>${t.kind === 'weekly' ? '주간 보스' : '떠돌이 보스'} · ${t.boss.name}</b><small>권장 ${fmt(t.boss.power)} · ${t.hpLeft <= 0 ? '이번 주 처치 완료!' : `남은 체력 ${pct(t.hpLeft / t.max)}`}${t.kind === 'wander' ? ` · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음` : ''}</small><i class="bhp"><i style="width:${(t.hpLeft / t.max) * 100}%"></i></i></span><em>토벌 ›</em></button>`;
   // 5단계: 사냥터 카드 (장부 1장) · 토벌은 장부 4장에 열린다 (5단계 전 저장은 그대로)
-  const huntBest = REGIONS.map((r) => `${r.name} ${P.hunt.best[r.id] ?? 0}/10`).filter((_, i) => i === 0 || (P.hunt.best[REGIONS[i - 1].id] ?? 0) >= 10);
+  const huntBest = REGIONS.map((r) => `${r.name} ${P.hunt.best[r.id] ?? 0}/10`).filter((_, i) => i === 0 || huntRegionOpen(i));
   const huntHtml = feature('hunt')
     ? `<div class="qhd"><b class="g">사냥</b><span class="note">${P.hunt.auto ? '자동 사냥 중' : '스테이지 돌파 · 자동 반복'}</span></div><button class="raidcard hunt" id="rHunt"><img src="${iconSrc('m_hunt')}" alt=""><span><b>사냥터</b><small>${huntBest.join(' · ')}</small></span><em>사냥 ›</em></button>`
     : `<div class="qlock">🔒 사냥터 — 장부 ${featureChapter('hunt')}장을 마치면 열려요</div>`;

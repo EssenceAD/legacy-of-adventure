@@ -7,6 +7,9 @@ import { endsSeen, onPickRoute, routePreDone, routeTick, trueReady } from '../wo
 import { openGoals, routeCard, routeCardText, routeCut, editorVisit, type RouteStoryApi } from './routes';
 import { PIONEER_CREDIT } from '../data/story/easter';
 import { clearOverlays } from './overlays';
+import { nextRegionCut } from '../world/regions2';
+import { showNewRegion } from './regions2';
+import { track as trackEv } from '../net/telemetry';
 import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { PORTRAITS } from '../engine/assets';
@@ -57,7 +60,7 @@ function fx(k: string) {
   } else if (k === 'photo' || k === 'photo_mine') photoThumb();
   else if (k === 'drop') storyFx.drop();
   // STORY v2·v3 연출: 심연 · 별 · 부케 · 기둥 · 노래 · 셔터 · 별바다 · 접힘 · 반짝 글씨
-  else if (['abyss', 'stars', 'bouquet', 'pillar', 'song', 'shutter', 'starsea', 'fold', 'sparkle'].includes(k)) {
+  else if (['abyss', 'stars', 'bouquet', 'pillar', 'song', 'shutter', 'starsea', 'fold', 'sparkle', 'heat', 'lighthouse', 'ember', 'sky', 'deep', 'hush'].includes(k)) {
     b.className = 'sfx-' + k;
     b.innerHTML = k === 'stars' || k === 'starsea' ? '<i class="st1"></i><i class="st2"></i><i class="st3"></i>' : k === 'bouquet' ? '<i class="bq">💐</i>' : k === 'song' ? '<i class="nt">♪</i><i class="nt n2">♫</i>' : '';
   }
@@ -189,6 +192,15 @@ export function initStoryUI() {
     syncYuan();
     const to = nextAct();
     if (to) return playAct(to);
+    // REGIONS2: 흩어진 별 · 길잡이 별 · 심연의 바닥 · 모모 편지 (마을에서 한가할 때 하나씩)
+    const rc = nextRegionCut();
+    if (rc) {
+      trackEv('region2_cut', { kind: rc.kind, id: rc.id });
+      return playStory(rc.lines, () => {
+        const nr = rc.done();
+        if (nr) showNewRegion(nr);
+      });
+    }
     const q = queue.shift();
     if (!q) return;
     if ((q as unknown as string[])[0] === '__heir') return playStory(HEIR_ARRIVE, () => syncYuan());

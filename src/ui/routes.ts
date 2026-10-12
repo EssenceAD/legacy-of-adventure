@@ -4,6 +4,9 @@ import { ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { ROUTE_HERO, ROUTE_LOVE } from '../data/story/v2';
 import { ROUTE_LEGEND, ROUTE_TOWN, ROUTE_TRUE } from '../data/story/v3';
 import { CONFIG } from '../data/config';
+import { REGIONS } from '../data/items';
+import { DEEP_DEFEAT_HERO, DEEP_VOICE } from '../data/story/regions';
+import { huntRegionOpen } from '../world/hunt';
 
 import { powerOf } from '../world/adventurers';
 import { addToBag, makeItem } from '../world/items';
@@ -131,7 +134,8 @@ export function editorVisit(api: RouteStoryApi) {
     toast('사진 모드로 마을 전경을 한 장 찍어 주세요 📷');
   });
 }
-/** 용사 루트 최종 토벌: 별의 심연 10 (가장 센 단골 다섯) — 이기면 목표 완료 */
+/** 용사 루트 최종 토벌 (가장 센 단골 다섯) — 이기면 목표 완료
+ *  REGIONS2: 심연의 바닥이 열렸으면 그 x-10 「별을 삼킨 것」(같은 존재 · 50% 목소리 · 처치 컷 HERO) · 아니면 예전처럼 별의 심연 10 */
 function finalRaid(api: RouteStoryApi) {
   const party = regulars()
     .filter((a) => !a.leaving && a.runId == null)
@@ -139,13 +143,21 @@ function finalRaid(api: RouteStoryApi) {
     .slice(0, 5);
   if (!party.length) return toast('함께 갈 단골이 없어요');
   toast('「별을 삼킨 것」에게!');
-  void import('../combat/ui').then(({ startCombat }) => startCombat('abyss', 10, party, false, (res) => {
-    if (res.win) {
-      setFlag('final');
-      track('route_event', { route: 'hero', ev: 'final' });
-      setTimeout(() => openGoals(api), 1200);
-    } else toast('아직이에요… 단골들을 더 키워서 다시 도전해요');
-  }));
+  const deep = huntRegionOpen(REGIONS.findIndex((r) => r.id === 'deep'));
+  void Promise.all([import('../combat/ui'), import('./hunt')]).then(([{ startCombat, closeCombat }, { deepDefeat }]) =>
+    startCombat(deep ? 'deep' : 'abyss', 10, party, false, (res) => {
+      if (res.win) {
+        if (deep) {
+          deepDefeat(true);
+          closeCombat();
+          return api.play(DEEP_DEFEAT_HERO, () => setTimeout(() => openGoals(api), 300));
+        }
+        setFlag('final');
+        track('route_event', { route: 'hero', ev: 'final' });
+        setTimeout(() => openGoals(api), 1200);
+      } else toast('아직이에요… 단골들을 더 키워서 다시 도전해요');
+    }, deep ? { talkHalf: (done) => api.play(DEEP_VOICE, done) } : {}),
+  );
 }
 
 // ───────── 엔딩 ─────────

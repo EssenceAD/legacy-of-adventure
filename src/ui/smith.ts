@@ -1,4 +1,6 @@
 // 대장간 창(분해·강화·제작 탭 + 레벨) · 텃밭 창(심기·수확)
+import { BASE_REGIONS } from '../data/items';
+import { huntRegionOpen } from '../world/hunt';
 import { CONFIG } from '../data/config';
 import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
@@ -69,7 +71,7 @@ export function openSmith(o: Building, tab = smTab) {
     }
   } else {
     const c = craftCost(craftRegion);
-    const regs = REGIONS.map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
+    const regs = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
     const reg = REGIONS.find((r) => r.id === craftRegion)!;
     const next = nextLevelCost(o);
     const have = P.bossMats[c.boss.id] ?? 0;
