@@ -96,13 +96,14 @@ await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo ===
 await W(600);
 await p.screenshot({ path: `${dir}/${name}_04_cameo.png` });
 const lines = [];
-for (let i = 0; i < 14 && lines.filter(Boolean).length < 5; i++) {
-  const xy = await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo === 'ikamolly'); const [X, Y] = window.__decor.xy(a.x - 0.5, a.y - 0.5); return [X, Y - 14 * window.__view.SC]; });
-  await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo === 'ikamolly'); a.st = 'idle'; a.path = null; });
+for (let i = 0; i < 30 && lines.length < 5; i++) {
+  await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo === 'ikamolly'); a.st = 'idle'; a.path = null; a.t = 999; a.intent = null; });
+  await W(120);
+  const xy = await p.evaluate(() => window.__cameoXY('ikamolly'));
   await p.mouse.click(xy[0], xy[1]);
   await W(500);
   const got = (await p.evaluate(() => (document.querySelector('#dlg').hidden ? '' : document.querySelector('#dName').textContent + ': ' + document.querySelector('#dText').textContent)));
-  if (got) lines.push(got);
+  if (got && got.startsWith('이카몰리')) lines.push(got);
   if (got && lines.length === 1) await p.screenshot({ path: `${dir}/${name}_05_cameo_talk.png` });
   await settle();
 }
