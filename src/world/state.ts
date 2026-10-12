@@ -513,7 +513,7 @@ export function freshProgress() {
     decor: { autoPath: true, paint: {} as Record<string, string>, store: [] as StoredObj[], recent: [] as string[], hintSeen: false, round: {} as Record<string, number>, noPath: {} as Record<string, number>, seen: [] as string[], owned: [] as string[], bookGot: [] as number[] },
     /** DECO_DROP §2 (ECONOMY §3 앞당김): 영웅 동상에 세운 전설 · 불꽃놀이 횟수 */
     luxury: { statue: '', shows: 0 },
-    harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[], migrate: false },
+    harmony: { found: [] as number[], hint: {} as Record<number, number>, hintDay: 0, show: false, moved: [] as string[], plaques: [] as string[], migrate: false, allDone: false },
     /**
      * 베타 3장 하루 마감 정산: 이번 날(자정까지) 모으는 중 · 지난 날들 · 아직 못 보여 준 정산 · 최고 수입
      */

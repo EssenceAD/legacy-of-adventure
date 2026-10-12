@@ -28,6 +28,25 @@ export function gap(a: { tx: number; ty: number; fw: number; fh: number }, b: { 
   return Math.max(gx, gy);
 }
 
+/** TOWN T4: 앵커에서 오른쪽(가로) 또는 아래(세로)로 같은 줄에 이어지는 n개 (사이 빈칸 R 이하) */
+function lineFrom(anchor: Building, p: HarmonyPart, live: Building[], R: number, ok: (o: Building) => boolean): Building[] | null {
+  const n = p.n ?? 1;
+  for (const dx of [1, 0] as const) {
+    const out = [anchor];
+    let cur = anchor;
+    while (out.length < n) {
+      const next = live
+        .filter((o) => !out.includes(o) && matches(p, o) && ok(o) && (dx ? o.ty === cur.ty && o.tx > cur.tx && o.tx - (cur.tx + cur.fw) <= R : o.tx === cur.tx && o.ty > cur.ty && o.ty - (cur.ty + cur.fh) <= R))
+        .sort((a, b) => (dx ? a.tx - b.tx : a.ty - b.ty))[0];
+      if (!next) break;
+      out.push(next);
+      cur = next;
+    }
+    if (out.length >= n) return out;
+  }
+  return null;
+}
+
 /** 이 배치에서 성립하는 어울림 전부 (공사 중인 건물은 빼고) */
 export function computeSets(objs: Building[]): HSet[] {
   const live = objs.filter((o) => o.build === undefined);
@@ -37,13 +56,28 @@ export function computeSets(objs: Building[]): HSet[] {
   const out: HSet[] = [];
   for (const h of HARMONIES) {
     const [first, ...rest] = h.parts;
+    const R = h.range ?? H.range;
     for (const anchor of live) {
       if (!matches(first, anchor) || !free(anchor, h.id)) continue;
+      // TOWN T4: 줄 어울림 — 같은 줄(가로 또는 세로)로 사이 R칸 이하씩 N개
+      if (h.shape === 'line') {
+        const line = lineFrom(anchor, first, live, R, (o) => free(o, h.id));
+        if (!line) continue;
+        for (const o of line) got(o).add(h.id);
+        out.push({ id: h.id, members: line });
+        continue;
+      }
       const chosen = [anchor];
       let ok = true;
+      // TOWN T4: 첫 자리에 n(여러 채·여러 그루)이 있으면 앵커와 같은 종류를 더 찾는다
+      if ((first.n ?? 1) > 1) {
+        const more = live.filter((o) => o !== anchor && matches(first, o) && free(o, h.id) && gap(anchor, o) <= R).sort((a, b) => gap(anchor, a) - gap(anchor, b)).slice(0, (first.n ?? 1) - 1);
+        if (more.length < (first.n ?? 1) - 1) continue;
+        chosen.push(...more);
+      }
       for (const p of rest) {
         const c = live
-          .filter((o) => !chosen.includes(o) && matches(p, o) && free(o, h.id) && gap(anchor, o) <= H.range)
+          .filter((o) => !chosen.includes(o) && matches(p, o) && free(o, h.id) && gap(anchor, o) <= R)
           .sort((a, b) => gap(anchor, a) - gap(anchor, b))
           .slice(0, p.n ?? 1);
         if (c.length < (p.n ?? 1)) {
@@ -132,7 +166,7 @@ export function tickHarmonyAura() {
 // ───────── 발견 ─────────
 
 /** ui가 채운다: 발견 연출 (점선 · 배너) */
-export const harmonyHooks = { found: (_s: HSet, _gold: number) => {} };
+export const harmonyHooks = { found: (_s: HSet, _gold: number) => {}, complete: () => {} };
 export const harmonyGold = (id: number) => H.goldStep * Math.ceil(id / 6);
 
 /** 새로 성립한 조합을 「발견」 처리 (보상 포함). silent면 연출 없이 목록만 (돌려준다) */
@@ -152,6 +186,12 @@ export function checkDiscover(silent = false): HSet[] {
     addRep(H.rep);
     harmonyHooks.found(s, g);
     dailyAdd('newHarm');
+  }
+  // TOWN T4: 어울림 도감을 다 채우면 칭호 「어울림 장인」 + 분수 하나 (선물 장식)
+  if (!silent && !P.harmony.allDone && HARMONIES.every((h) => P.harmony.found.includes(h.id))) {
+    P.harmony.allDone = true;
+    if (!P.titles.includes('어울림 장인')) P.titles.push('어울림 장인');
+    harmonyHooks.complete();
   }
   return fresh;
 }

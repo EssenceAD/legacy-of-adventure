@@ -1,13 +1,15 @@
 // 베타 1장: 어울림 화면 — 발견 배너 · 「어울림 보기」 토글 · 마을 등급 장식 옮기기 · 건물 창의 어울림 줄
 import { av } from '../engine/ver';
+import { addMail } from '../world/meta';
+import { say } from '../world/fx';
 import { track as trackEv } from '../net/telemetry';
 import { def, type Kind } from '../data/catalog';
-import { harmonyById } from '../data/harmony';
+import { HARMONIES, harmonyById } from '../data/harmony';
 import { advanceHint, dailyHarmonyRep, harmonyHooks, hintText, setsOf, type HSet } from '../world/harmony';
 import { harmonyAnim } from '../world/harmonyDraw';
 import { MOVABLE_PROPS, propKey, type Prop } from '../world/grade';
 import { onNewDay } from '../world/clock';
-import { markDirty, P, S, uiHooks, type Building } from '../world/state';
+import { markDirty, P, S, uiHooks, world, type Building } from '../world/state';
 import { iconSrc } from './kit';
 import { sfx } from './battle';
 import { closeWin, objExtra, openWin } from './windows';
@@ -87,9 +89,15 @@ export function initHarmonyUI() {
   objExtra.html = harmonyRows;
   harmonyHooks.found = (s, gold) => {
     trackEv('harmony_found', { id: s.id });
+    // TOWN T4: 가까운 손님이 그 어울림을 칭찬
+    praise(s);
     queue.push({ s, gold });
     markDirty();
     if (!showing) next();
+  };
+  harmonyHooks.complete = () => {
+    addMail({ from: 'system', title: '모모의 편지 · 어울림 도감 완성!', body: '마을의 어울림을 전부 찾으셨어요! 칭호 「어울림 장인」과 작은 선물을 보내요.', reward: { deco: 'fountain' } });
+    uiHooks.toast('🏅 어울림 도감 완성 · 칭호 「어울림 장인」');
   };
   $('#bHarm').onclick = () => {
     P.harmony.show = !P.harmony.show;
@@ -106,3 +114,13 @@ export function initHarmonyUI() {
     if (h) uiHooks.toastHtml(`<b>어울림 힌트</b> · ${esc(hintText(h))}`);
   });
 }
+
+/** TOWN T4: 새 어울림 곁 손님 한 명이 칭찬 (말풍선) */
+function praise(s: HSet) {
+  const name = HARMONIES.find((h) => h.id === s.id)?.name;
+  if (!name) return;
+  const c = s.members[0];
+  const near = world.actors.filter((a) => !a.role && !a.hidden && Math.hypot(a.x - (c.tx + c.fw / 2), a.y - (c.ty + c.fh / 2)) < 8).sort(() => Math.random() - 0.5)[0];
+  if (near) setTimeout(() => say(near, pickLine([`「${name}」 멋지다!`, `와, ${name}이에요!`, `여기 ${name} 생겼네요~`]), 2), 1500);
+}
+const pickLine = (l: string[]) => l[(Math.random() * l.length) | 0];

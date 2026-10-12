@@ -66,6 +66,16 @@ function drawSet(ctx: CanvasRenderingContext2D, s: HSet, f: number, withName: bo
 /** 마을 위: 「어울림 보기」를 켰으면 모든 어울림, 아니면 발견 연출 중인 것만 */
 export function drawHarmonyLines(ctx: CanvasRenderingContext2D) {
   if (!S.visiting && P.harmony.show) for (const s of harmonySets()) drawSet(ctx, s, 1, true);
+  // TOWN T4: 구역 어울림은 땅에 이름표 (늘 · 구역 가운데)
+  else
+    for (const s of harmonySets()) {
+      const h = harmonyById(s.id);
+      if (!h.zone) continue;
+      const cs = s.members.map(center);
+      const x = cs.reduce((t, c) => t + c[0], 0) / cs.length;
+      const y = cs.reduce((t, c) => t + c[1], 0) / cs.length;
+      label(ctx, h.name, x, y + 10, false);
+    }
   for (let i = harmonyAnim.length - 1; i >= 0; i--) {
     const h = harmonyAnim[i];
     const t = S.T - h.t0;

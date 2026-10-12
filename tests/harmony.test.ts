@@ -14,7 +14,7 @@ const B = (kind: Kind, tx: number, ty: number): Building => {
 const kindOf = (k: Kind[] | 'trophy' | 'plaque'): Kind => (k === 'trophy' ? ('trophy_boar' as Kind) : k === 'plaque' ? ('plaque_bronze' as Kind) : k[0]);
 
 describe('어울림', () => {
-  it('24조합', () => expect(HARMONIES.length).toBe(24));
+  it('TOWN T4: 44조합 (줄·광장·구역·여러 채 포함)', () => expect(HARMONIES.length).toBe(44));
   it('범위는 2칸 · 한 건물은 최대 3세트', () => {
     expect(CONFIG.harmony.range).toBe(2);
     expect(CONFIG.harmony.perBuilding).toBe(3);
@@ -26,6 +26,8 @@ describe('어울림', () => {
       const [first, ...rest] = h.parts;
       const a = B(kindOf(first.k), 20, 20);
       objs.push(a);
+      // TOWN T4: 줄 어울림은 가로 한 줄로 · 여러 채(첫 자리 n)는 앵커 오른쪽으로 이어서
+      for (let j = 1; j < (first.n ?? 1); j++) objs.push(B(kindOf(first.k), a.tx + (a.fw + 1) * j, a.ty));
       let i = 0;
       for (const p of rest)
         for (let n = 0; n < (p.n ?? 1); n++, i++) {
@@ -39,6 +41,14 @@ describe('어울림', () => {
       expect(computeSets(objs).some((s) => s.id === h.id)).toBe(true);
     });
   }
+  it('TOWN T4: 줄 어울림은 한 줄이어야 (어긋나면 안 됨)', () => {
+    const row = [0, 2, 4, 6, 8].map((x) => B('lamppost', 10 + x, 10));
+    expect(computeSets(row).some((s) => s.id === 25)).toBe(true);
+    const bent = [0, 2, 4, 6].map((x) => B('lamppost', 10 + x, 10)).concat(B('lamppost', 18, 12));
+    expect(computeSets(bent).some((s) => s.id === 25)).toBe(false);
+    const gapped = [0, 2, 4, 10, 12].map((x) => B('lamppost', 10 + x, 10));
+    expect(computeSets(gapped).some((s) => s.id === 25)).toBe(false);
+  });
   it('2칸 떨어지면 성립 · 3칸이면 안 됨', () => {
     const inn = B('inn', 10, 10);
     const near = B('statue', 10 + inn.fw + 2, 10);
