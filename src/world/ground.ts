@@ -25,6 +25,9 @@ export interface Ground {
   wild: Wild[];
   /** 땅 개편 §8: 땅보다 앞에 있는 굽힌 나무 (건물·손님 다음에 그린다) */
   front?: HTMLCanvasElement | null;
+  /** 앞 층 캔버스는 나무가 있는 곳만 잘라 둔다 (바닥 그림 기준 왼쪽 위) */
+  frontX?: number;
+  frontY?: number;
 }
 export const ground: Ground = { c: null, ox: 0, oy: 0, key: '', wild: [] };
 /** 마을 등급이 바뀌는 연출 동안 앞뒤 두 장을 같이 쓴다 */
@@ -40,15 +43,31 @@ export function signSpot(): [number, number] | null {
   const [a, b] = landBounds();
   return [a - 1, Math.floor((a + b) / 2)];
 }
+/** 렌더 메모리: 마을 등급 연출이 끝나면 지금 바닥 한 장만 남긴다 */
+export function trimGround() {
+  if (cache.size < 2) return;
+  for (const k of [...cache.keys()]) if (k !== ground.key) cache.delete(k);
+}
+export function groundMem() {
+  let px = 0;
+  for (const g of cache.values()) px += (g.c?.width ?? 0) * (g.c?.height ?? 0) + (g.front?.width ?? 0) * (g.front?.height ?? 0);
+  return { n: cache.size, px };
+}
 /** 필요할 때만 다시 그린다 (등급마다 바닥이 다르다) */
 export function ensureGround(visitKey: string, g = gradeNow()) {
   const key = groundKey(visitKey, g);
-  if (ground.c && ground.key === key) return;
+  if (ground.c && ground.key === key && ground.c.width) return;
+  // 삼성 인터넷이 메모리 부족 때 캔버스를 잃으면(폭 0) 다시 그린다
+  if (ground.c && !ground.c.width) cache.delete(ground.key);
   Object.assign(ground, groundFor(key, g));
 }
 /** 이 등급의 바닥 (캐시 두 장까지) */
 export function groundFor(key: string, g: number): Ground {
   let hit = cache.get(key);
+  if (hit && !hit.c?.width) {
+    cache.delete(key);
+    hit = undefined;
+  }
   if (!hit) {
     hit = drawGround(g, key);
     cache.set(key, hit);
@@ -266,12 +285,34 @@ function drawGround(g: number, key: string): Ground {
   const gx = c.getContext('2d')!;
   const fx = front.getContext('2d')!;
   let nFront = 0;
+  let fl = W;
+  let ft = H;
+  let fR = 0;
+  let fb = 0;
   for (const w of baked) {
     const im = IMG[w.k];
     if (!im) continue;
     const inFront = w.x >= lb || w.y >= lb;
-    if (inFront) nFront++;
-    (inFront ? fx : gx).drawImage(im, Math.round(ox + sx(w.x + 0.5, w.y + 0.5) - im.width / 2), Math.round(oy + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im.height + 3));
+    const X = Math.round(ox + sx(w.x + 0.5, w.y + 0.5) - im.width / 2);
+    const Y = Math.round(oy + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im.height + 3);
+    if (inFront) {
+      nFront++;
+      fl = Math.min(fl, X);
+      ft = Math.min(ft, Y);
+      fR = Math.max(fR, X + im.width);
+      fb = Math.max(fb, Y + im.height);
+    }
+    (inFront ? fx : gx).drawImage(im, X, Y);
+  }
+  // 렌더 메모리: 앞 층(바닥 그림과 같은 크기 1792×896)은 대부분 비어 있다 → 나무가 있는 곳만 잘라 둔다 (그리는 자리는 같다)
+  let frontCut: HTMLCanvasElement | null = null;
+  fl = Math.max(0, fl);
+  ft = Math.max(0, ft);
+  fR = Math.min(W, fR);
+  fb = Math.min(H, fb);
+  if (nFront && fR > fl && fb > ft) {
+    frontCut = canvas(fR - fl, fb - ft);
+    frontCut.getContext('2d')!.drawImage(front, -fl, -ft);
   }
   wild.length = 0;
   wild.push(...live);
@@ -279,7 +320,7 @@ function drawGround(g: number, key: string): Ground {
   // 땅 넓히기 팻말 (울타리 왼쪽 뒤 가운데 바로 바깥) — 누르면 땅 넓히기 창
   const sg = signSpot();
   if (sg && !key.includes('|v:')) wild.push({ x: sg[0], y: sg[1], k: 'expand_sign' });
-  return { c, ox, oy, key, wild, front: nFront ? front : null };
+  return { c, ox, oy, key, wild, front: frontCut, frontX: fl, frontY: ft };
 }
 
 /** TOWN T2: 칠한 칸 무늬 (칸 마름모 안 · X,Y = 마름모 위 꼭짓점) */

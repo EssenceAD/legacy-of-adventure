@@ -27,12 +27,24 @@ export const view = {
 };
 
 /**
+ * 렌더 메모리: 마을 캔버스 배율 (CSS px당 논리 px = 1/sc) — 캔버스 픽셀이 CSS 1px당 maxRatio를 넘지 않게.
+ *  넘으면 「기기 픽셀 정수배」 중 가장 작은 배율로 올린다 (도트 하나 = 기기 픽셀 k개 → 흐림 없음)
+ *  예) 폰 ×0.5 · dpr 2.625 · 상한 2 → 그대로(2배) · 절약 1.5 → k=2 (sc 0.76)
+ */
+export function canvasScale(zoom: number, devicePx: boolean, dpr: number, maxRatio = Infinity): number {
+  const sc = devicePx ? zoom / dpr : zoom;
+  if (1 / sc <= maxRatio + 1e-9) return sc;
+  return Math.ceil(dpr / maxRatio - 1e-9) / dpr;
+}
+
+/**
  * devicePx=false(폰): zoom = CSS px 배율 (지금 그대로)
  * devicePx=true(태블릿·넓은 화면): zoom = 기기 픽셀 배율 → 도트 하나가 정확히 zoom×zoom 기기 픽셀 (흐림 없음)
+ * maxRatio: 캔버스 픽셀 ÷ CSS px 상한 (CONFIG.render.dprCap · 배터리 절약이면 dprCapSaver)
  */
-export function resizeCanvas(cv: HTMLCanvasElement, host: HTMLElement, zoom: number, devicePx = false) {
+export function resizeCanvas(cv: HTMLCanvasElement, host: HTMLElement, zoom: number, devicePx = false, maxRatio = Infinity) {
   const r = host.getBoundingClientRect();
-  const sc = devicePx ? zoom / devicePixelRatio : zoom;
+  const sc = canvasScale(zoom, devicePx, devicePixelRatio || 1, maxRatio);
   view.SC = sc;
   view.LW = Math.max(1, Math.ceil(r.width / sc));
   view.LH = Math.max(1, Math.ceil(r.height / sc));
