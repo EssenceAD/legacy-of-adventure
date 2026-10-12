@@ -18,6 +18,8 @@ import { repHook, stars, today } from './progress';
 import { guestGiftEffect, guestGiftedToday, talkHint } from './growth';
 import { FISH } from '../data/story/fish';
 import { markDirty, P, S, uiHooks, world, type Actor, type OwnerState, type TalkChoice, type TalkLine, type TieState } from './state';
+import { windTavern } from './wind';
+import { addChronicle } from './chronicle';
 
 const O = CONFIG.owner;
 const T = CONFIG.ties;
@@ -183,7 +185,7 @@ const seasonNow = () => (P.owner ? calendar().season : -1);
 /** 건물 수입 배율 */
 export function incomeMult(act: string): number {
   let m = 1 + legacySum('gold');
-  if (act === 'drink') m += (stat('cook') / 100) * O.cookIncome + legacySum('tavern') + (seasonNow() === 2 ? O.seasonBonus : 0);
+  if (act === 'drink') m += (stat('cook') / 100) * O.cookIncome + legacySum('tavern') + windTavern() + (seasonNow() === 2 ? O.seasonBonus : 0);
   if (act === 'bath' && seasonNow() === 1) m += O.seasonBonus;
   if (act === 'sleep' && seasonNow() === 3) m += O.seasonBonus;
   return m;
@@ -626,6 +628,8 @@ export function finishEnding(kind: 'go' | 'solo' | 'stay', partner: string | nul
   }
   o.ended = ids[0];
   o.ember = 0;
+  // DIRECTION §1-3: 여관 연대기 한 쪽
+  addChronicle(ids[0]);
   markDirty();
   ownerHooks.ending(ids, partner, rel);
 }

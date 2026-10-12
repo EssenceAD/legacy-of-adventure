@@ -39,3 +39,9 @@ export function diaryList(): { key: string; title: string; pages: string[]; tota
     .filter(([k]) => (pages()[k] ?? 0) > 0)
     .map(([k, d]) => ({ key: k, title: d.title, pages: d.pages.slice(0, pages()[k]), total: d.pages.length }));
 }
+
+/** DIRECTION §1-1 여정 지도: 다 읽은 일기 수 · 전체 일기 수 */
+export function diaryDoneCount(): { done: number; total: number } {
+  const all = Object.entries(DIARIES);
+  return { done: all.filter(([k, d]) => (pages()[k] ?? 0) >= d.pages.length).length, total: all.length };
+}

@@ -9,6 +9,7 @@ import { BASE_REGIONS, REGIONS, SLOTS, type RegionId } from '../data/items';
 import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS, BASE_GUEST_KINDS } from '../data/classes';
 import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
+import { heroFirst } from './wind';
 
 // ───────── 평판 ★ ─────────
 
@@ -201,8 +202,9 @@ export function heroCtx(): HeroCtx {
 /** 아직 안 나타난 영웅 중 조건을 맞춘 영웅 (한 번에 한 명) */
 export function heroReady(): string | null {
   const c = heroCtx();
-  const h = HEROES.find((x) => !P.dex.heroes[x.id]?.appeared && x.appear(c));
-  return h?.id ?? null;
+  // DIRECTION §1-2: 동시에 나올 수 있으면 회차 번호로 섞은 순서 (1회차는 원래 순서)
+  const ready = HEROES.filter((x) => !P.dex.heroes[x.id]?.appeared && x.appear(c));
+  return heroFirst(ready, HEROES)?.id ?? null;
 }
 
 export const chemFoundNames = () => CHEM_PAIRS.filter((p) => P.dex.chem.includes(p.id)).map((p) => p.name);

@@ -16,6 +16,7 @@ import { enhanceBonus, ownerGain, stat } from './owner';
 import { bfx, hfx } from './harmony';
 import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
 import { brag, uniqueSalvageMult } from './growth';
+import { windHarvest } from './wind';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -343,7 +344,8 @@ export function plant(o: Building, i: number, crop: string): string | null {
 export function harvest(o: Building, i: number): number {
   const p = plotsOf(o)[i];
   if (!p || plotLeft(p) !== 0) return 0;
-  const n = GD.crops[p.crop!].yield + bfx(o, 'harvest');
+  // DIRECTION §1-2 풍년: 수확 +30%
+  const n = windHarvest(GD.crops[p.crop!].yield + bfx(o, 'harvest'));
   // BUILDINGS_SPEC §3: 작물별 창고 (주점은 먹을 수 있는 것을 자동으로 · 공방은 골라 쓴다)
   addCrop(p.crop!, n);
   P.counters.harvests++;

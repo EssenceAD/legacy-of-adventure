@@ -1121,6 +1121,37 @@ export const CONFIG = {
       meal: { v: { n: 0.05, r: 0.1, e: 0.15, l: 0.2 } as Record<string, number>, minutes: 120 },
     },
   },
+  /**
+   * DIRECTION_SPEC: 여정 · 회차의 바람 · 연대기 · 테스터와 함께 (제보 답장 · 함께 만든 사람들 · 소문 보내기)
+   */
+  direction: {
+    /** §1-1 여정 지도: 다 채우면 칭호 */
+    journeyTitle: '이야기의 끝을 본 주인',
+    /** §1-1 엔딩 칸의 분모 (스토리 엔딩 5 + 진 엔딩) */
+    endings: 6,
+    /** §1-2 회차의 바람 — 이 회차부터 (1회차는 바람 없음) */
+    windFrom: 2,
+    wind: {
+      /** 축제의 해: 장식 값 −15% · 주점 수입 +10% · 밤 불빛(빛 세기 배수) */
+      festival: { decorCost: 0.85, tavern: 0.1, nightLight: 1.35 },
+      /** 별이 많은 해: 별똥별 하루 +1번 · 전설 인연 게이지 +10% · 밤하늘 반짝이 수 */
+      stars: { starCatch: 1, legendGauge: 0.1, skyTwinkles: 40 },
+      /** 풍년: 텃밭 수확 +30% · 물고기 요리 버프 +1단계 */
+      harvest: { harvest: 0.3, mealTier: 1 },
+      /** 길손의 해: 지나가는 손님 확률 ×1.5 · 단골 제안 기분 기준 −5 */
+      wayfarer: { passer: 1.5, regularCut: 5 },
+      /** 전쟁의 소문: 토벌 피해(주는 피해) +15% · 원정 금화 −10% · [소문] 중 「토벌」 수다 비율 */
+      war: { raidDmg: 0.15, questGold: -0.1, heavyRumor: 0.45 },
+      /** 고요한 해: 손님 기분이 떨어지는 양 ×0.5 · 은퇴 루트 목표 −10% · 잔잔한 곡 고를 확률 */
+      calm: { moodDecay: 0.5, retireCut: 0.1, calmMusic: 0.75, calmTracks: { day: ['03', '05'], night: ['07', '08'] } as Record<string, string[]> },
+    },
+    /** §2-3 소문 보내기: 글자 수 · 하루 몇 개 · [소문] 풀에서 유저 소문이 나올 확률 */
+    rumorMax: 40,
+    rumorPerDay: 1,
+    userRumorChance: 0.12,
+    /** §2-2 「함께 만든 사람들」: 반영된 제보 몇 건부터 */
+    contributorMin: 3,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

@@ -11,6 +11,8 @@ import { onNewDay } from './clock';
 import { chaptersDone, currentMission, guideCtx, townGrade } from './guide';
 import { CHAPTERS } from '../data/guide';
 import { markDirty, P, S, world, type Actor, type TalkLine } from './state';
+import { ensureWind, rollWind, windRetire } from './wind';
+import { addChronicle, backfillChronicle, keepMythicMet } from './chronicle';
 
 const A = CONFIG.story;
 const st = () => P.story;
@@ -90,6 +92,10 @@ export function initStory(fresh: boolean) {
     L.mem = Math.min(MEMORIES.length, Math.max(L.mem || 0, n));
     markDirty();
   }
+  // DIRECTION §1: 옛 저장 — 본 엔딩만큼 연대기 쪽 채우기 · 2회차 이상인데 바람이 없으면 정하기 · 만난 신화 기억
+  backfillChronicle();
+  ensureWind();
+  keepMythicMet();
 }
 
 // ───────── 루트 점수 (하루 마감 때) ─────────
@@ -156,11 +162,15 @@ export function retireGoals(): Goal[] {
   const g = ROUTES.retire.goals!;
   const day = storyDay();
   const harv = P.counters.harvests ?? 0;
+  // DIRECTION §1-2 고요한 해: 은퇴 목표 −10%
+  const days = windRetire(A.retireDays);
+  const good = windRetire(A.retireGoodDays);
+  const harvN = windRetire(A.retireHarvests);
   const mk = (i: number, cur: number, need: number, text: string): Goal => ({ id: g[i].id, title: fill(g[i].title), cur: Math.min(cur, need), need, done: cur >= need, text });
   return [
-    mk(0, day, A.retireDays, day >= A.retireDays ? '완료' : `${A.retireDays - day}일 남음 (${day}/${A.retireDays}일)`),
-    mk(1, s.goodDays, A.retireGoodDays, `${Math.min(s.goodDays, A.retireGoodDays)}/${A.retireGoodDays}일 · 평균 기분 ${A.goodMood} 이상인 날`),
-    mk(2, harv, A.retireHarvests, `${Math.min(harv, A.retireHarvests)}/${A.retireHarvests}`),
+    mk(0, day, days, day >= days ? '완료' : `${days - day}일 남음 (${day}/${days}일)`),
+    mk(1, s.goodDays, good, `${Math.min(s.goodDays, good)}/${good}일 · 평균 기분 ${A.goodMood} 이상인 날`),
+    mk(2, harv, harvN, `${Math.min(harv, harvN)}/${harvN}`),
     mk(3, s.heir >= 2 ? 1 : 0, 1, s.heir === 1 ? '유안에게 말 걸기' : s.readyDay ? '내일 아침, 누군가 찾아올 것 같아요' : '앞의 목표 셋을 마치면'),
   ];
 }
@@ -362,6 +372,8 @@ export function finishStory(route: RouteId) {
     o.ember = 0;
   }
   s.heir = 2;
+  // DIRECTION §1-3: 여관 연대기 한 쪽
+  addChronicle(id);
   track('ending', { id, cycle: L.gen, playMin: s.playMin, day: storyDay() });
   markDirty();
   return { id, first, ...g };
@@ -377,6 +389,8 @@ export function rememberFav() {
 /** 유산을 이은 뒤: 이 회차 이야기를 처음부터 · 시작 선물 적용 */
 export function startCycle(gifts: string[]): string[] {
   const s = st();
+  // DIRECTION §1-1: 이 회차에 만난 신화는 회차를 넘어 기억 (여정 지도)
+  keepMythicMet();
   Object.assign(s, {
     act: 1, route: null, score: { hero: 0, legend: 0, town: 0, love: 0, retire: 0 }, seen: [], day0: S.day, actDay: {},
     letter: 0, changed: false, goodDays: 0, goodLast: P.daily.log[P.daily.log.length - 1]?.day ?? 0, heir: 0, readyDay: 0, playMin: 0,
@@ -396,7 +410,9 @@ export function startCycle(gifts: string[]): string[] {
     if (id === 'ledger') ledgerChapter();
     done.push(id);
   }
-  track('cycle_start', { cycle: L.gen, gift: done.join(',') });
+  // DIRECTION §1-2: 이번 회차의 바람 (2회차부터 · 직전과 다르게)
+  const wind = rollWind();
+  track('cycle_start', { cycle: L.gen, gift: done.join(','), wind });
   markDirty();
   return done;
 }

@@ -34,8 +34,19 @@ import { openWin, thumbOf, toast } from './windows';
 import { def } from '../data/catalog';
 import { openPlace, type Place } from './nav';
 import { SYN_IDS, SYN_INFO } from '../world/synergy';
+import { chronPageHtml, contribHtml, fillContrib } from './chronicle';
 
 let dTab = 0;
+/** DIRECTION §1-3: 연대기 펼친 쪽 (-1 = 맨 끝 쪽) */
+let chPage = -1;
+/** 도감 탭 이름들 (여정 지도에서 이름으로 연다) */
+export const dexNames = () => ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시', '파티', '연대기', '함께 만든 사람들'];
+/** 이름으로 도감 탭 열기 (없는 탭이면 첫 탭) */
+export function openDexTab(name: string, page?: number) {
+  if (page != null) chPage = page;
+  const i = dexNames().indexOf(name);
+  openDex(i < 0 ? 0 : i);
+}
 /** PARTY §1: 손님 도감 직업 필터 ('' = 전체) */
 let gKind = '';
 
@@ -54,12 +65,18 @@ export function openDex(tab = dTab) {
   // REGIONS2: 「지역」 칸은 별이 흩어진 뒤부터
   // GROWTH: 「고유 장비」 · 「낚시」 칸은 맨 뒤 (지역 칸이 없을 때도 이름으로 찾는다)
   //  PARTY §2: 「파티」(켜 본 조합 8칸)는 맨 뒤
-  const NAMES = ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시', '파티'];
+  //  DIRECTION: 「연대기」(엔딩마다 한 쪽) · 「함께 만든 사람들」은 그 뒤
+  const NAMES = dexNames();
   if (tab >= NAMES.length) tab = 0;
   dTab = tab;
   const tname = NAMES[tab];
   let body = '';
-  if (tname === '고유 장비') body = uniqueDexHtml();
+  if (tname === '연대기') {
+    const n = P.legacy.chron?.length ?? 0;
+    if (chPage < 0 || chPage >= n) chPage = n - 1;
+    body = `<p class="sub">여관 연대기 · ${n}쪽</p><p class="note">엔딩을 볼 때마다 한 쪽 — 내가 쌓은 시간</p>${chronPageHtml(chPage)}`;
+  } else if (tname === '함께 만든 사람들') body = contribHtml();
+  else if (tname === '고유 장비') body = uniqueDexHtml();
   else if (tname === '낚시') body = fishDexHtml();
   else if (tname === '파티') body = partyDexHtml();
   else if (tab === 0) {
@@ -196,6 +213,12 @@ export function openDex(tab = dTab) {
     openDex(0);
   })));
   bindTabs('dT', openDex);
+  // DIRECTION §1-3: 연대기 넘기기 · §2-2 함께 만든 사람들 채우기
+  $$('[data-chp]').forEach((b) => (b.onclick = () => {
+    chPage = +b.dataset.chp!;
+    openDex(tab);
+  }));
+  if (tname === '함께 만든 사람들') void fillContrib();
   $$('[data-db]').forEach(
     (b) =>
       (b.onclick = () => {

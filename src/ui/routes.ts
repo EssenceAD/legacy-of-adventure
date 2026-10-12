@@ -1,5 +1,5 @@
 // STORY v2·v3 화면: 갈림길 목표 창(모든 루트) · 장부 카드 · 루트 사건(최종 토벌 · 고백 · 결혼식 · 연회 · 편집장 · 그 밤) · 루트 엔딩
-import { PIONEER_CREDIT } from '../data/story/easter';
+import { endCredits } from './chronicle';
 import { ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { ROUTE_HERO, ROUTE_LOVE } from '../data/story/v2';
 import { ROUTE_LEGEND, ROUTE_TOWN, ROUTE_TRUE } from '../data/story/v3';
@@ -171,7 +171,7 @@ export function routeCut(r: Exclude<RouteId, 'retire'>): SLine[] {
     extra.catchLine = fill(b.line);
   }
   void cutCtx;
-  return [...expandCut(r, ROUTE_DATA[r].cut, extra), ['narr', PIONEER_CREDIT]];
+  return [...expandCut(r, ROUTE_DATA[r].cut, extra), ...endCredits()];
 }
 export function playRouteEnding(api: RouteStoryApi) {
   const r = st().route as Exclude<RouteId, 'retire'>;

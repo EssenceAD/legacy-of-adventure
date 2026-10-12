@@ -483,6 +483,8 @@ export function freshProgress() {
       giftDeco: {} as Record<string, number>,
       /** GUEST_SPEC: 게스트에게 「계정 연결」 편지를 보냈나 */
       linkMail: false,
+      /** DIRECTION §2-1: 우편함에 넣은 운영자 답장 (편지 번호@답장 시각 — 답장을 고치면 다시 온다) */
+      replied: [] as string[],
       /** EASTER: 금빛 편지(보냄·받음) · 카메오 일정 · 만난 개척자 · 선물 쿠폰 */
       easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean },
     },
@@ -510,7 +512,9 @@ export function freshProgress() {
       /** STORY_V1 §5: 유산 포인트 · 모은 기억 조각 수 · 옛 저장에 포인트·기억을 한 번 채웠나 · 지난 회차 가장 친했던 단골 (이름·직업·종족) */
       pts: 0, mem: 0, v14: false, prevFav: null as null | { name: string; kind: string; race?: string },
       /** MYTHIC · STORY v2/v3 (회차를 넘어 남는다): 신화로 깨어날 전설 · 별지기의 열쇠 조각 · 진 엔딩 뒤 오프닝 봄 · 부케 받은 사람(겹치지 않게) */
-      mythicSeeds: [] as string[], shards: [] as string[], trueAfterSeen: false, bouquetSeen: [] as string[] },
+      mythicSeeds: [] as string[], shards: [] as string[], trueAfterSeen: false, bouquetSeen: [] as string[],
+      /** DIRECTION §1: 여관 연대기(엔딩마다 한 쪽) · 옛 저장 연대기를 채웠나 · 만난 적 있는 신화(회차를 넘어) · 여정을 다 채웠나(간판 금테) · 지난 회차의 바람 */
+      chron: [] as ChronPage[], chronV: false, mythicMet: [] as string[], journeyEnd: false, lastWind: '' },
     /**
      * STORY_V1: 막 · 고른 루트 · 루트 점수(보이지 않게) · 이 회차에 본 대사 · 이 회차 시작 일차 · 막이 오른 일차
      * 회차를 넘어 남는 것(회차 = legacy.gen · 엔딩 = legacy.album · 유산 포인트 · 기억)은 legacy에 있다
@@ -537,6 +541,8 @@ export function freshProgress() {
       base: {} as Record<string, number>,
       flags: {} as Record<string, number>,
       mythic: {} as Record<string, { prog?: number; done?: boolean; met?: boolean; heart?: boolean }>,
+      /** DIRECTION §1-2: 이번 회차의 바람 ('' = 없음 · 1회차) */
+      wind: '',
     },
     /** STORY v2: 손님 일기 (직업_종족 → 열린 장 수) */
     diaries: {} as Record<string, number>,
@@ -670,6 +676,21 @@ export interface OwnerState {
   met: string[];
   /** 엔딩을 봤다 (계속 운영 중) */
   ended: string | null;
+}
+/** DIRECTION §1-3: 여관 연대기 한 쪽 (사진은 이 기기 설정 'chron.<at>'에 · 저장 크기를 키우지 않게) */
+export interface ChronPage {
+  /** 엔딩을 본 시각 (쪽 번호 겸 사진 키) */
+  at: number;
+  gen: number;
+  inn: string;
+  /** 엔딩 id (endings.ts) */
+  ending: string;
+  /** 함께한 단골 셋: 이름 · 직업 · 종족 */
+  regs: { name: string; kind: string; race?: string }[];
+  /** 그 회차의 바람 ('' 없음) */
+  wind: string;
+  /** 옛 저장에서 채운 쪽 (자세한 기록이 없을 수 있다) */
+  old?: boolean;
 }
 export interface TieState {
   pts: number;

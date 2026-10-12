@@ -103,6 +103,8 @@ export function titlesOwned(): { t: string; from: string }[] {
   if (P.legacy.album.length) out.push({ t: '이야기를 끝맺은 자', from: '엔딩 1개 이상' });
   if (P.guide.claimed.length >= 40) out.push({ t: '버나드의 후계자', from: '장부 7장' });
   for (const p of chem5Titles()) out.push({ t: title5(p), from: `케미 「${p.name}」 5단계` });
+  // DIRECTION §1-1: 여정을 다 채우면
+  if (P.legacy.journeyEnd) out.push({ t: CONFIG.direction.journeyTitle, from: '여정 완주' });
   const seen = new Set<string>();
   return out.filter((x) => (seen.has(x.t) ? false : (seen.add(x.t), true)));
 }

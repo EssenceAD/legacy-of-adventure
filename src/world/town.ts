@@ -6,6 +6,7 @@ import { FLIP, META } from '../engine/assets';
 import { N, sx, sy, TW } from '../engine/iso';
 import { P, S, world, type Building, type StoredObj } from './state';
 import { monumentUnlocked } from './progress';
+import { windDecorMult } from './wind';
 
 // ───────── 땅 ─────────
 
@@ -106,7 +107,8 @@ export function copyIncomeMult(o: Building, objs: Building[] = world.objs): numb
 export function buildCost(k: Kind, objs = world.objs): number {
   const n = MULTI(k) ? 0 : countKind(k, objs);
   const m = CONFIG.town.copyCost;
-  return Math.round(def(k).cost * m[Math.min(n, m.length - 1)]);
+  // DIRECTION §1-2 축제의 해: 장식 값 −15%
+  return Math.round(def(k).cost * m[Math.min(n, m.length - 1)] * (def(k).deco ? windDecorMult() : 1));
 }
 
 /**

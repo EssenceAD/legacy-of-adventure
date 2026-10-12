@@ -25,6 +25,7 @@ import { incomeMult, moodMult, ownerGain, regularCut, tieRequestDone, trainMult 
 import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, layoutHooks, nearestWalkable, walkable, bestOf } from './town';
 import { bfx, hfx, incMult } from './harmony';
 import { dailyAdd } from './daily';
+import { windMoodDecay, windPasser, windRegularCut } from './wind';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -528,7 +529,7 @@ export function arrive(a?: Actor): Actor | null {
       }
       const h = hourNow();
       const passers = guestsOf().filter((x) => x.status === 'passer').length;
-      if (h < G.passerFromHour || h >= G.passerUntilHour || passers >= G.passerMax || Math.random() > G.passerChance) return null;
+      if (h < G.passerFromHour || h >= G.passerUntilHour || passers >= G.passerMax || Math.random() > Math.min(1, G.passerChance * windPasser())) return null;
       a = makeAdventurer(ex, ey, { day: S.day, status: 'passer' });
     }
   } else {
@@ -672,7 +673,7 @@ export function proposeTalk(a: Actor, fast = false) {
 }
 
 /** 단골이 되고 싶어 하는 기분 기준 (주인 말솜씨가 높을수록 낮다) */
-export const regularNeed = () => G.regularMood * (1 - hfx('regular')) - regularCut();
+export const regularNeed = () => G.regularMood * (1 - hfx('regular')) - regularCut() - windRegularCut();
 
 /** 날이 바뀔 때(06:00): 방문 손님은 떠날지·단골이 될지 정한다 */
 export function dailyGuests() {
@@ -865,7 +866,8 @@ function tickGuests(dt: number) {
     const low = (a.hp < NE.lowBelow ? 1 : 0) + (a.food < NE.lowBelow ? 1 : 0);
     const dm = (low * NE.moodLowNeedPerHour + (crowded ? NE.moodCrowdedPerHour : 0)) * gh;
     // GROWTH §3-4 「첫 단골의 단추」: 낀 단골은 기분이 잘 안 떨어짐 (떨어지는 양 절반)
-    a.mood = clamp(a.mood + (dm < 0 && hasSpecial(a, 'regularMood') ? dm * 0.5 : dm));
+    // DIRECTION §1-2 고요한 해: 떨어지는 양 ×0.5
+    a.mood = clamp(a.mood + (dm < 0 ? dm * windMoodDecay() * (hasSpecial(a, 'regularMood') ? 0.5 : 1) : dm));
   }
   hourAcc += gh;
   if (hourAcc < 1) return;

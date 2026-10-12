@@ -4,6 +4,7 @@ import { LIGHTS } from '../engine/assets';
 import { P } from '../engine/pixel';
 import { jumpTo, onNightFlip, tickClock } from './clock';
 import { S } from './state';
+import { windLight } from './wind';
 
 const D = CONFIG.dayNight;
 
@@ -43,6 +44,8 @@ export function drawLight(ctx: CanvasRenderingContext2D, sprite: string | null, 
 
 /** 모닥불 둥근 빛 (맨 위에 더하기로) */
 export function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number) {
+  // DIRECTION §1-2 축제의 해: 밤 불빛이 더 밝게
+  a = Math.min(1, a * windLight());
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, `rgba(255,190,90,${a})`);
   g.addColorStop(1, 'rgba(255,150,60,0)');

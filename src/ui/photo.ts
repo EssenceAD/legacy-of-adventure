@@ -8,6 +8,7 @@ import { markDirty, P, S } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
 import { talk } from './dialogue';
 import { toast } from './windows';
+import { rememberPhoto } from './chronicle';
 
 export type Frame = 'phone' | 'square' | 'wide';
 export type PTime = 'now' | 'morning' | 'sunset' | 'night';
@@ -161,6 +162,8 @@ async function shoot() {
   sfx('build', { vol: 0.6 });
   flash();
   const cv = capture();
+  // DIRECTION §1-3: 마지막 한 장은 여관 연대기 사진으로
+  rememberPhoto(cv);
   const blob = await new Promise<Blob | null>((ok) => cv.toBlob(ok, 'image/png'));
   trackEv('photo', { frame: st.frame, time: st.time, people: st.people, w: cv.width, h: cv.height });
   P.counters.photos = (P.counters.photos ?? 0) + 1;

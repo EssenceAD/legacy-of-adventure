@@ -25,6 +25,7 @@ import { gotGold, legendHooks, P, S, pick, world, type Actor, type Quest, type R
 import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
 import { addCharm, mealGold } from './growth';
 import { partySpecial, rollUniqueAny } from './uniques';
+import { windQuestGold } from './wind';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -245,7 +246,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const nightG = S.night ? partySpecial(members, 'nightGold') / 100 : 0;
   // PARTY §2: 조합 보너스 — 뒷골목 싸움 금화 + · 수호의 맹세 체력 소모 −
   const syn = synergyFx(members);
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()) * (1 + syn.gold));
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()) * (1 + syn.gold) * windQuestGold());
   // MYTHIC 루나 부탁: 밤에 출발한 의뢰 성공
   if (win && nightStart(run.start)) P.counters.nightWins = (P.counters.nightWins ?? 0) + 1;
   tieRun(members);

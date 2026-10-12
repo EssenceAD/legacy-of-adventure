@@ -6,6 +6,7 @@ import { TRUE_AFTER, TRUE_HINTS, TRUE_LETTER, TRUE_STAR_LINES } from '../data/st
 import { endsSeen, onPickRoute, routePreDone, routeTick, trueReady } from '../world/routes';
 import { openGoals, routeCard, routeCardText, routeCut, editorVisit, type RouteStoryApi } from './routes';
 import { PIONEER_CREDIT } from '../data/story/easter';
+import { endCredits, saveChronThumb } from './chronicle';
 import { clearOverlays } from './overlays';
 import { nextRegionCut } from '../world/regions2';
 import { showNewRegion } from './regions2';
@@ -115,9 +116,15 @@ const api: RouteStoryApi = {
   openLetter: () => openLetter(),
   endRoute: (r, cut) => {
     lastThumb = '';
-    playStory([...cut.slice(0, -1), ...mythicEndLines(), ...cut.slice(-1)], () => {
+    // DIRECTION §2-2: 크레딧 줄(개척자 · 함께 만든 사람들)은 신화 대사 뒤로
+    const k = cut.findIndex((l) => l[1] === PIONEER_CREDIT);
+    const head = k >= 0 ? cut.slice(0, k) : cut.slice(0, -1);
+    const tail = k >= 0 ? cut.slice(k) : cut.slice(-1);
+    playStory([...head, ...mythicEndLines(), ...tail], () => {
       const res = finishStory(r);
       if (lastThumb) setPref('storyThumb.' + res.id, lastThumb);
+      // DIRECTION §1-3: 연대기 쪽 사진
+      saveChronThumb(lastThumb);
       const mem = res.mem >= 0 ? MEMORIES[res.mem] : null;
       const card = () => endingCard(res.id, res.pts, res.first, r);
       if (mem) playStory([['narr', `기억 조각을 얻었다 — ${mem.title}`], ...mem.lines], card);
@@ -328,9 +335,10 @@ export function playRetireEnding() {
   if (P.story.heir !== 1 || isTalking()) return;
   closeWin();
   lastThumb = '';
-  playStory([...STORY_END.retire.cut, ...mythicEndLines(), ['narr', PIONEER_CREDIT]], () => {
+  playStory([...STORY_END.retire.cut, ...mythicEndLines(), ...endCredits()], () => {
     const r = finishStory('retire');
     if (lastThumb) setPref('storyThumb.' + r.id, lastThumb);
+    saveChronThumb(lastThumb);
     syncYuan();
     const mem = r.mem >= 0 ? MEMORIES[r.mem] : null;
     const card = () => endingCard(r.id, r.pts, r.first);
@@ -454,7 +462,7 @@ export function bindStoryAlbum(back: () => void) {
       (b.onclick = () => {
         closeWin();
         const r = (b.dataset.se ?? 'story_retire').slice(6) as RouteId;
-        playStory(r === 'retire' ? [...STORY_END.retire.cut, ['narr', PIONEER_CREDIT]] : routeCut(r), back);
+        playStory(r === 'retire' ? [...STORY_END.retire.cut, ...endCredits()] : routeCut(r), back);
       }),
   );
   $$('[data-mem]').forEach((b) => (b.onclick = () => readMemory(+b.dataset.mem!, true, back)));

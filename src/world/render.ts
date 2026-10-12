@@ -23,10 +23,11 @@ import { stars } from './progress';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
-import { S, world, type Actor, type Building } from './state';
+import { P as P_, S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, groundVersion, inLand, landBounds, outsideOk, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
 import { drawConstruction, silMem } from './conDraw';
+import { curWind, windIs } from './wind';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
@@ -275,6 +276,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalAlpha = 1;
   }
   drawAmbient(ctx, T, LW, LH);
+  // DIRECTION §1-2: 회차의 바람 분위기 (내 마을에서만)
+  if (!S.visiting && curWind()) drawWindSky(ctx, T, LW, LH);
   // 사진: 노을은 주황빛 · 아침은 살짝 밝게
   if (photoState.on && photoState.time === 'sunset') {
     ctx.globalCompositeOperation = 'multiply';
@@ -510,6 +513,43 @@ function paintStar(ctx: CanvasRenderingContext2D, x: number, y: number, T: numbe
     p.px(x, y + a, '#ffffff');
   }
 }
+/**
+ * DIRECTION §1-2 회차의 바람 분위기 (화면 공간 · 한 번에 몇십 픽셀이라 가볍다)
+ *  별이 많은 해 = 밤하늘 반짝이 · 풍년 = 낮에 가을빛 · 축제의 해 = 화면 위 깃발 줄 (낮)
+ */
+function drawWindSky(ctx: CanvasRenderingContext2D, T: number, LW: number, LH: number) {
+  const nt = S.nightT;
+  const p = P(ctx);
+  if (windIs('stars') && nt > 0.2) {
+    ctx.globalAlpha = Math.min(1, nt);
+    const n = CONFIG.direction.wind.stars.skyTwinkles;
+    for (let i = 0; i < n; i++) {
+      const x = (i * 131.7 + 17) % LW;
+      const y = (i * 71.3 + 9) % (LH * 0.45);
+      if (Math.sin(T * 2.2 + i * 2.3) > -0.2) p.px(Math.round(x), Math.round(y), i % 5 ? '#e8ecff' : '#ffe08a');
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (windIs('harvest') && nt < 0.99) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(255,190,110,${0.3 * (1 - nt)})`;
+    ctx.fillRect(0, 0, LW, LH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (windIs('festival') && nt < 0.95) {
+    ctx.globalAlpha = 1 - nt;
+    const cols = ['#e85a5a', '#ffd36b', '#6fd04b', '#5ab0e8', '#c07ae8'];
+    for (let x = 4, i = 0; x < LW; x += 12, i++) {
+      const y = 6 + Math.round(Math.sin((x / LW) * Math.PI * 3) * 3 + Math.sin(T * 2 + i) * 0.6);
+      p.rect(x, y - 1, 12, 1, '#7a5a3a');
+      const c = cols[i % cols.length];
+      p.rect(x + 3, y, 5, 2, c);
+      p.rect(x + 4, y + 2, 3, 2, c);
+      p.px(x + 5, y + 4, c);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
 /** 유성우 밤: 남보라 하늘 + 반짝이 (화면 위쪽 절반) */
 function drawShowerSky(ctx: CanvasRenderingContext2D, T: number) {
   const g = ctx.createLinearGradient(0, 0, 0, view.LH * 0.6);
@@ -597,6 +637,9 @@ function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: num
   }
   // 술통 (주점 Lv.5): 오른쪽 앞 면
   if (!inn && L >= 5) sprite('barrels', (front[0] + right[0]) / 2 + 6, (front[1] + right[1]) / 2 + 4);
+  // DIRECTION §1-2 축제의 해: 아직 깃발이 없는 여관·주점에도 깃발
+  const festFlag = windIs('festival') && !S.visiting && !((inn && L >= 10) || (!inn && L >= 6));
+  if (festFlag) sprite('flagpole', right[0] - 6, right[1] + 2);
   // 깃발 · 금빛 간판 (여관 Lv.10 · 주점 Lv.6)
   if ((inn && L >= 10) || (!inn && L >= 6)) {
     sprite('flagpole', right[0] - 6, right[1] + 2);
@@ -995,6 +1038,12 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, nt: number) {
   const X = Math.round(x + m.w / 2 - w / 2);
   const Y = y - 16;
   const p = P(ctx);
+  // DIRECTION §1-1: 여정을 다 채운 주인 — 여관 간판(이름판) 금테 + 반짝
+  const gold = !S.visiting && P_.legacy.journeyEnd;
+  if (gold) {
+    p.rect(X - 3, Y - 3, w + 6, 19, '#7a5a1a');
+    p.rect(X - 2, Y - 2, w + 4, 17, '#ffd36b');
+  }
   p.rect(X, Y, w, 13, '#5a3a24');
   p.rect(X + 1, Y + 1, w - 2, 11, '#a06a3c');
   p.hline(X + 1, Y + 1, w - 2, '#c08050');
@@ -1004,6 +1053,12 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, nt: number) {
   ctx.fillText(name, X + 5, Y + 3);
   ctx.fillStyle = nt > 0.5 ? '#ffe7a8' : '#fff3d6';
   ctx.fillText(name, X + 5, Y + 2);
+  if (gold) {
+    const k = Math.floor((S.T * 18) % (2 * (w + 15)));
+    const sx2 = k < w + 15 ? X - 1 + k : X - 1 + (2 * (w + 15) - k);
+    p.px(Math.min(X + w, sx2), Y - 1, '#fffbe0');
+    p.px(Math.max(X - 1, Math.min(X + w, 2 * X + w - sx2)), Y + 13, '#fffbe0');
+  }
 }
 
 /** 탭한 화면 좌표의 건물 (투명 픽셀 무시, 앞 건물부터) */

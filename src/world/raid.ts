@@ -20,6 +20,7 @@ import { rollUnique } from './uniques';
 import { partySynMult, synDamageMult, synergyFx } from './synergy';
 import { roleMult } from './party';
 import type { Item } from './state';
+import { windRaid } from './wind';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -177,7 +178,7 @@ export function expectOf(members: Actor[], b: BossDef): RaidExpect {
   const raw = pw.reduce((s, v) => s + v, 0);
   const affinity = raw ? members.reduce((s, m, i) => s + pw[i] * affinityOf(m, b), 0) / raw : 1;
   // 4단계: 전사 출신 토벌 피해 +5%
-  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult() * (1 + hfx('dmg') + hfx('raidDmg')) * synDamageMult(fx);
+  const base = power * R.seconds * R.dmgPerPowerSec * chem * raidDmgMult() * (1 + hfx('dmg') + hfx('raidDmg')) * synDamageMult(fx) * windRaid();
   return {
     power: Math.round(power * chem),
     chem,

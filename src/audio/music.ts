@@ -4,6 +4,7 @@
 import { getPref, setPref } from '../save/save';
 import { bgmBus, ctx, onUnlock } from './engine';
 import { PLAYLISTS, TRACKS, VILLAGE, type Scene } from './playlists';
+import { windTracks } from '../world/wind';
 
 const DIR = 'audio/bgm/';
 interface Deck {
@@ -114,6 +115,8 @@ function start(track: string, fade: number, at = 0, loop = false) {
 }
 
 function pick(list: string[], key: string): string {
+  // DIRECTION §1-2 고요한 해: 잔잔한 곡 먼저
+  list = windTracks(key) ?? list;
   const pool = list.length > 1 ? list.filter((t) => t !== lastPick[key]) : list;
   const t = pool[Math.floor(Math.random() * pool.length)];
   lastPick[key] = t;

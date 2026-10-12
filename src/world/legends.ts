@@ -16,6 +16,7 @@ import { entrance, bestOf } from './town';
 import { towerStars } from './facilities';
 import { addMail } from './meta';
 import { addEmber, linkedGauge, linkedScale, meetLinked, tieRequestDone } from './owner';
+import { windLegend, windStars } from './wind';
 
 const L = CONFIG.legends;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -85,7 +86,7 @@ export function bond(e: BondEvent, times = 1) {
   for (const d of LEGENDS) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
-    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend') + starBondBonus())));
+    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend') + starBondBonus() + windLegend())));
     if (st.gauge >= 100 && !st.full) st.full = Date.now();
     markDirty();
   }
@@ -151,7 +152,7 @@ export const showerOn = (d = new Date()) => d.getDay() === 6 && d.getHours() >= 
 /** 오늘 잡은 별 수 (옛 저장: 오늘 잡았으면 1) */
 export const starsCaught = () => (P.starDay === today() ? (P.starN ?? 1) : 0);
 /** 하루 잡을 수 있는 별: 보통 1 (BUILDINGS: 마법사의 탑 Lv5면 +1) · 유성우 밤엔 유성우 수 */
-export const starCap = () => (showerOn() ? CONFIG.legends.showerCatches : 1 + towerStars());
+export const starCap = () => (showerOn() ? Math.max(CONFIG.legends.showerCatches, 1 + towerStars() + windStars()) : 1 + towerStars() + windStars());
 /** 오늘 잡을 별이 남았고 소문 열린 영웅이 있으면, 밤하늘(유성우 땐 언제나)에 별똥별 */
 export const starAvailable = () => S.started && !S.visiting && (S.night || showerOn()) && starsCaught() < starCap() && LEGENDS.some((d) => P.legends[d.key]?.st === 'rumor');
 

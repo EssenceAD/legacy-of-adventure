@@ -8,6 +8,7 @@ import { addMail } from './meta';
 import { today } from './progress';
 import { bestOf } from './town';
 import { gotGold, markDirty, P, S, uiHooks, world } from './state';
+import { windMealGrade } from './wind';
 
 const F = () => CONFIG.growth.fish;
 export type FishWhere = 'pond' | 'sea';
@@ -146,7 +147,7 @@ export function cookFish(id: string, now = Date.now()): string | null {
   const f = fishById(id);
   if (!f || !f.use.includes('cook')) return '요리할 수 없는 물고기예요';
   if (!take(id)) return '그 물고기가 없어요';
-  P.growth.meal = { until: now + F().meal.minutes * 60000, v: F().meal.v[f.grade] ?? 0.05, name: `${f.name} 요리` };
+  P.growth.meal = { until: now + F().meal.minutes * 60000, v: F().meal.v[windMealGrade(f.grade)] ?? 0.05, name: `${f.name} 요리` };
   markDirty();
   return null;
 }

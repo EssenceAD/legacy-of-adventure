@@ -11,7 +11,9 @@ import { bragHooks, rumorHint } from '../world/growth';
 import { tieAvailable } from '../world/owner';
 import { NEIGHBORS } from '../data/neighbors';
 import POOL from '../data/chat_pool.json';
-import { P } from '../world/state';
+import { P, S } from '../world/state';
+import { rumorOrder, windHeavyRumor } from '../world/wind';
+import { approvedRumors } from '../net/direction';
 import { bossById } from '../data/bosses';
 import { LEGENDS } from '../data/legends';
 import { net } from '../net';
@@ -37,6 +39,8 @@ const SOON = /랭킹/;
 const ok = (s: string) => !SOON.test(s);
 const lines = (k: string) => ((pool[k] as string[] | undefined) ?? []).filter(ok);
 const GENERAL = [...lines('일상'), ...lines('파밍'), ...lines('영웅'), ...lines('거래·질문'), ...lines('드립')];
+/** DIRECTION §1-2 「전쟁의 소문」: 무거운 수다 (토벌) */
+const HEAVY = lines('토벌');
 const SPEAKERS = (pool['화자'] as string[]) ?? ['마을 사람'];
 const THREADS = ((pool['스레드'] as [string, string][][]) ?? []).filter((t) => t.every(([, s]) => ok(s)));
 const pick = <T>(a: T[]) => a[(Math.random() * a.length) | 0];
@@ -70,6 +74,39 @@ function fill(s: string): string {
 const log: Msg[] = [];
 /** 같은 줄은 한동안 다시 안 나오게 */
 const recent: string[] = [];
+/**
+ * DIRECTION §1-2 (STORY_BIBLE §4): 회차 번호로 섞은 순서대로 흐른다 — 같은 회차면 같은 흐름, 회차마다 다른 이야기
+ *  (시작 자리는 게임 날짜로 · 최근에 나온 줄은 건너뛴다)
+ */
+let ordGen = -1;
+let ord: string[] = [];
+let cur = 0;
+export function generalNext(): string {
+  const g = P.legacy.gen;
+  if (g !== ordGen || !ord.length) {
+    ordGen = g;
+    ord = rumorOrder(GENERAL, g);
+    cur = ord.length ? ((S.day || 1) * 7) % ord.length : 0;
+  }
+  for (let i = 0; i < ord.length; i++) {
+    const s = ord[cur++ % ord.length];
+    if (!recent.includes(s) || i === ord.length - 1) {
+      recent.push(s);
+      if (recent.length > 40) recent.shift();
+      return s;
+    }
+  }
+  return pick(GENERAL);
+}
+/** DIRECTION §2-3: 승인된 유저 소문 한 줄 「… — 닉네임」 (최근에 나온 것은 건너뛴다) */
+export function userRumor(): string | null {
+  const list = approvedRumors().map((r) => `${r.body} — ${r.nickname}`).filter((t) => !recent.includes(t));
+  if (!list.length) return null;
+  const t = pick(list);
+  recent.push(t);
+  if (recent.length > 40) recent.shift();
+  return t;
+}
 function fresh(list: string[]): string {
   const c = list.filter((s) => !recent.includes(s));
   const s = pick(c.length ? c : list);
@@ -157,9 +194,22 @@ function next() {
     setTimeout(next, rnd());
     return;
   }
+  // DIRECTION §2-3: 승인된 유저 소문 (「— 닉네임」 꼬리표)
+  const ur = Math.random() < CONFIG.direction.userRumorChance ? userRumor() : null;
+  if (ur) {
+    push({ ch: '소문', who: pick(SPEAKERS), text: ur });
+    setTimeout(next, rnd());
+    return;
+  }
+  // DIRECTION §1-2 전쟁의 소문: 무거운(토벌) 수다가 자주
+  if (HEAVY.length && Math.random() < windHeavyRumor()) {
+    push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(HEAVY)) });
+    setTimeout(next, rnd());
+    return;
+  }
   const extra = timely();
-  const src = extra.length && Math.random() < 0.3 ? extra : GENERAL;
-  push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(src)) });
+  const useTimely = extra.length && Math.random() < 0.3;
+  push({ ch: '소문', who: pick(SPEAKERS), text: fill(useTimely ? fresh(extra) : generalNext()) });
   setTimeout(next, rnd());
 }
 
@@ -183,8 +233,8 @@ export async function initChat() {
   net.chat.subscribe((m) => push({ ch: m.ch, who: m.who, text: m.text }));
   document.getElementById('chatlog')!.onclick = openChat;
   if (rumorOn()) {
-    push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(GENERAL)) });
-    push({ ch: '소문', who: pick(SPEAKERS), text: fill(fresh(GENERAL)) });
+    push({ ch: '소문', who: pick(SPEAKERS), text: fill(generalNext()) });
+    push({ ch: '소문', who: pick(SPEAKERS), text: fill(generalNext()) });
   }
   setTimeout(next, rnd());
   // [세계]·[알림]: 서버 최근 50줄 + 실시간
