@@ -97,7 +97,7 @@ await W(600);
 await p.screenshot({ path: `${dir}/${name}_04_cameo.png` });
 const lines = [];
 for (let i = 0; i < 30 && lines.length < 5; i++) {
-  await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo === 'ikamolly'); a.st = 'idle'; a.path = null; a.t = 999; a.intent = null; });
+  await p.evaluate(() => { const a = window.__world.actors.find((x) => x.cameo === 'ikamolly'); a.st = 'idle'; a.path = null; a.t = 999; a.intent = null; if (a.hidden) { a.hidden = false; a.inside = null; } });
   await W(120);
   const xy = await p.evaluate(() => window.__cameoXY('ikamolly'));
   await p.mouse.click(xy[0], xy[1]);
@@ -116,8 +116,7 @@ await settle();
 await p.evaluate(() => window.__showObj && 0);
 const det = await p.evaluate(async () => {
   const a = window.__world.actors.find((x) => x.cameo === 'ikamolly');
-  const m = await import('/src/ui/guests.ts');
-  m.showActor(a);
+  window.__showActor(a);
   const w = document.querySelector('#win');
   return { port: w.querySelector('img.port')?.src ?? '', portP: w.querySelector('img.port')?.src === (window.__portraits?.p_ikamolly ?? ''), sub: w.querySelector('.sub')?.textContent ?? '', gold: !!w.querySelector('.cameo-name'), talk: !!w.querySelector('#aTalk'), slots: w.querySelectorAll('.slot').length };
 });

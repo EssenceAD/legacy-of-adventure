@@ -28,23 +28,20 @@ await W(1500);
 await p.locator('#tCont').click();
 await W(4000);
 ok(popups === 0, '자동 팝업 없음');
-const m = await p.evaluate(async () => { const mm = await import('/src/ui/menu.ts'); return Object.keys(mm); });
-void m;
 // 공지 고정 카드
-await p.evaluate(async () => (await import('/src/ui/notice.ts')).openNotices());
+await p.evaluate(() => window.__openNotices());
 await W(500);
 const card = await p.evaluate(() => { const a = document.querySelector('#kPin a.kakao'); return a ? [a.href, a.target, a.rel] : null; });
 ok(card && card[0] === URL_K && card[1] === '_blank' && /noopener/.test(card[2]), '공지 고정 카드 링크 ' + JSON.stringify(card));
 await p.screenshot({ path: 'screenshots/community_notice.png' });
 // 출석 3일째 편지
 const mail = await p.evaluate(async () => {
-  const meta = await import('/src/world/meta.ts');
   const P = window.__P;
   P.meta.attend.total = 2;
   P.meta.attend.last = '2000-01-01';
-  meta.dailyAttend();
+  window.__dailyAttend();
   P.meta.attend.last = '2000-01-01';
-  meta.dailyAttend();
+  window.__dailyAttend();
   return P.meta.mail.filter((x) => x.link === 'kakao').length;
 });
 ok(mail === 1, '출석 3일째 모모 편지 한 통 (다음 날 또 안 옴)');
