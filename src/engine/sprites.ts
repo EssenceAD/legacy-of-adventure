@@ -1,6 +1,8 @@
 // 캐릭터 도트 생성 (24×33) — reference/core.js의 drawChar / buildChar 이식
 import { CLASSES, type ClassDef, type ClassKey } from '../data/classes';
 import { dk, Grid, lt, ramp, type GridT } from './pixel';
+import { CONFIG } from '../data/config';
+import { canvasAlive, Lru } from './lru';
 
 const SK = { skin: '#f2c49b', skin2: '#d99a78', eye: '#2a1a2e', blush: '#ec8f86' };
 
@@ -665,6 +667,9 @@ const CACHE: Record<string, CharFrames> = {};
 export function charFrames(key: ClassKey): CharFrames {
   return (CACHE[key] ??= buildChar(key));
 }
+/** 렌더 메모리: 손님마다 생기는 겉모습은 상한까지만 (오래 안 본 손님 것부터 버린다 · 다시 오면 다시 만든다) */
+const LOOKS = new Lru<string, CharFrames>(CONFIG.render.lookCacheMax);
+export const lookMem = () => ({ n: LOOKS.size, cap: LOOKS.cap, evicted: LOOKS.evicted });
 
 /** 손님마다 다른 겉모습(종족·얼굴·머리색·무기) — key가 같으면 다시 만들지 않는다 */
 let onNew: ((f: CharFrames) => void) | null = null;
@@ -672,9 +677,15 @@ export function onNewFrames(fn: (f: CharFrames) => void) {
   onNew = fn;
 }
 export function framesFor(key: string, def: ClassDef): CharFrames {
-  let f = CACHE[key];
+  let f: CharFrames | undefined = CACHE[key] ?? LOOKS.get(key);
+  // 삼성 인터넷이 메모리 부족 때 캔버스를 잃으면(폭 0) 다시 만든다
+  if (f && !canvasAlive(f.idle[0])) {
+    LOOKS.delete(key);
+    delete CACHE[key];
+    f = undefined;
+  }
   if (!f) {
-    f = CACHE[key] = buildFrom(def);
+    f = LOOKS.set(key, buildFrom(def));
     onNew?.(f);
   }
   return f;

@@ -28,25 +28,24 @@ import { cycleLines } from './world/story';
 import { ripeCount } from './world/craft';
 import { initFacilitiesUI } from './ui/facilities';
 import { CONFIG } from './data/config';
-import { alphaAt, AssetError, IMG, loadAssets, META, pumpTintWarmup, queueTintWarmup, recolored, tintWarmPending } from './engine/assets';
+import { alphaAt, assetMem, AssetError, breakSpriteForTest, drawFails, IMG, isFlipKey, loadAssets, spriteOk, META, pumpTintWarmup, recolored, tintWarmPending, warmTintLevel } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
 import { shakeLv } from './engine/shake';
 import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
 import { tapCon, tickCons } from './world/construct';
 import { tour } from './world/evalTour';
 import { anim as gradeAnim } from './world/grade';
-import { CLASSES, type ClassKey } from './data/classes';
-import { charFrames, onNewFrames } from './engine/sprites';
+import { lookMem } from './engine/sprites';
 import { clampCam, N, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { settleOfflineCons } from './game';
 import { getPref, readSave, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
 import { hourNow } from './world/clock';
-import { blendNight, onNightChange, tickDayNight } from './world/daynight';
+import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pendingWith, pumpEvents } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
-import { buildingAt, renderFrame, starInfo } from './world/render';
+import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { addObj, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
@@ -356,7 +355,9 @@ function tick(dt: number) {
   posBubbles();
   tickHud();
   t = mark('dom', t);
-  // 밤 색조 미리 만들기도 창이 열려 있는 동안엔 쉰다 · 다 만들었으면 부르지도 않는다
+  // 밤 색조: 낮↔밤이 넘어가는 중이면 다음 단계를 미리 (창이 열려 있는 동안엔 쉰다 · 다 만들었으면 부르지도 않는다)
+  const goalNL = S.night ? CONFIG.dayNight.tintSteps : 0;
+  warmTintLevel(NL === goalNL ? -1 : NL + Math.sign(goalNL - NL));
   if (!winOpen && tintWarmPending()) pumpTintWarmup(3);
   mark('warm', t);
   const w = performance.now() - t0;
@@ -694,12 +695,7 @@ async function boot() {
   loading.remove();
   // ONBOARDING §0: 그림 로딩 끝
   funnel('boot_ok', { loadMs: Math.round(performance.now() - t0) });
-  // 밤 색조 캐시를 조금씩 미리 만든다 (건물·나무 그림 + 캐릭터 프레임)
-  const frames = (Object.keys(CLASSES) as ClassKey[]).flatMap((k) => {
-    const f = charFrames(k);
-    return [...f.idle, ...f.walk, ...f.walkB, ...f.idleB, ...f.sit, ...f.atk, ...f.pray];
-  });
-  queueTintWarmup([...Object.values(IMG), ...frames]);
+  // 렌더 메모리: 밤 색조는 모든 그림 × 10단계를 미리 만들지 않는다 — 그릴 때 만들고, 낮↔밤이 넘어갈 땐 다음 단계만 조금씩 (frame())
   buildThumbs();
 
   // 배율은 기기마다 기억 (1·2·3 중 하나)
@@ -728,8 +724,6 @@ async function boot() {
     if (!run.claimed) showReport(run);
   };
   game.setOfflineHook(showOffline);
-  // 손님마다 새 겉모습이 생기면 밤 색조도 미리
-  onNewFrames((f) => queueTintWarmup([...f.idle, ...f.walk, ...f.walkB, ...f.idleB, ...f.sit, ...f.atk, ...f.pray]));
   initWindows();
   initDialogue();
   initHud();
@@ -896,7 +890,7 @@ async function boot() {
   });
 
   // 개발 중 콘솔에서 살펴보기용
-  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __showActor: showActor, __dailyAttend: dailyAttend, __openNotices: openNotices,
+  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

@@ -9,7 +9,8 @@ import { decorView } from './decor';
 import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
-import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, recolored, tinted, tintColor, type Drawable } from '../engine/assets';
+import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, okToDraw, recolored, spriteFailed, tinted, tintColor, type Drawable } from '../engine/assets';
+import { canvasAlive, Lru } from '../engine/lru';
 import { depthActor, depthBuilding, depthWild, N, sx, sy, TH, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
@@ -17,7 +18,7 @@ import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL, setPhotoNL } from './daynight';
 import { puff, updDrawParts } from './fx';
-import { ground, ensureGround, groundFor, groundKey, signSpot, type Wild } from './ground';
+import { ground, ensureGround, groundFor, groundKey, groundMem, signSpot, trimGround, type Wild } from './ground';
 import { stars } from './progress';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
@@ -25,7 +26,7 @@ import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeD
 import { S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, groundVersion, inLand, landBounds, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
-import { drawConstruction } from './conDraw';
+import { drawConstruction, silMem } from './conDraw';
 import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
@@ -134,11 +135,13 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const nt = pnt ?? S.nightT;
   setPhotoNL(pnt);
   ensureGround(S.visiting ? S.visiting.id : '');
+  // 마을 등급 연출이 끝났으면 앞뒤 두 장 중 지금 것만 남긴다
+  if (!anim.on) trimGround();
 
   // 1) 바닥 + 밤 색 한 번
   ctx.fillStyle = '#3e6a34';
   ctx.fillRect(0, 0, LW, LH);
-  ctx.drawImage(ground.c!, OX - ground.ox, OY - ground.oy);
+  if (okToDraw(ground.c)) ctx.drawImage(ground.c, OX - ground.ox, OY - ground.oy);
   // 5단계: 마을 등급이 오르는 중 — 새 바닥이 위에서 아래로 덮어쓴다
   if (anim.on) {
     const ng = groundFor(groundKey(S.visiting ? S.visiting.id : '', anim.to), anim.to);
@@ -207,20 +210,31 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const fadeAll = decorView.on && decorView.fade && decorView.fadeOn && !S.visiting;
   for (let k = 0; k <= things.length; k++) {
     // TOWN T2: 꾸미기 모드는 손님을 숨긴다
-    if ((!photoState.on || photoState.people) && !decorView.on) for (const a of slots[k]) drawActor(ctx, a);
+    if ((!photoState.on || photoState.people) && !decorView.on)
+      for (const a of slots[k])
+        try {
+          drawActor(ctx, a);
+        } catch {
+          recoverCtx(ctx, 'actor');
+        }
     const it = things[k];
     if (!it) break;
     ctx.globalAlpha = fadeAll ? 0.3 : 1;
-    if ('o' in it) {
-      drawObj(ctx, it.o);
-      const ds = atDoor.get(it.o);
-      if (ds) drawDoorActors(ctx, it.o, ds);
-      if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
-    } else if ('pr' in it) drawProp(ctx, it.pr);
-    else if ('fk' in it) drawFolk(ctx, it.fk);
-    else if ('iv' in it) drawInspector(ctx, it.iv);
-    else if ('sn' in it) drawSpecNpc(ctx, it.sn);
-    else drawWild(ctx, it.w);
+    // 따밤 신고: 깨진 그림 하나(drawImage 'broken')에서 오류가 나면 그 뒤 건물이 모두 안 그려졌다 → 그것만 건너뛴다
+    try {
+      if ('o' in it) {
+        drawObj(ctx, it.o);
+        const ds = atDoor.get(it.o);
+        if (ds) drawDoorActors(ctx, it.o, ds);
+        if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
+      } else if ('pr' in it) drawProp(ctx, it.pr);
+      else if ('fk' in it) drawFolk(ctx, it.fk);
+      else if ('iv' in it) drawInspector(ctx, it.iv);
+      else if ('sn' in it) drawSpecNpc(ctx, it.sn);
+      else drawWild(ctx, it.w);
+    } catch {
+      recoverCtx(ctx, 'o' in it ? (it.o.sprite ?? it.o.kind) : 'w' in it ? it.w.k : 'pr' in it ? 'prop:' + it.pr.k : 'thing');
+    }
   }
   ctx.globalAlpha = 1;
 
@@ -234,9 +248,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     }
   // 땅 개편 §8: 땅보다 앞의 굽힌 숲 (건물·손님 다음 · 밤 색은 미리 물든 사본)
   const fr = frontTinted();
-  if (fr) {
+  if (fr && okToDraw(fr)) {
     if (fadeAll) ctx.globalAlpha = 0.3;
-    ctx.drawImage(fr, OX - ground.ox, OY - ground.oy);
+    ctx.drawImage(fr, OX - ground.ox + (ground.frontX ?? 0), OY - ground.oy + (ground.frontY ?? 0));
     ctx.globalAlpha = 1;
   }
   for (const o of world.objs)
@@ -361,7 +375,7 @@ function frontTinted(): HTMLCanvasElement | null {
   const key = ground.key + '|' + NL;
   if (key === frontKey && frontCv) return frontCv;
   frontKey = key;
-  if (!frontCv || frontCv.width !== src.width || frontCv.height !== src.height) frontCv = canvas(src.width, src.height);
+  if (!frontCv || frontCv.width !== src.width || frontCv.height !== src.height || !canvasAlive(frontCv)) frontCv = canvas(src.width, src.height);
   const x = frontCv.getContext('2d')!;
   x.globalCompositeOperation = 'source-over';
   x.clearRect(0, 0, src.width, src.height);
@@ -609,10 +623,24 @@ function smokeOf(key: string | null): [number, number][] | undefined {
 function drawWild(ctx: CanvasRenderingContext2D, w: Wild) {
   const im0 = IMG[w.k];
   if (!im0) return;
-  const im = tinted(im0, NL);
-  const X = Math.round(view.OX + sx(w.x + 0.5, w.y + 0.5) - im.width / 2);
-  const Y = Math.round(view.OY + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im.height + 3);
-  if (Y + im.height > -10 && Y < view.LH + 10 && X + im.width > -10 && X < view.LW + 10) ctx.drawImage(im, X, Y);
+  const X = Math.round(view.OX + sx(w.x + 0.5, w.y + 0.5) - im0.width / 2);
+  const Y = Math.round(view.OY + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im0.height + 3);
+  if (Y + im0.height > -10 && Y < view.LH + 10 && X + im0.width > -10 && X < view.LW + 10) ctx.drawImage(tinted(im0, NL), X, Y);
+}
+
+/** 화면(논리) 밖으로 margin 넘게 벗어났나 */
+const offscreen = (x: number, y: number, w: number, h: number, m = CONFIG.render.cullMargin) => x + w < -m || y + h < -m || x > view.LW + m || y > view.LH + m;
+
+/** 그리다 실패한 것 하나: 캔버스 상태를 되돌리고 기록·다시 불러오기 (세션에 그림마다 한 번 기록) */
+function recoverCtx(ctx: CanvasRenderingContext2D, name: string) {
+  try {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  } catch {
+    /* 무시 */
+  }
+  spriteFailed(name);
 }
 
 /** 모닥불: campfire.png 32×34 프레임 4장, 0.15초마다. 프레임 아래에서 7px 위가 칸 중심. 밤에도 불꽃은 밝게 */
@@ -633,8 +661,12 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   if (o.kind === 'fire') return drawFire(ctx, o);
   if (!o.sprite || !IMG[o.sprite]) return;
   if (!META[o.sprite]) return missingMeta(o.sprite);
-  const im = tinted(baseImage(o), NL);
   const [x, y] = objTL(o);
+  if (offscreen(x, y, IMG[o.sprite].width, IMG[o.sprite].height)) {
+    if (o.pop) o.pop = Math.max(0, o.pop - 0.04);
+    return;
+  }
+  const im = tinted(baseImage(o), NL);
   if (o.con || o.build !== undefined) {
     // CONSTRUCTION_SPEC §1: 공사 연출 (업그레이드는 목표 레벨 그림이 아래부터 올라간다)
     if (o.con?.kind === 'up') {
@@ -722,10 +754,10 @@ function isoLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: numb
 }
 
 /** 빨간 실루엣 (겹치는 건물 깜빡임) */
-const RED = new WeakMap<Drawable, HTMLCanvasElement>();
+const RED = new Lru<Drawable, HTMLCanvasElement>(CONFIG.render.redCacheMax);
 function redOf(im: Drawable): HTMLCanvasElement {
   let c = RED.get(im);
-  if (c) return c;
+  if (c && canvasAlive(c)) return c;
   c = document.createElement('canvas');
   c.width = im.width;
   c.height = im.height;
@@ -734,8 +766,7 @@ function redOf(im: Drawable): HTMLCanvasElement {
   x.globalCompositeOperation = 'source-in';
   x.fillStyle = '#ff4a4a';
   x.fillRect(0, 0, c.width, c.height);
-  RED.set(im, c);
-  return c;
+  return RED.set(im, c);
 }
 
 function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
@@ -770,7 +801,8 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
     ctx.globalAlpha = blink;
     if (o.sprite && IMG[o.sprite]) {
       const [x, y] = objTL(o);
-      ctx.drawImage(redOf(baseImage(o)), x, y);
+      const b = baseImage(o);
+      if (okToDraw(b)) ctx.drawImage(redOf(b), x, y);
     } else {
       ctx.fillStyle = '#ff4a4a';
       fillTile(ctx, o.tx, o.ty);
@@ -817,7 +849,8 @@ function drawPlacement(ctx: CanvasRenderingContext2D, pl: Placement) {
   else if (pl.sprite && IMG[pl.sprite]) {
     const [x, y] = objTL({ sprite: pl.sprite, tx, ty, fw: pl.fw, fh: pl.fh });
     const hue = pl.move?.hue ?? null;
-    ctx.drawImage(baseImage({ sprite: pl.sprite, hue }), x, y + bob);
+    const b = baseImage({ sprite: pl.sprite, hue });
+    if (okToDraw(b)) ctx.drawImage(b, x, y + bob);
   }
   ctx.globalAlpha = 1;
   // 베타: 어울림 범위 · 짝 건물 초록 · 미리보기 말풍선 (유령 위에)
@@ -851,6 +884,7 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
   const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));
   const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
+  if (offscreen(X - 12, Y - 48, 24, 48)) return;
   // 리마스터: 발밑 그림자 2톤 도트 타원 (반투명 없이)
   if (fade > 0.5) dotShadow(ctx, X, Y, 6, 2);
   ctx.globalAlpha = (a.pop ? 1 - a.pop / 0.4 : 1) * fade;
@@ -1210,4 +1244,9 @@ function drawDecoFx(ctx: CanvasRenderingContext2D, o: Building, x: number, y: nu
       ctx.fillRect(Math.round(cx + Math.cos(a) * L), Math.round(cy + Math.sin(a) * L * 0.9), 2, 2);
     }
   }
+}
+
+/** 측정용 (개발 전역 __renderMem): 렌더 쪽 캐시 */
+export function renderMem() {
+  return { red: { n: RED.size, cap: RED.cap, evicted: RED.evicted }, sil: silMem(), ground: groundMem(), frontTint: frontCv ? { n: 1, px: frontCv.width * frontCv.height } : { n: 0, px: 0 } };
 }

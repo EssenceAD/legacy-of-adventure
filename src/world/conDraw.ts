@@ -3,6 +3,8 @@
 //  그림 파일 없이 코드 도트 (1px 외곽선). 공사 중인 건물만 그린다.
 import { sfx } from '../audio/sfx';
 import { canvas, P } from '../engine/pixel';
+import { canvasAlive, Lru } from '../engine/lru';
+import { CONFIG } from '../data/config';
 import { sx, sy, TH, view } from '../engine/iso';
 import { clock, conLeft, conProgress } from './construct';
 import { NL } from './daynight';
@@ -11,10 +13,11 @@ import { S, type Building } from './state';
 
 const INK = '#2a1a14';
 /** 청사진 실루엣 (그림마다 한 번) */
-const sil = new WeakMap<CanvasImageSource, HTMLCanvasElement>();
+const sil = new Lru<CanvasImageSource, HTMLCanvasElement>(CONFIG.render.silCacheMax);
+export const silMem = () => ({ n: sil.size, cap: sil.cap, evicted: sil.evicted });
 function silhouette(im: HTMLCanvasElement | HTMLImageElement): HTMLCanvasElement {
   let c = sil.get(im);
-  if (c) return c;
+  if (c && canvasAlive(c)) return c;
   c = canvas(im.width, im.height);
   const g = c.getContext('2d')!;
   g.drawImage(im, 0, 0);
