@@ -667,6 +667,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   if (def(o.kind).luxury) drawLuxury(ctx, o, x, y, im);
   // EASTER: 개척자 전용 장식 — 김 · 길 반짝 · 밤 등불 · 바람개비
   if (def(o.kind).pioneerDeco) drawPioneer(ctx, o, x, y, im);
+  // TOWN T5: 꾸미기 장식 — 밤 불빛 · 물 반짝 · 풍차
+  if (DECO_FX[o.kind]) drawDecoFx(ctx, o, x, y, im);
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
   if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
   // BUILDINGS_SPEC §3: 다 자란 텃밭 위 「수확!」
@@ -1155,6 +1157,57 @@ function drawPioneer(ctx: CanvasRenderingContext2D, o: Building, x: number, y: n
       const a = T * 6 + (i * Math.PI) / 2;
       ctx.fillStyle = cols[i];
       ctx.fillRect(Math.round(cx + Math.cos(a) * 5), Math.round(cy + Math.sin(a) * 5), 2, 2);
+    }
+  }
+}
+
+/** TOWN T5: 장식 불빛(밤) · 움직임 — 색 · 반지름(그림 너비 배) · 빛 자리(그림 안 비율) · 깜빡임 · 물 반짝 · 바람개비 날개 */
+const DECO_FX: Record<string, { glow?: string; r?: number; gx?: number; gy?: number; flicker?: boolean; water?: boolean; spin?: [number, number] }> = {
+  lamppost: { glow: '255,214,140', r: 1.4, gx: 0.5, gy: 0.18 },
+  double_lamp: { glow: '255,214,140', r: 1.4, gx: 0.5, gy: 0.18 },
+  string_lights: { glow: '255,200,120', r: 1.2, gx: 0.5, gy: 0.3 },
+  brazier: { glow: '255,150,70', r: 1.6, gx: 0.5, gy: 0.35, flicker: true },
+  mushroom_lamp: { glow: '140,200,255', r: 1.4, gx: 0.5, gy: 0.4 },
+  mushroom_dark: { glow: '90,230,200', r: 1.2, gx: 0.5, gy: 0.5 },
+  shop_sign: { glow: '255,214,140', r: 0.9, gx: 0.5, gy: 0.3 },
+  fountain: { water: true },
+  lily_pond: { water: true },
+  koi_pond: { water: true },
+  bird_bath: { water: true },
+  rock_fall: { water: true },
+  windmill: { spin: [0.5, 0.28] },
+};
+function drawDecoFx(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {
+  const F = DECO_FX[o.kind];
+  const T = S.T;
+  const night = NL / CONFIG.dayNight.tintSteps;
+  if (F.glow && night > 0.15) {
+    const cx = x + im.width * (F.gx ?? 0.5);
+    const cy = y + im.height * (F.gy ?? 0.3);
+    const fl = F.flicker ? 0.85 + Math.sin(T * 11 + o.tx) * 0.1 + Math.random() * 0.05 : 1;
+    const r = Math.max(14, im.width * (F.r ?? 1.2)) * fl;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, `rgba(${F.glow},${0.4 * night * fl})`);
+    g.addColorStop(1, `rgba(${F.glow},0)`);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+  }
+  if (F.water && Math.random() < 0.12) {
+    ctx.fillStyle = '#e8f6ff';
+    ctx.fillRect(Math.round(x + im.width * (0.25 + Math.random() * 0.5)), Math.round(y + im.height * (0.55 + Math.random() * 0.3)), 1, 1);
+  }
+  if (F.spin) {
+    // 풍차 날개 끝 네 점이 천천히 돈다
+    const cx = x + im.width * F.spin[0];
+    const cy = y + im.height * F.spin[1];
+    const L = im.width * 0.32;
+    ctx.fillStyle = '#f4ead6';
+    for (let i = 0; i < 4; i++) {
+      const a = T * 1.2 + (i * Math.PI) / 2;
+      ctx.fillRect(Math.round(cx + Math.cos(a) * L), Math.round(cy + Math.sin(a) * L * 0.9), 2, 2);
     }
   }
 }
