@@ -14,6 +14,8 @@ import { track } from './progress';
 import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
 import { enhanceBonus, ownerGain, stat } from './owner';
 import { bfx, hfx } from './harmony';
+import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
+import { brag, uniqueSalvageMult } from './growth';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -30,7 +32,8 @@ export function salvage(it: Item): number {
   const i = P.bag.indexOf(it);
   if (i < 0) return 0;
   P.bag.splice(i, 1);
-  const n = SM.salvage[it.grade];
+  // GROWTH §3-4: 같은 고유 장비 두 번째부터는 가루 2배
+  const n = SM.salvage[it.grade] * uniqueSalvageMult(it);
   P.dust[it.grade] += n;
   // HOTFIX21: 희귀 이상은 잿빛 가루도 같이
   P.dust.n += SM.salvageAsh[it.grade] ?? 0;
@@ -121,12 +124,23 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
 // ───────── 강화 ─────────
 
 export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
-/** 강화 가루는 그 장비 등급의 가루로 낸다. +5까지는 실패 없음, +6부터 확률 */
-export const enhanceRate = (it: Item) => (it.enh < 5 ? 1 : Math.min(1, (SM.enhanceRates[it.enh - 5] ?? 0) + enhanceBonus() + hfx('enhance') + towerEnhance() + setEnhance()));
+/** 강화 성공 보너스 합 (주인 손재주 · 어울림 · 마법사의 탑 · 불꽃 대장장이 세트) */
+export const enhanceBonusAll = () => enhanceBonus() + hfx('enhance') + towerEnhance() + setEnhance();
+/** GROWTH §3-2: 강화 가루는 그 장비 등급의 가루로 낸다. +1만 확정, 그다음은 목표별 확률 + 보너스 + 그 장비 천장 (+ 숫돌) */
+export const enhanceRate = (it: Item, whet = false) => enhRateOf(it.enh, enhanceBonusAll(), it.ePity ?? 0, whet ? CONFIG.growth.whet.add : 0);
+/** 마지막 강화·초월의 자세한 결과 (대성공 · 하락 · 부적이 막음 · 쓴 소모품) — 반환값('ok'·'fail')은 예전 그대로 */
+export const lastEnh = { great: false, drop: false, saved: false, usedCharm: false, usedWhet: false };
+export interface EnhOpts {
+  /** 강화 보호 부적 쓰기 (하락이 일어날 때만 1개 쓴다) */
+  charm?: boolean;
+  /** 행운의 숫돌 쓰기 (이번 시도에 1개) */
+  whet?: boolean;
+}
 /** REGIONS2: 「불꽃 대장장이」 세트 — 마을 단골 중 가장 높은 강화 성공 + */
 export const setEnhance = () => Math.max(0, ...(world.home?.actors ?? world.actors).filter((a) => !a.role && a.equip).map((a) => optSum(a, 'enhPct'))) / 100;
 
-export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
+export function enhance(it: Item, o: EnhOpts = {}): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'nosmith' {
+  Object.assign(lastEnh, { great: false, drop: false, saved: false, usedCharm: false, usedWhet: false });
   if (!smithObj()) return 'nosmith';
   if (it.enh >= SM.maxEnhance) return 'max';
   const cost = enhanceCost(it);
@@ -139,14 +153,30 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'no
   legendHooks.bond('enhanceTry');
   ownerGain('enhance');
   markDirty();
-  // 실패해도 단계는 떨어지지 않는다 (가루만 든다)
-  if (Math.random() >= enhanceRate(it)) {
+  // GROWTH §3-2: 목표별 확률 · +7~+10 실패 30% 하락(부적) · 천장 · 대성공
+  const G = P.growth;
+  const whet = !!o.whet && G.whet > 0;
+  if (whet) {
+    G.whet--;
+    lastEnh.usedWhet = true;
+  }
+  const r = rollEnhance(it.enh, it.ePity ?? 0, enhanceBonusAll(), { whet, charm: !!o.charm && G.charm > 0 });
+  if (r.saved) {
+    G.charm--;
+    lastEnh.usedCharm = true;
+  }
+  const before = it.enh;
+  it.enh = r.enh;
+  if (r.pity > 0) it.ePity = Math.round(r.pity * 1000) / 1000;
+  else delete it.ePity;
+  Object.assign(lastEnh, { great: r.great, drop: r.drop, saved: r.saved });
+  if (!r.ok) {
     sfx('fail');
     return 'fail';
   }
-  sfx('levelup');
-  it.enh++;
+  sfx(r.great ? 'rare' : 'levelup');
   P.counters.enhanceMax = Math.max(P.counters.enhanceMax, it.enh);
+  if (before < SM.maxEnhance && it.enh >= SM.maxEnhance) brag('enh10', it);
   return 'ok';
 }
 
@@ -161,13 +191,14 @@ export function transcendCost(it: Item) {
   const k = n - 10;
   return { n, gold: TR().gold * 2 ** (n - 11), mats: TR().mats * k, boss: regionBoss(it.region), bossMats: TR().boss * k, dust: TR().dust * k };
 }
-export function transcendRate(it: Item): number {
-  const n = it.enh + 1;
+/** GROWTH §3-2: 목표별(+11 40% → +20 6%) + 대장간 Lv당 + 세트 + 천장(실패마다 +2%p) (+ 숫돌) */
+export function transcendRate(it: Item, whet = false): number {
   const lv = smithObj()?.lvl ?? 0;
-  return Math.max(0.05, Math.min(1, TR().rate - TR().step * (n - 11) + TR().perSmithLv * lv + (it.tPity ?? 0) + setEnhance()));
+  return trRateOf(it.enh, TR().perSmithLv * lv + setEnhance(), it.tPity ?? 0, whet ? CONFIG.growth.whet.add : 0);
 }
 export type TranscendResult = 'ok' | 'fail' | 'max' | 'locked' | 'notten' | 'gold' | 'mats' | 'boss' | 'dust';
-export function transcend(it: Item): TranscendResult {
+export function transcend(it: Item, o: EnhOpts = {}): TranscendResult {
+  Object.assign(lastEnh, { great: false, drop: false, saved: false, usedCharm: false, usedWhet: false });
   if (!transcendOpen()) return 'locked';
   if (it.enh < SM.maxEnhance) return 'notten';
   if (it.enh >= TR().max) return 'max';
@@ -176,21 +207,28 @@ export function transcend(it: Item): TranscendResult {
   if ((P.mats[it.region] ?? 0) < c.mats) return 'mats';
   if ((P.bossMats[c.boss.id] ?? 0) < c.bossMats) return 'boss';
   if ((P.dust[it.grade] ?? 0) < c.dust) return 'dust';
-  const rate = transcendRate(it);
   S.gold -= c.gold;
   P.mats[it.region] -= c.mats;
   P.bossMats[c.boss.id] -= c.bossMats;
   P.dust[it.grade] -= c.dust;
   markDirty();
-  if (Math.random() >= rate) {
-    // 분재형: 단계는 그대로 · 다음 시도 +5%p
-    it.tPity = (it.tPity ?? 0) + TR().pity;
+  const whet = !!o.whet && P.growth.whet > 0;
+  if (whet) {
+    P.growth.whet--;
+    lastEnh.usedWhet = true;
+  }
+  const lv = smithObj()?.lvl ?? 0;
+  const r = rollTranscend(it.enh, it.tPity ?? 0, TR().perSmithLv * lv + setEnhance(), { whet });
+  if (!r.ok) {
+    // 분재형: 단계는 그대로 · 다음 시도 +2%p (GROWTH §3-2)
+    it.tPity = Math.round(r.pity * 1000) / 1000;
     sfx('fail');
     return 'fail';
   }
   sfx('levelup');
   it.enh++;
   it.tPity = 0;
+  if (it.enh === TR().nameAt || it.enh === TR().max) brag(it.enh === TR().max ? 'tr20' : 'tr15', it);
   // +15 「초월한」 · +20 「극의」 (이름 앞에)
   const base = it.name.replace(/^(초월한|극의) /, '');
   it.name = it.enh >= TR().max ? `극의 ${base}` : it.enh >= TR().nameAt ? `초월한 ${base}` : base;
@@ -240,6 +278,28 @@ export function craft(r: RegionId, slot: Slot): Item | string {
   ownerGain('craft');
   markDirty();
   return it;
+}
+
+// ───────── GROWTH §3-3: 행운의 숫돌 (잿빛 가루 80 + 그 지역 재료 10 + 금화 2,000 × 지역 배수) ─────────
+
+export const whetCost = (r: RegionId) => {
+  const W = CONFIG.growth.whet;
+  const i = REGIONS.findIndex((x) => x.id === r);
+  return { ash: W.ash, mats: W.mats, gold: W.gold * (i + 1) };
+};
+export function craftWhet(r: RegionId): string | null {
+  if (!smithObj()) return '대장간이 필요해요';
+  const c = whetCost(r);
+  if ((P.mats[r] ?? 0) < c.mats) return '재료가 모자라요';
+  if (P.dust.n < c.ash) return '가루가 모자라요';
+  if (S.gold < c.gold) return '금화가 모자라요';
+  P.mats[r] -= c.mats;
+  P.dust.n -= c.ash;
+  S.gold -= c.gold;
+  P.growth.whet++;
+  track('craft');
+  markDirty();
+  return null;
 }
 
 // ───────── 대장간 레벨 ─────────

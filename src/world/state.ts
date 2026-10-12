@@ -176,6 +176,8 @@ export interface ItemOpt {
   v: number;
   /** 지역 피해 옵션의 지역 */
   region?: RegionId;
+  /** GROWTH §3-4: 고유 장비의 고유 옵션 (재련 불가) */
+  u?: boolean;
 }
 
 export interface Item {
@@ -191,6 +193,10 @@ export interface Item {
   enh: number;
   /** ECONOMY §2: 초월 실패가 쌓인 성공률 보너스 (천장) */
   tPity?: number;
+  /** GROWTH §3-2: 강화(+1~+10) 실패가 쌓인 성공률 보너스 (성공하면 0) */
+  ePity?: number;
+  /** GROWTH §3-4: 고유 장비 id (data/story/uniques) */
+  uid?: string;
   /** 세트 부위인가 (지역 세트) */
   set: boolean;
   /** 유물 고유 효과 */
@@ -530,6 +536,8 @@ export function freshProgress() {
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
      */
+    /** GROWTH §2~§4 (world/growth.ts sanitizeGrowth가 칸을 바로잡는다) */
+    growth: freshGrowth(),
     /** ECONOMY §1: 금화 출처 하루 집계 (날짜 · 출처별 합) */
     goldLog: { day: '', by: {} as Record<string, number> },
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
@@ -566,6 +574,38 @@ export function freshProgress() {
     },
   };
 }
+
+/** GROWTH: 아끼는 영웅 · 소모품 · 힌트 · 고유 장비 · 자랑 기록 · 낚시 */
+export function freshGrowth() {
+  return {
+    /** ★ 아끼는 영웅 (손님 id, 최대 6) */
+    favs: [] as number[],
+    /** 강화 보호 부적 · 행운의 숫돌 */
+    charm: 0,
+    whet: 0,
+    /** 본 힌트 ("bondId:like" · "bondId:hate" · "guest:knight") · [소문] 힌트를 낸 날 */
+    hints: [] as string[],
+    rumorDay: '',
+    /** 단골 선물: 손님 id → 준 날 · 케미 + 날 */
+    guestGift: {} as Record<string, string>,
+    /** 얻은 고유 장비 id → 얻은 수 */
+    uniques: {} as Record<string, number>,
+    /** [알림] 자랑: 마지막 시각 · 날짜 · 종류별 오늘 수 · 세트 3부위 첫 완성 지역 */
+    brag: { last: 0, day: '', n: {} as Record<string, number> },
+    setFirst: [] as string[],
+    /** 세트 첫 완성 기록을 지금 마을 상태로 한 번 채웠나 (옛 저장에서 이미 완성된 세트는 자랑하지 않게) */
+    seeded: false,
+    /** 설정 「내 자랑 알림 끄기」 */
+    bragOff: false,
+    /** 물고기 선물로 알아낸 좋아함 ("bondId:fishId") */
+    fishLike: [] as string[],
+    /** 낚시: 오늘 쓴 미끼 · 만든 미끼 · 가방 · 기록(마리 수·최대 cm) · 놓아준 고래 날 */
+    fish: { day: '', used: 0, extra: 0, bag: {} as Record<string, number>, rec: {} as Record<string, { n: number; max: number }>, whaleDay: '', trophies: 0 },
+    /** 물고기 요리 (원정 금화 +) */
+    meal: null as null | { until: number; v: number; name: string },
+  };
+}
+export type GrowthState = ReturnType<typeof freshGrowth>;
 
 /** 하루 마감 정산 한 장 */
 export interface DayLog {
@@ -714,7 +754,7 @@ export const uiHooks = {
   /** [소문] 채널에 한 줄 (전설 소문) */
   rumor: (_text: string) => {},
   /** [알림] 채널 방송 (전설 영입·보스 처치·주간 1위). kind가 있으면 로그인했을 때 서버가 모두에게 */
-  announce: (_text: string, _kind?: 'legend' | 'boss_kill' | 'rank1', _arg?: string) => {},
+  announce: (_text: string, _kind?: 'legend' | 'boss_kill' | 'rank1' | 'brag', _arg?: string) => {},
   /** 화면 흔들림 (보스 경보) */
   shake: () => {},
 };

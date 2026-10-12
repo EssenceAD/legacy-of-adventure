@@ -1025,6 +1025,56 @@ export const CONFIG = {
     sweep: 0.7,
     allyVol: 0.6,
   },
+  /**
+   * GROWTH §2~§4: 선물 힌트 · 아끼는 영웅 · 강화 재조정 · 소모품 · 고유 장비 · 재련 · 자랑 · 낚시
+   */
+  growth: {
+    /** §2 힌트: 인연 이 단계부터 말 걸기 때 이 확률로 기분 대사 대신 힌트 · 싫어함 힌트는 이 단계부터 · 그때 싫어함을 고를 확률 · [소문] 확률 · 단골 말 걸기 힌트 확률 */
+    hint: { stage: 2, chance: 0.3, hateStage: 4, hateShare: 0.35, rumorChance: 0.3, guestChance: 0.3 },
+    /** §2 단골 선물: 좋아하는 것 → 기분 + · 그날 케미 상승 배수 · 아닌 것 → 기분 + */
+    guestGift: { likeMood: 20, chemMult: 1.3, otherMood: 5 },
+    /** §3-1 아끼는 영웅 최대 */
+    favMax: 6,
+    /** §3-2 강화 성공률 (목표 +1 … +10) · 하락 시작 목표 · 하락 확률 · 천장(실패마다 +) · 대성공(목표가 이 단계 이하일 때 +2) */
+    enhance: {
+      rates: [1, 0.95, 0.9, 0.85, 0.8, 0.6, 0.45, 0.32, 0.22, 0.15],
+      dropFrom: 7,
+      dropChance: 0.3,
+      pity: 0.03,
+      great: 0.03,
+      greatMax: 9,
+    },
+    /** §3-2 초월 성공률 (목표 +11 … +20) · 실패마다 + (분재형: 단계 유지) */
+    transcend: { rates: [0.4, 0.36, 0.32, 0.28, 0.25, 0.21, 0.17, 0.13, 0.1, 0.06], pity: 0.02 },
+    /** §3-3 행운의 숫돌 (+이만큼 · 다음 1회) · 만들기: 잿빛 가루 · 그 지역 재료 · 금화 × (지역 번호+1) */
+    whet: { add: 0.1, ash: 80, mats: 10, gold: 2000 },
+    /** §3-3 강화 보호 부적: 고지역(지역 번호 이상, 0부터) · 이 시간 단계 이상 원정 성공 때 확률 · 증표 상점 값(인연의 증표) */
+    charm: { highRegion: 3, expTier: 4, expChance: 0.1, tokenCost: 1 },
+    /** §3-4 고유 장비: 사냥 보스(x-10) · 토벌 보스 처치 · 고지역(지역 번호 이상) 8시간 원정 · 두 번째부터 분해 가루 배수 */
+    unique: { hunt: 0.005, raid: 0.01, exp: 0.003, expTier: 6, expRegion: 3, dupDustMult: 2 },
+    /** §3-4 재련: 그 등급 가루 · 금화 · 옵션 하나 잠그면 비용 × */
+    reforge: { dust: { r: 30, e: 60, l: 120, a: 200 } as Record<string, number>, gold: { r: 500, e: 1500, l: 4000, a: 8000 } as Record<string, number>, lockMult: 2 },
+    /** §3-5 [알림] 자랑: 같은 사람 간격(ms) · 같은 종류 하루 최대 */
+    brag: { gapMs: 10 * 60 * 1000, perKindDay: 3 },
+    /** §3-6 「다음 목표」 단계 */
+    goals: [5, 8, 10, 15, 20],
+    /** §4 낚시 */
+    fish: {
+      /** 하루 미끼 · 여관 레벨 이만큼마다 +1 (작물 1개 = 미끼 1개) */
+      baitDaily: 5,
+      baitPerInnLv: 5,
+      /** 미니게임 길이(초) · 입질 시각 범위(초) */
+      seconds: 5,
+      biteFrom: 1.2,
+      biteTo: 3.8,
+      /** 등급 가중치 (흔함·희귀·영웅·전설) */
+      weight: { n: 60, r: 28, e: 10, l: 2 } as Record<string, number>,
+      /** 새벽 = 게임 시각 [시작, 끝) */
+      dawn: [4, 7] as [number, number],
+      /** 물고기 요리: 원정 금화 + (등급별) · 지속(분) */
+      meal: { v: { n: 0.05, r: 0.1, e: 0.15, l: 0.2 } as Record<string, number>, minutes: 120 },
+    },
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

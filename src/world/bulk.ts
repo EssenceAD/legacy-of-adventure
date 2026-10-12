@@ -17,6 +17,8 @@ export interface BulkOpts {
   skipLocked: boolean;
   /** 직접 고르기 */
   picked?: number[];
+  /** GROWTH §3-3: 강화 보호 부적 자동 사용 (하락이 일어날 때만 1개) */
+  charm?: boolean;
 }
 export const maxGoal = () => (transcendOpen() ? SM().transcend.max : SM().maxEnhance);
 
@@ -117,7 +119,7 @@ export function bulkTick(r: BulkRun): boolean {
   }
   const g0 = S.gold;
   const d0 = dustTotal();
-  const res = trans ? transcend(it) : enhance(it);
+  const res = trans ? transcend(it) : enhance(it, { charm: !!r.o.charm });
   r.spentGold += g0 - S.gold;
   r.spentDust += d0 - dustTotal();
   if (res === 'ok' || res === 'fail') {

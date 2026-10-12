@@ -41,14 +41,14 @@ describe('일괄 강화', () => {
     expect(list.length).toBe(2);
     expect(bulkItems({ target: 'equipped', goal: 5, budget: 1, skipLocked: false })).toEqual([b]);
   });
-  it('+5까지(실패 없음): 요약 숫자 = 실제 차감 · 미리보기 = 실제', () => {
+  it('+1까지(GROWTH: +1만 확정): 요약 숫자 = 실제 차감 · 미리보기 = 실제', () => {
     give(3);
-    const plan = bulkPlan({ target: 'bag', goal: 5, budget: 1, skipLocked: false });
+    const plan = bulkPlan({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
     const d0 = dustSum();
-    const r = startBulk({ target: 'bag', goal: 5, budget: 1, skipLocked: false });
+    const r = startBulk({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
     while (bulkTick(r));
     expect(r.stopped).toBe('done');
-    expect(P.bag.every((it) => it.enh === 5)).toBe(true);
+    expect(P.bag.every((it) => it.enh === 1)).toBe(true);
     expect(d0 - dustSum()).toBe(r.spentDust);
     expect(r.spentDust).toBe(plan.dust);
     expect(r.fails).toBe(0);

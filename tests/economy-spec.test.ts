@@ -60,14 +60,14 @@ describe('§2 초월', () => {
     it.enh = 19;
     expect(transcendCost(it).gold).toBe(20000 * 2 ** 9);
   });
-  it('성공률: 60% − 4%p/단계 + 대장간 Lv당 1%p · 실패하면 단계 유지 + 다음 +5%p · 성공하면 천장 초기화', () => {
+  it('성공률 (GROWTH §3-2): +11 40% → 단계마다 약 −4%p + 대장간 Lv당 1%p · 실패하면 단계 유지 + 다음 +2%p · 성공하면 천장 초기화', () => {
     const it = item();
-    expect(transcendRate(it)).toBeCloseTo(0.6 + 0.05, 5);
+    expect(transcendRate(it)).toBeCloseTo(0.4 + 0.05, 5);
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     expect(transcend(it)).toBe('fail');
     expect(it.enh).toBe(10);
-    expect(it.tPity).toBeCloseTo(0.05);
-    expect(transcendRate(it)).toBeCloseTo(0.7, 5);
+    expect(it.tPity).toBeCloseTo(0.02);
+    expect(transcendRate(it)).toBeCloseTo(0.47, 5);
     vi.spyOn(Math, 'random').mockReturnValue(0);
     expect(transcend(it)).toBe('ok');
     expect(it.enh).toBe(11);
