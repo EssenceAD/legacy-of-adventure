@@ -12,7 +12,7 @@ import { onNewDay } from '../world/clock';
 import { markDirty, P, S, uiHooks, world, type Building } from '../world/state';
 import { iconSrc } from './kit';
 import { sfx } from './battle';
-import { closeWin, objExtra, openWin } from './windows';
+import { closeWin, objExtra, openWin, toast } from './windows';
 import { startPlace } from './hud';
 import { esc } from './common';
 
@@ -66,12 +66,13 @@ export function harmonyRows(o: Building): string {
 /** 마을 등급 장식을 눌렀을 때: 마을 안으로 옮기면 어울림 재료가 된다 */
 export function openPropInfo(pr: Prop) {
   if (S.visiting) return;
-  if (!MOVABLE_PROPS.includes(pr.k)) return;
+  // 핫픽스: 옮길 수 없는 등급 장식(표지판·돌담·화분·석등·깃대)도 눌렀을 때 무엇인지 알려 준다
+  if (!MOVABLE_PROPS.includes(pr.k)) return toast('마을 등급 장식 · 마을 등급이 오를 때 생겨요 (이 장식은 옮길 수 없어요)');
   const k = pr.k as Kind;
   const d = def(k);
   openWin(
     d.name,
-    `<p class="sub">마을 등급 장식 · 울타리 밖에 있어요</p><p>${esc(d.desc)}</p><p class="note">마을 안으로 옮기면(무료) 어울림 계산에 들어가요. 한번 옮기면 원래 자리 장식은 사라져요.</p><button class="bigbtn" id="propMove">마을 안으로 옮기기</button>`,
+    `<p class="sub">마을 등급 장식 · 꾸미기에서 마을 안으로 옮길 수 있어요</p><p>${esc(d.desc)}</p><p class="note">마을 안으로 옮기면(무료) 어울림 계산에 들어가요. 한번 옮기면 원래 자리 장식은 사라져요.</p><button class="bigbtn" id="propMove">마을 안으로 옮기기</button>`,
   );
   $('#propMove').onclick = () => {
     closeWin();

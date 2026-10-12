@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { migrateGradeKeys } from './world/grade';
 import { landWhy, payLand } from './world/landreq';
 import { decoCoupon, useDecoCoupon } from './world/easter';
 import { clearOverlays } from './ui/overlays';
@@ -264,6 +265,8 @@ function applySave(d: SaveData) {
     d.buildings.map((b) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl, hue: b.hue, flip: !!b.flip, extra: { ...(b.plots ? { plots: b.plots } : {}), ...(b.builtAt ? { builtAt: b.builtAt } : {}), ...(b.fromProp ? { fromProp: true } : {}), ...(b.paid ? { paid: b.paid } : {}), ...conExtra(b) } })),
     d.land,
   );
+  // 핫픽스: 등급 장식 이름표를 좌표 → 고정 자리 id로 (땅 넓히기 뒤 다시 생기던 문제)
+  migrateGradeKeys();
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
   const movedKinds = P.harmony.moved.map((k) => k.split('@')[0]);
   for (const k of new Set(movedKinds)) {
