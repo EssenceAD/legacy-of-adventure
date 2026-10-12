@@ -86,8 +86,14 @@ function rollQuests(): Quest[] {
   if (P.counters.expeditions === 0) list.push(tutorialQuest());
   // 짧은 · 중간 · 긴 하나씩 (긴 것은 늘 가장 높은 지역)
   E.tierGroups.forEach((g, gi) => {
-    const tier = g[Math.floor(Math.random() * g.length)];
-    list.push(makeQuest(regionFor(open, tier, gi === 2).id, tier));
+    // 보장 칸은 짧은 쪽에 무게 (긴 칸: 2시간 > 4시간 > 8시간)
+    const w = E.groupWeights[gi];
+    let t = Math.random() * w.reduce((a, b) => a + b, 0);
+    let k = 0;
+    while (k < g.length - 1 && (t -= w[k]) >= 0) k++;
+    const tier = g[k];
+    list.push(makeQuest(regionFor(open, tier, false).id, tier));
+    void gi;
   });
   while (list.length < n) {
     const tier = rollTier();
