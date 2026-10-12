@@ -46,8 +46,8 @@ export function makeQuest(region: RegionId, tier: number): Quest {
     // 지역이 오를수록 시간 ×2 (단, 한 의뢰는 8시간을 넘지 않는다)
     minutes: Math.min(E.tierMinutes[E.tierMinutes.length - 1], E.tierMinutes[tier] * Math.pow(E.regionTime, r)),
     gold: [
-      Math.round(E.baseGold[0] * E.tierReward[tier] * Math.pow(E.regionReward, r)),
-      Math.round(E.baseGold[1] * E.tierReward[tier] * Math.pow(E.regionReward, r)),
+      Math.round(E.baseGold[0] * E.tierReward[tier] * Math.pow(CONFIG.economy.regionReward, r)),
+      Math.round(E.baseGold[1] * E.tierReward[tier] * Math.pow(CONFIG.economy.regionReward, r)),
     ],
   };
 }
@@ -232,7 +232,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   S.gold += gold;
   S.ledger.dungeon += gold;
-  gotGold(gold);
+  gotGold(gold, 'quest');
   // 3단계: 보물·유물 · 인연의 증표 · 은밀 · 루나의 보물 상자 · 8시간 원정 · 떠돌이 보스
   const extra: [string, string, string?][] = [];
   if (items.some((it) => 'ela'.includes(it.grade))) legendHooks.bond('treasure');

@@ -183,6 +183,8 @@ export interface Item {
   stats: Partial<Record<StatKey, number>>;
   opts: ItemOpt[];
   enh: number;
+  /** ECONOMY §2: 초월 실패가 쌓인 성공률 보너스 (천장) */
+  tPity?: number;
   /** 세트 부위인가 (지역 세트) */
   set: boolean;
   /** 유물 고유 효과 */
@@ -504,6 +506,10 @@ export function freshProgress() {
      * 베타 1장 어울림: 발견한 조합 · 숨은 조합 힌트 단계(1~3) · 마지막 힌트를 연 날 · 「어울림 보기」
      * moved = 마을 안으로 옮긴 등급 장식 (k@x,y) · plaques = 받은 평가 현판 종류
      */
+    /** ECONOMY §3: 영웅 동상에 세운 전설 · 불꽃놀이 횟수 */
+    luxury: { statue: '', shows: 0 },
+    /** ECONOMY §1: 금화 출처 하루 집계 (날짜 · 출처별 합) */
+    goldLog: { day: '', by: {} as Record<string, number> },
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
     /** BUILDUX: store = 보관함 · recent = 최근 놓은 장식 5개 · hintSeen = 첫 진입 안내 봄 */
     decor: { autoPath: true, paint: {} as Record<string, string>, store: [] as StoredObj[], recent: [] as string[], hintSeen: false, round: {} as Record<string, number>, noPath: {} as Record<string, number>, seen: [] as string[], owned: [] as string[], bookGot: [] as number[] },
@@ -699,14 +705,17 @@ export function earn(v: number, kind: IncomeKind) {
   if (S.visiting) return;
   S.gold += v;
   S.ledger[kind] += v;
-  gotGold(v);
+  gotGold(v, kind);
 }
 
 /** 금화를 벌 때마다: 누적 금화(전설 소문 조건) · 500G마다 인연 활동 · 부탁 진행 */
 let goldAcc = 0;
-export function gotGold(v: number) {
+export function gotGold(v: number, src = 'other') {
   if (v <= 0) return;
   P.counters.goldTotal += v;
+  // ECONOMY §1: 금화 출처 하루 집계 (world/economy가 하루에 한 번 gold_gain으로 보낸다)
+  const G = (P.goldLog ??= { day: '', by: {} });
+  G.by[src] = (G.by[src] ?? 0) + Math.round(v);
   goldAcc += v;
   while (goldAcc >= 500) {
     goldAcc -= 500;

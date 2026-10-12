@@ -355,7 +355,8 @@ export function showOffline(s: OfflineSummary) {
   for (const r of s.runs) returnParty(r, false);
   const h = Math.floor(s.seconds / 3600);
   const m = Math.floor((s.seconds % 3600) / 60);
-  const over = s.away > s.seconds + 1 ? ` <small>(최대 ${CONFIG.offline.maxRealHours}시간까지만 쌓여요)</small>` : '';
+  // ECONOMY §1: 8시간 상한에 닿으면 「창고가 가득」 (들어오고 싶게)
+  const over = s.away > s.seconds + 1 ? ` <small>(최대 ${CONFIG.offline.maxRealHours}시간까지만 쌓여요)</small><br><b class="warn">창고가 가득 찼어요 · 사냥 보상 일부를 놓쳤어요</b>` : '';
   const wins = s.runs.filter((r) => r.result!.win).length;
   const runGold = s.runs.reduce((t, r) => t + r.result!.gold, 0);
   const items = (Object.entries(s.items) as [Grade, number][])

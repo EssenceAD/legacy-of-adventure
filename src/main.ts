@@ -1,5 +1,6 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import './style.css';
+import { flushGoldLog } from './world/economy';
 import * as raidW from './world/raid';
 import { putAway } from './world/store';
 import { openStore } from './ui/decor';
@@ -800,6 +801,8 @@ async function boot() {
     const w = stats.work - perfPrev.w;
     perfPrev = { f: stats.frames, w: stats.work };
     if (!S.started) return;
+    // ECONOMY §1: 어제 금화 출처 집계 보내기
+    flushGoldLog();
     playMin++;
     // ONBOARDING §0·§4: 5분 버팀 · 첫 세션이면 「내일 또 오시면 선물!」
     if (playMin === 5) {

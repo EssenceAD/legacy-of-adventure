@@ -55,7 +55,7 @@ export function resolve(s: Spectacle) {
         { label: '붙잡는다', fn: () => {
           const g = SP.thiefGold * (world.objs.some((o) => o.kind === 'stall') ? 2 : 1);
           S.gold += g;
-          gotGold(g);
+          gotGold(g, 'event');
           const n = s.npcs[0];
           floatW(n.x, n.y, 40, `+${g} 회수!`, 'big');
           solved(s, `${inn()}에서 좀도둑이 잡혔대`);

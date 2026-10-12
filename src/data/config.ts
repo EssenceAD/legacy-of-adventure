@@ -80,6 +80,16 @@ export const CONFIG = {
     startGold: 1240,
     /** 손님이 건물에 들어갈 때 버는 돈 (행동별) */
     income: { sleep: 12, drink: 6, forge: 8, bath: 10 } as Record<string, number>,
+    /**
+     * ECONOMY_SPEC §1: 수입 조정 — 사냥 금화 ↓ · 지역 배수 2.5 → 2.0 (사냥·의뢰) · 재료 ↑ · 방치 8시간
+     * (이미 쌓인 금화는 그대로 · gold_gain 하루 집계로 다시 맞춘다)
+     */
+    huntGold: 0.65,
+    regionReward: 2.0,
+    matMult: 1.5,
+    /** 보스(x-10) 반복 돌파 때 보스 재료 +1 */
+    bossRepeat: 1,
+    idleHours: 8,
     dungeonMin: 40,
     dungeonMax: 120,
   },
@@ -282,7 +292,7 @@ export const CONFIG = {
   landStars: [0, 1, 2, 2, 4, 5, 6],
   /** 꺼져 있던 동안 (방치) */
   offline: {
-    /** 이만큼(현실 시간)까지만 쌓인다 */
+    /** 이만큼(현실 시간)까지만 쌓인다 (ECONOMY §1 economy.idleHours와 같게) */
     maxRealHours: 8,
     /** 게임 1시간마다 손님 1명이 버는 평균 금화 */
     goldPerGuestPerGameHour: 15,
@@ -426,6 +436,11 @@ export const CONFIG = {
     bossEnhanceFrom: 10,
     bossEnhanceMats: 1,
     levelCosts: [0, 500, 900, 1500, 2500, 4000, 6000],
+    /**
+     * ECONOMY §2: 초월 +11 ~ +20 — 금화 20,000×2^(n−11) · 지역 재료 30×(n−10) · 보스 재료 n−10 · 같은 등급 가루 50×(n−10)
+     * 성공 60% → 단계마다 −4%p · 대장간 Lv당 +1%p · 실패해도 단계 유지 + 다음 시도 +5%p(천장) · 대장간 Lv5부터
+     */
+    transcend: { max: 20, gold: 20000, mats: 30, boss: 1, dust: 50, rate: 0.6, step: 0.04, perSmithLv: 0.01, pity: 0.05, smithLv: 5, nameAt: 15 },
   },
   garden: {
     plots: 3,

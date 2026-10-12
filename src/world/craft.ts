@@ -113,6 +113,54 @@ export function enhance(it: Item): 'ok' | 'fail' | 'max' | 'poor' | 'boss' | 'no
   return 'ok';
 }
 
+// ───────── ECONOMY §2: 초월 +11 ~ +20 ─────────
+
+const TR = () => SM.transcend;
+/** 초월 탭이 열렸나 (대장간 Lv5부터) */
+export const transcendOpen = () => (smithObj()?.lvl ?? 0) >= TR().smithLv;
+/** 다음 초월 단계의 비용 (n = 11 ~ 20) */
+export function transcendCost(it: Item) {
+  const n = it.enh + 1;
+  const k = n - 10;
+  return { n, gold: TR().gold * 2 ** (n - 11), mats: TR().mats * k, boss: regionBoss(it.region), bossMats: TR().boss * k, dust: TR().dust * k };
+}
+export function transcendRate(it: Item): number {
+  const n = it.enh + 1;
+  const lv = smithObj()?.lvl ?? 0;
+  return Math.max(0.05, Math.min(1, TR().rate - TR().step * (n - 11) + TR().perSmithLv * lv + (it.tPity ?? 0)));
+}
+export type TranscendResult = 'ok' | 'fail' | 'max' | 'locked' | 'notten' | 'gold' | 'mats' | 'boss' | 'dust';
+export function transcend(it: Item): TranscendResult {
+  if (!transcendOpen()) return 'locked';
+  if (it.enh < SM.maxEnhance) return 'notten';
+  if (it.enh >= TR().max) return 'max';
+  const c = transcendCost(it);
+  if (S.gold < c.gold) return 'gold';
+  if ((P.mats[it.region] ?? 0) < c.mats) return 'mats';
+  if ((P.bossMats[c.boss.id] ?? 0) < c.bossMats) return 'boss';
+  if ((P.dust[it.grade] ?? 0) < c.dust) return 'dust';
+  const rate = transcendRate(it);
+  S.gold -= c.gold;
+  P.mats[it.region] -= c.mats;
+  P.bossMats[c.boss.id] -= c.bossMats;
+  P.dust[it.grade] -= c.dust;
+  markDirty();
+  if (Math.random() >= rate) {
+    // 분재형: 단계는 그대로 · 다음 시도 +5%p
+    it.tPity = (it.tPity ?? 0) + TR().pity;
+    sfx('fail');
+    return 'fail';
+  }
+  sfx('levelup');
+  it.enh++;
+  it.tPity = 0;
+  // +15 「초월한」 · +20 「극의」 (이름 앞에)
+  const base = it.name.replace(/^(초월한|극의) /, '');
+  it.name = it.enh >= TR().max ? `극의 ${base}` : it.enh >= TR().nameAt ? `초월한 ${base}` : base;
+  P.counters.enhanceMax = Math.max(P.counters.enhanceMax, it.enh);
+  return 'ok';
+}
+
 // ───────── 제작 ─────────
 
 /** 그 지역 보스 (재료를 주는 보스) */

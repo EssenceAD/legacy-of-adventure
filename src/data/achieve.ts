@@ -68,6 +68,10 @@ export const ACHIEVEMENTS: AchDef[] = [
   A('enh3', '첫 망치질', '장비 +3 강화', 'enhance', 3, { dust: 30 }),
   A('enh7', '불꽃 장인', '장비 +7 강화', 'enhance', 7, { dust: 150 }),
   A('enh10', '전설의 대장장이', '장비 +10 강화', 'enhance', 10, { dust: 500, title: '전설의 대장장이' }, true),
+  // ECONOMY §2: 초월
+  A('enh11', '첫 초월', '장비 +11 초월', 'enhance', 11, { dust: 300 }),
+  A('enh15', '초월한 손', '장비 +15 초월', 'enhance', 15, { gold: 50000 }),
+  A('enh20', '극의', '장비 +20 초월', 'enhance', 20, { gold: 300000, title: '극의' }, true),
   A('cr1', '첫 작품', '세트 장비 1부위 제작', 'crafted', 1, { gold: 300 }),
   A('cr20', '세트 장인', '세트 장비 20부위 제작', 'crafted', 20, { gold: 2500 }),
   A('hv10', '초보 농부', '텃밭 10번 수확', 'harvests', 10, { gold: 300 }),

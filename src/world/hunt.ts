@@ -66,17 +66,19 @@ export interface HuntReward {
 /** 한 판 보상 (mult = 방치처럼 비율을 낮출 때) */
 function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult = 1, dropItem = true): HuntReward {
   const ri = regionIdx(r);
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(CONFIG.expedition.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult);
+  // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
+  const EC = CONFIG.economy;
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold);
   const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult);
-  const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult);
+  const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult);
   S.gold += g;
   S.ledger.dungeon += g;
-  gotGold(g);
+  gotGold(g, 'hunt');
   P.mats[r] += mats;
   // 지역 보스(x-10): 토벌 보스 재료도 (세트 제작에 필요 — 토벌이 열리기 전에도 만들 수 있게)
   let bossMats = 0;
   if (isBoss(s) && mult >= 1) {
-    bossMats = first ? 3 : 1;
+    bossMats = first ? 3 : 1 + EC.bossRepeat;
     const bid = regionBossOf(r).id;
     P.bossMats[bid] = (P.bossMats[bid] ?? 0) + bossMats;
   }

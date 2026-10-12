@@ -2,7 +2,7 @@
 import { CONFIG } from '../data/config';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type RegionId, type Slot } from '../data/items';
-import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl } from '../world/craft';
+import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, transcendRate } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
@@ -42,10 +42,29 @@ export function openSmith(o: Building, tab = smTab) {
         const bc = enhanceBossCost(it);
         const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
         const bossTxt = bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : '';
-        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span><button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
+        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · 성공 ${pct(enhanceRate(it))}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span><button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
       })
       .join('');
     body = `<p class="note">비용 (현재 강화+1)² × 10 · +5까지 실패 없음 · 실패해도 장비는 안 깨져요 · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
+  } else if (tab === 3) {
+    // ECONOMY §2: 초월 +11 ~ +20 (+10 장비만)
+    const T = CONFIG.smith.transcend;
+    if (!transcendOpen()) body = `<p class="note">대장간 Lv.${T.smithLv}에 「초월」이 열려요 · +10 장비를 +${T.max}까지</p>`;
+    else {
+      const rows = sorted()
+        .filter((it) => it.enh >= CONFIG.smith.maxEnhance)
+        .map((it) => {
+          const max = it.enh >= T.max;
+          const c = transcendCost(it);
+          const own = ownerName(it.owner);
+          const short = S.gold < c.gold || (P.mats[it.region] ?? 0) < c.mats || (P.bossMats[c.boss.id] ?? 0) < c.bossMats || (P.dust[it.grade] ?? 0) < c.dust;
+          const reg = REGIONS.find((r) => r.id === it.region)!;
+          const need = max ? '극의에 닿았어요' : `금화 ${fmt(c.gold)} · ${reg.mat} ${c.mats}/${P.mats[it.region] ?? 0} · ${c.boss.mat} ${c.bossMats}/${P.bossMats[c.boss.id] ?? 0} · ${DUST_NAME[it.grade]} ${c.dust}/${fmt(P.dust[it.grade] ?? 0)}`;
+          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>성공 ${pct(transcendRate(it))}${it.tPity ? ` (실패 보너스 +${Math.round(it.tPity * 100)}%p)` : ''}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span><button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
+        })
+        .join('');
+      body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(T.pity * 100)}%p</p><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
+    }
   } else {
     const c = craftCost(craftRegion);
     const regs = REGIONS.map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
@@ -59,7 +78,7 @@ export function openSmith(o: Building, tab = smTab) {
     <div class="btnrow">${SLOTS.map((s) => `<button class="bigbtn sm" data-s="${s}">${SLOT_NAME[s]} 만들기</button>`).join('')}</div>
     ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
   }
-  openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작'], tab, 'smT')}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
+  openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작', '초월'], tab, 'smT')}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
   bindTabs('smT', (i) => openSmith(o, i));
   $$('#winB .ic[data-id]').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!, () => openSmith(o))));
   $$('[data-sal]').forEach(
@@ -77,6 +96,16 @@ export function openSmith(o: Building, tab = smTab) {
         const it = P.bag.find((x) => x.id === +b.dataset.enh!)!;
         const r = enhance(it);
         toast(r === 'ok' ? `강화 성공! ${it.name} +${it.enh}` : r === 'fail' ? '강화 실패… (장비는 그대로)' : r === 'poor' ? '가루가 모자라요' : r === 'boss' ? bossHint(enhanceBossCost(it)!.boss.id) : '강화할 수 없어요');
+        openSmith(o);
+      }),
+  );
+  $$('[data-tr]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const it = P.bag.find((x) => x.id === +b.dataset.tr!)!;
+        const r = transcend(it);
+        const msg: Record<string, string> = { ok: `초월 성공! ${it.name} +${it.enh}`, fail: '초월 실패… 단계는 그대로 · 다음 시도 성공률 ↑', gold: '금화가 모자라요', mats: '지역 재료가 모자라요 · 사냥터에서 모아요', boss: '보스 재료가 모자라요', dust: '가루가 모자라요', max: '최고 단계예요', locked: '대장간 Lv.5에 열려요', notten: '+10 장비만 초월할 수 있어요' };
+        toast(msg[r]);
         openSmith(o);
       }),
   );
