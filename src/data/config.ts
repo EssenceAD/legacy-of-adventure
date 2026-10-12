@@ -702,6 +702,9 @@ export const CONFIG = {
     gaugeMax: 3,
     /** 밤 판정 확률(%) = 게이지 ÷ 이 값 */
     judgeDiv: 20,
+    /** 의뢰 「은밀」 사건 확률 (도적이 낀 파티) · 닉스가 함께면 */
+    stealth: 0.3,
+    stealthNyx: 0.6,
     /** HOTFIX24: 동시에 머무는 전설 최대 수 (인연 100%는 자리가 있으면 그날 밤 바로) */
     maxVisiting: 2,
     /** 머무는 기간(실제 일), 실패하면 게이지 */

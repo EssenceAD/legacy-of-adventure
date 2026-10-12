@@ -281,7 +281,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     extra.push(['narr', '보물 더미 속에서 「인연의 증표」가 반짝였다!']);
   }
   const rogue = members.find((m) => m.kind === 'rogue');
-  if (rogue && Math.random() < 0.3) {
+  // 은밀: 도적이 있으면 30% · 닉스 본인이 함께면 60%
+  const stealth = members.some((m) => m.legendId === 'nyx') ? CONFIG.legends.stealthNyx : CONFIG.legends.stealth;
+  if (rogue && Math.random() < stealth) {
     extra.push(['narr', win ? `${rogue.name}${josa(rogue.name, '가')} 그림자처럼 숨어들어 경비를 따돌렸다! (은밀 성공)` : `${rogue.name}${josa(rogue.name, '가')} 몰래 지나가다 깡통을 찼다… (은밀 실패)`]);
     if (win) legendHooks.req('stealthSuccess');
   }

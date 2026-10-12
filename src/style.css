@@ -1575,3 +1575,14 @@ body.cbtalk #storyFx{z-index:45}
 .pty-dex i{font-style:normal;font-size:16px}
 .pty-dex b{color:#ffd36b;font-size:13px}
 .pty-dex small{font-size:11px;color:#cfd8ff}
+
+/* 핫픽스: 길게 누르기 메뉴(이미지 저장 · 링크) · 선택 · 끌기 · 탭 번쩍임 막기 — 입력칸 · 우편 글 · 코드 칸은 그대로 */
+body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+img{-webkit-user-drag:none;-webkit-touch-callout:none}
+button,.cbb,.tab{touch-action:manipulation}
+.cbt .cbb,.cbt .cbb *{touch-action:none}
+.cbt img,.cbb img{pointer-events:none}
+input,textarea,[contenteditable],.mails,.rcode,.selectable{-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
+.rcode{-webkit-user-select:all;user-select:all}
+/* 전투 중엔 링크를 누를 수 없게 (끝나면 그대로) */
+body.in-combat a{pointer-events:none}

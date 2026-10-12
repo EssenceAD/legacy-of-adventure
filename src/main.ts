@@ -461,6 +461,16 @@ function liftAt(clientX: number, clientY: number): boolean {
   return true;
 }
 
+/** 핫픽스: 안드로이드 크롬·PWA·삼성 인터넷 — 길게 누르면 뜨는 이미지/링크 메뉴와 끌기 막기 (글 입력·복사할 곳은 제외) */
+const SELECTABLE = 'input, textarea, [contenteditable], .mails, .rcode, .selectable';
+const editable = (t: EventTarget | null) => t instanceof Element && !!t.closest(SELECTABLE);
+document.addEventListener('contextmenu', (e) => {
+  if (!editable(e.target)) e.preventDefault();
+});
+document.addEventListener('dragstart', (e) => {
+  if (!editable(e.target)) e.preventDefault();
+});
+
 function bindInput() {
   // BUILDUX §5: 오른쪽 클릭 = 취소 (배치 · 꾸미기 끌기)
   cv.addEventListener('contextmenu', (e) => {
