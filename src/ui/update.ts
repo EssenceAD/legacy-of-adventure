@@ -6,6 +6,8 @@ import { getPref, hasSave, setPref, writeSave } from '../save/save';
 import { HIGHLIGHTS, highlightGo, type Highlight } from './notice';
 import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
+import { creditLine, normVer } from '../data/credits';
+import { letterCredits } from '../net/direction';
 import { closeWin, isWinOpen, openWin, toast } from './windows';
 
 declare const __APP_VERSION__: string;
@@ -21,7 +23,19 @@ export interface PatchNote {
   fixes: string[];
   /** HOTFIX14 §5: 이 버전의 업데이트 선물 (있을 때만) */
   gift?: { gold?: number; dust?: number; dustR?: number; cheer?: number; deco?: string };
+  /** DIRECTION §3-1: 정기 업데이트(목요일) · 핫픽스 — 없으면 정기로 친다 (옛 노트) · 업데이트 선물은 정기에만 */
+  kind?: '정기' | '핫픽스';
 }
+
+/** 버전 a ≤ b (0.11.3-beta 꼴) */
+export const verLE = (a: string, b: string) => {
+  const p = (v: string) => v.replace(/-.*/, '').split('.').map(Number);
+  const [x, y] = [p(a), p(b)];
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return true;
+};
+/** HOTFIX14 §5 + DIRECTION §3-1: 지금 버전 이하에서 가장 새 「정기」 업데이트 선물 (핫픽스 선물은 주지 않는다) */
+export const giftNote = (list: PatchNote[], ver: string) => list.find((x) => x.gift && x.kind !== '핫픽스' && verLE(x.version, ver));
 
 let notes: PatchNote[] | null = null;
 export async function loadPatchNotes(): Promise<PatchNote[]> {
@@ -42,17 +56,20 @@ export function noteHtml(n: PatchNote) {
     n.fixes.length ? `<p class="pn-h">고친 것</p><ul class="pn-fixes">${n.fixes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''
   }`;
 }
-/** 패치노트 목록: 최신만 펼침 */
-export function notesListHtml(list: PatchNote[]) {
+/** 패치노트 목록: 최신만 펼침 · DIRECTION §2-1 반영 크레딧 줄 · §3-1 정기/핫픽스 표시 */
+export function notesListHtml(list: PatchNote[], credits?: Map<string, string[]>) {
   if (!list.length) return '<p class="sub">패치노트를 불러오지 못했어요</p>';
   return `<div class="pnlist">${list
-    .map((n, i) => `<details class="pn" ${i ? '' : 'open'}><summary><b>v${esc(n.version)}</b> ${esc(n.title)}<small>${esc(n.date)}</small></summary>${noteHtml(n)}</details>`)
+    .map((n, i) => {
+      const cl = creditLine(credits?.get(normVer(n.version)) ?? []);
+      return `<details class="pn" ${i ? '' : 'open'}><summary><b>v${esc(n.version)}</b>${n.kind ? ` <i class="pnk ${n.kind === '핫픽스' ? 'hot' : ''}">${esc(n.kind)}</i>` : ''} ${esc(n.title)}<small>${esc(n.date)}</small></summary>${noteHtml(n)}${cl ? `<p class="pn-credit">${esc(cl)}</p>` : ''}</details>`;
+    })
     .join('')}</div>`;
 }
 
 export async function openPatchNotes() {
   const list = await loadPatchNotes();
-  openWin('패치노트', notesListHtml(list), 'wide');
+  openWin('패치노트', notesListHtml(list, await letterCredits()), 'wide');
 }
 
 /** 업데이트 후 첫 화면: 카드 한 번 (새 플레이어는 띄우지 않고 기록만) */

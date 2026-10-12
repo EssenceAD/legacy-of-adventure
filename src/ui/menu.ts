@@ -32,6 +32,9 @@ import { iconSrc, type IconKey } from './kit';
 import { openPlace } from './nav';
 import { openVillage } from './neighbors';
 import { openNotices } from './notice';
+import { openJourney } from './journey';
+import { openOpsBox, openRumorSend } from './opsbox';
+import { amAdmin, rumorSendReady } from '../net/direction';
 import { openAlbum, openGifts, openOwner, openTies } from './owner';
 import { openRank } from './rank';
 import { screen, setFontStep } from './screen';
@@ -76,6 +79,8 @@ function groups(): [string, Item[]][] {
     ]],
     ['수집', [
       { icon: 'm_dex', name: '도감', open: () => openDex() },
+      // DIRECTION §1-1: 여정 (완주가 보이게)
+      { icon: 'm_quest', name: '여정', open: () => openJourney() },
       { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: achReady() > 0 },
       { icon: 'm_title', name: '칭호', open: () => openTitles() },
       { icon: 'm_album', name: '엔딩 앨범', open: () => openAlbum() },
@@ -86,6 +91,8 @@ function groups(): [string, Item[]][] {
       { icon: 'm_chat', name: '채팅', open: () => openChat() },
       { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: mailWaiting() > 0 },
       { icon: 'm_notice', name: '공지', open: () => openNotices() },
+      // DIRECTION §2-3: 소문 보내기 (서버 준비 · 로그인 때만 보인다)
+      ...(rumorSendReady() ? [{ icon: 'm_chat' as IconKey, name: '소문 보내기', open: () => openRumorSend() }] : []),
     ]],
     ['상점', [
       { icon: 'm_shop', name: '상점', open: () => openShop(), lock: shopOpen() ? null : `장부 ${featureChapter('shop')}장` },
@@ -96,6 +103,8 @@ function groups(): [string, Item[]][] {
       { icon: 'm_settings', name: '설정', open: () => openSettings() },
       { icon: 'm_guide', name: '안내서', open: () => openManual() },
       { icon: 'm_letter', name: '모모에게 편지', open: () => openReport() },
+      // DIRECTION §2-1: 운영자 계정만 「제보함」
+      ...(amAdmin() ? [{ icon: 'm_mail' as IconKey, name: '제보함', open: () => void openOpsBox() }] : []),
       { icon: 'm_album', name: '만든 사람', open: () => openCredits() },
       { icon: 'm_chat', name: '💬 유저 톡방', open: () => openCommunity('menu') },
     ]],
@@ -434,6 +443,8 @@ export const MANUAL: { key: string; icon: IconKey; title: string; lines: string[
 export const HELP_OF: [RegExp, string][] = [
   [/^원정|의뢰/, 'expedition'], [/^사냥/, 'hunt'], [/^토벌/, 'raid'], [/^건설|땅 넓히기/, 'build'], [/^손님|단골/, 'guests'], [/대장간|텃밭/, 'smith'], [/^도감/, 'dex'],
   [/^주인|^인연|선물/, 'owner'], [/^업적|^칭호/, 'collect'], [/^상점|^출석|^우편함/, 'shop'], [/장부|오늘의 목표/, 'start'],
+  // DIRECTION: 여정 → 이야기 쪽 · 소문 보내기 → 이웃·채팅 쪽
+  [/^여정/, 'story'], [/^소문 보내기/, 'social'],
 ];
 
 export function openManual(key?: string) {

@@ -67,7 +67,8 @@ import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
 import { battleMusic, initSound, tickSound } from './ui/sound';
-import { _fakeNewer, APP_VERSION, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
+import { _fakeNewer, APP_VERSION, giftNote, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
+import { directionStarted, initDirection } from './ui/opsbox';
 import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
@@ -190,10 +191,13 @@ function update(dt: number) {
       checkSlot5(true);
       // PARTY §3: 사냥·토벌 4번째 자리 (훈련장 Lv5 + 장부)
       checkParty4();
+      // DIRECTION §2-1: 운영자 답장 → 우편함 · 운영자 확인
+      directionStarted();
       // HOTFIX14 §5: 업데이트 선물 (원래 하던 플레이어만 — 장부를 하나라도 받았거나 2일차 이상)
       //  지금 버전 이하에서 가장 새 선물 (그 버전을 건너뛰고 올라와도 받게 · 선물 버전으로 한 번만)
       void loadPatchNotes().then((n) => {
-        const g = n.find((x) => x.gift && verLE(x.version, APP_VERSION));
+        // DIRECTION §3-1: 선물은 정기 업데이트에만 (kind: '핫픽스'면 건너뛴다)
+        const g = giftNote(n, APP_VERSION);
         if (g) updateGift(g.version, g.gift, P.guide.claimed.length > 0 || S.day > 1);
       });
       settleOfflineCons();
@@ -278,13 +282,6 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
-/** 버전 a ≤ b (0.11.3-beta 꼴) */
-const verLE = (a: string, b: string) => {
-  const p = (v: string) => v.replace(/-.*/, '').split('.').map(Number);
-  const [x, y] = [p(a), p(b)];
-  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
-  return true;
-};
 let conAcc = 0;
 function tick(dt: number) {
   // 핫픽스 10 §13: 접어 둔 사냥은 마을 시간대로 마저 진행
@@ -813,6 +810,8 @@ async function boot() {
   initPowerUI();
   initSound();
   void initChat();
+  // DIRECTION §2: 함께 만든 사람들 · 승인된 소문 · 로그인하면 답장 배달 (서버 함수가 없으면 조용히 없음)
+  initDirection();
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   // GUEST_SPEC §1: 로그인이 없으면 게임을 시작한 뒤 조용히 게스트 계정 → 이 기기 저장·마을을 올린다 (서버 저장이 없는 새 계정이라 덮어쓸 일 없음)
   //  다른 계정 저장인 기기(로그인 만료)·직접 로그아웃한 기기는 건너뛴다
