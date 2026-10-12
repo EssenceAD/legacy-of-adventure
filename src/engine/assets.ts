@@ -33,7 +33,7 @@ export const OPEN_FRONT = new Set<string>();
 export const ROOF_POLYS: Record<string, [number, number][][]> = {};
 export const PORTRAITS: Record<string, string> = {};
 /** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
-export const PORTRAIT_IMGS: HTMLImageElement[] = [];
+const PORTRAIT_IMGS: HTMLImageElement[] = [];
 
 /** 핫픽스 13: 실패하면 0.5초·1.5초 뒤 두 번 더 (&r=n 으로 캐시 우회) — 그래도 안 되면 실패한 주소를 들고 실패 */
 export class AssetError extends Error {

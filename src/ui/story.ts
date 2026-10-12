@@ -9,7 +9,7 @@ import { PIONEER_CREDIT } from '../data/story/easter';
 import { clearOverlays } from './overlays';
 import { MISSIONS } from '../data/guide';
 import { ACT3_LETTER, ACT_CUTS, ENDINGS as STORY_END, HEIR_ARRIVE, LEGACY_GIFTS, MEMORIES, NEW_CYCLE_CONFIRM, ROUTES, type RouteId, type SLine } from '../data/story/v1';
-import { PORTRAIT_IMGS, PORTRAITS } from '../engine/assets';
+import { PORTRAITS } from '../engine/assets';
 import { getPref, setPref, writeSave } from '../save/save';
 import { blankActor } from '../world/adventurers';
 import { tour } from '../world/evalTour';
@@ -459,9 +459,8 @@ export function trueStarLine(): SLine[] | null {
   return [TRUE_STAR_LINES[Math.floor(Math.random() * TRUE_STAR_LINES.length)]];
 }
 
-/** 별지기 초상화: 모모 초상화 모양을 금빛으로 채운 실루엣 + 둘레 빛 */
+/** 별지기 초상화: 얼굴 없이 빛나는 실루엣 (머리·어깨) + 둘레 빛 · 반짝이 */
 function starPortrait(): string {
-  const src = PORTRAIT_IMGS.find((im) => /portraits\/post\.png/.test(im.src));
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d')!;
@@ -472,16 +471,17 @@ function starPortrait(): string {
   r.addColorStop(1, 'rgba(255,240,180,0)');
   g.fillStyle = r;
   g.fillRect(0, 0, 64, 64);
-  if (src && src.complete && src.naturalWidth) {
-    const t = document.createElement('canvas');
-    t.width = t.height = 64;
-    const x = t.getContext('2d')!;
-    x.drawImage(src, 0, 0, 64, 64);
-    x.globalCompositeOperation = 'source-in';
-    x.fillStyle = '#fff3c0';
-    x.fillRect(0, 0, 64, 64);
-    g.drawImage(t, 0, 0);
-  }
+  // 얼굴 없는 실루엣: 머리 + 어깨, 금빛으로 번지게
+  g.shadowColor = '#ffd36b';
+  g.shadowBlur = 10;
+  g.fillStyle = '#fff3c0';
+  g.beginPath();
+  g.arc(32, 25, 9, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(32, 60, 21, 20, 0, Math.PI, 0);
+  g.fill();
+  g.shadowBlur = 0;
   for (let i = 0; i < 14; i++) {
     g.fillStyle = i % 3 ? '#ffd36b' : '#ffffff';
     g.fillRect((Math.random() * 64) | 0, (Math.random() * 64) | 0, 1, 1);

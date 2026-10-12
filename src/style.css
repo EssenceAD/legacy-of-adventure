@@ -1446,3 +1446,4 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 .mcell.seed{opacity:.85;border-color:#8a7a4a}
 .mcell.met{opacity:1;border-color:transparent;background:linear-gradient(#2a2016,#2a2016) padding-box,linear-gradient(90deg,#ff7a7a,#ffd36b,#7aff9a,#7ac8ff,#c07aff) border-box}
 .mcell small{font-size:11px;opacity:.9}
+#dT{flex-wrap:wrap;row-gap:2px}
