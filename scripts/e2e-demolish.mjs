@@ -98,6 +98,11 @@ for (const [name, opt] of Object.entries(DEV)) {
   await W(400);
   ok((await count('tavern')) === before - 1 && (await gold()) === g0, '넣어 두기: 주점이 사라지고 금화는 그대로');
   ok((await p.evaluate(() => window.__P.decor.store.length)) === st0 + 1, '보관함 +1 (레벨 그대로)');
+  // 업데이트 카드(새로 생긴 것·패치 노트)는 다른 창이 닫히길 기다렸다 뜬다 — 그건 닫고 본다
+  if (/새로 생긴 것|업데이트/.test(await title())) {
+    await p.evaluate(() => document.querySelector('#winX').click());
+    await W(300);
+  }
   ok(!(await winOn()), '창 닫힘 ' + (await title()));
   await p.screenshot({ path: `${OUT}/${name}_after.png` });
   // 보관함에서 팔기
