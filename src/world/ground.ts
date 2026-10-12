@@ -347,3 +347,45 @@ function decoTile(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x: 
     }
   }
 }
+
+/**
+ * HOTFIX19 §1: 붓질 중엔 바닥 전체를 다시 굽지 않고 바뀐 칸(과 이음이 바뀌는 둘레 8칸)만 덧그린다.
+ *  손을 떼면 rebuildPaths → 한 번 다시 굽는다 (울타리·잔무늬까지 원래대로)
+ */
+export function patchTiles(tiles: [number, number][]) {
+  if (!ground.c) return;
+  const p = P(ground.c.getContext('2d')!);
+  const g = Number(/\|g(\d+)$/.exec(ground.key)?.[1] ?? 0);
+  const stone = g >= 2;
+  const seen = new Set<string>();
+  for (const [cx, cy] of tiles)
+    for (let j = -1; j <= 1; j++)
+      for (let i = -1; i <= 1; i++) {
+        const x = cx + i;
+        const y = cy + j;
+        const k = `${x},${y}`;
+        if (seen.has(k) || !inLand(x, y)) continue;
+        seen.add(k);
+        const X = ground.ox + sx(x, y);
+        const Y = ground.oy + sy(x, y);
+        const v = (x * 7 + y * 13) % 5;
+        const pc = paintOf(x, y);
+        const path = pathT.has(y * N + x);
+        const PAL: Record<string, [string, string]> = {
+          stone: [(x + y) % 2 ? '#a9a49a' : '#b6b0a4', '#8c867c'], dirt: ['#c99a5e', '#b8864e'], brick: ['#b8644c', '#94483a'], deck: ['#b98a56', '#946a3e'],
+          step: [v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'], flower: [v < 2 ? '#7cbc4c' : '#72b247', '#5f9a3c'], sand: ['#e6d29a', '#d2ba80'], gravel: ['#a39e94', '#86817a'],
+          pond: ['#4a8ac4', '#3a76b0'],
+        };
+        const [a, b] = pc && PAL[pc] ? PAL[pc] : path && stone ? PAL.stone : path ? [g >= 1 ? '#b88a52' : '#c99a5e', g >= 1 ? '#a87a44' : '#b8864e'] : [v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'];
+        for (let jj = 0; jj < TH; jj++) {
+          const hw = (jj < TH / 2 ? jj + 1 : TH - jj) * 2;
+          for (let ii = -hw; ii < hw; ii++) {
+            const px = X + ii;
+            const py = Y + jj;
+            p.px(px, py, BAYER[py & 3][(px + 64) & 3] < 3 ? b : a);
+          }
+        }
+        const r = rng((x * 73856093) ^ (y * 19349663));
+        if (pc) decoTile(p, pc, X, Y, x, y, r);
+      }
+}

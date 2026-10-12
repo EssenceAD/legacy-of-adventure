@@ -202,11 +202,14 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     for (let i = 0; i < things.length; i++) if (inFrontOf(a, things[i]) === true) last = i;
     slots[last + 1].push(a);
   }
+  // HOTFIX19 §2: 꾸미기 붓을 들면 건물·장식·나무를 반투명으로 (바닥·길이 비쳐 보이게)
+  const fadeAll = decorView.on && decorView.fade && decorView.fadeOn && !S.visiting;
   for (let k = 0; k <= things.length; k++) {
     // TOWN T2: 꾸미기 모드는 손님을 숨긴다
     if ((!photoState.on || photoState.people) && !decorView.on) for (const a of slots[k]) drawActor(ctx, a);
     const it = things[k];
     if (!it) break;
+    ctx.globalAlpha = fadeAll ? 0.3 : 1;
     if ('o' in it) {
       drawObj(ctx, it.o);
       const ds = atDoor.get(it.o);
@@ -218,6 +221,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     else if ('sn' in it) drawSpecNpc(ctx, it.sn);
     else drawWild(ctx, it.w);
   }
+  ctx.globalAlpha = 1;
 
   // 연기·불티
   if (Math.random() < dt * 3)
@@ -229,7 +233,11 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     }
   // 땅 개편 §8: 땅보다 앞의 굽힌 숲 (건물·손님 다음 · 밤 색은 미리 물든 사본)
   const fr = frontTinted();
-  if (fr) ctx.drawImage(fr, OX - ground.ox, OY - ground.oy);
+  if (fr) {
+    if (fadeAll) ctx.globalAlpha = 0.3;
+    ctx.drawImage(fr, OX - ground.ox, OY - ground.oy);
+    ctx.globalAlpha = 1;
+  }
   for (const o of world.objs)
     if (o.kind === 'fire' && Math.random() < dt * 6) {
       const X = sx(o.tx + 0.5, o.ty + 0.5);
@@ -308,9 +316,20 @@ function drawDecorOverlay(ctx: CanvasRenderingContext2D) {
   const g = decorView.ghost;
   ctx.fillStyle = g ? (g.ok ? 'rgba(111,208,75,0.45)' : 'rgba(255,74,74,0.45)') : 'rgba(120,190,255,0.5)';
   for (const o of decorView.picked) for (let j = 0; j < o.fh; j++) for (let i = 0; i < o.fw; i++) fillTile(ctx, o.tx + i + (g?.dx ?? 0), o.ty + j + (g?.dy ?? 0));
+  // HOTFIX19 §2: 붓을 든 동안 건물 발판은 빗금 (칠할 수 없음) — 커서 칸은 건물보다 위에
+  if (decorView.fade) {
+    ctx.fillStyle = 'rgba(255,90,90,0.35)';
+    for (const o of world.objs)
+      for (let j = 0; j < o.fh; j++)
+        for (let i = 0; i < o.fw; i++) {
+          const X = Math.round(view.OX + sx(o.tx + i, o.ty + j));
+          const Y = Math.round(view.OY + sy(o.tx + i, o.ty + j));
+          for (let k = 2; k < TH; k += 3) ctx.fillRect(X - 10 + k, Y + k, 6, 1);
+        }
+  }
   const h = decorView.hover;
   if (h) {
-    ctx.fillStyle = 'rgba(255,243,214,0.35)';
+    ctx.fillStyle = 'rgba(255,243,214,0.55)';
     fillTile(ctx, h[0], h[1]);
   }
 }

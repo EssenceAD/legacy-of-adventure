@@ -1319,3 +1319,8 @@ body.decor #over .bub{display:none}
 .hlrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 8px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink)}
 .hlrow i{font-style:normal;font-size:22px}
 .hlrow span{font-size:var(--f-ui);line-height:1.4}
+#loupe{position:fixed;z-index:60;width:96px;height:96px;border-radius:50%;box-shadow:0 0 0 3px #1c1018,0 0 0 5px #ffd36b;pointer-events:none;image-rendering:pixelated;background:#000}
+
+/* SMITH §1: 다시 그린 뒤 방금 누른 줄 반짝 */
+#winB .flash{animation:rowFlash .5s ease-out}
+@keyframes rowFlash{0%{background:rgba(255,211,107,.45)}100%{background:transparent}}

@@ -103,6 +103,32 @@ const setOpen = (on: boolean) => {
   document.body.classList.toggle('winopen', on);
 };
 
+/** SMITH §1: 창 안에서 마지막으로 누른 버튼 (다시 그린 뒤 같은 줄 찾기용) */
+let lastPress: string | null = null;
+const PRESS_ATTRS = ['data-enh', 'data-sal', 'data-id', 'data-craft', 'data-eq', 'data-k', 'data-r', 'id'];
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    const el = (e.target as HTMLElement | null)?.closest?.('#winB button, #winB [data-id]');
+    if (!el) return;
+    const at = PRESS_ATTRS.find((k) => el.hasAttribute(k));
+    lastPress = at ? `[${at}="${CSS.escape(el.getAttribute(at)!)}"]` : null;
+  },
+  true,
+);
+function flashPressed(body: HTMLElement) {
+  if (!lastPress) return;
+  const el = body.querySelector<HTMLElement>(lastPress);
+  const row = el?.closest<HTMLElement>('.irow, .row, li') ?? el;
+  if (!row) return;
+  const r = row.getBoundingClientRect();
+  const b = body.getBoundingClientRect();
+  if (r.top < b.top || r.bottom > b.bottom) row.scrollIntoView({ block: 'nearest' });
+  row.classList.remove('flash');
+  void row.offsetWidth;
+  row.classList.add('flash');
+  setTimeout(() => row.classList.remove('flash'), 600);
+}
 export function openWin(title: string, html: string, cls = '') {
   const was = $('#win').classList.contains('on');
   if (!was) {
@@ -116,8 +142,20 @@ export function openWin(title: string, html: string, cls = '') {
     pushHist();
   }
   if ($('#winT').textContent !== title || !was) trackEv('screen_open', { name: title.slice(0, 30) });
-  $('#winB').innerHTML = html;
-  $('#winB').scrollTop = 0;
+  // SMITH §1: 같은 창·같은 탭을 다시 그리면 스크롤(세로·탭 가로)을 그대로 두고, 방금 누른 줄을 반짝
+  const body = $('#winB');
+  const tabOf = (root: ParentNode) => root.querySelector('.tabs .tab.on')?.textContent ?? '';
+  const same = was && $('#winT').textContent === title;
+  const top = body.scrollTop;
+  const lefts = [...body.querySelectorAll<HTMLElement>('.tabs')].map((t) => t.scrollLeft);
+  const tabBefore = tabOf(body);
+  body.innerHTML = html;
+  if (same && tabOf(body) === tabBefore) {
+    body.scrollTop = top;
+    body.querySelectorAll<HTMLElement>('.tabs').forEach((t, i) => (t.scrollLeft = lefts[i] ?? 0));
+    flashPressed(body);
+  } else body.scrollTop = 0;
+  lastPress = null;
   splitFoot();
   $('#win').className = 'win px on ' + cls;
   showHead(title);

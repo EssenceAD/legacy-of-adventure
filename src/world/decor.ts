@@ -1,6 +1,7 @@
 // TOWN T2: 꾸미기 — 길 붓(재질 5) · 바닥(4 + 연못) · 자동 길 켜고 끄기 · 여러 장식 한 번에 옮기기 · 되돌리기 10단계
 //  칠한 칸은 P.decor.paint["x,y"] = 코드 (내 마을만 · 저장에 함께). 연못은 걸을 수 없고 그 위엔 못 짓는다
 import { def } from '../data/catalog';
+import { patchTiles } from './ground';
 import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
 import { canPlace, inLand, rebuildPaths, spriteFor } from './town';
@@ -71,14 +72,20 @@ export function paintTile(x: number, y: number, code: PaintCode | null): boolean
   if (stroke && !stroke.tiles.has(k)) stroke.tiles.set(k, prev);
   if (code) P.decor.paint[k] = code;
   else delete P.decor.paint[k];
-  rebuildPaths();
-  markDirty();
+  // HOTFIX19 §1: 붓질 중엔 그 칸(+둘레)만 덧그리고, 길 다시 계산·저장은 손을 뗀 뒤 한 번
+  if (stroke) patchTiles([[x, y]]);
+  else {
+    rebuildPaths();
+    markDirty();
+  }
   return true;
 }
 export function endStroke() {
   const s = stroke;
   stroke = null;
   if (!s || !s.tiles.size) return;
+  rebuildPaths();
+  markDirty();
   const tiles = s.tiles;
   pushUndo({
     label: s.code ? `${PAINT_NAME[s.code]} 칠하기` : '지우기',
@@ -159,6 +166,9 @@ export const decorView = {
   sel: null as null | { x0: number; y0: number; x1: number; y1: number },
   picked: [] as Building[],
   ghost: null as null | { dx: number; dy: number; ok: boolean },
+  /** HOTFIX19 §2: 붓·바닥·지우개를 들면 건물·장식·나무를 반투명으로 (토글 · 기본 켬) */
+  fade: false,
+  fadeOn: true,
 };
 /** 고른 장식 모두 좌우 반전 (발판이 정사각형이라 자리는 그대로) */
 export function flipGroup(group: Building[]): string | null {

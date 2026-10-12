@@ -28,6 +28,8 @@ export function enterDecor() {
 }
 export function exitDecor() {
   decorView.on = false;
+  decorView.fade = false;
+  loupeOff();
   decorView.picked = [];
   decorView.sel = null;
   decorView.hover = null;
@@ -55,8 +57,10 @@ function draw() {
             : '<span class="hint">칠한 칸을 문지르면 지워져요</span>';
   bar.innerHTML = `<div class="dt">${TOOLS.map(([t, n]) => `<button class="tl ${ui.tool === t ? 'on' : ''}" data-tool="${t}">${n}</button>`).join('')}</div>
     <div class="ds">${sub}</div>
-    <div class="dd"><button data-act="grid" class="${decorView.grid ? 'on' : ''}">격자 ${decorView.grid ? '켬' : '끔'}</button><button data-act="auto" class="${autoPathOn() ? 'on' : ''}">자동 길 ${autoPathOn() ? '켬' : '끔'}</button><button data-act="undo" ${canUndo() ? '' : 'disabled'} title="${undoLabel()}">↶ 되돌리기</button><button data-act="build">＋ 놓기</button><button data-act="exit" class="ex">✓ 다 했어요</button></div>`;
+    <div class="dd"><button data-act="fade" class="${decorView.fadeOn ? 'on' : ''}">건물 흐리게 ${decorView.fadeOn ? '켬' : '끔'}</button><button data-act="grid" class="${decorView.grid ? 'on' : ''}">격자 ${decorView.grid ? '켬' : '끔'}</button><button data-act="auto" class="${autoPathOn() ? 'on' : ''}">자동 길 ${autoPathOn() ? '켬' : '끔'}</button><button data-act="undo" ${canUndo() ? '' : 'disabled'} title="${undoLabel()}">↶ 되돌리기</button><button data-act="build">＋ 놓기</button><button data-act="exit" class="ex">✓ 다 했어요</button></div>`;
   bar.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => (b.onclick = () => ((ui.tool = b.dataset.tool as Tool), (decorView.sel = null), draw())));
+  // HOTFIX19 §2: 붓·바닥·지우개를 들면 건물 흐리게
+  decorView.fade = ui.tool === 'path' || ui.tool === 'ground' || ui.tool === 'erase';
   bar.querySelectorAll<HTMLElement>('[data-mat]').forEach((b) => (b.onclick = () => ((ui.path = b.dataset.mat as PaintCode), draw())));
   bar.querySelectorAll<HTMLElement>('[data-gk]').forEach((b) => (b.onclick = () => ((ui.ground = b.dataset.gk as PaintCode), draw())));
   bar.querySelectorAll<HTMLElement>('[data-act]').forEach(
@@ -64,6 +68,7 @@ function draw() {
       (b.onclick = () => {
         const a = b.dataset.act;
         if (a === 'grid') decorView.grid = !decorView.grid;
+        if (a === 'fade') decorView.fadeOn = !decorView.fadeOn;
         if (a === 'auto') {
           setAutoPath(!autoPathOn());
           toast(autoPathOn() ? '자동 길: 건물마다 여관까지 길이 저절로 깔려요' : '자동 길 끔: 길 붓으로 직접 그려요');
@@ -92,11 +97,65 @@ function draw() {
 
 let drag: null | { kind: 'paint' } | { kind: 'sel' } | { kind: 'group'; x: number; y: number } = null;
 const tile = (fx: number, fy: number): [number, number] => [Math.floor(fx), Math.floor(fy)];
+let lastTile: [number, number] | null = null;
+/** 두 칸 사이를 잇는 칸들 (브레젠험) */
+export function lineTiles(a: [number, number], b: [number, number]): [number, number][] {
+  const out: [number, number][] = [];
+  let [x0, y0] = a;
+  const [x1, y1] = b;
+  const dx = Math.abs(x1 - x0);
+  const dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  for (let n = 0; n < 200; n++) {
+    out.push([x0, y0]);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x0 += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+  return out;
+}
+// HOTFIX19 §2: 손가락 위쪽 돋보기 (손가락에 가려진 칸을 크게)
+let loupeCv: HTMLCanvasElement | null = null;
+function loupe(cx: number, cy: number) {
+  const scene = document.getElementById('scene') as HTMLCanvasElement | null;
+  if (!scene) return;
+  if (!loupeCv) {
+    loupeCv = document.createElement('canvas');
+    loupeCv.id = 'loupe';
+    loupeCv.width = loupeCv.height = 96;
+    document.body.appendChild(loupeCv);
+  }
+  const r = scene.getBoundingClientRect();
+  const kx = scene.width / r.width;
+  const ky = scene.height / r.height;
+  const src = 24;
+  const g = loupeCv.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, 96, 96);
+  g.drawImage(scene, (cx - r.left) * kx - src * kx, (cy - r.top) * ky - src * ky, src * 2 * kx, src * 2 * ky, 0, 0, 96, 96);
+  g.strokeStyle = '#ffd36b';
+  g.strokeRect(44, 44, 8, 8);
+  loupeCv.style.left = `${cx - 48}px`;
+  loupeCv.style.top = `${cy - 150}px`;
+  loupeCv.hidden = false;
+}
+function loupeOff() {
+  if (loupeCv) loupeCv.hidden = true;
+}
 const codeNow = (): PaintCode | null => (ui.tool === 'path' ? ui.path : ui.tool === 'ground' ? ui.ground : null);
 export const decorInput = {
   /** 이 손가락을 꾸미기가 가져가나 (손 도구면 화면 이동·누르기는 평소대로) */
   wants: () => decorView.on && ui.tool !== 'hand',
-  down(fx: number, fy: number) {
+  down(fx: number, fy: number, cx?: number, cy?: number) {
     const [x, y] = tile(fx, fy);
     if (ui.tool === 'select') {
       const onPicked = decorView.picked.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
@@ -113,15 +172,19 @@ export const decorInput = {
     }
     drag = { kind: 'paint' };
     beginStroke(codeNow());
-    this.move(fx, fy);
+    // HOTFIX19 §1: 누르는 순간 그 칸을 바로 칠한다
+    lastTile = null;
+    this.move(fx, fy, cx, cy);
   },
-  move(fx: number, fy: number) {
+  move(fx: number, fy: number, cx?: number, cy?: number) {
     const [x, y] = tile(fx, fy);
     decorView.hover = [x, y];
     if (!drag) return;
     if (drag.kind === 'paint') {
-      const why = paintWhy(x, y, codeNow());
-      if (!why) paintTile(x, y, codeNow());
+      // HOTFIX19 §1: 빠르게 그어도 칸이 비지 않게 — 지난 칸에서 지금 칸까지 이어서
+      for (const [tx, ty] of lineTiles(lastTile ?? [x, y], [x, y])) if (!paintWhy(tx, ty, codeNow())) paintTile(tx, ty, codeNow());
+      lastTile = [x, y];
+      if (cx != null && cy != null) loupe(cx, cy);
     } else if (drag.kind === 'sel' && decorView.sel) {
       decorView.sel.x1 = x;
       decorView.sel.y1 = y;
@@ -135,7 +198,10 @@ export const decorInput = {
     const d = drag;
     drag = null;
     if (!d) return;
-    if (d.kind === 'paint') endStroke();
+    if (d.kind === 'paint') {
+      endStroke();
+      loupeOff();
+    }
     if (d.kind === 'sel' && decorView.sel) {
       const s = decorView.sel;
       decorView.picked = decosIn(s.x0, s.y0, s.x1, s.y1);

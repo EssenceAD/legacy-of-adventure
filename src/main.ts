@@ -405,7 +405,7 @@ function bindInput() {
       decorDrag = true;
       drag = null;
       moved = true;
-      decorInput.down(fx, fy);
+      decorInput.down(fx, fy, e.clientX, e.clientY);
       cv.setPointerCapture?.(e.pointerId);
       return;
     }
@@ -427,7 +427,7 @@ function bindInput() {
     }
     if (decorDrag || (decorInput.wants() && e.pointerType === 'mouse')) {
       const [fx, fy] = toTile(cv, e.clientX, e.clientY);
-      decorInput.move(fx, fy);
+      decorInput.move(fx, fy, e.clientX, e.clientY);
       if (decorDrag) return;
     }
     if (!drag) return;
