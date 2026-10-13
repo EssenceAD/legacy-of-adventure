@@ -60,7 +60,7 @@ async function finishedRun(p) {
     const T = (ms) => new Promise((r) => setTimeout(r, ms));
     const P = window.__P, w = window.__world;
     const ms = w.actors.filter((x) => (x.status === 'regular' || x.status === 'hero') && x.runId == null && !x.leaving).slice(0, 3);
-    const q = P.quests.list.find((x) => !x.tutorial) ?? P.quests.list[0];
+    const q = P.quests.list.find((x) => !x.tutorial && !x.guild) ?? P.quests.list[0];
     P.quests.list.push({ ...q, id: 990100 });
     P.runs = P.runs.filter((r) => !r.result);
     const id = 990003;
