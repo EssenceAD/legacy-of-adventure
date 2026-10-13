@@ -1,4 +1,5 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
+import { flag } from './flags';
 import { vis } from './visual';
 import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
@@ -175,8 +176,18 @@ export function fullPartyHint(): string {
 }
 
 /** 원정에 보낼 수 있나 (단골·영웅, 체력 30 이상, 쉬는 중) */
+/** v0.25.2: 방문 중인 전설 = 파티에 「동행」으로 갈 수 있다 (status 'visitor' 그대로 · 단골 수엔 안 셈) */
+export const isCompanion = (a: Actor): boolean => flag('legendCompanion') && !!a.legendId && a.status === 'visitor' && P.legends?.[a.legendId]?.st === 'visit';
+/** 「동행 · 방문 중 n일」 (남은 방문 시간) */
+export function companionText(a: Actor): string {
+  const left = Math.max(0, (P.legends[a.legendId!]?.until ?? 0) - Date.now());
+  const h = Math.ceil(left / 36e5);
+  return `동행 · 방문 중 ${h >= 24 ? `${Math.ceil(h / 24)}일` : `${h}시간`}`;
+}
+/** 파티에 낄 수 있는 사람인가 (단골 · 영웅 · 방문 중인 전설) */
+export const partyEligible = (a: Actor): boolean => !a.role && (a.status === 'regular' || a.status === 'hero' || isCompanion(a));
 export function canSend(a: Actor): string | null {
-  if (a.role || (a.status !== 'regular' && a.status !== 'hero')) return '방문 손님은 원정에 못 가요';
+  if (!partyEligible(a)) return '방문 손님은 원정에 못 가요';
   if (a.runId != null) return '원정 중';
   if (a.leaving) return '떠나는 중';
   if (a.hp < E.minHp) return `체력 ${E.minHp} 미만`;

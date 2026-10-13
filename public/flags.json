@@ -32,5 +32,6 @@
   "guestSortPin": false,
   "autoPathNone": false,
   "boardLevelUp": false,
-  "mythicGuide": false
+  "mythicGuide": false,
+  "legendCompanion": true
 }

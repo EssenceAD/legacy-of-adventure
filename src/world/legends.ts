@@ -252,7 +252,7 @@ export function tickLegends() {
       recruit(d.key);
       continue;
     }
-    if (now > (st.until ?? 0)) fail(d.key);
+    if (now > (st.until ?? 0) && legendActor(d.key)?.runId == null) fail(d.key);
   }
   checkRumors();
 }

@@ -16,7 +16,7 @@ import { BOSS_IMG, MOB_IMG, RAID_BG, scaled } from '../engine/assets';
 import { P as Paint } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance, powerOf } from '../world/adventurers';
-import { powerTips } from '../world/expeditions';
+import { companionText, isCompanion, powerTips } from '../world/expeditions';
 import { featureChapter, guideHooks } from '../world/guide';
 import {
   best, clearStage, failStage, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, stageOpen, stopAuto, sweepStage, type HuntReward,
@@ -149,7 +149,7 @@ function openHuntPrep(r: RegionId, s: number) {
   // 직접 고친 파티가 아니면, 빈자리는 돌아온 단골 중 가장 센 순서로 채운다
   // PARTY §3: 4번째 자리가 막 열렸으면 그 칸은 비워 둔다 (반짝 · 직접 채워 보게)
   const fill = max > 3 && !P.meta.party4Seen ? 3 : max;
-  if (!manualPick) for (const a of crew) if (picked.length < fill && !picked.includes(a.id)) picked.push(a.id);
+  if (!manualPick) for (const a of crew) if (picked.length < fill && !picked.includes(a.id) && !isCompanion(a)) picked.push(a.id);
   const ms = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const rec = recPower(r, s);
   const pw = ms.length ? partyPower(ms) : 0;
@@ -162,7 +162,7 @@ function openHuntPrep(r: RegionId, s: number) {
   const rows = crew
     .map((a) => {
       const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
   // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위

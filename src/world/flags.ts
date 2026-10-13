@@ -70,6 +70,8 @@ export const FLAG_DEFAULTS = {
   boardLevelUp: false,
   /** v0.25.2 §H 신화 안내 한 줄 (도감 「신화」 탭 · 여정 지도 맨 위) */
   mythicGuide: false,
+  /** v0.25.2 버그: 방문 중인 전설도 의뢰·사냥 파티에 「동행 · 방문 중」으로 (루나 부탁) — 단골 자리엔 안 셈 · 다녀와도 방문객 · 방문 시간은 계속 흐름 */
+  legendCompanion: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

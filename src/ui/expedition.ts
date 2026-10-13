@@ -18,6 +18,7 @@ import { departParty, returnParty } from '../world/actors';
 import {
   activeRuns, boardLevel, boardState, fullPartyHint, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
   partyMax,
+  isCompanion, companionText, partyEligible,
 } from '../world/expeditions';
 import { equip, itemPower } from '../world/items';
 import { floatW } from '../world/fx';
@@ -41,7 +42,7 @@ const TIER = CONFIG.expedition.tierNames;
 const homeActors = () => world.home?.actors ?? world.actors;
 
 /** 원정 갈 수 있는 손님 (단골·영웅) */
-const crew = () => homeActors().filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero') && !a.leaving);
+const crew = () => homeActors().filter((a) => partyEligible(a) && !a.leaving);
 
 function runRow(r: Run) {
   const reg = regionById(r.quest.region);
@@ -199,7 +200,7 @@ function openParty(q: Quest, picked: number[] = []) {
     .map((a) => {
       const why = canSend(a);
       const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${isCompanion(a) && !why ? `${companionText(a)} · ` : ''}${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
   const pmin = partyMinFor(q);

@@ -1,5 +1,6 @@
 // 5단계 2장: 사냥 — 지역별 10스테이지(x-10 = 지역 보스). 파밍 → 강해짐 → 다음 스테이지
 // 깬 스테이지는 자동 사냥으로 반복, 꺼져 있어도 가장 높은 스테이지 기준 방치 보상(방치 상한 안에서, 원정과 합산)
+import { partyEligible } from './expeditions';
 import { mythicHuntWin } from './mythic';
 import { BOSSES } from '../data/bosses';
 import { buffOf } from './facilities';
@@ -66,7 +67,7 @@ export const partyPower = (ms: Actor[]) => {
 };
 
 /** 사냥에 갈 수 있는 손님 (단골·영웅, 원정 중 아님) */
-export const huntCrew = () => homeActors().filter((a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero') && a.runId == null);
+export const huntCrew = () => homeActors().filter((a) => partyEligible(a) && !a.leaving && a.runId == null);
 
 export interface HuntReward {
   gold: number;
