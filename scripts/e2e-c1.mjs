@@ -118,14 +118,18 @@ async function run(mode) {
   ok(await p.evaluate(() => window.__combat.field().auto), 'AUTO 켜짐');
   await p.locator('#cbGiveUp').click();
   await p.waitForTimeout(150);
-  ok(await p.evaluate(() => !document.querySelector('#cbPause').hidden && !window.__combat.field().done && /한 번 더/.test(document.querySelector('#cbGiveUp').textContent)), '포기 한 번 → 「한 번 더」 (아직 진행)');
+  ok(await p.evaluate(() => !window.__combat.field().done && (/한 번 더/.test(document.querySelector('#cbGiveUp').textContent) || !!document.querySelector('.csheet.on #cshOk'))), '포기 한 번 → 「한 번 더」 또는 확인 시트 (아직 진행)');
+  await p.locator('.csheet.on #cshNo').click({ timeout: 800 }).catch(() => {});
+  await p.waitForTimeout(300);
   await p.locator('#cbResume').click();
   await p.waitForTimeout(1200);
   const t3 = await p.evaluate(() => window.__combat.field()?.time);
   ok(t3 < t2, `계속 → 시간 다시 흐름 (${t2} → ${t3})`);
   await p.locator('#cbQuit').click();
   await p.locator('#cbGiveUp').click();
-  await p.locator('#cbGiveUp').click();
+  await p.waitForTimeout(550);
+  if (await p.locator('.csheet.on #cshOk').count()) await p.locator('.csheet.on #cshOk').click();
+  else await p.locator('#cbGiveUp').click();
   await p.waitForTimeout(400);
   ok(await p.evaluate(() => window.__combat.field()?.quit === true), '포기 두 번 → 포기');
   await p.waitForTimeout(3000);
@@ -157,6 +161,8 @@ async function run(mode) {
   ok(await p.evaluate(() => !document.querySelector('#ssOv') && !window.__ss.on()), '누르면 해제');
   ok((await title()) === '다녀오셨어요', '해제 → 요약 카드');
   await p.screenshot({ path: `${OUT}/${mode}_saver_back.png` });
+  // 화면 보호 동안 쌓인 이야기 대사가 요약 카드 위에 뜰 수 있다 → 넘기고 누른다 (NIGHT_LOG: 다듬을 것)
+  await p.evaluate(async () => { for (let i = 0; i < 30 && !document.querySelector('#dlg').hidden; i++) { document.querySelector('#dlg').click(); await new Promise((r) => setTimeout(r, 150)); } });
   await p.locator('#ssOk').click();
   await p.waitForTimeout(300);
 

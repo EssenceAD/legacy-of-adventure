@@ -147,13 +147,13 @@ const winTitle = (p) => p.evaluate(() => (document.querySelector('#win').classLi
   await hidden(() => document.body.classList.add('uihide'), () => document.body.classList.remove('uihide'), 'UI 끄기(body.uihide)');
   await hidden(() => document.body.classList.add('ssaver'), () => document.body.classList.remove('ssaver'), '화면 보호(body.ssaver)');
   // 설정 「건물 알림 말풍선」 끔 — 설정 창의 줄로
-  await p.evaluate(() => window.__openSettings?.());
+  await p.evaluate(() => window.__openSettings?.('noti'));
   const row = await p.evaluate(() => !!document.getElementById('mBldBub'));
   if (row) {
     await p.evaluate(() => { const c = document.getElementById('mBldBub'); c.checked = false; c.onchange(); });
     await clear(p);
     ok((await spots(p)).length === 0, '설정 끔: 말풍선 없음');
-    await p.evaluate(async () => { window.__openSettings(); const c = document.getElementById('mBldBub'); c.checked = true; c.onchange(); });
+    await p.evaluate(async () => { window.__openSettings('noti'); const c = document.getElementById('mBldBub'); c.checked = true; c.onchange(); });
     await clear(p);
   }
   ok(row, '설정에 「건물 알림 말풍선」 줄');

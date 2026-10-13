@@ -103,6 +103,9 @@ ok(!(await card()) && !(await dlgOn()), '전투 중엔 제안이 다시 뜨지 �
 await p.locator('#cbQuit').click({ timeout: 3000 }).catch(() => {});
 await W(300);
 await p.locator('#cbGiveUp').click({ timeout: 3000 }).catch(() => {});
+// v0.25.5: 실험실이면 J4 확인 시트(아래) · C1 「한 번 더」 — 둘 다 넘긴다
+await p.waitForTimeout(550); // J4 시트 [확인]은 열린 뒤 0.35초 동안 안 눌림 (연타 방지)
+await p.locator('#cshOk').click({ timeout: 800 }).catch(() => p.locator('#cbGiveUp').click({ timeout: 800 }).catch(() => {}));
 await W(2500);
 await p.evaluate(() => { const bs = [...document.querySelectorAll('#cbRes button')]; (bs.find((x) => /마을|닫기|돌아/.test(x.textContent)) ?? bs[bs.length - 1])?.click(); });
 await W(800);
