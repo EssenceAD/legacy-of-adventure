@@ -78,6 +78,16 @@ export const FLAG_DEFAULTS = {
   harmonyLabels: true,
   /** v0.25.3 K9 (고느끼 건의) 손님·영웅 상세 창에 [선물하기] — 마을 작은 메뉴와 같은 선물 고르기 */
   heroDetailGift: true,
+  /** v0.25.4 CHECKIN §J4 뒤로가기 한 규칙 (형철 확인 전엔 꺼짐 · vis) — 폰 뒤로가기·Esc·창 밖 누르기 = 맨 위 창(확인 시트·인물 메뉴·창) 하나만 닫기 · 창이 없으면 아무것도 안 함(게임 밖으로 안 나감 · 전투 중엔 일시정지) */
+  backRule: false,
+  /** v0.25.4 CHECKIN §J4 엄지 자리 (형철 확인 전엔 꺼짐 · vis) — 자주 누르는 버튼(모두 받기·출발)을 창 아래 버튼 줄(#winF)로 */
+  thumbZone: false,
+  /** v0.25.4 CHECKIN §J4 누르는 느낌 (형철 확인 전엔 꺼짐 · vis) — 버튼 0.08초 눌림 + 안드로이드 짧은 진동(설정 「진동」 haptics · 기본 켬) */
+  pressFeel: false,
+  /** v0.25.4 CHECKIN §J4 남은 시간 막대 (형철 확인 전엔 꺼짐 · vis) — 건설 공사 칸을 기존 막대 그림(bar_frame)으로 · 남은 시간은 작은 글자로 옆에 */
+  timeBars: false,
+  /** v0.25.4 CHECKIN §J4 되돌릴 수 없는 행동 확인 시트 하나 (형철 확인 전엔 꺼짐 · vis) — 판매·분해·재련·포기·철거·작별·계정 삭제를 아래에서 올라오는 시트로 */
+  confirmSheet: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

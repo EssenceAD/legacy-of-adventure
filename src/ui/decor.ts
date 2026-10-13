@@ -11,6 +11,8 @@ import { markDirty, P, S } from '../world/state';
 import { placing } from '../world/town';
 import { track as trackEv } from '../net/telemetry';
 import { buildHooks, closeWin, isWinOpen, openBuild, openWin, thumbOf, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { vis } from '../world/visual';
 import { cancelPlace, rotatePlacement, startMoveEntrance, startPlace, startTakeOut } from './hud';
 import { esc } from './common';
 import { syncHud } from '../game';
@@ -222,9 +224,12 @@ export function openStore() {
   );
   document.querySelectorAll<HTMLElement>('#winB [data-sell]').forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = async () => {
         const s = list[+b.dataset.sell!];
-        if (b.dataset.sure !== '1') {
+        // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 (판매 = 빨강)
+        if (vis('confirmSheet')) {
+          if (!(await confirmSheet({ title: `${def(s.kind).name}${s.lvl > 1 ? ` Lv.${s.lvl}` : ''}을(를) 팔까요?`, body: `받는 금화 💰${refundOfStored(s).toLocaleString('ko-KR')} · 판 건물은 돌아오지 않아요`, ok: '팔기', danger: true }))) return;
+        } else if (b.dataset.sure !== '1') {
           // 실수 방지: 한 번 더 눌러야 판다
           b.dataset.sure = '1';
           b.textContent = `정말 팔기 💰${refundOfStored(s).toLocaleString('ko-KR')}`;

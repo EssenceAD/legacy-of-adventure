@@ -6,6 +6,8 @@ import { bulkPreview, salvageBulk } from '../world/craft';
 import { markDirty, P } from '../world/state';
 import { $, $$, fmt } from './common';
 import { openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { vis } from '../world/visual';
 
 const GRADES: Grade[] = ['n', 'r', 'e', 'l', 'a'];
 let armed = false;
@@ -50,8 +52,12 @@ export function openBulkSalvage(back: () => void) {
   );
   ($('#bkUp') as HTMLInputElement).onchange = save;
   ($('#bkBest') as HTMLInputElement).onchange = save;
-  $('#bkGo').onclick = () => {
-    if (!armed) {
+  $('#bkGo').onclick = async () => {
+    // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 하나
+    if (vis('confirmSheet')) {
+      const warn = rare.length ? `\n⚠${rare.map((g) => `${GRADE_INFO[g].name} ${pv[g].n}개`).join(' · ')} 포함` : '';
+      if (!(await confirmSheet({ title: `장비 ${total}개를 분해할까요?`, body: (totalLine(sel, pv) || '얻을 가루 없음') + warn, ok: '분해하기', danger: true }))) return;
+    } else if (!armed) {
       armed = true;
       return openBulkSalvage(back);
     }

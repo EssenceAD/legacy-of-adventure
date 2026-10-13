@@ -30,6 +30,8 @@ import { talk } from './dialogue';
 import { startMove, startPlace } from './hud';
 import { cheerCon, cheerReady, clock, conLeft, conProgress } from '../world/construct';
 import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolish';
+import { confirmSheet } from './confirmSheet';
+import { initPressFeel } from './pressFeel';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -99,6 +101,49 @@ function dropHist(n: number) {
   ignorePop++;
   history.go(-go);
 }
+// ───────── CHECKIN §J4 뒤로가기 한 규칙 (플래그 backRule · 확인 시트는 confirmSheet) ─────────
+/** 창 위에 뜨는 작은 층 (확인 시트 · 인물 메뉴): 뒤로·Esc는 맨 위 층부터 하나만 닫는다 */
+const layers: (() => void)[] = [];
+/** 층 하나 올리기 → 돌려받은 함수로 목록에서 뺀다 (층이 스스로 닫힐 때) */
+export function pushLayer(close: () => void): () => void {
+  layers.push(close);
+  return () => {
+    const i = layers.indexOf(close);
+    if (i >= 0) layers.splice(i, 1);
+  };
+}
+function closeTopLayer(): boolean {
+  const f = layers[layers.length - 1];
+  if (!f) return false;
+  f();
+  // 닫기 함수가 스스로 빼지 않았으면 여기서
+  const i = layers.indexOf(f);
+  if (i >= 0) layers.splice(i, 1);
+  return true;
+}
+export const layerOpen = () => layers.length > 0;
+/**
+ * backRule: 창 항목 밑에 「바닥」 항목 하나 — 창이 없을 때 뒤로가기를 눌러도 게임 페이지 밖으로 나가지 않게.
+ *  사용자가 화면을 누를 때(사용자 활성화가 있어야 브라우저가 뒤로가기에서 건너뛰지 않는다) 바닥이 없으면 깐다.
+ */
+const isGuard = () => !!(history.state as { legacyGuard?: number } | null)?.legacyGuard;
+function ensureGuard() {
+  if (!vis('backRule') || histDepth || ignorePop || queuedPush || isWinOpen() || isGuard()) return;
+  try {
+    history.pushState({ legacyWin: 0, legacyGuard: 1 }, '');
+  } catch {
+    /* 무시 */
+  }
+}
+/** 뒤로가기로 빠진 항목을 그 자리에 다시 쌓는다 (깊이는 그대로) */
+function rePush() {
+  try {
+    history.pushState(histDepth ? { legacyWin: histDepth } : { legacyWin: 0, legacyGuard: 1 }, '');
+  } catch {
+    /* 무시 */
+  }
+}
+
 function showHead(title: string) {
   $('#winT').textContent = title;
   const hp = helpHook.page(title);
@@ -192,8 +237,15 @@ function splitFoot() {
     }
     foot.append(...take);
   }
+  // J4 thumbZone: 자주 누르는 버튼(모두 받기 · 출발 · 토벌 결과 다시 하기)이 몸 위쪽에 있으면 발(화면 아래 1/3)로
+  if (vis('thumbZone')) {
+    const thumb = body.querySelectorAll<HTMLElement>(THUMB);
+    if (thumb.length) foot.prepend(...thumb);
+  }
   foot.hidden = !foot.childElementCount;
 }
+/** J4 엄지 자리로 옮길 것: 목표·업적 「모두 받기」 · 우편 「모두 받기」 줄 · 첫 흐름(firstFlowFix) 원정 [추천·출발] 줄 · 창으로 뜬 토벌 결과 [다시 하기] */
+const THUMB = ':scope > .claimall, :scope > .btnrow:has(#mlAll), :scope > .recb.ffTop:has(#pGo), :scope > .res > .go:last-child';
 
 /** ← 뒤로: 직전 창으로 (없으면 닫기) */
 export function winBack(fromPop = false) {
@@ -267,10 +319,26 @@ export function initWindows() {
   $('#scrim').onclick = () => {
     if (flag('tapV2') && performance.now() - openedAt < 450) return;
     if ($('#winB').querySelector('input[type=text], input:not([type]), textarea')) return;
+    // J4 backRule: 바깥 누르기도 Esc·뒤로가기처럼 맨 위 창 하나만 (쌓인 창이 있으면 ← 뒤로)
+    if (vis('backRule') && stack.length && !winLocked) return winBack();
     userClose();
   };
   $('#winX').onclick = userClose;
   $('#winBack').onclick = () => winBack();
+  // J4: 맨 위 작은 층(확인 시트 · 인물 메뉴)이 있으면 Esc는 그것만 닫는다 (밑의 창·전투 키까지 가지 않게 · 층이 없으면 예전 그대로)
+  addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Escape' || !layers.length) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      closeTopLayer();
+    },
+    true,
+  );
+  // J4 backRule: 화면을 누를 때 뒤로가기 바닥 항목 깔기
+  addEventListener('pointerdown', ensureGuard, { capture: true, passive: true });
+  initPressFeel();
   // PC: Esc 한 단계씩
   addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !isWinOpen()) return;
@@ -286,7 +354,18 @@ export function initWindows() {
       if (!ignorePop) flushQueuedPush();
       return;
     }
-    if (!isWinOpen()) return;
+    // J4: 맨 위 작은 층부터 하나만 닫고, 빠진 항목은 다시 쌓는다 (밑의 창은 그대로)
+    if (layers.length) {
+      closeTopLayer();
+      return rePush();
+    }
+    if (!isWinOpen()) {
+      // J4 backRule: 창이 없으면 아무것도 안 함 — 바닥 항목을 다시 깔고, 전투·꾸미기·사진 모드는 Esc와 같게(일시정지·나가기)
+      if (!vis('backRule')) return;
+      rePush();
+      dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      return;
+    }
     if (winLocked) {
       // 꼭 골라야 하는 창: 뒤로가기로 닫히지 않게 다시 쌓는다
       histDepth = Math.max(0, histDepth - 1);
@@ -373,6 +452,16 @@ function openRemoveConfirm(o: Building) {
   if (fx.guests) warn.push(`안에 손님 ${fx.guests}명이 있어요. 문 밖으로 나와요.`);
   if (fx.harmonies.length) warn.push(`어울림이 깨져요: ${fx.harmonies.map(esc).join(', ')} (발견 기록은 남아요)`);
   if (o.kind === 'cottage') warn.push(fx.overflow ? `묵는 손님 ${fx.overflow}명은 방이 모자라 지나가는 손님이 돼요.` : '묵던 손님은 다른 빈 방으로 옮겨요.');
+  // J4 confirmSheet: 철거 확인도 아래 확인 시트 하나로 (건물 창은 그대로 · 그만두면 시트만 닫힘)
+  if (vis('confirmSheet')) {
+    const gold = o.fromProp ? 0 : r.gold;
+    void confirmSheet({ title: `${name} ${eul(name)} 철거할까요?`, body: [`돌려받는 금화 💰 ${fmt(gold)}`, ...warn.map((w) => `⚠ ${w}`)].join('\n'), ok: '철거하기', danger: true }).then((ok) => {
+      if (!ok) return;
+      closeWin();
+      game.demolish(o);
+    });
+    return;
+  }
   const refund = o.fromProp
     ? `<p class="rmgold">돌려받는 금화: 💰 0</p><p class="note">마을 등급 장식이라 금화는 없고, 원래 자리로 돌아가진 않아요</p>`
     : `<p class="rmgold">돌려받는 금화: 💰 ${fmt(r.gold)}</p><p class="note">${r.full ? '방금(5분 안) 지은 건물이라 전액 돌려받아요' : '지은 값 + 올린 값의 50%'}</p>`;
@@ -670,9 +759,16 @@ export function showObj(o: Building) {
 function conPanel(o: Building): string {
   const c = o.con!;
   const what = c.kind === 'up' ? `Lv.${c.to} 공사 중` : '짓는 중';
-  return `<div class="conp"><b>🔨 ${what}</b><div class="cbar"><i style="width:${Math.round(conProgress(o) * 100)}%"></i></div><span class="ct" id="conT">${clock(conLeft(o))}</span>
+  return `<div class="conp"><b>🔨 ${what}</b>${conBar(o)}
     <p class="note">빨리 짓기는 건물을 톡톡!${c.cut ? ` <b>톡톡 ×${c.cut}</b>` : ''}${c.kind === 'up' ? ' · 공사 중에도 건물은 그대로 일해요' : ''}</p>
     ${cheerReady() ? '<button class="bigbtn sm" id="conCheer">📮 모모의 응원 · 바로 완성 (하루 1번)</button>' : '<p class="note">모모의 응원은 내일 다시 쓸 수 있어요</p>'}</div>`;
+}
+/** J4 timeBars: 공사 막대를 다른 진행 막대(.pbar · bar_frame 그림)와 같게 + 남은 시간은 옆에 작은 글자 (시계 그림은 아직 없음) · 끄면 예전 큰 글자 */
+function conBar(o: Building): string {
+  const w = Math.round(conProgress(o) * 100);
+  return vis('timeBars')
+    ? `<div class="pbar conbar"><i><b style="width:${w}%"></b></i><em class="ct" id="conT">${clock(conLeft(o))}</em></div>`
+    : `<div class="cbar"><i style="width:${w}%"></i></div><span class="ct" id="conT">${clock(conLeft(o))}</span>`;
 }
 function bindConPanel(o: Building) {
   const ch = document.getElementById('conCheer');
@@ -693,7 +789,7 @@ function bindConPanel(o: Building) {
       return;
     }
     el.textContent = clock(conLeft(o));
-    const bar = document.querySelector('.conp .cbar i') as HTMLElement | null;
+    const bar = document.querySelector('.conp .cbar i, .conp .conbar i b') as HTMLElement | null;
     if (bar) bar.style.width = `${Math.round(conProgress(o) * 100)}%`;
   }, 500);
 }

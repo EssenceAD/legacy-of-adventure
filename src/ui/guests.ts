@@ -32,6 +32,7 @@ import { getPref, setPref } from '../save/save';
 import { uniqueById } from '../world/uniques';
 import { enhMsg, enhUse, openEnhance } from './enhance';
 import { closeWin, glowOnce, openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
 
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -262,6 +263,25 @@ export function showActor(a: Actor) {
   const bye = document.getElementById('aBye');
   if (bye)
     bye.onclick = () => {
+      const doBye = () => {
+        byeArmed = 0;
+        if (a.status === 'regular') {
+          const line = farewell(a);
+          if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
+        } else if (checkout(a)) toast(`${a.name} 체크아웃`);
+        closeWin();
+      };
+      // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 하나 (작별 = 빨강)
+      if (visOn('confirmSheet')) {
+        const reg = a.status === 'regular';
+        void confirmSheet({
+          title: reg ? `${a.name}${josa(a.name, '와')} 작별할까요?` : `${a.name}${josa(a.name, '을')} 내보낼까요?`,
+          body: reg ? `끼고 있던 장비는 가방으로 돌아와요 · ${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : '오늘 밤 체크아웃해요',
+          ok: reg ? '작별하기' : '내보내기',
+          danger: reg,
+        }).then((ok) => ok && doBye());
+        return;
+      }
       // 실수 방지: 창 안에서 한 번 더 누르기
       if (byeArmed !== a.id) {
         byeArmed = a.id;
@@ -269,12 +289,7 @@ export function showActor(a: Actor) {
         bye.classList.add('red');
         return;
       }
-      byeArmed = 0;
-      if (a.status === 'regular') {
-        const line = farewell(a);
-        if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
-      } else if (checkout(a)) toast(`${a.name} 체크아웃`);
-      closeWin();
+      doBye();
     };
 }
 
@@ -503,8 +518,10 @@ export function showItem(it: Item, back: () => void = openBag) {
     toast(enhMsg(it, r, before));
     showItem(it, back);
   };
-  $('#iSal').onclick = () => {
-    if (it.grade !== 'n' && !confirm(`${g.name} 장비를 분해할까요?`)) return;
+  $('#iSal').onclick = async () => {
+    // J4 confirmSheet: 희귀 이상은 아래 확인 시트 (끄면 예전 confirm 그대로)
+    if (it.grade !== 'n' && !(visOn('confirmSheet') ? await confirmSheet({ title: `${g.name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${g.name} 장비를 분해할까요?`))) return;
+    if (!P.bag.includes(it)) return;
     salvage(it);
     toast(`분해 · ${salvageText(it.grade)}`);
     back();

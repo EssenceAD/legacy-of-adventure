@@ -1908,3 +1908,29 @@ body.ui2 #winB #rmB{min-height:44px}
 :where(body.ui2) .pty-dex small{font-size:var(--fs-small)}
 :where(body.ui2) .chreg i{font-size:var(--fs-title)}
 /* ui2-fonts:end */
+
+/* ───────── CHECKIN §J4 (v0.25.4 · 전부 플래그 — 끄면 이 블록은 쓰이지 않는다) ───────── */
+/* confirmSheet: 아래에서 올라오는 확인 시트 (남색 기준판 .px · 버튼 기존 3종) — 0.22초 · 절전/흔들림 끔이면 바로(.quick) */
+.cshScrim{position:absolute;inset:0;z-index:200;background:rgba(5,6,20,.55);opacity:0;transition:opacity .2s ease}
+.cshScrim.on{opacity:1}
+.csheet{position:absolute;z-index:201;left:0;right:0;bottom:0;margin:0 auto;max-width:480px;padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateY(105%);transition:transform .22s ease-out;color:var(--cream);font-size:var(--f-ui)}
+.csheet.on{transform:none}
+.csheet.quick{transition:none}
+.csheet .csht{display:block;color:var(--gold);margin:2px 0 6px;text-shadow:1px 1px 0 var(--ink)}
+.csheet .sub{white-space:pre-line;margin:0}
+.cshrow{display:flex;gap:8px}.cshrow .bigbtn{flex:1 1 0;min-height:44px;margin-top:12px}
+.csheet #cshOk.red{color:#fff;background:#a8323a!important;border-image-source:none!important;border:0;box-shadow:0 0 0 2px var(--ink),inset 0 -3px 0 #6e1c22}
+/* thumbZone: 폰에서 전투·토벌 결과 카드를 화면 아래쪽으로 ([다시 하기]가 엄지 자리에) */
+html[data-size="phone"] body.j4thumb :is(.cbres,.rov){align-items:flex-end;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 28px)}
+#winF > .claimall{margin:0}
+#winF > .recb.ffTop{margin:0}
+#winF > .go{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* pressFeel: 누른 버튼 0.08초 이상 살짝 어둡게 · 9-slice 버튼은 1px 아래로 */
+body.j4press .prs:not([disabled]){filter:brightness(.82)}
+body.j4press :is(.bigbtn,.menu button,.irow button,#winF button,.tab,.mtile,.go button,.cshrow button).prs:not([disabled]){transform:translateY(1px)}
+/* timeBars: 공사 칸 막대 = 다른 진행 막대와 같은 bar_frame + 초록 채움 그림 · 남은 시간은 옆에 작은 글자 */
+.conp .conbar i b{background:var(--ui-bar-fill-grn) 0 0 / 100% 100%}
+.conp .conbar .ct{font-size:var(--f-small);color:#cfd8ff;text-align:right}
+#winF > .go button{border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--cream);min-height:44px;padding:6px 10px;cursor:pointer;font-weight:700}
+#winF > .go button.a:not([disabled]){border-image-source:var(--ui-btn-primary);color:var(--ink)}
+#winF > .go button[disabled]{border-image-source:var(--ui-btn-disabled);color:#8a8fa8}

@@ -18,6 +18,8 @@ import * as game from '../game';
 import { $, $$, bindTabs, esc, fmt, itemCell, leftText, liveWin, tabs } from './common';
 import { showItem } from './guests';
 import { appendMoveButton, openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { vis } from '../world/visual';
 import { enhMsg, enhUse, openEnhance, pityText } from './enhance';
 
 let craftRegion: RegionId = 'forest';
@@ -132,9 +134,11 @@ export function openSmith(o: Building, tab = smTab) {
   $$('#winB .ic[data-id]').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!, () => openSmith(o))));
   $$('[data-sal]').forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = async () => {
         const it = P.bag.find((x) => x.id === +b.dataset.sal!)!;
-        if (it.grade !== 'n' && !confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`)) return;
+        // J4 confirmSheet: 희귀 이상 분해는 아래 확인 시트 (끄면 예전 confirm 그대로)
+        if (it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
+        if (!P.bag.includes(it)) return;
         salvage(it);
         toast(`분해 · ${salvageText(it.grade)}`);
         openSmith(o);

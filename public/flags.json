@@ -36,5 +36,10 @@
   "legendCompanion": true,
   "firstFlowFix": false,
   "harmonyLabels": true,
-  "heroDetailGift": true
+  "heroDetailGift": true,
+  "backRule": false,
+  "thumbZone": false,
+  "pressFeel": false,
+  "timeBars": false,
+  "confirmSheet": false
 }

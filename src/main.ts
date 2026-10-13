@@ -3,6 +3,8 @@ import { openNotices } from './ui/notice';
 import { kstDay } from './world/goldsink';
 import { flag } from './world/flags';
 import { loadFlags } from './world/flags';
+import { vis } from './world/visual';
+import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
@@ -965,9 +967,11 @@ async function boot() {
     ver.textContent = `v${APP_VERSION} · 패치노트`;
     ver.onclick = () => void openPatchNotes();
   }
-  document.getElementById('tStart')!.onclick = () => {
+  document.getElementById('tStart')!.onclick = async () => {
     funnel('title_tap');
-    if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?')) return;
+    // J4 confirmSheet: 마을을 지우는 확인은 아래 확인 시트 (끄면 예전 confirm 그대로)
+    const ask = () => (vis('confirmSheet') ? confirmSheet({ title: '새 여관을 열까요?', body: '지금까지의 마을이 지워져요 (되돌릴 수 없어요)', ok: '새로 시작', danger: true }) : confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?'));
+    if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !(await ask())) return;
     game.newGame();
   };
   document.getElementById('tCont')!.onclick = () => game.continueGame();
