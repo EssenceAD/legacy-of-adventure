@@ -21,7 +21,8 @@ import { rollUnique } from './uniques';
 import { partySynMult, synDamageMult, synergyFx } from './synergy';
 import { roleMult } from './party';
 import type { Item } from './state';
-import { windRaid } from './wind';
+import { stripWind, windRaid } from './wind';
+import { flag } from './flags';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -322,10 +323,14 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
 }
 
 /** 랭킹용 기록 (주간 보스, 직접·자동 한 판만). 2차에서 서버로 */
-export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect): Promise<{ ok: boolean; reason?: string; online: boolean }> {
+export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect): Promise<{ ok: boolean; reason?: string; online: boolean; noWind?: boolean }> {
   if (t.kind !== 'weekly') return { ok: true, online: false };
-  const rec: RaidRecord = { week: P.raid.week, bossId: t.boss.id, damage, power: ex.power, theory: ex.theory, mode, at: Date.now() };
-  return submitOnline(rec);
+  // v0.24.2: 「전쟁의 소문」 바람 보정은 주간 랭킹 기록에서 뺀다 (전투에선 그대로)
+  const wm = flag('raidNoWind') ? windRaid() : 1;
+  const v = wm !== 1 ? stripWind(damage, ex.theory, wm) : { damage, theory: ex.theory };
+  const rec: RaidRecord = { week: P.raid.week, bossId: t.boss.id, damage: v.damage, power: ex.power, theory: v.theory, mode, at: Date.now() };
+  const r = await submitOnline(rec);
+  return wm !== 1 ? { ...r, noWind: true } : r;
 }
 
 /** 소탕: 한 번 처치한 보스는 결과만 바로 받기 (자동 기대 피해량 그대로) */

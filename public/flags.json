@@ -13,5 +13,8 @@
   "wayfindBubbles": true,
   "huntResolve": true,
   "stuckCard": true,
-  "todayPicks": true
+  "todayPicks": true,
+  "raidNoWind": true,
+  "accountDelete": true,
+  "innDecoObj": true
 }

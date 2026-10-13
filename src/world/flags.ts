@@ -31,6 +31,12 @@ export const FLAG_DEFAULTS = {
   stuckCard: true,
   /** WAYFIND §3 오늘 해 볼 만한 것 */
   todayPicks: true,
+  /** v0.24.2 랭킹 기록에서 「전쟁의 소문」 바람 보정 빼기 */
+  raidNoWind: true,
+  /** v0.24.2 HARVEST §3 계정 삭제 */
+  accountDelete: true,
+  /** v0.24.2 여관·주점 레벨 장식을 진짜 장식으로 */
+  innDecoObj: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

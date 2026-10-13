@@ -101,6 +101,11 @@ export const windPasser = () => (windIs('wayfarer') ? W().wayfarer.passer : 1);
 export const windRegularCut = () => (windIs('wayfarer') ? W().wayfarer.regularCut : 0);
 /** 전쟁: 토벌 피해 배수 · 원정 금화 배수 */
 export const windRaid = () => (windIs('war') ? 1 + W().war.raidDmg : 1);
+/** 랭킹 기록에서 바람 보정 빼기 — 실제 전투엔 그대로, 서버로 보내는 피해·이론치만 나눈다 (서버 이론치 검사도 같은 비율로 맞는다) */
+export function stripWind(damage: number, theory: number, mult: number): { damage: number; theory: number } {
+  const m = mult > 0 ? mult : 1;
+  return { damage: Math.round(damage / m), theory: Math.round(theory / m) };
+}
 export const windQuestGold = () => (windIs('war') ? 1 + W().war.questGold : 1);
 /** 고요: 기분이 떨어지는 양 배수 · 은퇴 목표 배수 */
 export const windMoodDecay = () => (windIs('calm') ? W().calm.moodDecay : 1);
