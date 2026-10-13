@@ -47,7 +47,7 @@ import { lookMem } from './engine/sprites';
 import { clampCam, N, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { settleOfflineCons } from './game';
-import { getPref, readSave, setPref, writeSave } from './save/save';
+import { getPref, readSave, savesHalted, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
@@ -102,7 +102,7 @@ import { announce, rumorNow } from './ui/chat';
 import { ensureGuest, initAuth, online } from './net/server';
 import * as SRV from './net/server';
 import * as SYNC from './net/sync';
-import { checkLastWeek, dailyStats, ownedByAccount, startCloud } from './net/sync';
+import { checkLastWeek, dailyStats, haltCloud as _haltCloud, ownedByAccount, startCloud } from './net/sync';
 import { dailyOwner, nightOwner } from './world/owner';
 import * as OWN from './world/owner';
 import { makeAdventurer, powerOf } from './world/adventurers';
@@ -114,7 +114,8 @@ import { navHooks } from './ui/nav';
 import { _huntAdvance, deepDefeat, openHunt, settleFolded } from './ui/hunt';
 import { openDex, openGoals } from './ui/book';
 import { skipDone } from './world/guide';
-import { afterLogin } from './ui/account';
+import { afterLogin, openAccount } from './ui/account';
+import { _delTest, openDelete } from './ui/accountDelete';
 import { loadServerNotices } from './ui/notice';
 import { catchStar, checkRumors, dawnCheck, judgeNight, showerLetter, starAvailable, tickLegends } from './world/legends';
 import { showStarCard, syncStarMark } from './ui/starfall';
@@ -1015,6 +1016,7 @@ async function boot() {
   // FEEDBACK23 e2e: 마을 입구 칸 · 던전 숲속 원래 자리
   if (import.meta.env.DEV) Object.assign(window, { __ent: () => entrance(), __autoEntX: () => autoEntranceX(), __dgHome: () => dungeonHome(), __hitAt: (cx: number, cy: number) => { const [mx, my] = toLogical(cv, cx, cy); const [fx, fy] = toTile(cv, cx, cy); return { sprite: buildingAt(mx, my, alphaAt)?.kind ?? null, floor: grid[Math.floor(fy)]?.[Math.floor(fx)]?.kind ?? null }; } });
   // GROWTH e2e: 손님(번호)·모모의 화면 좌표
+  if (import.meta.env.DEV) Object.assign(window, { __acctDel: { test: _delTest, open: openDelete, account: openAccount, me: SRV.me, halted: savesHalted, haltCloud: _haltCloud } });
   if (import.meta.env.DEV) Object.assign(window, { __actorXY: (id: number | string) => { const a = world.actors.find((x) => (id === 'momo' ? x.role === 'npc' : x.id === id)); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; } });
   if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __gradeProps: () => gradeProps().map((p) => ({ key: propKey(p), k: p.k, x: p.x, y: p.y })), __openManual: (k?: string) => openManual(k), __openMenu: () => openGridMenu(), __mythic: { seed: debugMythic, prog: mythicProgress }, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices, __abyss: _abyss, __dice: _dice, __pmenu: openPersonMenu,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다

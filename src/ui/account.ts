@@ -8,6 +8,7 @@ import { setPref } from '../save/save';
 import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
 import { $, esc, fmt } from './common';
+import { bindDeleteRow, deleteRowHtml } from './accountDelete';
 import { closeWin, isWinOpen, onWinClose, openWin, toast } from './windows';
 
 let tab: 'login' | 'signup' | 'recover' = 'login';
@@ -19,7 +20,10 @@ const field = (id: string, label: string, type = 'text', ph = '', extra = '') =>
   `<label>${label}<input id="${id}" type="${type}" placeholder="${ph}" autocomplete="off" autocapitalize="off" spellcheck="false" ${extra}></label>`;
 
 export function openAccount() {
-  if (!sb) return openWin('계정', '<p class="sub">서버에 연결할 수 없어요. 지금은 이 기기에만 저장돼요.</p>');
+  if (!sb) {
+    openWin('계정', '<p class="sub">서버에 연결할 수 없어요. 지금은 이 기기에만 저장돼요.</p>' + deleteRowHtml());
+    return bindDeleteRow(true);
+  }
   if (online()) return openMine();
   const tabs = `<div class="tabs"><button class="tab ${tab === 'login' ? 'on' : ''}" data-t="login">로그인</button><button class="tab ${tab === 'signup' ? 'on' : ''}" data-t="signup">가입</button><button class="tab ${tab === 'recover' ? 'on' : ''}" data-t="recover">비밀번호 찾기</button></div>`;
   let body = '';
@@ -31,7 +35,8 @@ export function openAccount() {
       <p class="note">가입하면 비밀번호를 잊었을 때 쓰는 <b>복구 코드</b>를 한 번 보여 드려요. 꼭 캡처해 두세요.</p>`;
   else
     body = `<form class="report acc-form" id="accF">${field('aId', '아이디')}${field('aCode', '복구 코드', 'text', 'XXXX-XXXX-XXXX-XXXX', 'maxlength="19"')}${field('aPw', '새 비밀번호 (6자 이상)', 'password')}<button>비밀번호 바꾸기</button></form>`;
-  openWin('계정', tabs + body);
+  openWin('계정', tabs + body + (tab === 'login' ? deleteRowHtml() : ''));
+  bindDeleteRow(true);
   document.querySelectorAll<HTMLElement>('.tabs .tab').forEach(
     (b) =>
       (b.onclick = () => {
@@ -98,8 +103,9 @@ function openGuest() {
     `<div class="acc"><div>계정<b>게스트</b></div><div>여관<b>${esc(p.inn_name)}</b></div><div>저장<b>1분마다 · 이 기기와 클라우드에</b></div></div>
     <p class="sub">지금은 이 기기에만 묶인 게스트 계정이에요. <b>계정을 연결</b>하면 폰을 바꿔도 같은 여관을 이어서 해요. 마을·금화·장비는 그대로예요.</p>
     <form class="report acc-form" id="lkF">${field('lId', '아이디 (4~16자)', 'text', '예) star_inn', 'maxlength="16"')}${field('lPw', '비밀번호 (6자 이상)', 'password')}${field('lPw2', '비밀번호 한 번 더', 'password')}${field('lNick', '닉네임 (2~8자)', 'text', '', 'maxlength="8"')}<button>계정 연결하기</button></form>
-    <div class="menu"><button id="acSave">지금 클라우드에 저장</button><button id="acOther">이미 계정이 있어요 (로그인)</button></div>`,
+    <div class="menu"><button id="acSave">지금 클라우드에 저장</button><button id="acOther">이미 계정이 있어요 (로그인)</button></div>${deleteRowHtml()}`,
   );
+  bindDeleteRow(false);
   const v = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value ?? '';
   const form = $('#lkF') as HTMLFormElement;
   form.onsubmit = async (e) => {
@@ -140,8 +146,9 @@ function openMine() {
     '내 계정',
     `<div class="acc"><div>아이디<b>${esc(p.login_id)}</b></div><div>닉네임<b>${esc(p.nickname)}</b></div><div>여관<b>${esc(p.inn_name)}</b></div><div>저장<b>1분마다 · 앱을 내릴 때 클라우드에</b></div></div>
     <div class="menu"><button id="acSave">지금 클라우드에 저장</button><button id="acCode">복구 코드 다시 받기</button><button id="acOut">로그아웃</button></div>
-    <p class="note">다른 기기에서 같은 아이디로 로그인하면 이 마을을 이어서 해요.</p>`,
+    <p class="note">다른 기기에서 같은 아이디로 로그인하면 이 마을을 이어서 해요.</p>${deleteRowHtml()}`,
   );
+  bindDeleteRow(false);
   $('#acSave').onclick = async () => {
     await pushNow();
     toast('클라우드에 저장했어요');

@@ -69,8 +69,13 @@ export function markOwner() {
 }
 
 /** 지금 상태를 서버로 (저장 + 마을 모습) */
+/** HARVEST §3: 계정 삭제 중엔 클라우드에 올리지 않는다 (삭제 RPC 전에 멈춘다) */
+let cloudHalted = false;
+export const haltCloud = (on = true) => void (cloudHalted = on);
+export const cloudBusy = () => pushing;
+
 export async function pushNow() {
-  if (!online() || !ready || !S.started || pushing) return;
+  if (cloudHalted || !online() || !ready || !S.started || pushing) return;
   pushing = true;
   try {
     await pushSave(snapshot(), CONFIG.save.version);

@@ -75,7 +75,13 @@ export function snapshot(): SaveData {
   };
 }
 
+/** HARVEST §3: 계정 삭제 중엔 저장을 멈춘다 (지운 뒤 다시 써 넣지 않게) */
+let saveHalted = false;
+export const haltSaves = (on = true) => void (saveHalted = on);
+export const savesHalted = () => saveHalted;
+
 export function writeSave(): void {
+  if (saveHalted) return;
   if (!S.started && !S.innName) return; // 오프닝 도중엔 저장하지 않는다
   try {
     localStorage.setItem(CONFIG.save.key, JSON.stringify(snapshot()));
