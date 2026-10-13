@@ -14,6 +14,8 @@ import { onClearOverlays } from './overlays';
 import { queueEventFront } from '../world/events';
 import { showActor } from './guests';
 import { closeWin, isWinOpen, openWin } from './windows';
+import { heroCardHtml } from './heroCard';
+import { vis } from '../world/visual';
 
 /** 설정: 자세히(일반 등급만 작게) · 간단히(모두 작게) */
 export type PropCardMode = 'full' | 'simple';
@@ -34,7 +36,11 @@ export function cardHtml(a: Actor, compact: boolean): string {
   const diff = p - weakest;
   const head = `<div class="pc1"><img src="${portrait(a)}" alt=""><span><b>${esc(a.name)}</b><small>${esc(CLASSES[a.kind as ClassKey]?.name ?? '')} · ${RACE_NAME[a.race]}</small></span><i class="rar" style="--rc:${rar.color}">${rar.name}</i><em>Lv.${a.lvl}</em></div>`;
   const pow = `<div class="pc2"><b class="pw">${fmt(p)}</b><small>전투력${regs.length ? ` · 단골 중 ${rank}위` : ''}</small>${regs.length ? `<small class="${diff > 0 ? 'up' : 'down'}">${diff > 0 ? `▲ 최약 단골보다 +${fmt(diff)}` : `▼ 최약 단골보다 ${fmt(diff)}`}</small>` : ''}</div>`;
-  if (compact) return head + pow;
+  // CHECKIN §J6 (heroCards · 실험실): 제안하는 손님을 영웅 카드로 (왼쪽 카드 · 오른쪽 직업·희귀도·전투력·능력치)
+  const j6 = vis('heroCards');
+  const side = (body: string) =>
+    `<div class="hcd-pc">${heroCardHtml(a, { still: true, auto: false, why: null })}<div class="hcd-pcr"><small>${esc(CLASSES[a.kind as ClassKey]?.name ?? '')} · ${RACE_NAME[a.race]} · <i class="rar" style="--rc:${rar.color}">${rar.name}</i></small>${pow}${body}</div></div>`;
+  if (compact) return j6 ? side('') : head + pow;
   const st = baseStats(a);
   const max = Math.max(1, ...Object.values(st));
   const bars = (Object.keys(st) as (keyof typeof st)[]).map((k) => `<span class="sb"><small>${STAT_NAME[k]}</small><i><u style="width:${Math.round((st[k] / max) * 100)}%"></u></i><b>${st[k]}</b></span>`).join('');
@@ -44,7 +50,8 @@ export function cardHtml(a: Actor, compact: boolean): string {
     .map((x) => ({ x, pair: pairOf(a, x) }))
     .filter((c) => c.pair && (c.pair.open || P.dex.chem.includes(c.pair.id)))
     .slice(0, 2);
-  return `${head}${pow}<div class="pc3">${bars}</div><div class="pc4"><i class="role">${ROLE_NAME[role]}</i>${missing ? '<small class="up">✨ 파티에 없는 역할</small>' : ''}</div>${chem.length ? `<div class="pc5">${chem.map((c) => `<small>${esc(c.x.name)}${josa(c.x.name, "와")} 잘 맞아요 ♥</small>`).join('')}</div>` : ''}`;
+  const rest = `<div class="pc3">${bars}</div><div class="pc4"><i class="role">${ROLE_NAME[role]}</i>${missing ? '<small class="up">✨ 파티에 없는 역할</small>' : ''}</div>${chem.length ? `<div class="pc5">${chem.map((c) => `<small>${esc(c.x.name)}${josa(c.x.name, "와")} 잘 맞아요 ♥</small>`).join('')}</div>` : ''}`;
+  return j6 ? side(rest) : `${head}${pow}${rest}`;
 }
 
 let cardEl: HTMLDivElement | null = null;

@@ -7,6 +7,8 @@ export const UI = [
   'tile', 'tile_pressed', 'tile_selected', 'tile_locked', 'tile_grade_n', 'tile_grade_r', 'tile_grade_e', 'tile_grade_l', 'tile_grade_a',
   'tab_on', 'tab_off', 'bar_frame', 'bar_fill_hp', 'bar_fill_xp', 'bar_fill_mp', 'bar_fill_bond', 'bar_fill_grn',
   'dialog', 'nameplate', 'lock', 'dot_new', 'close', 'arrow_r', 'star', 'star_empty', 'coin', 'heart', 'hand_0', 'hand_1',
+  // CHECKIN §J6 영웅 카드 틀 (숙박 카드 · 9-slice 10)
+  'guestcard_9',
 ] as const;
 
 /**

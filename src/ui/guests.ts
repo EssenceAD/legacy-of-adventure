@@ -34,6 +34,7 @@ import { enhMsg, enhUse, openEnhance } from './enhance';
 import { closeWin, glowOnce, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
+import { heroCardHtml } from './heroCard';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -84,8 +85,10 @@ export function openGuests() {
   const sortLine = pinUi
     ? `<div class="sortb gsortln"><span>지금: <b>${SORTS[gSort]}</b> 높은 순${gSort === 2 ? '(같으면 레벨)' : ''}${pin ? ' · ★ 먼저' : ' · ★도 섞어서'}</span><button id="gPin" class="${pin ? 'on' : ''}" aria-pressed="${pin}">★ 맨 위 고정</button></div>`
     : '';
+  // CHECKIN §J6 (heroCards · 실험실): 단골 탭 = 영웅 카드 격자 (누르면 상세 · 정렬·★ 고정 그대로)
+  const cards = visOn('heroCards') && gTab === 0;
   const rows = list
-    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`)
+    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + (cards ? heroCardHtml(a) : `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`))
     .join('');
   openWin(
     `손님 ${all.length}명`,
@@ -98,7 +101,7 @@ export function openGuests() {
             P.waitlist.map((w) => `<div class="wrow"><b style="color:${RARITY_INFO[w.rarity].color}">${esc(w.name)}</b> · Lv.${w.lvl} ${RACE_NAME[w.race]} ${CLASSES[w.kind].name}</div>`).join('') || '<p class="note">대기 중인 손님이 없어요</p>'
           }</div>`
         : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
-    <div class="glist">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
+    <div class="glist${cards ? ' hcgrid' : ''}">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
   bindTabs('gT', (i) => {

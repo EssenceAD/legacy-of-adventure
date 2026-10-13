@@ -26,6 +26,9 @@ import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
 import { upgradeBtn } from './guests';
 import { recommendParty } from '../world/party';
+import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
+import { partyBlock, partyNote, partyPool, rulesV2 } from '../world/partyRules';
+import { vis } from '../world/visual';
 import { mentorBadge, recButton, roleIcon, roleRow, slotRow, synRow } from './partyUi';
 import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
@@ -159,12 +162,17 @@ function openHuntPrep(r: RegionId, s: number) {
   // 전투 2차: 이 스테이지에 나오는 닌자 몬스터 · 처치 목표 → 정예(x-10은 지역 보스)
   const mobs = stageMons(r, s).map((m) => m.name);
   const goal = isBoss(s) ? `${CONFIG.combat.bossKillGoal}마리 → 보스 ${REGION_BOSS[r].name}` : `${Math.round(CONFIG.combat.killGoal[0] + ((CONFIG.combat.killGoal[1] - CONFIG.combat.killGoal[0]) * (s - 1)) / 8)}마리 → 정예`;
-  const rows = crew
-    .map((a) => {
-      const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`;
-    })
-    .join('');
+  // J6 partyRulesV2: 원정 중인 사람도 흐리게 + 「원정 중 n분」 · 지친 사람은 「체력 n · 지쳤어요」 (사냥은 지쳐도 갈 수 있음)
+  const v2 = rulesV2();
+  const away = v2 ? partyPool().filter((a) => partyBlock(a, 'hunt')).sort((a, b) => powerOf(b) - powerOf(a)) : [];
+  const rows =
+    crew
+      .map((a) => {
+        const on = picked.includes(a.id);
+        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}${(v2 && partyNote(a, 'hunt')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      })
+      .join('') +
+    away.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'hunt')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위
   const dis = ms.length ? '' : 'disabled';
   const opt = (id: string, cls: string, label: string, desc: string) => `<div class="hopt"><button class="bigbtn ${cls}" id="${id}" ${dis}>${label}</button><small>${desc}</small></div>`;
@@ -173,6 +181,46 @@ function openHuntPrep(r: RegionId, s: number) {
   const keep = opt('hRepeat', 'keep', '맡겨 두기 · 마을에서 계속 사냥', `화면 안 봐도 돼요 · 마을에 있어도 ${H.autoSeconds}초마다 한 판`);
   const sweepB = opt('hSweep', 'ghost', '소탕', '전투 없이 바로 · 보상 70% (첫 돌파 보상 없음)');
   const hopts = cleared ? [keep, man, watch, sweepB] : [man, watch];
+  if (vis('heroCards')) {
+    // CHECKIN §J6 카드 덱: 맨 위 [추천 편성][맨 위 행동(맡겨 두기 / 직접 사냥)] · 나머지 행동은 격자 아래
+    const top = cleared ? `<button class="bigbtn keep" id="hRepeat" ${dis}>맡겨 두기</button>` : `<button class="bigbtn red" id="hMan" ${dis}>직접 사냥</button>`;
+    const cfg: DeckCfg = {
+      where: 'hunt',
+      pool: v2 ? partyPool() : crew,
+      sel: ms,
+      max,
+      block: (a) => (v2 ? partyBlock(a, 'hunt') : crew.includes(a) ? null : '원정 중'),
+      note: (a) => (v2 ? partyNote(a, 'hunt') : null),
+      extra: (a) => mentorBadge(a, ms),
+      lead: true,
+      lockCell: lock4Cell(ms, max),
+      power: pw,
+      rec,
+      info: `${prepLine('hunt', pw)}`,
+      synWhere: 'hunt',
+      recId: crew.length ? 'hRec' : undefined,
+      recWhy: huntWhy.k === `${r}-${s}` ? huntWhy.text : '',
+      go: top,
+      empty: awayNote(),
+    };
+    openWin(
+      `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
+      `${deckTopHtml(cfg)}      ${resolveOf(r, s) ? `<p class="cen resolve">🔥 ${esc(resolveText(resolveOf(r, s)))} <small>(이기면 사라져요)</small></p>` : ''}
+      ${deckGridHtml(cfg)}<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
+      ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
+      <div class="hopts">${hopts.slice(1).join('')}</div>
+      <button class="bigbtn ghost sm" id="hBack">지도로</button>`,
+    );
+    bindDeck(
+      cfg,
+      (id) => {
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < max ? [...picked, id] : picked;
+        manualPick = true;
+        keepScroll(() => openHuntPrep(r, s));
+      },
+      () => openHuntPrep(r, s),
+    );
+  } else
   openWin(
     `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
     `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
@@ -202,6 +250,7 @@ function openHuntPrep(r: RegionId, s: number) {
       // 대장은 가장 센 사람
       picked = best.members.sort((a, b) => powerOf(b) - powerOf(a)).map((m) => m.id);
       manualPick = true;
+      if (vis('heroCards')) deckGlow(picked);
       huntWhy = { k: `${r}-${s}`, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(rec)}` };
       trackEv('party_recommend', { where: 'hunt', action: 'use', n: picked.length });
       keepScroll(() => openHuntPrep(r, s));

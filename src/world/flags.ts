@@ -117,6 +117,10 @@ export const FLAG_DEFAULTS = {
   uiHide: false,
   /** CHECKIN §J8 건물 머리 위 「상태 말풍선」 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 텃밭·예배당·대장간·게시판·연못 위 작은 아이콘 하나 · 최대 3개 · 누르면 그 건물 창 · 설정 「건물 알림 말풍선」 */
   bldStatus: false,
+  /** v0.25.5 CHECKIN §J6 영웅 카드 — 손님 창 · 원정·사냥·토벌·심연 파티 고르기 · 단골 제안 카드를 초상 카드 격자로 (위 고정 = 파티 자리·역할·조합·추천 전투력 막대·[추천 편성][출발]) · 형철 확인 전 꺼짐(실험실로만) */
+  heroCards: false,
+  /** v0.25.5 CHECKIN §J6 파티 후보 한 규칙 (형철 결정 — 켬): 방문 중인 전설(동행)이 토벌에도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · 사냥·심연은 지쳐도 갈 수 있고 「체력 n · 지쳤어요」 · 추천 편성은 원정·사냥·토벌·심연 네 곳 모두 */
+  partyRulesV2: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

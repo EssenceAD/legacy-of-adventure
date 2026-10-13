@@ -55,5 +55,7 @@
   "sound70": false,
   "screenSaver": false,
   "uiHide": false,
-  "bldStatus": false
+  "bldStatus": false,
+  "heroCards": false,
+  "partyRulesV2": true
 }

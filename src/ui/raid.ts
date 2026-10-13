@@ -15,7 +15,7 @@ import { canvas, P as Paint } from '../engine/pixel';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance, powerOf } from '../world/adventurers';
 import { pairOf } from '../world/chem';
-import { powerTips } from '../world/expeditions';
+import { isCompanion, powerTips } from '../world/expeditions';
 import {
   canSweep, expectOf, raidCrew, rankOf, settle, submitRecord, triesLeft, wanderTarget, weeklyTarget, type RaidExpect, type RaidOutcome, type RaidTarget,
   beginRaid,
@@ -29,7 +29,11 @@ import { closeWin, openWin, toast } from './windows';
 import { RAID_LOOK_OF, RAID_LOOKS, type BossLook } from '../combat/mons';
 import { abs } from './kit';
 import { closeCombat, startCombat } from '../combat/ui';
-import { roleRow, slotRow, synRow } from './partyUi';
+import { recButton, roleRow, slotRow, synRow } from './partyUi';
+import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
+import { partyBlock, partyPool, recommendFor, rulesV2 } from '../world/partyRules';
+import { vis } from '../world/visual';
+import { track as trackEv } from '../net/telemetry';
 import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
 import { partySynMult, synDamageMult, synergyFx } from '../world/synergy';
@@ -44,6 +48,8 @@ const CHARGE = 120;
 // ───────── 준비 창 ─────────
 
 let picked: number[] = [];
+/** J6: 마지막 「추천 편성」 이유 (그 보스 창에서만) */
+let raidWhy = { k: '', text: '' };
 
 export function bossPic(b: BossDef): string {
   // 핫픽스 8: 새 보스는 Ninja Adventure 얼굴(Faceset) · 심연의 눈은 옛 그림
@@ -60,7 +66,8 @@ export function openRaidPrep(t: RaidTarget) {
   const crew = raidCrew().sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id)).slice(0, max);
   // PARTY §3: 4번째 자리가 막 열렸으면 그 칸은 비워 둔다 (반짝)
-  if (!picked.length) picked = crew.slice(0, max > 3 && !P.meta.party4Seen ? 3 : max).map((a) => a.id);
+  // J6 partyRulesV2: 처음 채울 땐 동행(방문 중인 전설)은 빼고 (사냥과 같게 — 직접 넣을 수 있음)
+  if (!picked.length) picked = crew.filter((a) => !(rulesV2() && isCompanion(a))).slice(0, max > 3 && !P.meta.party4Seen ? 3 : max).map((a) => a.id);
   const members = picked.map((id) => crew.find((a) => a.id === id)!).filter(Boolean);
   const b = t.boss;
   const ex = expectOf(members, b);
@@ -68,14 +75,66 @@ export function openRaidPrep(t: RaidTarget) {
   const tips = low ? powerTips(members) : [];
   const left = triesLeft();
   const hpPct = t.hpLeft / t.max;
-  const rows = crew
-    .map((a) => {
-      const on = picked.includes(a.id);
-      const lead = picked[0] === a.id;
-      const aff = b.weak.includes(a.kind as never) ? '<b class="good">상성 ↑</b>' : b.resist.includes(a.kind as never) ? '<b class="bad">상성 ↓</b>' : '';
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
-    })
-    .join('');
+  const affOf = (a: Actor) => (b.weak.includes(a.kind as never) ? '<b class="good">상성 ↑</b>' : b.resist.includes(a.kind as never) ? '<b class="bad">상성 ↓</b>' : '');
+  // J6 partyRulesV2: 동행(방문 중인 전설)도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · [추천 편성]
+  const v2 = rulesV2();
+  const blocked = v2 ? partyPool().filter((a) => partyBlock(a, 'raid')).sort((x, y) => powerOf(y) - powerOf(x)) : [];
+  const rows =
+    crew
+      .map((a) => {
+        const on = picked.includes(a.id);
+        const lead = picked[0] === a.id;
+        const aff = affOf(a);
+        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      })
+      .join('') +
+    blocked.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'raid')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+  const dis = members.length && left > 0 ? '' : 'disabled';
+  if (vis('heroCards')) {
+    // CHECKIN §J6 카드 덱: 맨 위 [추천 편성][직접 토벌] · 자동 토벌·소탕은 격자 아래
+    const cfg: DeckCfg = {
+      where: 'raid',
+      pool: v2 ? partyPool() : crew,
+      sel: members,
+      max,
+      block: (a) => (v2 ? partyBlock(a, 'raid') : crew.includes(a) ? null : '쉬는 중'),
+      extra: (a) => affOf(a),
+      lead: true,
+      lockCell: lock4Cell(members, max),
+      power: ex.power,
+      rec: b.power,
+      recLabel: '권장',
+      info: `케미 ×${ex.chem.toFixed(2)} · 예상 피해량 ${fmt(ex.target)} ${prepLine('raid', ex.power)}`,
+      synWhere: 'raid',
+      recId: v2 && crew.length ? 'rRec' : undefined,
+      recWhy: raidWhy.k === b.id ? raidWhy.text : '',
+      go: `<button class="bigbtn red" id="rgMan" ${dis}>직접 토벌</button>`,
+      empty: '토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)',
+    };
+    openWin(
+      `토벌 · ${b.name}`,
+      `${deckTopHtml(cfg)}${deckGridHtml(cfg)}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
+        <p class="sub">${t.kind === 'weekly' ? '이번 주 보스' : `떠돌이 보스 · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음`}</p>
+        <div class="bhp"><i style="width:${hpPct * 100}%"></i></div>
+        <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
+        <p class="note">패턴: ${b.patterns.join(' · ')}<br>상성 ↑ ${b.weak.map((k) => CLASSES[k].name).join('·')} / ↓ ${b.resist.map((k) => CLASSES[k].name).join('·')}</p>
+      </div></div>
+      ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
+      <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 토벌만 랭킹 최고 기록에 도전해요</p>
+      <div class="btnrow raidgo">
+        <button class="bigbtn" id="rgAuto" ${dis}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
+        ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${dis}>소탕</button>` : ''}
+      </div>`,
+    );
+    bindDeck(
+      cfg,
+      (id) => {
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < max ? [...picked, id] : picked;
+        keepScroll(() => openRaidPrep(t));
+      },
+      () => openRaidPrep(t),
+    );
+  } else
   openWin(
     `토벌 · ${b.name}`,
     `<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
@@ -86,7 +145,7 @@ export function openRaidPrep(t: RaidTarget) {
     </div></div>
     <div class="pw"><span>권장 전투력</span><em>${fmt(b.power)}</em><span>우리 파티 (케미 ×${ex.chem.toFixed(2)}) ${prepLine('raid', ex.power)}</span><em class="${low ? 'bad' : ex.power >= b.power ? 'good' : ''}">${fmt(ex.power)}</em><span>예상 피해량</span><em>${fmt(ex.target)}</em></div>
     ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
-    <p class="sub">파티 ${members.length}/${max} · 첫 번째가 대장(직접 조작)${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(members, max)}${roleRow(members)}${synRow(members, crew, max, 'raid')}
+    <p class="sub">파티 ${members.length}/${max} · 첫 번째가 대장(직접 조작)${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(members, max)}${v2 && crew.length ? recButton('rRec', raidWhy.k === b.id ? raidWhy.text : '') : ''}${roleRow(members)}${synRow(members, crew, max, 'raid')}
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
     <div class="btnrow raidgo">
       <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 토벌</button>
@@ -103,6 +162,18 @@ export function openRaidPrep(t: RaidTarget) {
         keepScroll(() => openRaidPrep(t));
       }),
   );
+  // J6 partyRulesV2: 토벌도 추천 편성 (같은 recommendParty · 대장은 가장 센 사람)
+  const rr = document.getElementById('rRec');
+  if (rr)
+    rr.onclick = () => {
+      const best = recommendFor('raid', { power: b.power, region: b.region, min: 1, max }, crew);
+      if (!best) return toast('토벌에 갈 단골이 없어요');
+      picked = best.members.sort((x, y) => powerOf(y) - powerOf(x)).map((m) => m.id);
+      raidWhy = { k: b.id, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 권장 ${fmt(b.power)}` };
+      trackEv('party_recommend', { where: 'raid', action: 'use', n: picked.length });
+      if (vis('heroCards')) deckGlow(picked);
+      keepScroll(() => openRaidPrep(t));
+    };
   // 전투 2차: 자동 토벌은 소탕 역할 (전투 화면 없이 기대 피해의 70% · 보상도 70%)
   // HOTFIX17 §2: 판마다 시작할 때 도전 1 차감 (연타·이중 정산 막기)
   const go = (): number | null => {
