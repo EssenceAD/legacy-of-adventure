@@ -20,5 +20,6 @@
   "aiBossTarget": true,
   "keycapLabels": true,
   "zoomDedupe": true,
-  "abyssResume": true
+  "abyssResume": true,
+  "autoPathStrict": true
 }

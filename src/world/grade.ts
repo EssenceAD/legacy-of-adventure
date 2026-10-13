@@ -5,6 +5,7 @@ import { GRADE_NAMES } from '../data/guide';
 import { townGrade } from './guide';
 import { P as PG, S } from './state';
 import { autoEntranceX, entrance, landBounds } from './town';
+import { flag } from './flags';
 
 export { GRADE_NAMES };
 
@@ -61,6 +62,8 @@ export function outerRoad(g = gradeNow()): [number, number][] {
   const [ex] = entrance();
   const out: [number, number][] = [];
   for (let i = 0; i < 2 + g; i++) out.push([ex, b + i]);
+  // 핫픽스 v0.24.6: 지우개로 지운 칸(noPath)은 빼기 (이웃 마을은 그대로)
+  if (!S.visiting && flag('autoPathStrict')) { const no = PG.decor?.noPath ?? {}; return out.filter(([x, y]) => !no[`${x},${y}`]); }
   return out;
 }
 

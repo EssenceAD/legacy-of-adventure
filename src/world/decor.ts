@@ -7,6 +7,8 @@ import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
 import { blocksDoor, canPlace, entrance, grid, inLand, landBounds, pathT, rebuildPaths, spriteFor } from './town';
 import { track as trackEv } from '../net/telemetry';
+import { flag } from './flags';
+import { outerRoad } from './grade';
 
 export const PATH_MATS = ['stone', 'dirt', 'brick', 'deck', 'step'] as const;
 export const GROUND_KINDS = ['flower', 'sand', 'gravel', 'pond'] as const;
@@ -71,7 +73,7 @@ export function redo(): string | null {
 const occupied = (x: number, y: number) => world.objs.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
 /** 이 칸을 칠할 수 있나 (null = 지우기). 연못은 건물·장식이 없는 칸에만 */
 /** BUILDUX §7: 자동으로 깔린 길 칸 (칠한 길 아님) */
-export const isAutoPath = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < N && pathT.has(y * N + x) && !isPathMat(paintAt(x, y));
+export const isAutoPath = (x: number, y: number) => (x >= 0 && y >= 0 && x < N && y < N && pathT.has(y * N + x) && !isPathMat(paintAt(x, y))) || (flag('autoPathStrict') && !S.visiting && outerRoad().some(([a, b]) => a === x && b === y));
 export function paintWhy(x: number, y: number, code: PaintCode | null): string | null {
   if (S.visiting) return '이웃 마을은 꾸밀 수 없어요';
   // 지우개는 울타리 밖 자동 길(의뢰·던전 가는 길)도 지울 수 있다

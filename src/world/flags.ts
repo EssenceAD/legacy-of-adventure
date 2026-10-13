@@ -45,6 +45,8 @@ export const FLAG_DEFAULTS = {
   zoomDedupe: true,
   /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */
   abyssResume: true,
+  /** v0.24.6 자동 길 끔: 던전 길은 울타리 밖(숲) 칸만 · 입구 길도 지우개로 지울 수 있게 */
+  autoPathStrict: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

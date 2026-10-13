@@ -7,6 +7,7 @@ import { N, sx, sy, TW } from '../engine/iso';
 import { P, S, world, type Building, type StoredObj } from './state';
 import { monumentUnlocked } from './progress';
 import { windDecorMult } from './wind';
+import { flag } from './flags';
 
 // ───────── 땅 ─────────
 
@@ -313,10 +314,10 @@ export function rebuildPaths() {
   groundVersion++;
   if (!inn) return;
   const hub = doorOf(inn);
-  const lay = (o: Building, free: boolean) => {
+  const lay = (o: Building, free: boolean, outsideOnly = false) => {
     const d = doorOf(o);
     const p = astar(d[0], d[1], hub[0], hub[1], free);
-    if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x);
+    if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x] && !(outsideOnly && inLand(x, y))) pathT.add(y * N + x);
   };
   // TOWN T2: 자동 길을 끄면 건물↔여관 길은 깔지 않는다 (던전 가는 숲길·칠한 길만)
   const auto = S.visiting || P.decor?.autoPath !== false;
@@ -327,7 +328,8 @@ export function rebuildPaths() {
     lay(o, false);
   }
   const dg = findKind('dungeon');
-  if (dg) lay(dg, true);
+  // 핫픽스 v0.24.6: 자동 길 끔이면 던전 길은 울타리 밖(숲) 칸만 — 마을 안엔 안 깐다
+  if (dg) lay(dg, true, !auto && flag('autoPathStrict'));
   // 마을 입구 → 여관 문 (손님이 걸어 들어오는 길)
   const [ex, ey] = entrance();
   const pe = auto ? astar(ex, ey, hub[0], hub[1]) : null;
