@@ -129,7 +129,7 @@ const s0 = await p.evaluate(() => window.__S.gold);
 await p.locator('[data-dm="2"]').click();
 await W(300);
 const stake = s0 - (await p.evaluate(() => window.__S.gold));
-ok(stake === 2000 * 512, '판돈 ×2 = ' + stake);
+ok(Math.abs(stake - 2000 * 512) < 5000, '판돈 ×2 ≈ ' + stake + ' (같은 사이 마을 수입이 들어올 수 있어 ±5천)');
 let busted = false;
 let shot = false;
 for (let i = 0; i < 400; i++) {
