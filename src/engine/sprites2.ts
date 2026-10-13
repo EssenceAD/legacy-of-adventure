@@ -158,13 +158,9 @@ export function drawChar2(def0: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: We
     };
     const l = Math.round(hx) - 7;
     const r = Math.round(hx) + 8;
-    if (kind === 'rogue' && hood) {
-      // 두건 옆으로 귀 끝만 2px
-      ear([[l - 1, 0], [l - 2, -1]], [l - 1, 0]);
-      ear([[r, 0], [r + 1, -1]], [r, 0]);
-    } else ear([[l, 0], [l - 1, 0], [l - 2, -1], [l - 1, -1], [l - 3, -2], [l, 1], [l - 1, 1]], [l, 0]);
-    if (!back) ear([[r, 0], [r + 1, -1], [r, -1], [r + 2, -2], [r, 1]], [r, 0]);
-    else ear([[r, 0], [r + 1, 0], [r + 2, -1], [r + 1, -1], [r + 3, -2], [r, 1], [r + 1, 1]], [r, 0]);
+    // R1 판정: 모든 직업·종족 — 머리(장비) 옆으로 귀 끝만 2px
+    ear([[l - 1, 0], [l - 2, -1]], [l - 1, 0]);
+    ear([[r, 0], [r + 1, -1]], [r, 0]);
   }
   if (!back) {
     // 얼굴은 판판하게 (오른쪽 가장자리 붉은 줄 없이) · 머리카락·투구 바로 밑 한 줄만 그림자
@@ -1134,16 +1130,13 @@ function bow2(G: GridT, def: ClassDef, x: number, top: number, len: number, aim:
 
 /** 사제 뒷모습: 베일 가장자리 안쪽 1px 금 테 (앞의 얼굴 창 테처럼) */
 function veilRim(G: GridT, gold: string) {
+  // R1 판정: 뒤 베일 가장자리 왼쪽·오른쪽·아래 1px 금색 선 (앞모습 테와 같은 색)
   const g = G.g;
   const isV = (x: number, y: number) => g[y]?.[x]?.c === VEIL;
-  const edge = (x: number, y: number) => isV(x, y) && [[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => !g[y + dy]?.[x + dx]);
   const out: [number, number][] = [];
   for (let y = 0; y < G.h; y++)
-    for (let x = 0; x < G.w; x++) {
-      if (!isV(x, y) || edge(x, y)) continue;
-      if ([[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => edge(x + dx, y + dy))) out.push([x, y]);
-    }
-  for (const [x, y] of out) g[y][x] = { c: gold };
+    for (let x = 0; x < G.w; x++) if (isV(x, y) && [[1, 0], [-1, 0], [0, 1]].some(([dx, dy]) => !g[y + dy]?.[x + dx])) out.push([x, y]);
+  for (const [x, y] of out) g[y][x] = { c: gold, tag: 'flat' };
 }
 
 /** 구르기 (예전 구조 · 머리는 투구·베일·두건 색) */
