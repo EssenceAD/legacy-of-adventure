@@ -21,6 +21,7 @@ import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
 import { partySpecial, specialSum } from '../world/uniques';
 import { memberSynMult, synergyFx, type SynFx } from '../world/synergy';
+import { resolveDmg, resolveOf, resolveTaken } from '../world/wayfind';
 
 const HC = CONFIG.hunter;
 
@@ -272,6 +273,8 @@ export interface Field {
   bossLine?: string;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
+  /** WAYFIND §2: 결의 (첫 돌파 못 한 사냥 판에서 연속 패배 → 주는 피해 + · 받는 피해 −) */
+  resolve?: number;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -355,6 +358,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.half = opts.half;
   f.bossLine = opts.bossLine;
   f.syn = syn;
+  f.resolve = mode === 'hunt' && !opts.raid ? resolveOf(region, stage) : 0;
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -475,6 +479,7 @@ export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: bo
   }
   // PARTY §2: 철벽 돌격 — 보스·정예 피해 +
   if ((m.boss || m.elite) && f.syn?.bossDmg) dmg *= 1 + f.syn.bossDmg;
+  if (f.resolve) dmg *= resolveDmg(f.resolve);
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg;
   if (f.mode === 'raid' && m.boss) f.raidDmg += Math.min(dmg, Math.max(0, m.hp + dmg));
@@ -533,7 +538,7 @@ function killMob(f: Field, m: Unit) {
 function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
   if (u.dead || (u.inv ?? 0) > 0) return;
   // BUILDINGS_SPEC §3: 돌피부 물약 — 받는 피해 −15%
-  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
+  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1) * resolveTaken(f.resolve ?? 0));
   u.hp -= dmg;
   u.flash = 1 / 30 + 0.001;
   u.hurtT = 0.22;

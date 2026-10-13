@@ -5,5 +5,9 @@
   "goldsinkBless": true,
   "villageFavors": true,
   "storyWaitHint": true,
-  "mailDelete": true
+  "mailDelete": true,
+  "wayfindBubbles": true,
+  "huntResolve": true,
+  "stuckCard": true,
+  "todayPicks": true
 }

@@ -1662,3 +1662,8 @@ body.in-combat a{pointer-events:none}
 
 /* 우편함: 읽은 편지 지우기 */
 .mail .mldel{min-width:28px;padding:2px 6px;opacity:.7}
+/* WAYFIND §2: 결의 · 막혔을 때 카드 */
+.resolve{color:#ffb36b;margin:6px 0 0}.resolve small{color:#d8c8a8}
+.stuck{display:flex;flex-direction:column;gap:5px;margin:8px auto;padding:8px 10px;max-width:340px;background:rgba(40,28,20,.85);box-shadow:0 0 0 2px #c89a5a}
+.stuck>b{color:var(--gold);text-align:center}
+.stuck button{text-align:left;white-space:normal;line-height:1.3}
