@@ -22,6 +22,7 @@ import { flushScene } from '../audio/scene';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
 import { SYN_INFO, takeSynergyLine } from '../world/synergy';
+import { vis } from '../world/visual';
 
 const C = CONFIG.combat;
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -657,7 +658,7 @@ function bindInput() {
     openPause();
   };
   $('#cbResume').onclick = resume;
-  $('#cbGiveUp').onclick = giveUp;
+  $('#cbGiveUp').onclick = askGiveUp;
   $('#cbKeysBtn').onclick = () => (keyCardOpen() ? hideKeyCard() : showKeyCard(false));
   $('#cbKeyCard').onclick = hideKeyCard;
   syncKeycaps();
@@ -743,6 +744,12 @@ function openPause() {
 function resume() {
   paused = false;
   if (root) (root.querySelector('#cbPause') as HTMLElement).hidden = true;
+}
+/** J4 confirmSheet: 포기는 아래 확인 시트로 한 번 더 (끄면 예전처럼 바로) — 시트가 떠 있는 동안 일시정지 그대로 */
+function askGiveUp() {
+  if (!vis('confirmSheet')) return giveUp();
+  const what = F?.mode === 'raid' ? '토벌' : '사냥';
+  void import('../ui/confirmSheet').then(({ confirmSheet }) => confirmSheet({ title: `${what}을 포기할까요?`, body: '패배로 기록돼요', ok: '포기하기', danger: true }).then((ok) => ok && giveUp()));
 }
 function giveUp() {
   resume();

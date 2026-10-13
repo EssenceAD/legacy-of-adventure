@@ -10,6 +10,8 @@ import { flag } from '../world/flags';
 import { S } from '../world/state';
 import { $, esc } from './common';
 import { closeWin, onWinClose, openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { vis } from '../world/visual';
 
 const HOLD_MS = 3000;
 const PREFIX = 'legacy-of-adventure';
@@ -39,6 +41,11 @@ const expectedName = () => S.innName || me.profile?.inn_name || '';
 export function openDelete(guest = !online()) {
   if (!flag('accountDelete')) return;
   if (!guest && amAdmin()) return;
+  // J4 confirmSheet: ① 안내는 아래 확인 시트로 (빨강 [다음] → ② 이름 → ③ 길게 누르기는 그대로)
+  if (vis('confirmSheet')) {
+    void confirmSheet({ title: T.title, body: guest ? T.guest : T.body.join('\n'), ok: '다음', no: '돌아가기', danger: true }).then((ok) => ok && stepName(guest));
+    return;
+  }
   const body = guest ? `<p class="sub">${esc(T.guest)}</p>` : T.body.map((l, i) => `<p class="${i === 0 ? 'sub bad' : 'sub'}">${esc(l)}</p>`).join('');
   openWin(T.title, `<div class="acdelw" data-step="1">${body}</div><div class="btnrow"><button class="bigbtn ghost" id="adBack">돌아가기</button><button class="bigbtn red" id="adNext">다음</button></div>`);
   $('#adBack').onclick = () => closeWin();

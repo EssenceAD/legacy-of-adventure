@@ -11,7 +11,8 @@ import { $, $$, esc } from './common';
 import { speakerOf, talk } from './dialogue';
 import { showActor, talkGuest } from './guests';
 import { openGifts } from './owner';
-import { closeWin, openReport, openWin, toast } from './windows';
+import { closeWin, openReport, openWin, pushLayer, toast } from './windows';
+import { vis } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 import { canDice, openDice } from './dice';
 
@@ -27,9 +28,12 @@ export function bondIdOf(a: Actor): string | null {
 }
 
 let menuEl: HTMLElement | null = null;
+/** J4 backRule: 뒤로가기·Esc가 이 메뉴부터 닫게 (맨 위 층) */
+let dropLayer = () => {};
 export function closePersonMenu() {
   menuEl?.remove();
   menuEl = null;
+  dropLayer();
 }
 /** 작은 메뉴 (누른 자리 근처) */
 export function openPersonMenu(a: Actor, x: number, y: number) {
@@ -43,6 +47,7 @@ export function openPersonMenu(a: Actor, x: number, y: number) {
   el.innerHTML = `<b class="pmname">${esc(name)}</b><button id="pmTalk">💬 말 걸기</button><button id="pmGift">🎁 선물하기</button>${canDice(a) ? '<button id="pmDice">🎲 주사위 한 판?</button>' : ''}${npc ? '<button id="pmLetter" class="ghost">✉️ 편지 쓰기</button>' : a.id ? '<button id="pmInfo" class="ghost">📋 정보</button>' : ''}`;
   document.body.appendChild(el);
   menuEl = el;
+  if (vis('backRule')) dropLayer = pushLayer(closePersonMenu);
   const r = el.getBoundingClientRect();
   el.style.left = `${Math.max(8, Math.min(innerWidth - r.width - 8, x - r.width / 2))}px`;
   el.style.top = `${Math.max(8, Math.min(innerHeight - r.height - 8, y - r.height - 18))}px`;
