@@ -7,12 +7,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 const URL = process.env.URL ?? 'http://localhost:4190/';
 const dir = process.argv[2] ?? 'C:/Users/choly/AppData/Local/Temp/claude/C--Users-choly/aeed0df9-0ecc-49a1-923e-e1b70684cfba/scratchpad/gs3';
+// W=1280 → PC 화면 (기본 412 폰) · 결과 이름 끝에 _1280
+const WIDE = process.env.W === '1280';
 const OUT = 'reports/visual';
 fs.mkdirSync(OUT, { recursive: true });
 const SAVES = [['ttabam', '따밤', 'save_01.json'], ['woongs', '웅스', 'save_02.json'], ['ikamolly', '이카몰리', 'save_03.json']]
   .map(([id, who, f]) => [id, who, path.join(dir, f)])
   .filter(([, , f]) => fs.existsSync(f));
-const DEV = { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36' };
+const DEV = WIDE ? { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 } : { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36' };
 const b = await chromium.launch({ channel: 'chrome' });
 // 패치 노트 카드가 안 뜨게 지금 버전을 「본 것」으로
 const VER = await (async () => { const c = await b.newContext(); const v = (await (await c.request.get(URL + 'version.json')).json()).version; await c.close(); return JSON.stringify(v); })();
@@ -101,16 +103,16 @@ async function shoot(lab, save, night = false) {
 /** 끔/켬 나란히 한 장 */
 async function pair(name, title, off, on) {
   if (!off || !on) return;
-  const pg = await b.newPage({ viewport: { width: 1700, height: 1900 }, deviceScaleFactor: 1 });
+  const pg = await b.newPage({ viewport: WIDE ? { width: 2620, height: 900 } : { width: 1700, height: 1900 }, deviceScaleFactor: 1 });
   const im = (buf) => `data:image/png;base64,${buf.toString('base64')}`;
   await pg.setContent(`<body style="margin:0;background:#1b1622;font:600 28px sans-serif;color:#f3e7c9">
     <div style="padding:14px 20px">${title}</div>
     <div style="display:flex;gap:20px;padding:0 20px 20px">
-      <figure style="margin:0"><figcaption style="padding:6px 0">끔 (지금)</figcaption><img src="${im(off)}" style="width:824px;display:block"></figure>
-      <figure style="margin:0"><figcaption style="padding:6px 0;color:#ffd36b">켬 (새 화면: 팔레트 + 조용한 숲 + 새 HUD + 창 틀)</figcaption><img src="${im(on)}" style="width:824px;display:block"></figure>
+      <figure style="margin:0"><figcaption style="padding:6px 0">끔 (지금)</figcaption><img src="${im(off)}" style="width:${WIDE ? 1280 : 824}px;display:block"></figure>
+      <figure style="margin:0"><figcaption style="padding:6px 0;color:#ffd36b">켬 (새 화면: 팔레트 + 조용한 숲 + 새 HUD + 창 틀)</figcaption><img src="${im(on)}" style="width:${WIDE ? 1280 : 824}px;display:block"></figure>
     </div></body>`);
   await pg.waitForTimeout(200);
-  const file = `${OUT}/${name}.png`;
+  const file = `${OUT}/${name}${WIDE ? '_1280' : ''}.png`;
   await pg.screenshot({ path: file, fullPage: true });
   await pg.close();
   console.error('✓ ' + file);
