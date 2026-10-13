@@ -1165,7 +1165,7 @@ export const CONFIG = {
       dustR: { first: 1500, rise: 0.04, cap: 20, qty: 10, by: 'top' },
       dustE: { first: 4000, rise: 0.04, cap: 20, qty: 10, by: 'top' },
       dustL: { first: 10000, rise: 0.04, cap: 20, qty: 5, by: 'top' },
-      boss: { first: 20000, rise: 0.25, cap: 5, qty: 1, by: 'region' },
+      boss: { first: 20000, rise: 0.25, cap: 3, qty: 1, by: 'region' },
       whet: { first: 2000, rise: 0.1, cap: 5, qty: 1, by: 'top' },
     } as Record<string, { first: number; rise: number; cap: number; qty: number; by: 'region' | 'top' }>,
     /** §3 예배당 축복: 값 base × m · 한 번에 hours시간 (최대 maxHours) · 효과(Lv1) + 레벨마다 perLv씩 */
