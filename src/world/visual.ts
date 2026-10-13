@@ -24,5 +24,17 @@ export function setLab(on: boolean) {
     /* 저장 못 해도 이번 판만 */
   }
 }
+/**
+ * VISUAL §5 큰 수 줄임 한 규칙 (HUD 금화의 「9.9M」과 같게): 100만 미만은 그대로(1,234,567 → 쉼표) · 1.2M · 34M · 1.2B
+ *  uiKitV2 일 때만 fmt()·fmtKo()·HUD 금화가 이걸 쓴다 (끄면 예전 그대로)
+ */
+export function bigNum(n: number): string {
+  n = Math.round(n);
+  const a = Math.abs(n);
+  if (a < 1e6) return n.toLocaleString('ko-KR');
+  const [d, u] = a >= 1e9 ? [1e9, 'B'] : [1e6, 'M'];
+  const v = n / d;
+  return (Math.abs(v) >= 10 ? Math.round(v).toLocaleString('ko-KR') : v.toFixed(1)) + u;
+}
 /** 새 화면 기능 하나가 켜졌나: 플래그(모두에게) 또는 실험실(이 기기) */
-export const vis = (k: Extract<FlagKey, 'paletteV2' | 'calmWorld'>): boolean => flag(k) || labOn();
+export const vis = (k: Extract<FlagKey, 'paletteV2' | 'calmWorld' | 'hudV2' | 'uiKitV2'>): boolean => flag(k) || labOn();

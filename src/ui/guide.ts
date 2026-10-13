@@ -19,6 +19,7 @@ import { hasSpot } from '../world/tidy';
 import { iconSrc, px, uiSrc } from './kit';
 import { openPlace, PLACE_BTN, type Place } from './nav';
 import { isWinOpen } from './windows';
+import { hudSel } from './hud2sel';
 
 let handTarget: string | null = null;
 let handUntil = 0;
@@ -234,7 +235,7 @@ function hideHand() {
 }
 function placeHand(sel: string | null) {
   const h = document.getElementById('hand') as HTMLImageElement | null;
-  const el = sel ? (document.querySelector(sel) as HTMLElement | null) : null;
+  const el = sel ? (document.querySelector(hudSel(sel)) as HTMLElement | null) : null;
   if (!h || !el || !el.offsetParent || isTalking()) return hideHand();
   const host = document.getElementById('view')!.getBoundingClientRect();
   const r = el.getBoundingClientRect();

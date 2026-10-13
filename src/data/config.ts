@@ -312,6 +312,12 @@ export const CONFIG = {
       tablet: { dlg: 19, name: 18, ui: 18, notice: 17, small: 15, chat: 16, bub: 15, big: 22, tiny: 13 },
       wide: { dlg: 19, name: 18, ui: 18, notice: 17, small: 15, chat: 16, bub: 15, big: 22, tiny: 13 },
     } as Record<'phone' | 'tablet' | 'wide', Record<string, number>>,
+    /** VISUAL §5 uiKitV2 (실험실): 글자 크기 3개만 — 제목 · 본문 · 작은 글 (아래 글자 크기 단계를 그대로 곱한다) */
+    fontsV2: {
+      phone: { title: 16, body: 14, small: 12 },
+      tablet: { title: 18, body: 16, small: 13 },
+      wide: { title: 18, body: 16, small: 13 },
+    } as Record<'phone' | 'tablet' | 'wide', Record<'title' | 'body' | 'small', number>>,
     /** 설정 → 글자 크기: 보통 · 크게 · 아주 크게 */
     userScales: [1, 1.25, 1.5],
     userLabels: ['보통', '크게', '아주 크게'],

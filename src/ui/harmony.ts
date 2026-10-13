@@ -1,4 +1,5 @@
 // 베타 1장: 어울림 화면 — 발견 배너 · 「어울림 보기」 토글 · 마을 등급 장식 옮기기 · 건물 창의 어울림 줄
+import { bigNum, vis } from '../world/visual';
 import { av } from '../engine/ver';
 import { addMail } from '../world/meta';
 import { say } from '../world/fx';
@@ -17,7 +18,8 @@ import { startPlace } from './hud';
 import { esc } from './common';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : n.toLocaleString('ko-KR'));
 
 /** 발견 연출 차례 (한 번에 하나씩) */
 import { holdUi } from '../audio/scene';

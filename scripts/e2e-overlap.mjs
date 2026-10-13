@@ -3,7 +3,9 @@
 //  제목줄 · 닫기(#winX) · 탭 줄(.tabs) · 본문 네 귀퉁이에서 맨 위 요소가 창(#win) 안인지 본다.
 //  pointer-events:none 인 HUD(다음 이야기 줄 등)도 잡도록 검사하는 동안만 보이는 요소의 pointer-events 를 켠다.
 //  마을 화면: 왼쪽 위 줄(.stat · #mission · #evalbar · #goalPill · #storyWait)과 오른쪽 버튼 줄끼리 서로 겹치지 않는지.
-//  실행: URL=http://localhost:4205/ node scripts/e2e-overlap.mjs [저장 폴더]   (DEV 전역이 있는 BOT_BUILD 빌드에서)
+//  VISUAL §4: 「마을 보이는 면적 %」 = 화면 중 보이는 HUD(상태줄·소식 띠·버튼·진행 줄·채팅·메뉴줄·알약…)가 덮지 않은 몫 (마을 화면 · 2px 격자로 셈)
+//  LAB=1 이면 「새 화면 미리 보기」(실험실)를 켠 채로 — 이때 폰에서 면적이 80% 아래면 실패, 새 HUD 줄끼리(진행 줄·채팅·메뉴줄 포함) 겹침도 본다
+//  실행: URL=http://localhost:4205/ [LAB=1] node scripts/e2e-overlap.mjs [저장 폴더]   (DEV 전역이 있는 BOT_BUILD 빌드에서)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +24,9 @@ const DEVS = {
   '390x844': { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: IOS },
 };
 const SKIP = /사진 찍기|유저 톡방/;
+const LAB = process.env.LAB === '1';
+const AREA_MIN = 80;
+const areas = [];
 const b = await chromium.launch({ channel: 'chrome' });
 const fails = [];
 const notes = [];
@@ -29,7 +34,7 @@ const notes = [];
 async function run(who, file, size) {
   const raw = fs.readFileSync(file, 'utf8');
   const ctx = await b.newContext(DEVS[size]);
-  await ctx.addInitScript((save) => {
+  await ctx.addInitScript(([save, lab]) => {
     try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
     localStorage.clear();
     localStorage.setItem('legacy-of-adventure-save', save);
@@ -37,7 +42,8 @@ async function run(who, file, size) {
     localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
     localStorage.setItem('legacy-of-adventure-settleOff', 'true');
     localStorage.setItem('legacy-of-adventure-telemetry', 'false');
-  }, raw);
+    if (lab) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+  }, [raw, LAB]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
@@ -61,11 +67,25 @@ async function run(who, file, size) {
     // ── 마을 화면 HUD 끼리 겹침 (대화·창·투어가 끝나 HUD가 다 보일 때) ──
     await p.waitForFunction(() => !document.body.classList.contains('winopen') && !document.querySelector('.talking') && document.querySelector('#dlg').hidden && getComputedStyle(document.querySelector('.top .stat')).visibility !== 'hidden', null, { timeout: 4000 }).catch(() => {});
     await p.waitForTimeout(600); // HUD 틱(알약·다음 이야기 줄 자리 잡기)
-    const hud = await p.evaluate(() => {
+    // 늦게 뜨는 창·대화(접속 보상·평가 등)가 있으면 한 번 더 닫고 HUD가 다 보일 때 잰다 (면적이 창 때문에 들쭉날쭉하지 않게)
+    for (let i = 0; i < 8; i++) {
+      const busy = await p.evaluate(() => {
+        if (!document.querySelector('#dlg').hidden) return document.querySelector('#dlg').click(), true;
+        if (document.querySelector('#win').classList.contains('on')) return document.querySelector('#winX').click(), true;
+        return document.body.classList.contains('winopen') || !!document.querySelector('.talking');
+      });
+      if (!busy) break;
+      await p.waitForTimeout(500);
+    }
+    await p.waitForTimeout(600);
+    const hud = await p.evaluate((lab) => {
       const vis = (e) => { if (!e || e.hidden) return null; const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return null; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? r : null; };
-      const L = ['.top .stat', '#mission', '#evalbar', '#goalPill', '#storyWait'];
+      const L = ['.top .stat', '#newsBand', '#mission', '#evalbar', '#goalPill', '#storyWait'];
       const R = ['#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#propBadge'];
+      // 새 HUD: 아래쪽 줄(진행 줄 각 줄 · 채팅 · 메뉴줄)도 위 줄·버튼과 서로 안 겹쳐야
+      const B = lab ? ['#runbar > button', '#runbar > .rbstrip', '#chatlog', 'nav.dk'] : [];
       const got = [...L, ...R].map((s) => [s, vis(document.querySelector(s))]).filter(([, r]) => r);
+      for (const s of B) document.querySelectorAll(s).forEach((e, i) => { const r = vis(e); if (r) got.push([s + (i ? '#' + i : ''), r]); });
       const out = [];
       const hit = (a, c) => Math.min(a.right, c.right) - Math.max(a.left, c.left) > 2 && Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) > 2;
       for (let i = 0; i < got.length; i++) for (let j = i + 1; j < got.length; j++) {
@@ -73,8 +93,20 @@ async function run(who, file, size) {
         if (a === '#bDN' && c === '#bMenu') continue;
         if (hit(ra, rc)) out.push(`${a} ↔ ${c}`);
       }
-      return { out, seen: got.map(([s]) => s) };
-    });
+      // 마을 보이는 면적: 보이는 HUD 상자들의 합집합을 뺀 몫 (토스트·말풍선·떠다니는 글씨처럼 잠깐 뜨는 건 빼고)
+      const A = ['.top .stat', '#newsBand', '#mission', '#evalbar', '#goalPill', '#storyWait', '#propBadge', '#blessIco', '#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#runbar > button', '#runbar > .rbstrip', '#chatlog', 'nav.dk', '#visitbar', '#visitfoot'];
+      const boxes = [];
+      for (const s of A) document.querySelectorAll(s).forEach((e) => { const r = vis(e); if (r) boxes.push(r); });
+      const V = document.querySelector('#view').getBoundingClientRect();
+      let n = 0, c = 0;
+      for (let y = V.top + 1; y < V.bottom; y += 2) for (let x = V.left + 1; x < V.right; x += 2) {
+        n++;
+        if (boxes.some((b) => x >= b.left && x < b.right && y >= b.top && y < b.bottom)) c++;
+      }
+      return { out, seen: got.map(([s]) => s), area: Math.round(((n - c) / n) * 1000) / 10 };
+    }, LAB);
+    areas.push(`${tag}: ${hud.area}%`);
+    if (LAB && hud.area < AREA_MIN) fails.push(`마을 보이는 면적 ${hud.area}% < ${AREA_MIN}% · ${tag}`);
     for (const o of hud.out) fails.push(`HUD 겹침 · ${o} · 마을 화면 · ${tag}`);
     // ── 창 목록 ──
     const tiles = await p.evaluate(() => {
@@ -174,6 +206,7 @@ await Promise.all(jobs);
 await b.close();
 const sec = ((Date.now() - t0) / 1000).toFixed(1);
 for (const n of notes) console.error('· ' + n);
+console.error(`마을 보이는 면적 %${LAB ? ' (실험실 켬)' : ''}:\n  ` + areas.sort().join('\n  '));
 for (const f of fails) console.error('✗ ' + f);
 console.error(fails.length ? `✗ 겹침 ${fails.length}건 (${sec}s)` : `✓ 겹침 없음 (${sec}s)`);
 process.exit(fails.length ? 1 : 0);

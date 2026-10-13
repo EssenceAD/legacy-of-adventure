@@ -1,4 +1,5 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
+import { bigNum, vis } from './world/visual';
 import { sfx } from './audio/sfx';
 import { extendAriaOnce } from './world/legends';
 import { migrateGradeKeys } from './world/grade';
@@ -53,7 +54,8 @@ declare const __APP_VERSION__: string;
 const APP_VER = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : n.toLocaleString('ko-KR'));
 
 function resetCamera() {
   landCamera(false);

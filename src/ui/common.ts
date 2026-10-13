@@ -8,11 +8,13 @@ import { appearance } from '../world/adventurers';
 import { itemIcon } from '../world/items';
 import type { Actor, Item } from '../world/state';
 import { sfx } from '../audio/sfx';
+import { bigNum, vis } from '../world/visual';
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 export const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-export const fmt = (n: number) => Math.round(n).toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+export const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : Math.round(n).toLocaleString('ko-KR'));
 export const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 
 /** 손님 전신 그림 (종족·머리색·무기까지 보이게). 겉모습 키마다 한 번만 만든다 */

@@ -347,7 +347,7 @@ export function openShop() {
 /** VISUAL 실험실: 「새 화면 미리 보기」 — 운영자(또는 테스터 공개 플래그)만 · 이미 켠 기기는 끌 수 있게 늘 보임 */
 function labRowHtml(): string {
   if (!amAdmin() && !flag('visualLabOpen') && !labOn()) return '';
-  return `<label class="tog"><input type="checkbox" id="mLab" ${labOn() ? 'checked' : ''}> 새 화면 미리 보기 <small>(실험 중 · 팔레트·조용한 숲 · 이 기기만 · 바꾸면 다시 불러와요)</small></label>`;
+  return `<label class="tog"><input type="checkbox" id="mLab" ${labOn() ? 'checked' : ''}> 새 화면 미리 보기 <small>(실험 중 · 팔레트·조용한 숲·새 HUD·창 틀 · 이 기기만 · 바꾸면 다시 불러와요)</small></label>`;
 }
 
 export function openSettings() {

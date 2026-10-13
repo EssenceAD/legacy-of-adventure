@@ -2,6 +2,7 @@
 //  값은 전부 「기준 × m(r)」 (m = 2^사냥 최고 지역 번호) · 하루 카운터는 한국 시간 0시 · 주간은 한국 시간 월요일 0시
 import { CONFIG } from '../data/config';
 import { flag } from './flags';
+import { bigNum, vis } from './visual';
 import { BOSSES } from '../data/bosses';
 import { REGIONS, type RegionId } from '../data/items';
 import { fLv } from './facilities';
@@ -68,6 +69,8 @@ const ridx = (r: string) => REGIONS.findIndex((x) => x.id === r);
 
 /** 금화 짧게: 9,800 · 1.6만 · 51만 · 1.2억 */
 export function fmtKo(n: number): string {
+  // VISUAL §5 uiKitV2(실험실): 큰 수 줄임은 한 규칙(M)으로
+  if (vis('uiKitV2')) return bigNum(n);
   n = Math.round(n);
   const one = (v: number) => (v < 10 ? (Math.round(v * 10) / 10).toString() : Math.round(v).toLocaleString('ko-KR'));
   if (n >= 1e8) return one(n / 1e8) + '억';

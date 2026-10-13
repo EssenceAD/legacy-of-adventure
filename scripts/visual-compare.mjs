@@ -1,5 +1,5 @@
-// VISUAL §1: 비교 이미지 — 새 화면(paletteV2 · calmWorld) 끔/켬을 나란히 → reports/visual/*.png
-//  장면: 미리보기(오프닝 티저) · 실제 저장 3개(따밤·웅스·이카몰리) 마을 · 전투 · 손님 창
+// VISUAL §1: 비교 이미지 — 새 화면(paletteV2 · calmWorld · hudV2 · uiKitV2) 끔/켬을 나란히 → reports/visual/*.png
+//  장면: 미리보기(오프닝 티저) · 실제 저장 3개(따밤·웅스·이카몰리) 마을 · 전투 · 손님 창 · 메뉴 격자 창
 //  켬 = 실험실 토글(localStorage visualLab) — 플래그(flags.json)는 그대로 꺼진 채
 //  실행: URL=http://localhost:4190/ node scripts/visual-compare.mjs [저장 폴더(save_01 따밤 · save_02 웅스 · save_03 이카몰리)]
 import { chromium } from 'playwright-core';
@@ -77,6 +77,11 @@ async function shoot(lab, save, night = false) {
   await W(900);
   shots.guest = await p.screenshot();
   await clear();
+  // 메뉴 격자 창 (VISUAL §5 창 틀 · 글자 · 버튼)
+  await p.evaluate(() => window.__openMenu());
+  await W(900);
+  shots.menu = await p.screenshot();
+  await clear();
   // 전투: 숲 1-10 직접 전투
   try {
     await p.evaluate(() => { const P = window.__P; P.runs.length = 0; P.hunt.auto = null; if (!P.guide.unlocked.includes('hunt')) P.guide.unlocked.push('hunt'); for (const a of window.__world.actors) if (a.id) a.hp = 100; window.__openHunt('forest'); });
@@ -102,7 +107,7 @@ async function pair(name, title, off, on) {
     <div style="padding:14px 20px">${title}</div>
     <div style="display:flex;gap:20px;padding:0 20px 20px">
       <figure style="margin:0"><figcaption style="padding:6px 0">끔 (지금)</figcaption><img src="${im(off)}" style="width:824px;display:block"></figure>
-      <figure style="margin:0"><figcaption style="padding:6px 0;color:#ffd36b">켬 (새 화면: 팔레트 + 조용한 숲)</figcaption><img src="${im(on)}" style="width:824px;display:block"></figure>
+      <figure style="margin:0"><figcaption style="padding:6px 0;color:#ffd36b">켬 (새 화면: 팔레트 + 조용한 숲 + 새 HUD + 창 틀)</figcaption><img src="${im(on)}" style="width:824px;display:block"></figure>
     </div></body>`);
   await pg.waitForTimeout(200);
   const file = `${OUT}/${name}.png`;
@@ -126,6 +131,7 @@ for (const [id, who, f] of process.env.ONLY_PREVIEW ? [] : SAVES) {
   await pair(`night_${id}`, `${who} 마을 · 밤`, nOff.town, nOn.town);
   await pair(`combat_${id}`, `${who} · 전투 (숲 1-10)`, off.combat, on.combat);
   await pair(`guest_${id}`, `${who} · 손님 창`, off.guest, on.guest);
+  await pair(`menu_${id}`, `${who} · 메뉴 창`, off.menu, on.menu);
 }
 await b.close();
 console.error(errs.length ? '✗ 오류:\n' + errs.join('\n') : `✓ 오류 0 · ${((Date.now() - t0) / 1000).toFixed(0)}s`);

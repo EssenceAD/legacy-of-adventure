@@ -24,5 +24,7 @@
   "autoPathStrict": true,
   "paletteV2": false,
   "calmWorld": false,
+  "hudV2": false,
+  "uiKitV2": false,
   "visualLabOpen": false
 }

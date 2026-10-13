@@ -2,7 +2,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { FLAG_DEFAULTS, flag } from '../src/world/flags';
-import { labOn, setLab, vis } from '../src/world/visual';
+import { bigNum, labOn, setLab, vis } from '../src/world/visual';
+import { fmtKo } from '../src/world/goldsink';
 import { MASTER_PALETTE } from '../src/data/palette';
 import { nearest } from '../src/engine/palette';
 import { calmForest, grassPair } from '../src/world/ground';
@@ -12,7 +13,7 @@ beforeEach(() => setLab(false));
 describe('실험실 스위치', () => {
   it('플래그 기본 꺼짐 (코드 · flags.json 둘 다)', () => {
     const j = JSON.parse(fs.readFileSync('public/flags.json', 'utf8'));
-    for (const k of ['paletteV2', 'calmWorld', 'visualLabOpen'] as const) {
+    for (const k of ['paletteV2', 'calmWorld', 'hudV2', 'uiKitV2', 'visualLabOpen'] as const) {
       expect(FLAG_DEFAULTS[k]).toBe(false);
       expect(j[k]).toBe(false);
       expect(flag(k)).toBe(false);
@@ -21,6 +22,8 @@ describe('실험실 스위치', () => {
   it('토글 끔 = 지금 화면 그대로 (색 함수가 원래 값)', () => {
     expect(vis('paletteV2')).toBe(false);
     expect(vis('calmWorld')).toBe(false);
+    expect(vis('hudV2')).toBe(false);
+    expect(vis('uiKitV2')).toBe(false);
     expect(calmForest('#3e6a34')).toBe('#3e6a34');
     expect(grassPair('#78b84a', '#5f9a3c')).toEqual(['#78b84a', '#5f9a3c']);
   });
@@ -36,6 +39,24 @@ describe('실험실 스위치', () => {
     expect(diff(a, b)).toBeLessThan(diff('#78b84a', '#5f9a3c') * 0.7);
     setLab(false);
     expect(localStorage.getItem('legacy-of-adventure-visualLab')).toBeNull();
+  });
+});
+
+describe('§5 큰 수 줄임 (uiKitV2)', () => {
+  it('한 규칙: 100만 미만은 쉼표 · 1.2M · 34M · 1.2B (HUD 금화 「9.9M」과 같게)', () => {
+    expect(bigNum(999_999)).toBe('999,999');
+    expect(bigNum(1_234_567)).toBe('1.2M');
+    expect(bigNum(9_900_000)).toBe('9.9M');
+    expect(bigNum(34_000_000)).toBe('34M');
+    expect(bigNum(1_234_000_000)).toBe('1.2B');
+    expect(bigNum(-2_500_000)).toBe('-2.5M');
+  });
+  it('끄면 금화 짧게(만·억) 그대로 · 켜면 같은 규칙', () => {
+    expect(fmtKo(16_000)).toBe('1.6만');
+    expect(fmtKo(120_000_000)).toBe('1.2억');
+    setLab(true);
+    expect(fmtKo(16_000)).toBe('16,000');
+    expect(fmtKo(120_000_000)).toBe('120M');
   });
 });
 

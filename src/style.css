@@ -1711,3 +1711,150 @@ body.decor .wfbub,body.photo .wfbub{display:none}
 .acdel{margin-top:18px;padding-top:10px;border-top:1px dashed #fff3;text-align:center}.acdel button{background:#8a2a30;color:#ffd0ca;border:0;padding:8px 14px;box-shadow:0 0 0 2px var(--ink);cursor:pointer;min-height:44px}
 .adhold{position:relative;display:block;width:100%;min-height:52px;margin:12px 0;border:0;background:#3a1418;color:#ffd0ca;box-shadow:0 0 0 2px var(--ink);overflow:hidden;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .adhold i{position:absolute;left:0;top:0;bottom:0;width:0;background:#c0393f}.adhold span{position:relative}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   VISUAL 실험실 v0.25.1 — §4 hudV2 (body.hud2) · §5 uiKitV2 (body.ui2)
+   「새 화면 미리 보기」를 켠 기기에서만 body 에 클래스가 붙는다 → 끄면 아래 규칙은 하나도 걸리지 않는다.
+   원래 HUD 요소는 DOM에 그대로 두고(다른 모듈이 읽고 쓰니까) 보기만 바꾼다.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ───────── §4 hudV2: 위 상태줄 1줄 · 소식 띠 1줄 · 오른쪽 가장자리 작은 버튼 · 아래 5칸 ───────── */
+body.hud2{--h2-bar:30px;--h2-band:22px;--h2-nav:44px;--h2-side:28px;--h2-top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + var(--h2-band) + 10px)}
+html:not([data-size="phone"]) body.hud2{--h2-bar:36px;--h2-band:26px;--h2-nav:52px;--h2-side:34px}
+
+/* 위 상태줄: 여관 이름(줄임) · 금화 · 일차/시각 · ★ · 전투력 — 가장자리에 붙인 한 줄 (누르면 여관 정보 카드) */
+body.hud2 .top{left:0;right:0;top:0;gap:0;padding-top:env(safe-area-inset-top,0px)}
+body.hud2 .top .sp,body.hud2 #bNotice,body.hud2 #bMenu{display:none!important}
+body.hud2 .top .stat{flex:1 1 auto;flex-direction:row;align-items:center;gap:10px;height:var(--h2-bar);padding:0 10px;font-size:var(--f-small);line-height:1;white-space:nowrap;border-image:var(--ui-titlebar) 6 fill / calc(6px * var(--k1)) / 0 stretch}
+body.hud2 .stat .nmrow,body.hud2 .stat .r1{display:contents}
+body.hud2 .stat .nm{order:0;flex:1 1 auto;min-width:2.5em;font-size:var(--f-small)}
+body.hud2 .stat .r1>span:first-child{order:1;flex:none;gap:3px}
+body.hud2 .stat .r1 #goldv{font-size:var(--f-small)}
+body.hud2 .stat #dayv{order:2;flex:0 1 auto;min-width:0;font-size:var(--f-small);padding:0}
+body.hud2 .stat #starv{order:3;flex:none}
+body.hud2 .stat #pwr{order:4;flex:none;font-size:var(--f-small)}
+body.hud2 #blessIco{display:none!important}
+
+/* 소식 띠: 장부 카드 · 평가 · 오늘 목표 · 다음 이야기 · 축복을 4초마다 번갈아 (원래 카드는 숨기기만) */
+body.hud2 :is(#mission,#evalbar,#goalPill,#storyWait){display:none!important}
+body.hud2 #newsBand{position:absolute;left:6px;top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + 3px);max-width:calc(100% - 12px);height:var(--h2-band);display:flex;align-items:center;gap:6px;padding:0 10px 0 6px;border:0;background:rgba(14,16,34,.86);box-shadow:0 0 0 2px var(--ink);color:var(--cream);font-size:var(--f-small);line-height:1;cursor:pointer;z-index:var(--z-hud);white-space:nowrap;overflow:hidden;text-align:left}
+body.hud2 #newsBand img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));flex:none}
+body.hud2 #newsBand span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none}
+body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:mglow 1s steps(2) infinite}
+body.hud2 #newsBand:active{transform:translateY(1px)}
+body.hud2.winopen #newsBand,body.hud2 .talking #newsBand,body.hud2 .placing #newsBand{visibility:hidden}
+body.hud2.visiting #newsBand{display:none!important}
+/* 여관 정보 카드(상태줄을 누르면) · 단골 제안: 띠 아래 */
+body.hud2 #goalPanel{top:var(--h2-top)}
+body.hud2 #propBadge{left:6px;right:auto;top:var(--h2-top);bottom:auto;padding:4px 8px}
+
+/* 오른쪽 가장자리: 낮밤 · 어울림 · 소리 · 배율 — 작은 아이콘 버튼 한 줄 */
+body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom){position:absolute;right:6px;bottom:auto;width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;z-index:var(--z-hud);font-size:var(--f-tiny)}
+body.hud2 :is(#bDN,#bHarm,#hSpk) small{display:none}
+body.hud2 #bDN b{font-size:var(--f-small);line-height:1}
+body.hud2 #bDN{top:var(--h2-top)}
+body.hud2 #bHarm{top:calc(var(--h2-top) + var(--h2-side) + 4px)}
+body.hud2 #hSpk{top:calc(var(--h2-top) + 2 * (var(--h2-side) + 4px))}
+body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * (var(--h2-side) + 4px))}
+
+/* 아래 메뉴줄 5칸: 건설 · 손님 · 모험 · 소식 · 메뉴 (주인·마을은 메뉴 격자 안) */
+body.hud2 :is(#bOwner,#bExp,#bVillage){display:none!important}
+/* 넓은 화면에서 창이 열리면 메뉴줄은 원래처럼 창 왼쪽 빈자리 가운데로 */
+html[data-size="wide"] body.hud2 #view:has(#win.on) nav.dk{transform:translateX(-50%)}
+body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:3px 2px calc(env(safe-area-inset-bottom,0px) + 3px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+body.hud2 .dk button{gap:2px;justify-content:center;font-size:var(--f-tiny);line-height:1.05}
+body.hud2 .dk .kic{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
+body.hud2 #bBuild{order:1}body.hud2 #bGuest{order:2}body.hud2 #bAdv{order:3}body.hud2 #bNews{order:4}body.hud2 #bMenu2{order:5}
+body.hud2 #bNews .dot{position:absolute;left:calc(50% + 8px);top:2px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
+body.hud2 .dk button.ready .kic{animation:rdy 1s steps(2) infinite}
+body.hud2 .dk .ndot{top:2px;right:calc(50% - 18px)}
+body.hud2 #bBuild .nbadge{right:calc(50% - 26px)}
+
+/* 채팅 한 줄 · 진행 중 줄: 메뉴줄 바로 위 (가장자리) */
+body.hud2 #chatlog{left:4px;right:4px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 4px);min-height:0;height:calc(1.25 * var(--f-small) + 4px);padding:2px 8px;font-size:var(--f-small);line-height:1.25}
+body.hud2 #runbar{left:4px;right:calc(var(--h2-side) + 12px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 1.25 * var(--f-small) + 12px)}
+body.hud2 #runbar button{min-height:0}
+body.hud2 #runbar .hline{position:relative;flex-direction:row;padding:3px 8px 5px;margin-bottom:3px}
+body.hud2 #runbar .hline i{position:absolute;left:0;right:0;bottom:0;height:3px;padding:0;border-image:none;background:#161420}
+body.hud2 #runbar .rbstrip{min-height:0;padding:3px 8px}
+
+/* 모험 창: 네 칸 (사냥 · 원정 · 토벌 · 심연) */
+body.hud2 .advgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+body.hud2 .advgrid .mtile{min-height:calc(48px * var(--k));justify-content:center;gap:4px}
+body.hud2 .advgrid .mtile span{font-size:var(--f-ui);font-weight:700}
+body.hud2 .advgrid .mtile small{color:#9aa6d8}
+body.hud2 .advgrid .mtile.lock small{color:#e2aa4e}
+
+/* ───────── §5 uiKitV2: 창 틀 하나 · 글자 크기 3개 · 버튼 3종 ───────── */
+/* 글자: 변수로 쓴 곳은 여기 한 줄로 3개(제목·본문·작은 글)에 모은다. --fs-* 는 screen.ts 가 글자 크기 단계(보통·크게·아주 크게)를 곱해 넣는다 */
+body.ui2{--f-big:var(--fs-title);--f-dlg:var(--fs-body);--f-name:var(--fs-body);--f-ui:var(--fs-body);--f-notice:var(--fs-body);--f-chat:var(--fs-body);--f-bub:var(--fs-body);--f-body:var(--fs-body);--f-small:var(--fs-small);--f-tiny:var(--fs-small)}
+/* 창 틀: panel 9-slice(정수 배율 --k) 한 벌 · 제목줄 높이 고정 · 닫기는 늘 오른쪽 위 같은 크기 · 첫 탭 줄은 스크롤해도 제목줄 바로 아래 */
+body.ui2 #win{border-image:var(--ui-panel) 8 fill / calc(8px * var(--k)) / 0 stretch}
+body.ui2 #win .hd{flex:none;height:calc(var(--fs-title) + 24px);min-height:44px;padding:0 4px 0 12px;gap:6px;border-image:var(--ui-titlebar) 6 fill / calc(6px * var(--k)) / 0 stretch}
+body.ui2 #win .hd #winT{font-size:var(--fs-title);line-height:1.2}
+body.ui2 #win .hd #winX{width:40px;height:40px;margin:0 0 0 auto;flex:none}
+body.ui2 #win .hd #winBack{width:40px;height:40px;margin-right:2px;font-size:var(--fs-title)}
+body.ui2 #win .hd #winHelp{width:36px;height:36px;font-size:var(--fs-body)}
+body.ui2 #winB{line-height:1.45}
+body.ui2 #winB>.tabs:first-child,body.ui2 #winB>.sub:first-child+.tabs{position:sticky;top:0;z-index:3;background:#1e2132;box-shadow:0 -12px 0 #1e2132,0 4px 0 #1e2132}
+/* 버튼 3종: 보통(나무) · 주(금색 — 확정·받기·출발) · 위험(빨강 — 지우기·팔기·내보내기). 잠긴 버튼은 원래 회색 그대로 */
+body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,#dChoice button,#rlBack,#goalPanel button,.mail button,.wfrow button,.acdel button,.bagb,#winF button):not([disabled]):not(.tab){border:0 solid transparent;border-image:none;background:#7a4a2a!important;box-shadow:inset 0 2px 0 #a8743f,inset 0 -3px 0 #4a2c18,0 0 0 2px var(--ink);color:#fff3d6;text-shadow:1px 1px 0 var(--ink)}
+body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,#dChoice button,#rlBack,#goalPanel button,.mail button,.wfrow button,.acdel button,.bagb,#winF button):not([disabled]):not(.tab):active{background:#5e3820!important;box-shadow:inset 0 3px 0 #4a2c18,0 0 0 2px var(--ink)}
+body.ui2.ui2 #view :where(.bigbtn:not(.ghost):not(.red):not(.sm),#placeOk,.goal button,#nameOk,.seg button.on,#dChoice button:first-child,#goalPanel button.rd):not([disabled]){border:0 solid transparent;border-image:var(--ui-btn-primary) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--ink);text-shadow:none;font-weight:700}
+body.ui2.ui2.ui2 #view :where(.bigbtn.red,.bagb.red,[data-sell].red,#rmOk,#rmB,.acdel button,#acDel,.mldel,#placeNo):not([disabled]){border:0;border-image:none;background:#a8323a!important;box-shadow:inset 0 2px 0 #d0545a,inset 0 -3px 0 #6e1c22,0 0 0 2px var(--ink);color:#fff;text-shadow:1px 1px 0 var(--ink)}
+/* ui2-fonts:begin — scripts/ui2-fonts.mjs 가 만듦 (손으로 고치지 말 것) */
+:where(body.ui2) .ibtn{font-size:var(--fs-body)}
+:where(body.ui2) .quest em{font-size:var(--fs-body)}
+:where(body.ui2) .rbtns button b{font-size:var(--fs-title)}
+:where(body.ui2) .hex text{font-size:var(--fs-small)}
+:where(body.ui2) .cbb b{font-size:var(--fs-title)}
+:where(body.ui2) .ibtn.hb b{font-size:var(--fs-body)}
+:where(body.ui2) .ibtn.hb small{font-size:var(--fs-small)}
+:where(body.ui2) .stat .r1 #goldv{font-size:var(--fs-body)}
+:where(body.ui2) .win .hd #winBack{font-size:var(--fs-title)}
+:where(body.ui2) .cbnames span{font-size:var(--fs-body)}
+:where(body.ui2) .cbcast{font-size:var(--fs-body)}
+:where(body.ui2) #updBar{font-size:var(--fs-body)}
+:where(body.ui2) .ver{font-size:var(--fs-body)}
+:where(body.ui2) .cbhit b{font-size:var(--fs-body)}
+:where(body.ui2) .cbhit small{font-size:var(--fs-body)}
+:where(body.ui2) .cbboss span{font-size:var(--fs-body)}
+:where(body.ui2) .cbsyn{font-size:var(--fs-body)}
+:where(body.ui2) .cbsyn b{font-size:var(--fs-body)}
+:where(body.ui2) .cbgoal{font-size:var(--fs-body)}
+:where(body.ui2) .cbloot p{font-size:var(--fs-body)}
+:where(body.ui2) .tbossbar span{font-size:var(--fs-body)}
+:where(body.ui2) .cbtop .cbfold small{font-size:var(--fs-small)}
+:where(body.ui2) .stat .r1 #dayv.tight{font-size:var(--fs-small)}
+:where(body.ui2) .ic b.lk{font-size:var(--fs-small)}
+:where(body.ui2) #bVillage .rbadge{font-size:var(--fs-small)}
+:where(body.ui2) #starMark{font-size:var(--fs-small)}
+:where(body.ui2) #photoBar .shot{font-size:var(--fs-title)}
+:where(body.ui2) #visitbar #vPhoto{font-size:var(--fs-title)}
+:where(body.ui2) .hlrow i{font-size:var(--fs-title)}
+:where(body.ui2) #ghostBtns .pbtns button{font-size:var(--fs-title)}
+:where(body.ui2) #ghostTag{font-size:var(--fs-body)}
+:where(body.ui2) #pathTip{font-size:var(--fs-small)}
+:where(body.ui2) .newb{font-size:var(--fs-small)}
+:where(body.ui2) #bBuild .nbadge{font-size:var(--fs-small)}
+:where(body.ui2) .dcell{font-size:var(--fs-small)}
+:where(body.ui2) .irow button.to{font-size:var(--fs-small)}
+:where(body.ui2) .cm{font-size:var(--fs-small)}
+:where(body.ui2) .mcell small{font-size:var(--fs-small)}
+:where(body.ui2) .gpick .gic{font-size:var(--fs-title)}
+:where(body.ui2) .favbtn{font-size:var(--fs-title)}
+:where(body.ui2) .ffname b{font-size:var(--fs-title)}
+:where(body.ui2) .fishtab{font-size:var(--fs-body)}
+:where(body.ui2) .pty-syn{font-size:var(--fs-small)}
+:where(body.ui2) .pty-syn small{font-size:var(--fs-small)}
+:where(body.ui2) .pty-hint{font-size:var(--fs-small)}
+:where(body.ui2) .pty-slot{font-size:var(--fs-small)}
+:where(body.ui2) .pty-slot b{font-size:var(--fs-small)}
+:where(body.ui2) .pty-slot.lock small{font-size:var(--fs-small)}
+:where(body.ui2) .pty-kf button{font-size:var(--fs-small)}
+:where(body.ui2) .pty-dex i{font-size:var(--fs-body)}
+:where(body.ui2) .pty-dex b{font-size:var(--fs-body)}
+:where(body.ui2) .pty-dex small{font-size:var(--fs-small)}
+:where(body.ui2) .chreg i{font-size:var(--fs-title)}
+/* ui2-fonts:end */

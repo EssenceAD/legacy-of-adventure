@@ -1,4 +1,5 @@
 // LAND2: 땅 넓히기 조건 — 금화 · 지역 재료 · 보스 재료 · 평판 ★(또는 ★ + 별의 심연 돌파) · 장부 장
+import { bigNum, vis } from './visual';
 import { CONFIG } from '../data/config';
 import { BOSSES } from '../data/bosses';
 import { REGIONS, type RegionId } from '../data/items';
@@ -10,7 +11,8 @@ export interface LandReq {
   text: string;
   ok: boolean;
 }
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : n.toLocaleString('ko-KR'));
 
 /** l단계로 넓히는 데 필요한 것 (한 줄씩 · 됐는지) */
 export function landReqs(l: number): LandReq[] {

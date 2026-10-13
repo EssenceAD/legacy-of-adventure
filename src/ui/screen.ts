@@ -4,6 +4,7 @@ import { CONFIG } from '../data/config';
 import { canvasScale, TW, view } from '../engine/iso';
 import { saverOn } from '../engine/fps';
 import { flag } from '../world/flags';
+import { vis } from '../world/visual';
 import { getPref, setPref } from '../save/save';
 import { S } from '../world/state';
 import { snap } from './kit';
@@ -117,6 +118,8 @@ function applyFonts() {
   const k = U.userScales[screen.fontStep] ?? 1;
   const r = document.documentElement.style;
   for (const [name, px] of Object.entries(base)) r.setProperty('--f-' + name, Math.round(px * k) + 'px');
+  // VISUAL §5 uiKitV2 (실험실): 3개 크기 변수 (body.ui2 가 --f-* 를 이것으로 모은다)
+  if (vis('uiKitV2')) for (const [name, px] of Object.entries(U.fontsV2[screen.size])) r.setProperty('--fs-' + name, Math.round(px * k) + 'px');
   // 초상화(64px 그림)는 기기 픽셀 정수배로 (README 0장)
   r.setProperty('--port', snap(64, U.portrait[screen.size]) + 'px');
 }

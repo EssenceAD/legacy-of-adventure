@@ -3,6 +3,7 @@ import { openNotices } from './ui/notice';
 import { kstDay } from './world/goldsink';
 import { flag } from './world/flags';
 import { loadFlags } from './world/flags';
+import { initHud2, initVisualClasses } from './ui/hud2';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
@@ -818,6 +819,8 @@ async function boot() {
     syncZoomLabel();
   });
   initKit();
+  // VISUAL 실험실 §4·§5: 켠 기기만 body.hud2 / body.ui2 (글자 크기 변수보다 먼저)
+  initVisualClasses();
   initScreen();
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
@@ -874,6 +877,8 @@ async function boot() {
   mailHooks.pioneer = openPioneerLetter;
   initEvalUI();
   initPowerUI();
+  // VISUAL §4 새 HUD (실험실 · 끄면 아무것도 안 함)
+  initHud2();
   initSound();
   void initChat();
   // DIRECTION §2: 함께 만든 사람들 · 승인된 소문 · 로그인하면 답장 배달 (서버 함수가 없으면 조용히 없음)

@@ -1,6 +1,7 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
 import { pendingWith, runFirstWith } from '../world/events';
+import { bigNum, vis } from '../world/visual';
 import { unseenDrops } from '../world/decodrop';
 import { canUndo, decorView, entranceWhy, moveEntrance, noteMove, rememberDungeonHome, undo } from '../world/decor';
 import { notePlace, takeOut } from '../world/store';
@@ -45,7 +46,8 @@ import { tickGoldsinkHud } from './goldsink';
 import { tickWayfind } from './wayfind';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : n.toLocaleString('ko-KR'));
 
 // ───────── 배치 모드 (짓기 · 옮기기) ─────────
 
@@ -732,7 +734,7 @@ export function tickHud() {
     const up = S.gold > shownGold && shownGold >= 0;
     shownGold = S.gold;
     // 핫픽스 9: 100만이 넘으면 「1.2M」로 줄여 상태 카드 줄이 안 갈리게
-    $('#goldv').textContent = S.gold >= 1e6 ? (S.gold / 1e6).toFixed(S.gold >= 1e7 ? 0 : 1) + 'M' : fmt(S.gold);
+    $('#goldv').textContent = vis('uiKitV2') ? bigNum(S.gold) : S.gold >= 1e6 ? (S.gold / 1e6).toFixed(S.gold >= 1e7 ? 0 : 1) + 'M' : fmt(S.gold);
     if (up) {
       const g = $('#gold');
       g.classList.remove('bump');

@@ -51,6 +51,10 @@ export const FLAG_DEFAULTS = {
   paletteV2: false,
   /** VISUAL §2 조용한 바닥 · 또렷한 사람 — 실험실(기본 꺼짐) */
   calmWorld: false,
+  /** VISUAL §4 HUD 다시 짜기 (위 상태줄 · 소식 띠 · 아래 5칸) — 실험실(기본 꺼짐) */
+  hudV2: false,
+  /** VISUAL §5 창 틀 · 글자 3크기 · 버튼 3종 · 큰 수 줄임 — 실험실(기본 꺼짐) */
+  uiKitV2: false,
   /** VISUAL 실험실 토글을 운영자 말고 모두에게 보이기 (테스터 공개 단계) */
   visualLabOpen: false,
 };

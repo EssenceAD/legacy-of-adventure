@@ -155,7 +155,7 @@ export function initGoalPill() {
   }
   // 바깥을 누르거나 창·대화가 뜨면 닫힘
   addEventListener('pointerdown', (e) => {
-    if (panel && !(e.target as HTMLElement).closest('#goalPanel, #goalPill, .top .stat')) closeGoalPanel();
+    if (panel && !(e.target as HTMLElement).closest('#goalPanel, #goalPill, .top .stat, #newsBand')) closeGoalPanel();
   });
   setInterval(() => {
     if (document.hidden) return;

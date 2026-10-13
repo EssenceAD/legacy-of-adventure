@@ -1,4 +1,5 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
+import { bigNum, vis } from '../world/visual';
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
 import { flag } from '../world/flags';
 import { communityLink } from './community';
@@ -31,7 +32,8 @@ import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolis
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+// VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
+const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : n.toLocaleString('ko-KR'));
 
 /** 창 제목 → 안내서 쪽 (ui/menu가 채운다): 「?」 버튼 */
 export const helpHook = { page: (_title: string): string | null => null, open: (_key: string) => {} };
