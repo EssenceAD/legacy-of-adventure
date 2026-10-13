@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { bestOf } from './town';
+import { markAdventured } from './actors';
 import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
 import { funnel } from '../net/funnel';
@@ -260,6 +261,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
+  markAdventured(members);
   const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
   P.mats[q.region] += mats;
   const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;

@@ -366,3 +366,13 @@ function starBondBonus(): number {
   for (const a of world.home?.actors ?? world.actors) if (a.id && !a.role && a.equip) v = Math.max(v, specialSum(a, 'starBond'));
   return v / 100;
 }
+
+/** 핫픽스 v0.23.1: 아리아 부탁(조건이 너무 어려웠음)을 받고 머무는 중이면 남은 시간을 한 번 다시 3일로 */
+export function extendAriaOnce(now = Date.now()) {
+  const st = P.legends.aria;
+  if (!st || st.st !== 'visit' || st.ext) return false;
+  st.until = now + L.visitDays * 864e5;
+  st.ext = true;
+  markDirty();
+  return true;
+}

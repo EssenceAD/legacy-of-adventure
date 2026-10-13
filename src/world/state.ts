@@ -150,6 +150,8 @@ export interface LegendState {
   full?: number;
   /** HOTFIX24: 「내일 밤 들르겠대요」 편지를 보냈나 */
   told?: boolean;
+  /** 핫픽스 v0.23.1: 아리아 부탁 남은 시간을 한 번 다시 3일로 늘렸나 */
+  ext?: boolean;
 }
 
 /** 토벌 한 판 기록 (2차에서 서버 랭킹으로 올린다) */
@@ -415,6 +417,8 @@ export function freshProgress() {
     salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, auto: '' as '' | 'n' | 'r' },
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
+    /** 핫픽스: 모험에서 지쳐 돌아온 손님 id (아리아 부탁) */
+    tiredAdv: [] as number[],
     /** FEEDBACK: 내보낸 단골 (실제 3일 동안 다시 부르기) · 작별한 단골 이름 (추억) */
     formerRegs: [] as import('./dismiss').FormerReg[],
     farewells: [] as string[],

@@ -319,6 +319,8 @@ export function enter(a: Actor, o: Building) {
 /** 건물 안에서 욕구가 채워진다 */
 function fillNeeds(a: Actor, act: Act | undefined) {
   const tired = a.hp < 30;
+  // 핫픽스: 모험에서 지쳐 돌아온 손님(체력 60 미만)도 쉬고 일어나면 아리아 부탁 1회
+  const advTired = !!a.id && (P.tiredAdv ?? []).includes(a.id) && a.hp < CONFIG.legends.tiredHp;
   const bathO = a.at?.kind === 'bath' ? a.at : bestOf('bath');
   const bathLv = bathO?.lvl ?? 1;
   // BUILDINGS_SPEC: 예배당 — 체력 회복 +%
@@ -350,9 +352,11 @@ function fillNeeds(a: Actor, act: Act | undefined) {
   else if (act === 'pray') a.mood = clamp(a.mood + CONFIG.newBuildings.chapel.prayMood * (S.night ? 1.5 : 1) * moodMult());
   else if (act && ['pet', 'read', 'brew', 'mail', 'stargaze', 'brag'].includes(act)) a.mood = clamp(a.mood + 5 * moodMult());
   // 지친 손님이 쉬고 일어났다 (성녀 아리아의 부탁)
-  if (!S.visiting && tired && a.hp >= 30 && (act === 'sleep' || act === 'bath')) {
+  const rested = act === 'sleep' || act === 'bath';
+  if (!S.visiting && rested && ((tired && a.hp >= 30) || (advTired && a.hp >= CONFIG.legends.tiredHp))) {
     legendHooks.req('tiredRecovered');
     ownerGain('tired');
+    P.tiredAdv = (P.tiredAdv ?? []).filter((id) => id !== a.id);
   }
 }
 
@@ -1053,4 +1057,10 @@ export function doingText(a: Actor): string {
   if (a.st === 'in' && a.at) return INSIDE_TEXT[def(a.at.kind).act!] ?? '머무는 중';
   if (a.st === 'walk' && a.intent) return a.intent;
   return ACT_TEXT[a.st] ?? '';
+}
+
+/** 핫픽스: 원정·사냥·토벌에서 돌아올 때 체력 60 미만이면 「지쳐 돌아온 손님」으로 기억 (아리아 부탁) */
+export function markAdventured(ms: Actor[]) {
+  const list = (P.tiredAdv ??= []);
+  for (const m of ms) if (m.id && m.hp < CONFIG.legends.tiredHp && !list.includes(m.id)) list.push(m.id);
 }

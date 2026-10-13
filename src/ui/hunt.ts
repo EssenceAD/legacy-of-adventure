@@ -1,5 +1,6 @@
 // 5단계 2장: 사냥 화면 — 지역 탭 · 스테이지 10칸 → 파티(3명) → 웨이브 전투(토벌 전투 틀 재사용) → 결과
 import { battleMusic } from './sound';
+import { markAdventured } from '../world/actors';
 import { funnel } from '../net/funnel';
 import { themeOf } from '../combat/theme';
 // 전투력이 모자라면 "전투력이 부족해요 (추천 ○○)" + 올리기 안내 → 파밍 → 강해짐 → 다음 스테이지
@@ -519,6 +520,7 @@ export function startHunt(r: RegionId, s: number, members: Actor[], manual: bool
     sfx(win ? 'win' : 'lose');
     const out = win ? clearStage(r, s, members) : failStage(r, s, members);
     for (const m of members) m.hp = Math.max(1, m.hp - (win ? 5 : 15));
+    markAdventured(members);
     markDirty();
     if (win) {
       view.log(`전리품 · 금화 +${fmt(out.gold)} · ${REGIONS[regionIdx(r)].mat} ×${out.mats}`, 'loot');
@@ -635,6 +637,7 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): str
   const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
   out.items.push(...res.items);
   for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
+  markAdventured(ms);
   markDirty();
   const next = s + 1;
   const canNext = res.win && next <= H.stages && stageOpen(r, next);

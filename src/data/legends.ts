@@ -130,7 +130,7 @@ export const LEGENDS: LegendDef[] = [
     hint: '손님들이 오래 웃는 온천 마을에 성녀가 머문대', rumor: '한 달 내내 손님이 웃는 온천 마을에 화관 쓴 성녀가 온대…',
     rumorWhen: (c) => c.bathLvl >= c.need(5) && c.moodTopDays >= c.need(30), rumorText: '온천 Lv5 + 손님 기분 최고 누적 30일',
     bond: ['bathUse'], bondText: '온천 이용 손님 수',
-    request: { text: '지친 손님(체력 30 미만)이 방이나 온천에서 쉬고 일어나기 10번', event: 'tiredRecovered', need: 10 },
+    request: { text: '모험에서 지쳐 돌아온 손님(체력 60 미만)이 방이나 온천에서 쉬고 일어나기 10번', event: 'tiredRecovered', need: 10 },
     intro: ['따뜻한 물 냄새… 이곳 사람들은 참 편안해 보여요.', '지친 분들을 함께 돌봐 주시겠어요?'],
     recruit: '모두 웃고 있어요. 이곳이 제가 기도할 자리예요.',
     skill: { name: '성녀의 기도', k: 'hpSave', v: 30 },

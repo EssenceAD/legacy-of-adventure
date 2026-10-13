@@ -1,5 +1,6 @@
 // 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, 24시간) · 하루 3번 · 소탕 · 보상
 import { BOSSES, bossById, RAID_BOSSES, type BossDef } from '../data/bosses';
+import { markAdventured } from './actors';
 import { pioneerRaidMult } from './easter';
 import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
@@ -267,6 +268,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
     gainXp(m, xp);
     m.hp = Math.max(1, m.hp - R.hpCost);
   }
+  markAdventured(members);
   // 이번 주 참여 보상: 인연의 증표 1개
   let token = false;
   let charm = false;

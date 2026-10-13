@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { sfx } from './audio/sfx';
+import { extendAriaOnce } from './world/legends';
 import { migrateGradeKeys } from './world/grade';
 import { landWhy, payLand } from './world/landreq';
 import { decoCoupon, useDecoCoupon } from './world/easter';
@@ -267,6 +268,8 @@ function applySave(d: SaveData) {
   );
   // 핫픽스: 등급 장식 이름표를 좌표 → 고정 자리 id로 (땅 넓히기 뒤 다시 생기던 문제)
   migrateGradeKeys();
+  // 핫픽스 v0.23.1: 아리아 부탁 남은 시간 다시 3일 (한 번)
+  extendAriaOnce();
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
   const movedKinds = P.harmony.moved.map((k) => k.split('@')[0]);
   for (const k of new Set(movedKinds)) {
