@@ -1,4 +1,5 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
+import { bindPersonActions, personActionsHtml } from './personActions';
 import { vis as visOn } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
@@ -223,10 +224,9 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    <div class="btnrow">${a.runId == null && !S.visiting ? '<button class="bigbtn sm" id="aTalk">말 걸기</button>' : ''}${byeBtn(a)}</div>`,
+    <div class="btnrow">${personActionsHtml(a, { talk: true })}${byeBtn(a)}</div>`,
   );
-  const tk = document.getElementById('aTalk');
-  if (tk) tk.onclick = () => talkGuest(a);
+  bindPersonActions(a, talkGuest);
   // GROWTH §3-1: 장비 칸 → 그 장비 강화 창 바로 (빈 칸이면 고르기)
   $$('.slot').forEach(
     (b) =>

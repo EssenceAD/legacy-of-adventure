@@ -35,5 +35,6 @@
   "mythicGuide": false,
   "legendCompanion": true,
   "firstFlowFix": false,
-  "harmonyLabels": true
+  "harmonyLabels": true,
+  "heroDetailGift": true
 }

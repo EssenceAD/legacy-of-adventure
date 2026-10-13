@@ -76,6 +76,8 @@ export const FLAG_DEFAULTS = {
   firstFlowFix: false,
   /** v0.25.2b 구역 어울림 이름표(숲 속 오두막·별빛 숙소…)는 어울림 버튼을 눌렀을 때만 (형철 결정 · 끄면 예전처럼 늘 보임) */
   harmonyLabels: true,
+  /** v0.25.3 K9 (고느끼 건의) 손님·영웅 상세 창에 [선물하기] — 마을 작은 메뉴와 같은 선물 고르기 */
+  heroDetailGift: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
