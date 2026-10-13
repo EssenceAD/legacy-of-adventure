@@ -257,8 +257,8 @@ export function storyWaitText(): string {
 export function tickGoldsinkHud() {
   const hud = document.getElementById('hud');
   if (!hud) return;
-  // 축복 아이콘 (상태 카드 줄 끝)
-  const r1 = document.querySelector('.stat .r1');
+  // 축복 아이콘 (상태 카드 오른쪽 아래 배지 — 폰에서 줄이 넘치지 않게)
+  const r1 = document.querySelector('.top .stat');
   let bi = document.getElementById('blessIco');
   const on = !S.visiting && blessed();
   if (!bi && on && r1) {
@@ -273,7 +273,7 @@ export function tickGoldsinkHud() {
     const t = on ? `✨${hm(blessLeft())}` : '';
     if (bi.textContent !== t) bi.textContent = t;
   }
-  // 다음 이야기 기다림 (장부 카드 아래)
+  // 다음 이야기 기다림 (장부 카드 자리 — 장부 카드가 떠 있으면 카드의 「🌙 ○일차에 다음 이야기」가 대신한다)
   let sw = document.getElementById('storyWait');
   const txt = S.started ? storyWaitText() : '';
   if (!sw && txt) {
@@ -286,9 +286,17 @@ export function tickGoldsinkHud() {
     const battle = !!document.querySelector('.battle, .cbt');
     sw.hidden = !txt || battle;
     if (sw.textContent !== txt) sw.textContent = txt;
-    const ms = document.getElementById('mission');
-    const top = ms && !ms.hidden ? ms.offsetTop + ms.offsetHeight + 6 : null;
-    const want = top != null ? `${top}px` : '';
-    if (sw.style.top !== want) sw.style.top = want;
+    // 왼쪽 위 줄(상태 카드 · 장부 카드 · 평가 바 · 오늘 목표 알약) 중 가장 아래 것 밑에
+    if (!sw.hidden) {
+      const hb = hud.getBoundingClientRect();
+      let bottom = 0;
+      for (const sel of ['.top .stat', '#mission', '#evalbar', '#goalPill']) {
+        const e = document.querySelector<HTMLElement>(sel);
+        if (!e || e.hidden || !e.offsetParent) continue;
+        bottom = Math.max(bottom, e.getBoundingClientRect().bottom - hb.top);
+      }
+      const want = bottom ? `${Math.round(bottom + 6)}px` : '';
+      if (sw.style.top !== want) sw.style.top = want;
+    }
   }
 }
