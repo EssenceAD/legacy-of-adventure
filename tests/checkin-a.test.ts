@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/data/config';
 import { CHAPTERS } from '../src/data/guide';
 import { makeAdventurer } from '../src/world/adventurers';
-import { queueProposal, regularsCount } from '../src/world/actors';
+import { dailyGuests, expireHeldProps, queueProposal, regularsCount } from '../src/world/actors';
 import { clearEvents, eventPolicy, isSideKey, pendingSide, pumpEvents, queueEvent, queueEventFront, runFirstSide } from '../src/world/events';
 import { setFlag } from '../src/world/flags';
 import { initStoryInbox, propDecision, usefulGuest, type PropCtx } from '../src/world/storyInbox';
@@ -170,6 +170,53 @@ describe('§A1·A2 실제 흐름 (actors)', () => {
     expect(g.leaving).toBeFalsy();
     expect(pendingSide()).toBe(1);
     g.leaving = true;
+    expect(pendingSide()).toBe(0);
+  });
+  /** 오늘 몫을 다 써서 배지에 남은 제안 하나 */
+  const stored = (o: Partial<Actor>) => {
+    fill();
+    eventPolicy.shownToday = () => 99;
+    const g = guest(o);
+    world.actors.push(g);
+    queueProposal(g);
+    pumpEvents(false);
+    expect(pendingSide()).toBe(1);
+    return g;
+  };
+  const W = { id: 999, kind: 'knight', name: 'W', lvl: 1, xp: 0, race: 'human', rarity: 'common', face: 0, hair: '#000' } as never;
+  it('마감(propHoldHours) 지남: 희귀는 대기 명단으로 (사라지지 않음)', () => {
+    const g = stored({ rarity: 'special' });
+    S.day += 2;
+    expireHeldProps();
+    expect(P.waitlist.map((w) => w.id)).toContain(g.id);
+    expect(pendingSide()).toBe(0);
+  });
+  it('마감 지남: 일반 손님은 조용히 떠남 (대기 명단 X)', () => {
+    localStorage.setItem('legacy-of-adventure-propFilter', JSON.stringify('all'));
+    const g = stored({ rarity: 'common' });
+    S.day += 2;
+    expireHeldProps();
+    expect(g.leaving).toBe(true);
+    expect(P.waitlist.length).toBe(0);
+    expect(pendingSide()).toBe(0);
+  });
+  it('마감 지남 + 대기 명단 꽉 참: 희귀는 제안을 둔 채 머묾', () => {
+    const g = stored({ rarity: 'special' });
+    P.waitlist = [W, W, W];
+    S.day += 2;
+    expireHeldProps();
+    expect(g.leaving).toBeFalsy();
+    expect(pendingSide()).toBe(1);
+  });
+  it('기분이 떨어져 떠날 때도: 모아 둔 희귀 손님은 대기 명단으로 · 꽉 찼으면 머묾', () => {
+    const g = stored({ rarity: 'special', moodSum: 1, moodN: 1, mood: 1 });
+    P.waitlist = [W, W, W];
+    dailyGuests();
+    expect(g.leaving).toBeFalsy();
+    expect(pendingSide()).toBe(1);
+    P.waitlist = [];
+    dailyGuests();
+    expect(P.waitlist.map((w) => w.id)).toContain(g.id);
     expect(pendingSide()).toBe(0);
   });
   it('「안 받기」: 대기 명단으로', () => {

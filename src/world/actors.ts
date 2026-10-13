@@ -639,7 +639,7 @@ function waitOrBye(a: Actor) {
 }
 /** CHECKIN §A2: 모아 둔 단골 제안의 마감(게임 시간) — 지나면 손님이 조용히 떠난다 */
 const propHold = new Map<number, number>();
-function expireHeldProps() {
+export function expireHeldProps() {
   for (const [id, until] of propHold) {
     const a = world.actors.find((x) => x.id === id);
     if (!hasEvent('prop' + id) || !a || a.leaving) {
@@ -647,10 +647,27 @@ function expireHeldProps() {
       continue;
     }
     if (absHours() < until) continue;
+    // 희귀 이상은 사라지지 않는다: 대기 명단으로 (꽉 찼으면 배지에 그대로 · 다음 시간에 다시 본다)
+    if (a.rarity !== 'common') {
+      keepRare(a);
+      continue;
+    }
     propHold.delete(id);
     dropEvent('prop' + id);
     sendAway(a, true);
   }
+}
+/** 모아 둔 단골 제안이 있는 희귀 이상 손님: 대기 명단에 자리가 있으면 그리로, 없으면 제안을 둔 채 머문다 */
+function keepRare(a: Actor) {
+  if (P.waitlist.length >= G.waitlistMax) return;
+  propHold.delete(a.id);
+  dropEvent('prop' + a.id);
+  toWaitlist(a);
+}
+/** CHECKIN §A2: 떠나기 — 단, 모아 둔 제안이 있는 희귀 이상 손님은 배지에서 사라지지 않게 (대기 명단 또는 머묾) */
+function leaveOrKeep(a: Actor, happy: boolean) {
+  if (collecting() && a.rarity !== 'common' && hasEvent('prop' + a.id)) return keepRare(a);
+  sendAway(a, happy);
 }
 
 /** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 · fast = 새로 생긴 자리의 빠른 제안(받으면 fastSlots -1) · recall = 대기 명단에서 다시 찾아온 손님(거르지 않음) */
@@ -751,9 +768,9 @@ export function dailyGuests() {
   for (const a of guestsOf()) {
     if (a.status !== 'visitor' || a.heroId || a.legendId || a.runId != null) continue;
     const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
-    if (avg < G.leaveMood) sendAway(a, false);
+    if (avg < G.leaveMood) leaveOrKeep(a, false);
     else if (S.day >= a.leaveDay) {
-      if (avg < regularNeed()) sendAway(a, true);
+      if (avg < regularNeed()) leaveOrKeep(a, true);
       else if (regularsCount() < capacity()) propose(a);
       else waitOrBye(a);
     }
@@ -774,7 +791,7 @@ function passersLeave() {
     // 단골 자리가 있으면 그 자리에서 제안, 없으면 대기 목록
     if (avg >= regularNeed() && regularsCount() < capacity()) propose(a);
     else if (avg >= regularNeed() && P.waitlist.length < G.waitlistMax) waitOrBye(a);
-    else sendAway(a, avg >= G.leaveMood);
+    else leaveOrKeep(a, avg >= G.leaveMood);
   }
 }
 onNewDay(dailyGuests);
