@@ -2012,7 +2012,7 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 .hcd::before{content:'';position:absolute;inset:0;border:calc(10px * var(--k)) solid transparent;border-image:var(--ui-guestcard-9) 10 fill / calc(10px * var(--k)) / 0 stretch;pointer-events:none;z-index:0}
 .hcd>*{position:relative;z-index:1}
 .hcd-pic{display:block;height:calc(30px * var(--k));overflow:hidden;background:#141a3a;box-shadow:0 0 0 1px var(--ink)}
-.hcd-pic img{display:block;width:calc(64px * var(--k));height:calc(64px * var(--k));max-width:none;margin:calc(-9px * var(--k)) 0 0 50%;transform:translateX(-50%);image-rendering:pixelated}
+.hcd-pic img{display:block;width:calc(64px * var(--k));height:calc(64px * var(--k));max-width:none;margin:calc(-16px * var(--k)) 0 0 50%;transform:translateX(-50%);image-rendering:pixelated}
 .hcd.dotf .hcd-pic img{width:calc(72px * var(--k1));height:calc(72px * var(--k1));margin-top:calc(-6px * var(--k1))}
 .hcd-role{position:absolute;left:calc(2px * var(--k));top:calc(2px * var(--k));display:inline-flex;align-items:center;gap:2px;padding:0 3px;background:#1c1018d9;color:var(--cream);font-size:var(--f-tiny);line-height:1.5;box-shadow:0 0 0 1px var(--ink);z-index:2}
 .hcd-role i{font-style:normal}
@@ -2043,7 +2043,7 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 .hcd.sm{padding:calc(4px * var(--k)) calc(1px * var(--k)) calc(2px * var(--k))}
 .hcd.sm::before{border-width:calc(5px * var(--k1));border-image:var(--ui-guestcard-9) 10 fill / calc(10px * var(--k1)) / 0 stretch}
 .hcd.sm .hcd-pic{height:calc(24px * var(--k))}
-.hcd.sm .hcd-pic img{width:calc(64px * var(--k1));height:calc(64px * var(--k1));margin-top:calc(-4px * var(--k1))}
+.hcd.sm .hcd-pic img{width:calc(64px * var(--k1));height:calc(64px * var(--k1));margin-top:calc(-9px * var(--k1))}
 .hcd.sm.dotf .hcd-pic img{width:calc(48px * var(--k1));height:calc(48px * var(--k1));margin-top:calc(-2px * var(--k1))}
 .hcd.sm .hcd-role{left:1px;top:1px;padding:0 2px}
 .hcd.sm .hcd-fav{right:1px;top:0}
@@ -2102,9 +2102,11 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 .hdk-top .roles>b.good,.hdk-top .roles>small.note{display:none}
 .hdk-f button small{display:none}
 html:not([data-size="phone"]) .hdk-f button small{display:inline}
-.hdk-rs{display:flex;flex-wrap:wrap;align-items:center;gap:3px 4px;margin:2px 0}
+.hdk-rs{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;margin:2px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
+.hdk-rs::-webkit-scrollbar{display:none}
+.hdk-rs>.roles>*,.hdk-rs>.pty-syns>*,.hdk-rs>.pty-hint{flex:none;white-space:nowrap}
 .hdk-rs>.roles,.hdk-rs>.pty-syns{display:contents}
-.hdk-rs>.pty-hint{flex:1 1 100%;margin:0}
+.hdk-rs>.pty-hint{margin:0}
 .hdk-rs .rl{padding:0 4px}
 html[data-size="wide"] .hcgrid{grid-template-columns:repeat(auto-fill,minmax(calc(38px * var(--k)),1fr))}
 /* 12명 이하: 폰에서 4열 — 위 판 + 격자가 스크롤 없이 한 화면 */
@@ -2156,3 +2158,6 @@ html:not([data-size="phone"]) .smo-slot .ic{width:calc(28px * var(--k));height:c
 @keyframes smoHam{0%{transform:rotate(-50deg)}50%{transform:rotate(20deg)}75%{transform:rotate(0)}100%{transform:rotate(0);opacity:0}}
 @keyframes smoSpk{0%,40%{opacity:0;background-position:0 0}41%{opacity:1;background-position:0 0}100%{opacity:1;background-position:-270px 0}}
 @keyframes smoNum{0%,40%{opacity:0;transform:translate(-50%,6px) scale(.6)}60%{opacity:1;transform:translate(-50%,-10px) scale(1.25)}100%{opacity:1;transform:translate(-50%,-16px) scale(1)}}
+/* J6 다듬기 R6: 정보 한 줄을 막대 줄 안으로 (위 판 ≤ 1/3) */
+.hdk-pw span small{color:#9aa6d8}
+.sortb.gsort1{flex-wrap:wrap}.sortb.gsort1 button{white-space:nowrap}

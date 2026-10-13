@@ -100,7 +100,10 @@ export function openGuests() {
         ? `<p class="note">단골 자리가 꽉 찼을 때 단골이 되고 싶어 한 손님이에요 · 자리가 나면 다시 찾아와 제안해요</p><div class="glist">${
             P.waitlist.map((w) => `<div class="wrow"><b style="color:${RARITY_INFO[w.rarity].color}">${esc(w.name)}</b> · Lv.${w.lvl} ${RACE_NAME[w.race]} ${CLASSES[w.kind].name}</div>`).join('') || '<p class="note">대기 중인 손님이 없어요</p>'
           }</div>`
-        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
+        : `<div class="sortb${visOn('heroCards') ? ' gsort1' : ''}">${
+            // J6 다듬기(R6): 카드 모드는 정렬 한 버튼(누를 때마다 레벨 → 전투력 → 희귀도) — 폭 360에서 글자가 세로로 꺾이지 않게
+            visOn('heroCards') ? `<button class="on" data-s="${(gSort + 1) % SORTS.length}" title="정렬 바꾸기">정렬 · ${SORTS[gSort]}</button>` : `정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}`
+          }${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
     <div class="glist${cards ? ' hcgrid' : ''}">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );

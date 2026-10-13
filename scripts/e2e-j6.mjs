@@ -274,7 +274,7 @@ if (LAB) {
       const full = cs.filter((c) => { const r = c.getBoundingClientRect(); return r.top >= top - 1 && r.bottom <= body.bottom + 1; }).length;
       const wb = document.querySelector('#winB');
       const g = document.querySelector('.hdk-grid')?.getBoundingClientRect();
-      return { cards: cs.length, full, scroll: Math.max(0, wb.scrollHeight - wb.clientHeight), gridFits: !!g && g.bottom <= body.bottom + 1 };
+      return { cards: cs.length, full, scroll: Math.max(0, wb.scrollHeight - wb.clientHeight), gridFits: !!g && g.bottom <= body.bottom + 1, topH: Math.round(document.querySelector('.hdk-top')?.getBoundingClientRect().height ?? 0), screenH: innerHeight };
     });
     await openParty(p);
     out.view19 = await view();
@@ -294,6 +294,7 @@ if (LAB) {
     const c12 = await clipCheck(p);
     ok(!c12.bad.length && !c12.wide, `360 · 12명(4열) 글자 안 잘림 ${JSON.stringify(c12.bad)}`);
     console.error(`\n412 원정 파티: 19명 → 한 화면 카드 ${out.view19.full}장 (스크롤 ${out.view19.scroll}px) · 12명 → ${out.view12.full}/${out.view12.cards}장 (스크롤 ${out.view12.scroll}px)`);
+    ok(out.view19.topH <= out.view19.screenH / 3, `R6: 위 고정 판 ≤ 화면 1/3 (${out.view19.topH}/${out.view19.screenH}px)`);
     ok(out.view19.full >= 9, `한 화면 카드 9장 이상 (${out.view19.full})`);
     await ctx.close();
   }
