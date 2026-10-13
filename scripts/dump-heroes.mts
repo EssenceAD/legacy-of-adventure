@@ -1,7 +1,7 @@
 // HERODOT ★ 비교 시트 → reports/herodot/
 //  실제 게임 코드(src/engine/sprites.ts)로 그린다 — Vite 개발 서버를 띄워 페이지에서 모듈을 불러오고 heroDotV2 를 끔/켬
 //  node scripts/dump-heroes.mts            → classes.png · guests.png · timing.json
-//  URL=http://localhost:4331/ node scripts/dump-heroes.mts village   → village_412.png · village_1280.png · hunt_*.png
+//  URL=http://localhost:4331/ node scripts/dump-heroes.mts village   → village_{따밤·웅스·이카몰리}_{day·night}_{412·1280}.png · hunt_*_{412·1280}.png (ONLY=ttabam 하나만 · ICA=이카몰리 저장 경로)
 //    (BOT_BUILD 묶음: BOT_BUILD=1 npx vite build --outDir dist-bot && npx vite preview --outDir dist-bot --port 4331 --strictPort)
 //    켬 = 실험실(visualLab) + heroDotV2 · 끔 = 같은 실험실 + 개발용 legacy-of-adventure-heroDotOff (도트만 다르게)
 import { chromium, type Page } from 'playwright-core';
@@ -37,6 +37,7 @@ async function sheets() {
       w.FL = await import('/src/world/flags.ts');
       w.CL = await import('/src/data/classes.ts');
       w.IT = await import('/src/data/items.ts');
+      w.OR = await import('/src/data/origins.ts');
     });
     savePng(`${OUT}/classes.png`, await p.evaluate(classesSheet));
     savePng(`${OUT}/guests.png`, await p.evaluate(guestsSheet));
@@ -75,7 +76,12 @@ function classesSheet(): string {
     ['구르기', (_f, c) => c.roll[1]],
     ['쓰러짐', (_f, c) => c.die[2]],
   ];
-  const kinds = [['knight', '기사'], ['cleric', '사제'], ['rogue', '도적']];
+  const { ownerLook } = w.OR;
+  const kinds: [string, string, any][] = [
+    ['knight', '기사'], ['cleric', '사제'], ['rogue', '도적'], ['mage', '마법사'], ['dwarf', '전사'],
+    ['hunter', '사냥꾼'], ['keeper', '노주인'], ['post', '우체부'], ['hero', '나'],
+  ].map(([k, n]) => [k, n, CLASSES[k]] as [string, string, any]);
+  kinds.push(['owner', '주인(사제·여)', ownerLook('priest', 'f')]);
   const cw = 24 * S + 8;
   const ch = 33 * S;
   const lw = 110;
@@ -90,10 +96,10 @@ function classesSheet(): string {
   x.font = '600 18px sans-serif';
   x.fillStyle = '#f3e7c9';
   cols.forEach(([n], i) => x.fillText(n, lw + i * cw + 6, 24));
-  kinds.forEach(([k, name], r) => {
+  kinds.forEach(([, name, def], r) => {
     for (const [j, on] of [[0, false], [1, true]] as const) {
       setFlag('heroDotV2', on);
-      const f = buildFrom(CLASSES[k]);
+      const f = buildFrom({ ...def });
       const c = f.cb();
       const y0 = head + r * (ch * 2 + 40) + j * (ch + 10);
       x.fillStyle = j ? '#2a2236' : '#221c2c';
@@ -124,12 +130,14 @@ function guestsSheet(): string {
   let s = 20261014;
   const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff), s / 0x7fffffff);
   const pick = <T,>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
-  const kinds = ['knight', 'cleric', 'rogue'];
+  const kinds = ['knight', 'cleric', 'rogue', 'mage', 'dwarf', 'hunter', 'keeper', 'post', 'hero'];
+  const RACES = ['human', 'elf', 'dwarf', 'halfling'];
   const guests: { def: any; label: string; rar: string }[] = [];
-  for (let i = 0; i < 24; i++) {
-    const kind = kinds[i % 3];
+  const N = 30;
+  for (let i = 0; i < N; i++) {
+    const kind = kinds[i % kinds.length];
     const base = CLASSES[kind];
-    const race = pick(CLASS_RACES[kind]) as string;
+    const race = pick(CLASS_RACES[kind] ?? RACES) as string;
     const rar = rnd() < 0.55 ? 'common' : rnd() < 0.7 ? 'special' : 'legend';
     const face = rar === 'common' ? {} : { eyes: pick(FACE_POOL.eyes), mouth: pick(FACE_POOL.mouth), brow: pick(FACE_POOL.brow) };
     const def: any = { ...base, face: { ...base.face, ...face } };
@@ -138,12 +146,14 @@ function guestsSheet(): string {
     const hair = pick(HAIR_COLORS) as string;
     def.beard = race === 'dwarf' ? hair : undefined;
     def.hair = hair;
-    def.weapon = rnd() < 0.8 ? CLASS_WEAPON[kind] : pick(['sword', 'axe', 'staff', 'dagger', 'book', 'bow']);
+    def.weapon = CLASS_WEAPON[kind] ? (rnd() < 0.8 ? CLASS_WEAPON[kind] : pick(['sword', 'axe', 'staff', 'dagger', 'book', 'bow'])) : base.weapon;
     const g = pick(['n', 'n', 'r', 'e', 'l', 'a']) as string;
     def.weaponColor = g !== 'n' ? GRADE_INFO[g].color : undefined;
-    if (i === 22) Object.assign(def, { skin: '#d99a6c', towel: '#ffffff' });
-    if (i === 23) Object.assign(def, { face: { ...def.face, glasses: true }, glassesColor: '#c9a46a' });
-    guests.push({ def, rar, label: `${base.name}·${race}·${def.weapon}${g !== 'n' ? '·' + GRADE_INFO[g].name : ''}${i === 22 ? '·수건' : i === 23 ? '·안경' : ''}` });
+    const towel = i === N - 3 || i === 12;
+    const glasses = i === N - 2 || i === 14;
+    if (towel) Object.assign(def, { skin: '#d99a6c', towel: '#ffffff' });
+    if (glasses) Object.assign(def, { face: { ...def.face, glasses: true }, glassesColor: '#c9a46a' });
+    guests.push({ def, rar, label: `${base.name}·${race}·${def.weapon}${g !== 'n' ? '·' + GRADE_INFO[g].name : ''}${towel ? '·피부·수건' : glasses ? '·안경' : ''}` });
   }
   const S = 4;
   const fw = 24 * S;
@@ -187,7 +197,7 @@ function measure() {
   const { setFlag } = w.FL;
   const { CLASSES } = w.CL;
   const out: Record<string, { before: number; after: number; ratio: number }> = {};
-  for (const k of ['knight', 'cleric', 'rogue']) {
+  for (const k of ['knight', 'cleric', 'rogue', 'mage', 'dwarf', 'hunter', 'keeper', 'post', 'hero']) {
     const xs: Record<string, number[]> = { before: [], after: [] };
     for (let i = 0; i < 36; i++)
       for (const on of [false, true]) {
@@ -209,8 +219,10 @@ function measure() {
 // ───────── 마을 · 사냥 필드 (BOT_BUILD 묶음) ─────────
 async function village() {
   const URL = process.env.URL ?? 'http://localhost:4331/';
-  const save = JSON.parse(fs.readFileSync('tests/fixtures/real_ttabam.json', 'utf8'));
-  const day = JSON.stringify({ ...save, clock: 6 * 60, night: false });
+  // 실세이브 3개: 따밤 · 웅스 · 이카몰리(ICA 경로 · 없으면 건너뜀) — 낮(6시) · 밤(17시 night)
+  const ICA = process.env.ICA ?? 'C:/Users/choly/AppData/Local/Temp/claude/C--Users-choly/aeed0df9-0ecc-49a1-923e-e1b70684cfba/scratchpad/gs3/save_03.json';
+  const SAVES = ([['ttabam', '따밤', 'tests/fixtures/real_ttabam.json'], ['woongs', '웅스', 'tests/fixtures/real_woongs.json'], ['ikamolly', '이카몰리', ICA]] as const).filter(([, , p]) => fs.existsSync(p));
+  const ONLY = process.env.ONLY;
   const b = await chromium.launch({ channel: 'chrome' });
   const VER = await (async () => {
     const c = await b.newContext();
@@ -219,51 +231,58 @@ async function village() {
     return JSON.stringify(v);
   })();
   const errs: string[] = [];
-  const shots: Record<string, Record<string, Buffer>> = {};
-  for (const width of [412, 1280]) {
-    for (const on of [false, true]) {
-      const dev =
-        width === 412
-          ? { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
-          : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 };
-      const ctx = await b.newContext(dev);
-      await ctx.addInitScript(
-        ([s, on, ver]) => {
+  for (const [id, who, file] of SAVES) {
+    if (ONLY && ONLY !== id) continue;
+    const sv = JSON.parse(fs.readFileSync(file, 'utf8'));
+    for (const night of [false, true]) {
+      const save = JSON.stringify(night ? { ...sv, clock: 17 * 60, night: true } : { ...sv, clock: 6 * 60, night: false });
+      const shots: Record<string, Record<string, Buffer>> = {};
+      for (const width of [412, 1280]) {
+        for (const on of [false, true]) {
+          const dev =
+            width === 412
+              ? { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
+              : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 };
+          const ctx = await b.newContext(dev);
+          await ctx.addInitScript(
+            ([s, on, ver]) => {
+              try {
+                if (sessionStorage.getItem('x')) return;
+                sessionStorage.setItem('x', '1');
+              } catch {
+                return;
+              }
+              localStorage.clear();
+              localStorage.setItem('legacy-of-adventure-save', s as string);
+              localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
+              localStorage.setItem('legacy-of-adventure-lastVersion', ver as string);
+              localStorage.setItem('legacy-of-adventure-settleOff', 'true');
+              localStorage.setItem('legacy-of-adventure-telemetry', 'false');
+              localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
+              localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+              // 마을을 크게 (사람이 보이게)
+              for (const k of ['zoom', 'zoom-tablet', 'zoom-desktop', 'zoom-wide', 'zoom-pc']) localStorage.setItem('legacy-of-adventure-' + k, '2');
+              if (!on) localStorage.setItem('legacy-of-adventure-heroDotOff', 'true');
+            },
+            [save, on, VER],
+          );
+          const p = await ctx.newPage();
+          p.on('pageerror', (e) => errs.push(`${id} ${width} ${on ? '켬' : '끔'}: ${String(e).slice(0, 160)}`));
           try {
-            if (sessionStorage.getItem('x')) return;
-            sessionStorage.setItem('x', '1');
-          } catch {
-            return;
+            (shots[`${width}`] ??= {})[on ? 'on' : 'off'] = await townShot(p);
+            if (!night) (shots['hunt' + width] ??= {})[on ? 'on' : 'off'] = await huntShot(p);
+          } catch (e) {
+            errs.push(`${id} ${night ? '밤' : '낮'} ${width} 못 찍음: ${String(e).slice(0, 120)}`);
           }
-          localStorage.clear();
-          localStorage.setItem('legacy-of-adventure-save', s as string);
-          localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
-          localStorage.setItem('legacy-of-adventure-lastVersion', ver as string);
-          localStorage.setItem('legacy-of-adventure-settleOff', 'true');
-          localStorage.setItem('legacy-of-adventure-telemetry', 'false');
-          localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
-          localStorage.setItem('legacy-of-adventure-visualLab', 'true');
-          // 마을을 크게 (사람이 보이게)
-          for (const k of ['zoom', 'zoom-tablet', 'zoom-desktop', 'zoom-wide', 'zoom-pc']) localStorage.setItem('legacy-of-adventure-' + k, '2');
-          if (!on) localStorage.setItem('legacy-of-adventure-heroDotOff', 'true');
-        },
-        [day, on, VER],
-      );
-      const p = await ctx.newPage();
-      p.on('pageerror', (e) => errs.push(`${width} ${on ? '켬' : '끔'}: ${String(e).slice(0, 160)}`));
-      const key = `${width}`;
-      (shots[key] ??= {})[on ? 'on' : 'off'] = await townShot(p);
-      try {
-        (shots['hunt' + key] ??= {})[on ? 'on' : 'off'] = await huntShot(p);
-      } catch (e) {
-        errs.push(`사냥 필드 못 찍음: ${String(e).slice(0, 120)}`);
+          await ctx.close();
+        }
       }
-      await ctx.close();
+      const tag = night ? 'night' : 'day';
+      for (const width of [412, 1280]) {
+        await pair(b, `village_${id}_${tag}_${width}`, `${who} 마을 · ${night ? '밤' : '낮'} · 폭 ${width}`, shots[`${width}`]);
+        if (!night) await pair(b, `hunt_${id}_${width}`, `${who} · 사냥 필드 (숲 1-10) · 폭 ${width}`, shots[`hunt${width}`]);
+      }
     }
-  }
-  for (const width of [412, 1280]) {
-    await pair(b, `village_${width}`, `따밤 마을 · 낮 · 폭 ${width}`, shots[`${width}`]);
-    await pair(b, `hunt_${width}`, `따밤 · 사냥 필드 (숲 1-10) · 폭 ${width}`, shots[`hunt${width}`]);
   }
   await b.close();
   console.error(errs.length ? '✗ 오류:\n' + errs.join('\n') : '✓ 오류 0');
@@ -308,7 +327,10 @@ async function huntShot(p: Page): Promise<Buffer> {
   await p.locator('[data-s="10"]').click({ timeout: 5000 });
   await W(700);
   await p.locator('#hMan').click({ timeout: 5000 });
-  await W(3000);
+  // 넓은 화면: 처음 뜨는 단축키 안내(아무 키나 눌러 닫기)를 닫는다
+  await W(800);
+  await p.keyboard.press('Shift').catch(() => {});
+  await W(2500);
   return await p.screenshot();
 }
 
@@ -332,9 +354,9 @@ async function clear(p: Page) {
 
 async function pair(b: Awaited<ReturnType<typeof chromium.launch>>, name: string, title: string, s?: Record<string, Buffer>) {
   if (!s?.off || !s?.on) return;
-  const wide = name.endsWith('1280');
+  const wide = name.endsWith('_1280');
   const iw = wide ? 1280 : 412;
-  const pg = await b.newPage({ viewport: { width: iw * 2 + 60, height: 800 }, deviceScaleFactor: 1 });
+  const pg = await b.newPage({ viewport: { width: iw * 2 + 60, height: 800 }, deviceScaleFactor: wide ? 1 : 2 });
   const im = (buf: Buffer) => `data:image/png;base64,${buf.toString('base64')}`;
   await pg.setContent(`<body style="margin:0;background:#1b1622;font:600 22px sans-serif;color:#f3e7c9">
     <div style="padding:12px 20px">${title} — 둘 다 「새 화면 미리 보기」 켬 · 다른 건 영웅 도트뿐</div>

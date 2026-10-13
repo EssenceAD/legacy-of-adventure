@@ -1,7 +1,8 @@
 // HERODOT 1단계: heroDotV2 꺼짐이면 기사·사제·도적 도트가 지금과 한 픽셀도 다르지 않다 (바꾸기 전에 잰 해시)
 import { createHash } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { CLASSES, type ClassDef } from '../src/data/classes';
+import { CLASSES, type ClassDef, type ClassKey } from '../src/data/classes';
+import { ownerLook } from '../src/data/origins';
 import { setFlag } from '../src/world/flags';
 
 /** 픽셀을 기억하는 가짜 2D 컨텍스트 (fillRect만 쓰므로 그것만) */
@@ -22,7 +23,11 @@ beforeAll(() => {
   } as never;
 });
 
-const VARIANTS = (k: 'knight' | 'cleric' | 'rogue'): ClassDef[] => {
+const ALL: ClassKey[] = ['knight', 'cleric', 'rogue', 'mage', 'dwarf', 'hunter', 'keeper', 'post', 'hero'];
+const JOBS = ['knight', 'warrior', 'rogue', 'mage', 'priest', 'hunter'] as const;
+const OWNERS = (): ClassDef[] => JOBS.flatMap((j) => [ownerLook(j, 'm'), ownerLook(j, 'f')]);
+const VARIANTS = (k: ClassKey | 'owner'): ClassDef[] => {
+  if (k === 'owner') return OWNERS();
   const b = CLASSES[k];
   return [
     b,
@@ -34,7 +39,7 @@ const VARIANTS = (k: 'knight' | 'cleric' | 'rogue'): ClassDef[] => {
   ];
 };
 
-async function hashOf(k: 'knight' | 'cleric' | 'rogue') {
+async function hashOf(k: ClassKey | 'owner') {
   const { buildFrom } = await import('../src/engine/sprites');
   const h = createHash('sha256');
   for (const d of VARIANTS(k)) {
@@ -48,9 +53,10 @@ async function hashOf(k: 'knight' | 'cleric' | 'rogue') {
 }
 
 describe('HERODOT heroDotV2 꺼짐 = 예전 그대로', () => {
-  it('기사·사제·도적 프레임 해시가 바꾸기 전과 같다', async () => {
+  it('9직업 + 주인(나) 겉모습 프레임 해시가 바꾸기 전과 같다', async () => {
     setFlag('heroDotV2' as never, false);
-    const got = { knight: await hashOf('knight'), cleric: await hashOf('cleric'), rogue: await hashOf('rogue') };
+    const got: Record<string, string> = {};
+    for (const k of [...ALL, 'owner' as const]) got[k] = await hashOf(k);
     expect(got).toEqual(BEFORE);
   });
 });
@@ -64,19 +70,20 @@ const framesOf = async (d: ClassDef) => {
 const dump = (cvs: HTMLCanvasElement[][]) => cvs.flat().map((cv) => `${cv.width}x${cv.height}:` + (PIX.get(cv) ?? []).join(',')).join('|');
 
 describe('HERODOT heroDotV2 켬', () => {
-  it('다른 직업(마법사·전사·사냥꾼·노주인·우체부·나)은 켜도 그대로', async () => {
-    for (const k of ['mage', 'dwarf', 'hunter', 'keeper', 'post', 'hero'] as const) {
+  it('새 도트 표시(dot2)가 없는 겉모습(마을 사람·구경꾼 등)은 켜도 그대로', async () => {
+    for (const k of ALL) {
+      const d = { ...CLASSES[k], dot2: undefined };
       setFlag('heroDotV2' as never, false);
-      const off = dump((await framesOf(CLASSES[k])).all);
+      const off = dump((await framesOf(d)).all);
       setFlag('heroDotV2' as never, true);
-      const on = await framesOf(CLASSES[k]);
+      const on = await framesOf(d);
       expect(dump(on.all)).toBe(off);
       expect(on.f.blink).toBeUndefined();
     }
     setFlag('heroDotV2' as never, false);
   });
-  it('기사·사제·도적은 새 모양 · 캔버스 크기와 프레임 수는 그대로 · 깜빡임 1프레임', async () => {
-    for (const k of ['knight', 'cleric', 'rogue'] as const)
+  it('9직업 + 주인 겉모습은 새 모양 · 캔버스 크기와 프레임 수는 그대로 · 깜빡임 1프레임', async () => {
+    for (const k of [...ALL, 'owner' as const])
       for (const d of VARIANTS(k)) {
         setFlag('heroDotV2' as never, false);
         const a = await framesOf(d);
@@ -105,4 +112,4 @@ describe('HERODOT heroDotV2 켬', () => {
   });
 });
 
-const BEFORE ={ knight: 'b703f086838d1fa5', cleric: '4bb8d42d2698ad20', rogue: '7104d9090fe97940' };
+const BEFORE: Record<string, string> = { knight: 'b703f086838d1fa5', cleric: '4bb8d42d2698ad20', rogue: '7104d9090fe97940', mage: '91b2669581fb93f2', dwarf: 'f66f6cbe5a6fcf48', hunter: 'b04b406be0c62932', keeper: 'abe132f9ea146602', post: '52913e05621bb701', hero: '567fc3d6be87c8e1', owner: 'f680cab19f283f25' };

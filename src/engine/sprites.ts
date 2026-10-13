@@ -688,7 +688,7 @@ function dot2Of(d: ClassDef): Dot2 | null {
 /** 마을 걷기 4: 벌림 → 지나감(들썩·발 들림) → 반대로 벌림 → 지나감 · 망토 끝은 앞 프레임 높이(1프레임 늦게) */
 const WALK4_2: Pose2[] = [
   { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1 },
-  { bob: -1, liftR: 1, trail: 1, lag: 0 },
+  { bob: -1, liftR: 1, trail: 1, lag: 0, tw: 1 },
   { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1 },
   { bob: -1, liftL: 1, trail: 1, lag: 0 },
 ];
@@ -696,7 +696,7 @@ const WALK4_2: Pose2[] = [
 const WALK6_2: Pose2[] = [
   { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1 },
   { lx: -1, rx: 1, bob: -1, armF: 1, armB: -1, trail: 1, lag: 0 },
-  { bob: -1, liftR: 1, trail: 1, lag: -1 },
+  { bob: -1, liftR: 1, trail: 1, lag: -1, tw: 1 },
   { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1 },
   { lx: 1, rx: -1, bob: -1, armF: -1, armB: 1, trail: 1, lag: 0 },
   { bob: -1, liftL: 1, trail: 1, lag: -1 },
@@ -708,7 +708,7 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
   return {
     def: d,
     cb: () => (cbf ??= buildCombat2(d, k)),
-    idle: [R({}), R({ bob: 1 })],
+    idle: [R({}), R({ bob: 1, tw: 1 })],
     walk: WALK4_2.map(R),
     walkB: WALK4_2.map((p) => R({ ...p, back: 1 })),
     idleB: [R({ back: 1 }), R({ back: 1, bob: 1 })],
@@ -723,7 +723,7 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
 function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
   const R = (p: Pose2) => drawChar2(d, k, p, weapon).render();
   return {
-    idle: [R({}), R({ bob: 1 }), R({ bob: 1, armF: 1, armB: 1 })],
+    idle: [R({}), R({ bob: 1, tw: 1 }), R({ bob: 1, armF: 1, armB: 1 })],
     idleB: [R({ back: 1 }), R({ back: 1, bob: 1 }), R({ back: 1, bob: 1, armF: 1 })],
     walk: WALK6_2.map(R),
     walkB: WALK6_2.map((p) => R({ ...p, back: 1 })),

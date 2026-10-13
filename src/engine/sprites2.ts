@@ -1,10 +1,10 @@
-// HERODOT 리마스터 2 — 기사·사제·도적 도트 (플래그 heroDotV2 · 꺼지면 sprites.ts 예전 그림 그대로)
+// HERODOT 리마스터 2 — 9직업 도트 (1단계 기사·사제·도적 · 2단계 마법사·전사·사냥꾼·노주인·우체부·나) (플래그 heroDotV2 · 꺼지면 sprites.ts 예전 그림 그대로)
 //  같은 24×33 격자 · 같은 동작 · 같은 render() 명암 3단 + 부위색 외곽선. 머리를 키우고(약 12px · 2.5등신) 직업 실루엣을 가른다.
 //  좌표는 예전 drawChar와 같은 그리기 좌표 (Grid(24,33,1,3) · 발바닥 = 27줄)
 import type { ClassDef } from '../data/classes';
 import { dk, Grid, lt, mix, ramp, type GridT } from './pixel';
 
-export type Dot2 = 'knight' | 'cleric' | 'rogue';
+export type Dot2 = 'knight' | 'cleric' | 'rogue' | 'mage' | 'dwarf' | 'hunter' | 'keeper' | 'post' | 'hero';
 
 export interface Pose2 {
   /** 다리: 뒤(왼쪽) · 앞(오른쪽) 다리 가로 이동 · 들린 발 */
@@ -27,6 +27,8 @@ export interface Pose2 {
   /** 망토 끝: 걸을 때 뒤로 끌림(px) · 1프레임 늦은 몸 높이 */
   trail?: number;
   lag?: number;
+  /** 마법사 지팡이 구슬 1px 반짝 */
+  tw?: number;
 }
 
 const SKIN = '#f2c49b';
@@ -40,6 +42,10 @@ const RIM = '#8d97aa';
 const WHITE = '#ffffff';
 const VEIL = '#eef0f8';
 const SHAFT = '#9a6436';
+const HORN = '#efe2c6';
+const HANDLE = '#7a5030';
+const FEATHER = '#3fa58a';
+const STRING = '#efe2c6';
 
 /** 무기 그리기 (예전 weapon() — 도끼·활 같은 다른 무기는 예전 모양을 빌린다) */
 export type WeaponFn = (G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low', frame?: number) => void;
@@ -64,6 +70,9 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   // ── 몸 뒤: 도적 망토 자락 · 사제 베일 뒷자락 ──
   if (kind === 'rogue' && !back) cape(G, hx, by, hood!, pose, false);
   if (kind === 'cleric' && !back) veilBack(G, hx, hy, by, def.accent, false);
+  const own = kind === 'knight' || kind === 'cleric' || kind === 'rogue';
+  if (!own && !back) hairBack(G, def, hx, hy, by, pose, false);
+  if (kind === 'hunter' && def.quiver !== false && !back && !sit) quiver(G, by, false);
 
   // ── 다리 ──
   if (!sit) legs(G, def, legTop, pose, robe);
@@ -97,8 +106,14 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   if (!robe) drawBackArm();
 
   // ── 몸통 ──
-  if (robe) robeBody(G, def, hx, by, sit, back);
+  if (robe) robeBody(G, def, hx, by, sit, back, kind === 'mage');
+  else if (kind === 'dwarf') dwarfBody(G, def, hx, by, sit ? by + 5 : legTop, back);
+  else if (kind === 'keeper' || kind === 'hero') apronBody(G, def, kind, hx, by, sit ? by + 5 : legTop, back);
   else tunic(G, def, kind, hx, by, sit ? by + 5 : legTop, back);
+  if (kind === 'hunter' && !back) G.line(14, by, 8, by + 5, '#6b4128');
+  if (kind === 'post') mailBag(G, by, back, def.accent);
+  if (!own && back) hairBack(G, def, hx, hy, by, pose, true);
+  if (kind === 'hunter' && def.quiver !== false && back && !sit) quiver(G, by, true);
   if (robe) drawBackArm();
   if (kind === 'cleric' && back) veilBack(G, hx, hy, by, def.accent, true);
   if (def.towel) {
@@ -112,7 +127,8 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   // ── 머리 ──
   G.ell(hx + 0.2, hy, 6.1, 5.6, SKN);
   if (def.beard) G.ell(hx + 0.6, hy + 4.4, 4.6, 3.4, def.beard, null, (_x, y) => y >= hy + 2.4);
-  headgear(G, def, kind, hx, hy, by, back, hood);
+  if (own) headgear(G, def, kind, hx, hy, by, back, hood);
+  else headgear2(G, def, kind, hx, hy, back);
   // 엘프 귀: 투구·두건 밖으로 뾰족
   if (def.elf) {
     // 엘프 귀: 머리 장비 밖으로 뾰족 (피부 밝게 · 안쪽 1px 어둡게)
@@ -123,7 +139,11 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
     };
     const l = Math.round(hx) - 7;
     const r = Math.round(hx) + 8;
-    ear([[l, 0], [l - 1, 0], [l - 2, -1], [l - 1, -1], [l - 3, -2], [l, 1], [l - 1, 1]], [l, 0]);
+    if (kind === 'rogue') {
+      // 두건 옆으로 귀 끝만 2px
+      ear([[l - 1, 0], [l - 2, -1]], [l - 1, 0]);
+      ear([[r, 0], [r + 1, -1]], [r, 0]);
+    } else ear([[l, 0], [l - 1, 0], [l - 2, -1], [l - 1, -1], [l - 3, -2], [l, 1], [l - 1, 1]], [l, 0]);
     if (!back) ear([[r, 0], [r + 1, -1], [r, -1], [r + 2, -2], [r, 1]], [r, 0]);
     else ear([[r, 0], [r + 1, 0], [r + 2, -1], [r + 1, -1], [r + 3, -2], [r, 1], [r + 1, 1]], [r, 0]);
   }
@@ -140,6 +160,9 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
     for (const [x, y, c] of fl) G.set(x, y, c, 'flat');
     face(G, def, pose, hx, hy, SKN2);
   }
+  // 전사 수염: 두 갈래로 땋아 가슴까지
+  if (kind === 'dwarf' && def.beard && !back) beardBraids(G, def.beard, def.accent, hx, hy, by);
+  if (kind === 'cleric' && back) veilRim(G, def.accent);
   // 도적 짧은 망토: 앞에서 어깨를 덮는다 (뒤에서는 등 전체)
   if (kind === 'rogue') {
     if (back) cape(G, hx, by, hood!, pose, true);
@@ -201,15 +224,22 @@ function tunic(G: GridT, def: ClassDef, kind: Dot2, hx: number, by: number, legT
 }
 
 /** 사제 로브: 아래로 넓게 · 금 장식 줄 (가운데 · 아랫단 · 소매) */
-function robeBody(G: GridT, def: ClassDef, hx: number, by: number, sit: number, back: boolean) {
+function robeBody(G: GridT, def: ClassDef, hx: number, by: number, sit: number, back: boolean, flare = false) {
   const c = def.cloth;
   const end = sit ? by + 9 : 26;
-  for (let y = by; y < end; y++) {
-    const j = y - by;
-    const ww = j === 0 ? 8 : 10 + Math.floor(j / 4);
-    G.rect(Math.round(hx - ww / 2), y, ww, 1, c);
-  }
+  const wOf = (j: number) => (j === 0 ? 8 : flare ? 10 + Math.floor(j / 2.2) : 10 + Math.floor(j / 4));
+  for (let y = by; y < end; y++) G.rect(Math.round(hx - wOf(y - by) / 2), y, wOf(y - by), 1, c);
   const g = def.accent;
+  if (flare) {
+    // 마법사: 가운데 여밈 (어두운 줄) · 아랫단 금 테 · 깃
+    if (!back) {
+      G.rect(Math.round(hx), by + 2, 1, end - by - 2, dk(c, 0.25));
+      G.rect(Math.round(hx) - 1, by, 3, 2, dk(c, 0.15));
+    }
+    const ww = wOf(end - 1 - by);
+    G.rect(Math.round(hx - ww / 2), end - 1, ww, 1, g);
+    return;
+  }
   if (!back) {
     G.rect(Math.round(hx), by + 2, 1, end - by - 2, g, 'flat');
     G.set(Math.round(hx), by + 1, lt(g, 0.4), 'flat');
@@ -291,7 +321,6 @@ function headgear(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: number, b
           if (!p || p.c !== VEIL) continue;
           if (op(x + 1, y) || op(x - 1, y) || op(x, y + 1) || op(x, y - 1)) if (y <= hy + 5) G.set(x, y, def.accent);
         }
-    else G.rect(Math.round(hx - 6), Math.round(hy - 2.5), 13, 1, def.accent);
     return;
   }
   // 도적 두건: 둥근 머리 + 뒤로 뾰족한 끝 · 얼굴 창
@@ -437,7 +466,13 @@ function face(G: GridT, def: ClassDef, pose: Pose2, hx: number, hy: number, SKN2
       G.rect(ex + 2, ey, 1, 3, gc, 'eye');
     });
   }
-  if (def.stache) G.rect(mx - 2, my - 1, 5, 1, def.stache);
+  if (def.stache) {
+    // 큰 흰 콧수염 (양끝 말려 올라감)
+    G.rect(mx - 3, my - 1, 7, 2, def.stache);
+    G.set(mx - 4, my - 2, def.stache);
+    G.set(mx + 4, my - 2, def.stache);
+    G.set(mx, my, dk(def.stache, 0.15), 'flat');
+  }
 }
 
 /** 사제 베일 뒷자락 (어깨 뒤로 길게) */
@@ -609,9 +644,19 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     if (w === 'sword') return sword(G, def, hx, hy, mode);
     if (w === 'dagger') return dagger(G, hx, hy, mode, def.weaponColor);
     if (w === 'book') return book(G, def, hx, hy + (mode === 'rest' ? 1 : 0));
+    if (w === 'axe') return axe2(G, def, hx, hy, mode);
+    if (w === 'bow') return bow2(G, def, hx + 2, hy - 8, 18, mode === 'up' ? 1 : mode === 'mid' ? 2 : 0);
+    if (w === 'staff' && kind !== 'cleric') {
+      // 마법사 지팡이: 빛 구슬
+      if (mode === 'rest') return orbStaff(G, def, hx + 1, by - 9, 27, 1, pose.tw);
+      if (mode === 'up') return orbStaff(G, def, hx + 1, hy - 10, hy + 6, 1);
+      if (mode === 'fwd' || mode === 'mid') {
+        G.line(hx + 1, hy + 2, hx + 3, hy - 6, SHAFT);
+        return orbStaff(G, def, hx + 4, hy - 9, hy - 9 + 2, 2);
+      }
+      return orbStaff(G, def, hx + 1, hy - 6, hy + 8, 0);
+    }
     if (w === 'holy' || w === 'staff') {
-      // 사제: 별 지팡이 (마법사 지팡이를 든 사제도 별) · 다른 직업의 지팡이는 예전 모양
-      if (kind !== 'cleric' && w === 'staff') return oldWeapon(G, def, hx, hy, mode);
       if (mode === 'rest') return holyStaff(G, def, hx + 1, by - 8, 27, 1);
       if (mode === 'up') return holyStaff(G, def, hx + 1, hy - 10, hy + 6, 1);
       if (mode === 'fwd' || mode === 'mid') {
@@ -628,6 +673,7 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     G.rect(15, by + 1, 2, 2, arm);
     G.rect(17, by + 1, 2, 2, SKN);
     if (w === 'holy' || (w === 'staff' && kind === 'cleric')) holyStaff(G, def, 19, by - 8, 27, r + 1);
+    else if (w === 'staff') orbStaff(G, def, 19, by - 9, 27, r, 1);
     else {
       if (w === 'sword') sword(G, def, 17, by + 2, 'up');
       else if (w) W(17, by + 1, 'rest');
@@ -640,6 +686,19 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
       if (r >= 3) for (const [dx, dy] of [[3, -3], [4, 0], [2, 3], [0, -3]]) G.set(cx + dx, cy + dy, WHITE, 'fx');
     }
     return;
+  }
+  if (w === 'bow' && pose.atk) {
+    // 활: 겨눔(당김) → 놓음(화살 줄) → 앞으로 → 내림
+    const a = pose.atk;
+    if (a === 4) {
+      G.rect(15, by + 1, 2, 3, arm);
+      G.rect(17, by + 2, 2, 2, SKN);
+      return bow2(G, def, 19, by - 6, 18, 0);
+    }
+    G.rect(15, by + 1, 3, 2, arm);
+    G.rect(18, by + 1, 2, 2, SKN);
+    if (a === 1) G.rect(13, by + 2, 2, 2, SKN);
+    return bow2(G, def, 19, by - 7, 18, a === 1 ? 1 : a === 3 ? 2 : 0);
   }
   if (pose.atk === 1) {
     // 들어 올림: 앞손이 어깨 위로
@@ -693,6 +752,24 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     if (w === 'book') return book(G, def, 18, by + 6 + aF);
     return holyStaff(G, def, 19, by - 8, 27, 1);
   }
+  if (!sit && (w === 'staff' || w === 'axe' || w === 'bow')) {
+    const sl = def.robe ? dk(arm, 0.08) : arm;
+    G.rect(15, by + 1, 2, 3, sl);
+    G.rect(16, by + 2 + aF, 1, 2, sl);
+    // 마법사: 종 모양 넓은 소매
+    if (kind === 'mage') G.rect(15, by + 3 + aF, 3, 2, sl);
+    if (w === 'staff') {
+      orbStaff(G, def, 19, by - 9, 27, 1, pose.tw);
+      G.rect(18, by + 2 + aF, 2, 2, SKN);
+    } else if (w === 'axe') {
+      axe2(G, def, 16, by + 2, 'rest');
+      G.rect(18, by + 2 + aF, 2, 2, SKN);
+    } else {
+      bow2(G, def, 19, by - 6, 18, 0);
+      G.rect(18, by + 2 + aF, 2, 2, SKN);
+    }
+    return;
+  }
   G.rect(15, by + 1, 2, 4 + aF, arm);
   G.rect(15, by + 5 + aF, 2, 2, SKN);
   if (kind === 'cleric' && def.robe) G.rect(15, by + 4 + aF, 2, 1, def.accent);
@@ -701,6 +778,330 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
   if (w === 'dagger') return dagger(G, 15, by + 5 + aF, 'rest', def.weaponColor);
   if (w === 'holy' || (w === 'staff' && kind === 'cleric')) return holyStaff(G, def, 17, by - 8, 27, 1);
   W(15, by + 5 + aF, 'rest');
+}
+
+
+// ───────── 2단계: 마법사 · 전사 · 사냥꾼 · 노주인 · 우체부 · 나 ─────────
+
+/** 긴 머리·땋은 머리·양갈래: 몸 뒤(앞모습) / 등 위(뒷모습) · 끝은 1프레임 늦게 */
+function hairBack(G: GridT, def: ClassDef, hx: number, hy: number, by: number, pose: Pose2, back: boolean) {
+  const H = def.hair;
+  const tr = pose.trail ?? 0;
+  const st = def.style;
+  const X = Math.round(hx);
+  const Y = Math.round(hy);
+  if (st === 'long') {
+    if (back) {
+      G.rect(X - 5, Y, 11, by + 3 - Y, H);
+      G.rect(X - 5 - tr, by + 3, 10, 2, H);
+      G.rect(X - 1, Y + 1, 1, by + 2 - Y, dk(H, 0.12));
+    } else {
+      G.rect(X - 6, Y - 1, 3, by + 3 - Y, H);
+      G.rect(X - 6 - tr, by + 2, 3, 2, H);
+      G.rect(X + 5, Y - 1, 2, by - Y, H);
+    }
+  } else if (st === 'braid') {
+    const bx = back ? X - 1 : X - 6;
+    G.rect(bx, Y, 3, by + 4 - Y, H);
+    for (let y = Y + 1; y < by + 4; y += 2) G.set(bx + 1, y, dk(H, 0.18));
+    G.rect(bx - tr, by + 4, 3, 2, H);
+  } else if (st === 'twin') {
+    G.ell(X - 7, Y + 2, 1.8, 3, H);
+    G.ell(X + 8, Y + 2, 1.8, 3, H);
+  }
+}
+
+/** 보이는 머리카락 (모자·두건 밑) · 하이라이트 줄 1개 */
+function hair2(G: GridT, def: ClassDef, hx: number, hy: number, back: boolean) {
+  const st = def.style;
+  if (st === 'bald' || st === 'none') return;
+  const H = def.hair;
+  const X = Math.round(hx);
+  if (back) {
+    G.ell(hx + 0.2, hy - 0.4, 6.6, 6.0, H, null, (_x, y) => y <= hy + 4.5);
+    return;
+  }
+  G.ell(hx + 0.2, hy - 1.3, 6.6, 5.0, H, null, (x, y) => y < hy - 1.5 || (x < hx - 3.5 && y < hy + 3) || (x > hx + 5 && y < hy + 1));
+  // 앞머리 끝 들쭉날쭉
+  for (const dx of [-2, 1, 3]) G.set(X + dx, Math.round(hy - 1.5), H);
+  G.rect(X - 4, Math.round(hy - 5.5), 4, 1, ramp(H, 1), 'flat');
+  G.set(X, Math.round(hy - 4.5), ramp(H, 1), 'flat');
+}
+
+/** 직업 머리: 마법사 모자 · 전사 뿔 투구 · 사냥꾼 깃털 모자 · 노주인 대머리 · 우체부·나 두건 */
+function headgear2(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: number, back: boolean) {
+  const X = Math.round(hx);
+  const Y = Math.round(hy);
+  if (kind === 'keeper' || def.style === 'bald') {
+    // 대머리: 반짝 · 양옆 흰 머리
+    const W = def.hair;
+    G.rect(X - 6, Y - 1, 2, 4, W);
+    G.rect(X + 5, Y - 1, 2, 3, W);
+    G.set(X - 5, Y - 2, W);
+    if (back) G.rect(X - 5, Y + 1, 11, 3, W);
+    else {
+      G.rect(X - 3, Y - 5, 3, 1, lt(def.skin ?? SKIN, 0.55), 'flat');
+      G.set(X - 4, Y - 4, lt(def.skin ?? SKIN, 0.4), 'flat');
+    }
+    if (kind === 'keeper') return;
+  } else hair2(G, def, hx, hy, back);
+  if (kind === 'mage') {
+    // 챙 넓은 모자 · 끝이 뒤로 살짝 꺾임 · 금 띠
+    const C = def.hatc ?? '#6a3ea6';
+    const b = Y - 3;
+    G.rect(X - 8, b, 17, 1, C);
+    G.rect(X - 6, b - 1, 13, 1, C);
+    G.rect(X - 4, b - 2, 8, 1, def.accent, 'flat');
+    G.rect(X - 3, b - 3, 6, 1, C);
+    G.rect(X - 2, b - 4, 4, 1, C);
+    G.rect(X - 2, b - 5, 3, 1, C);
+    G.rect(X - 3, b - 6, 3, 1, C);
+    G.rect(X - 5, b - 7, 3, 1, C);
+    G.set(X - 6, b - 6, C);
+    G.set(X - 7, b - 5, dk(C, 0.15));
+    G.set(X - 1, b - 4, lt(C, 0.35), 'flat');
+    G.set(X - 2, b - 6, lt(C, 0.3), 'flat');
+    G.rect(X - 6, b + 1, 13, 1, dk(C, 0.35));
+    return;
+  }
+  if (kind === 'dwarf') {
+    const M = def.helm ?? '#a7afbf';
+    // 옆머리(구레나룻) — 머리색이 보이게
+    G.rect(X - 6, Y - 1, 2, 4, def.hair);
+    G.rect(X + 5, Y - 1, 2, 3, def.hair);
+    G.ell(hx + 0.2, hy - 1.4, 6.9, 5.4, M, null, (_x, y) => y < hy - 1.5 || (back && y < hy + 3));
+    G.rect(X - 6, Y - 2, 13, 1, dk(M, 0.2));
+    G.rect(X, Y - 7, 1, 5, lt(M, 0.35), 'flat');
+    for (const dx of [-4, 4]) G.set(X + dx, Y - 2, '#e8c46a', 'flat');
+    // 뿔: 양옆에서 위로 휘어
+    for (const sgn of [-1, 1]) {
+      const bx = sgn < 0 ? X - 7 : X + 7;
+      const pts: [number, number][] = [[0, -2], [0, -3], [sgn, -2], [sgn, -3], [sgn, -4], [sgn * 2, -3], [sgn * 2, -4], [sgn * 2, -5], [sgn * 2, -6], [sgn, -7]];
+      for (const [dx, dy] of pts) G.set(bx + dx, Y + dy, HORN);
+      G.set(bx + sgn, Y - 7, lt(HORN, 0.5), 'flat');
+      G.set(bx, Y - 2, dk(HORN, 0.25));
+    }
+    return;
+  }
+  if (kind === 'hunter') {
+    // 초록 모자: 앞으로 챙 · 뒤로 뾰족 · 깃털
+    const C = def.bandana ?? '#4f8a3a';
+    G.ell(hx + 0.2, hy - 2.4, 6.8, 4.2, C, null, (_x, y) => y < hy - 1.5);
+    G.rect(X - 6, Y - 2, 14, 1, dk(C, 0.12));
+    if (!back) G.rect(X + 5, Y - 2, 4, 1, C);
+    G.rect(X - 8, Y - 3, 2, 1, C);
+    G.set(X - 9, Y - 2, C);
+    const fe: [number, number][] = [[-3, -6], [-4, -7], [-4, -8], [-5, -8], [-5, -9], [-6, -9], [-6, -10], [-3, -7]];
+    for (const [dx, dy] of fe) G.set(X + dx, Y + dy, FEATHER);
+    G.set(X - 4, Y - 8, lt(FEATHER, 0.45), 'flat');
+    G.set(X - 5, Y - 9, lt(FEATHER, 0.45), 'flat');
+    return;
+  }
+  if (kind === 'post' || kind === 'hero') {
+    if (!def.bandana) return;
+    // 두건: 정수리를 덮고 · 우체부는 뒤로 매듭 꼬리 · 나는 위쪽에 리본 매듭
+    const C = def.bandana;
+    G.ell(hx + 0.2, hy - 2.2, 6.8, 4.3, C, null, (_x, y) => y < hy - 1.5);
+    G.rect(X - 6, Y - 2, 13, 1, dk(C, 0.12));
+    if (kind === 'post') {
+      for (const [dx, dy] of [[-3, -4], [1, -5], [3, -3], [-1, -3], [5, -4]]) G.set(X + dx, Y + dy, lt(C, 0.55), 'flat');
+      G.rect(X - 8, Y - 2, 2, 2, C);
+      G.set(X - 9, Y, C);
+    } else {
+      const k: [number, number][] = [[5, -6], [6, -7], [7, -7], [7, -6], [6, -5], [4, -7], [8, -8], [8, -5]];
+      for (const [dx, dy] of k) G.set(X + dx, Y + dy, C);
+      G.set(X + 6, Y - 6, dk(C, 0.25));
+    }
+  }
+}
+
+/** 전사 수염 땋기: 턱에서 두 갈래로 가슴까지 · 끝에 금 고리 */
+function beardBraids(G: GridT, B: string, gold: string, hx: number, hy: number, by: number) {
+  const X = Math.round(hx);
+  for (const bx of [X - 3, X + 2]) {
+    for (let y = Math.round(hy + 5); y < by + 6; y++) {
+      G.rect(bx, y, 2, 1, (y & 1) === 0 ? B : dk(B, 0.18));
+    }
+    G.rect(bx, by + 6, 2, 1, gold);
+    G.set(bx, by + 7, B);
+  }
+}
+
+/** 전사 몸: 어깨 넓게 (사슬 어깨받이) · 가죽 · 넓은 벨트 + 큰 버클 */
+function dwarfBody(G: GridT, def: ClassDef, hx: number, by: number, legTop: number, back: boolean) {
+  const c = def.cloth;
+  const bot = legTop - by > 12 ? by + 6 : Math.min(by + 8, Math.max(by + 6, legTop + 1));
+  G.rect(5, by, 12, bot - by + 1, c);
+  // 사슬 어깨받이
+  G.rect(3, by, 4, 3, def.arm);
+  G.rect(15, by, 4, 3, def.arm);
+  G.set(4, by + 1, lt(def.arm, 0.3), 'flat');
+  G.set(16, by + 1, lt(def.arm, 0.3), 'flat');
+  // 넓은 가죽 벨트 + 큰 금 버클
+  G.rect(5, by + 5, 12, 2, '#5a3420');
+  if (!back) {
+    G.rect(Math.round(hx) - 1, by + 5, 3, 2, def.accent);
+    G.set(Math.round(hx), by + 5, lt(def.accent, 0.5), 'flat');
+  }
+}
+
+/** 노주인 · 나: 셔츠 + 앞치마 (앞치마 끈 · 주머니) — 뒤에서는 끈이 X로 */
+function apronBody(G: GridT, def: ClassDef, kind: Dot2, hx: number, by: number, legTop: number, back: boolean) {
+  const shirt = def.apron2 ? def.arm : def.cloth;
+  const ap = def.apron2 ?? def.apron ?? def.accent;
+  const short = legTop - by > 12 ? false : legTop - by < 8;
+  const bot = short ? by + 6 : Math.min(by + 9, Math.max(by + 6, legTop + 1));
+  const X = Math.round(hx);
+  G.rect(7, by, 8, 1, shirt);
+  G.rect(6, by + 1, 10, bot - by, shirt);
+  if (back) {
+    G.line(7, by, 10, by + 5, ap);
+    G.line(14, by, 11, by + 5, ap);
+    G.rect(X - 1, by + 5, 3, 1, ap);
+    G.set(X - 2, by + 6, ap);
+    G.set(X + 2, by + 6, ap);
+    return;
+  }
+  // 가슴받이 + 끈
+  G.rect(X - 2, by + 1, 5, 4, ap);
+  G.set(X - 3, by, ap);
+  G.set(X + 3, by, ap);
+  // 치마 (무릎까지 · 노주인은 더 길게)
+  const end = short ? bot : Math.min(26, bot + (kind === 'keeper' ? 3 : 2));
+  G.rect(6, by + 5, 10, end - by - 4, ap);
+  G.rect(6, by + 5, 10, 1, dk(ap, 0.12));
+  // 주머니
+  G.rect(X - 1, by + 7, 3, 2, dk(ap, 0.1));
+  G.rect(X - 1, by + 7, 3, 1, dk(ap, 0.2));
+  // 나: 목에 두건 색 스카프
+  if (def.bandana && kind === 'hero') {
+    G.rect(X - 1, by, 3, 1, def.bandana);
+    G.set(X, by + 1, def.bandana);
+  }
+}
+
+/** 우체부 어깨 가방: 오른쪽 어깨 → 왼쪽 엉덩이 끈 · 가죽 가방 (금 걸쇠) */
+function mailBag(G: GridT, by: number, back: boolean, gold: string) {
+  const strap = '#6b4128';
+  if (!back) G.line(15, by, 7, by + 6, strap);
+  else G.line(6, by, 14, by + 6, strap);
+  const bx = back ? 14 : 3;
+  G.rect(bx, by + 5, 5, 4, '#9a6436');
+  G.rect(bx, by + 5, 5, 1, dk('#9a6436', 0.2));
+  if (!back) G.set(bx + 2, by + 6, gold, 'flat');
+}
+
+/** 사냥꾼 화살통 (등 · 앞모습은 왼쪽 어깨 뒤로 화살 깃) */
+function quiver(G: GridT, by: number, back: boolean) {
+  const q = '#7a4a2a';
+  const x = back ? 7 : 3;
+  G.rect(x, by - 1, 3, 9, q);
+  G.rect(x, by + 6, 3, 1, dk(q, 0.25));
+  G.rect(x, by + 1, 3, 1, '#c9a04a');
+  // 화살 깃 (빨강·흰색)
+  G.rect(x, by - 3, 1, 2, '#e85a4a');
+  G.rect(x + 1, by - 4, 1, 3, '#efe2c6');
+  G.rect(x + 2, by - 3, 1, 2, '#e85a4a');
+  if (back) G.line(x + 2, by - 1, 15, by + 5, '#6b4128');
+}
+
+/** 큰 도끼 (한쪽 큰 날 + 뒤 가시) — hx,hy = 손 왼쪽 위 */
+function axe2(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low') {
+  const b = def.weaponColor ?? '#c9d1dc';
+  const edge = lt(b, 0.45);
+  const blade = (x0: number, y0: number, up: boolean) => {
+    // 6줄 날: 가운데가 넓다 (x0 = 자루 옆 첫 칸)
+    const rows = [2, 3, 4, 4, 4, 3, 2];
+    rows.forEach((w, i) => G.rect(x0, y0 + i, w, 1, b));
+    G.rect(x0 + 3, y0 + 2, 1, 3, edge, 'flat');
+    G.set(x0 + 2, y0 + 1, edge, 'flat');
+    G.set(x0 + 2, y0 + 5, edge, 'flat');
+    void up;
+  };
+  if (mode === 'rest') {
+    G.rect(hx + 2, hy - 8, 1, 14, HANDLE);
+    blade(hx + 3, hy - 9, true);
+    G.rect(hx + 1, hy - 7, 1, 2, dk(b, 0.1));
+    return;
+  }
+  if (mode === 'up') {
+    G.line(hx + 1, hy + 1, hx - 2, hy - 8, HANDLE);
+    G.rect(hx - 5, hy - 11, 3, 1, b);
+    G.rect(hx - 6, hy - 10, 4, 3, b);
+    G.rect(hx - 5, hy - 7, 3, 1, b);
+    G.rect(hx - 6, hy - 10, 1, 3, edge, 'flat');
+    return;
+  }
+  if (mode === 'mid') {
+    G.line(hx + 1, hy, hx + 3, hy - 4, HANDLE);
+    blade(hx + 2, hy - 9, true);
+    return;
+  }
+  if (mode === 'fwd') {
+    G.line(hx + 1, hy + 1, hx + 3, hy + 4, HANDLE);
+    G.rect(hx + 2, hy + 4, 3, 4, b);
+    G.rect(hx + 3, hy + 8, 2, 1, b);
+    G.rect(hx + 4, hy + 4, 1, 4, edge, 'flat');
+    return;
+  }
+  G.rect(hx + 1, hy + 1, 1, 6, HANDLE);
+  G.rect(hx + 2, hy + 4, 3, 4, b);
+  G.rect(hx + 4, hy + 4, 1, 4, edge, 'flat');
+}
+
+/** 마법사 지팡이: 나무 자루 + 끝에 빛 구슬 (둘레 'fx' · tw = 1px 반짝) */
+function orbStaff(G: GridT, def: ClassDef, x: number, top: number, bottom: number, glow: number, tw = 0) {
+  const o = def.weaponColor ?? '#7fe6ff';
+  G.rect(x, top + 2, 1, bottom - top - 2, SHAFT);
+  G.set(x - 1, top + 2, SHAFT);
+  G.set(x + 1, top + 2, SHAFT);
+  G.rect(x - 1, top - 1, 3, 3, o, 'flat');
+  G.set(x - 1, top - 1, WHITE, 'flat');
+  G.set(x, top, lt(o, 0.5), 'flat');
+  const gl = mix(o, WHITE, 0.5);
+  if (glow >= 1) for (const [dx, dy] of [[0, -2], [-2, 0], [2, 0]]) G.set(x + dx, top + dy, gl, 'fx');
+  if (glow >= 2) for (const [dx, dy] of [[-2, -2], [2, -2], [0, -3], [-3, 0], [3, 0], [2, 2], [-2, 2]]) G.set(x + dx, top + dy, gl, 'fx');
+  if (glow >= 3) for (const [dx, dy] of [[0, -4], [-4, 0], [4, 0], [-3, -3], [3, -3]]) G.set(x + dx, top + dy, WHITE, 'fx');
+  if (tw) G.set(x + 2, top - 2, WHITE, 'fx');
+}
+
+/** 큰 활 (몸 옆 세로) · 시위 · aim = 화살을 걸고 당김 */
+function bow2(G: GridT, def: ClassDef, x: number, top: number, len: number, aim: 0 | 1 | 2) {
+  const wd = def.weaponColor ?? '#9a6a3c';
+  const mid = top + Math.round(len / 2);
+  for (let i = 0; i <= len; i++) G.set(x + Math.round(Math.sin((i / len) * Math.PI) * 2.2), top + i, wd);
+  G.set(x, top, dk(wd, 0.2));
+  G.set(x, top + len, dk(wd, 0.2));
+  if (aim === 1) {
+    // 당긴 시위 + 화살
+    G.line(x, top + 1, x - 3, mid, STRING, 'flat');
+    G.line(x - 3, mid, x, top + len - 1, STRING, 'flat');
+    G.rect(x - 5, mid, 9, 1, '#d8c8a8', 'flat');
+    G.set(x + 4, mid, '#c9d1dc', 'flat');
+    G.set(x - 5, mid - 1, '#e85a4a', 'flat');
+    G.set(x - 5, mid + 1, '#e85a4a', 'flat');
+    return;
+  }
+  G.rect(x, top + 1, 1, len - 1, STRING, 'flat');
+  if (aim === 2) {
+    // 놓은 순간: 화살이 날아간 자리 (깔끔한 줄 2색)
+    G.rect(x + 3, mid, 3, 1, '#fffbea', 'fx');
+    G.rect(x + 1, mid, 2, 1, mix('#d8c8a8', WHITE, 0.4), 'fx');
+  }
+}
+
+/** 사제 뒷모습: 베일 가장자리 안쪽 1px 금 테 (앞의 얼굴 창 테처럼) */
+function veilRim(G: GridT, gold: string) {
+  const g = G.g;
+  const isV = (x: number, y: number) => g[y]?.[x]?.c === VEIL;
+  const edge = (x: number, y: number) => isV(x, y) && [[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => !g[y + dy]?.[x + dx]);
+  const out: [number, number][] = [];
+  for (let y = 0; y < G.h; y++)
+    for (let x = 0; x < G.w; x++) {
+      if (!isV(x, y) || edge(x, y)) continue;
+      if ([[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => edge(x + dx, y + dy))) out.push([x, y]);
+    }
+  for (const [x, y] of out) g[y][x] = { c: gold };
 }
 
 /** 구르기 (예전 구조 · 머리는 투구·베일·두건 색) */
@@ -714,7 +1115,7 @@ export function drawRoll2(def: ClassDef, kind: Dot2, i: number): GridT {
   const a = (i * Math.PI) / 2 - Math.PI / 2;
   const hx = cx + Math.cos(a) * 3.4;
   const hy = cy + Math.sin(a) * 3;
-  const head = kind === 'knight' ? STEEL : kind === 'cleric' ? VEIL : def.hood ?? '#4f8a3a';
+  const head = headColor(def, kind);
   G.ell(hx, hy, 3.3, 3.1, head);
   if (kind === 'knight') G.set(hx - Math.cos(a) * 3, hy - Math.sin(a) * 3, PLUME);
   if (kind === 'cleric') G.set(hx, hy, def.accent, 'flat');
@@ -732,11 +1133,33 @@ export function drawLying2(def: ClassDef, kind: Dot2): GridT {
   G.rect(21, 7, 6, 2, def.pants);
   G.rect(26, 6, 3, 4, def.boots);
   G.ell(5.5, 7.5, 4.3, 4.1, def.skin ?? SKIN);
-  const head = kind === 'knight' ? STEEL : kind === 'cleric' ? VEIL : def.hood ?? '#4f8a3a';
+  const head = headColor(def, kind);
   G.ell(4.6, 7, 4.6, 4.4, head, null, (x) => x < 5);
+  if (kind === 'dwarf' && def.beard) G.ell(8, 10, 2.6, 2.4, def.beard);
+  if (kind === 'mage') G.rect(0, 4, 2, 4, def.hatc ?? '#6a3ea6');
   if (kind === 'knight') G.rect(0, 5, 2, 3, PLUME);
   if (kind === 'cleric') G.rect(5, 3, 1, 9, def.accent);
   G.rect(7, 6, 1, 2, EYE, 'eye');
   G.rect(7, 9, 1, 2, EYE, 'eye');
   return G;
+}
+
+/** 구르기·누움 머리 색: 투구 · 베일 · 두건 · 모자 */
+function headColor(def: ClassDef, kind: Dot2): string {
+  switch (kind) {
+    case 'knight':
+      return STEEL;
+    case 'cleric':
+      return VEIL;
+    case 'rogue':
+      return def.hood ?? '#4f8a3a';
+    case 'mage':
+      return def.hatc ?? '#6a3ea6';
+    case 'dwarf':
+      return def.helm ?? '#a7afbf';
+    case 'keeper':
+      return def.skin ?? SKIN;
+    default:
+      return def.bandana ?? (def.style === 'bald' ? def.skin ?? SKIN : def.hair);
+  }
 }

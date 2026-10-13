@@ -51,26 +51,28 @@ export interface ClassDef {
   towel?: string;
   glassesColor?: string;
   /** HERODOT 새 도트 모양 (heroDotV2 켜졌을 때만 · 1단계 기사·사제·도적) */
-  dot2?: 'knight' | 'cleric' | 'rogue';
+  dot2?: 'knight' | 'cleric' | 'rogue' | 'mage' | 'dwarf' | 'hunter' | 'keeper' | 'post' | 'hero';
+  /** HERODOT 새 도트 앞치마 색 (나: 기준 그림의 초록 앞치마 · 있으면 셔츠는 arm 색) */
+  apron2?: string;
 }
 
 export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'hunter' | 'keeper' | 'post' | 'hero';
 
 export const CLASSES: Record<ClassKey, ClassDef> = {
   knight: { name: '기사', face: { eyes: 'dot', brow: 'angry', mouth: 'flat', scar: true }, hair: '#7a4a2c', style: 'short', cloth: '#3f6fd1', arm: '#b9c3d6', pants: '#8e98ad', boots: '#6b4128', accent: '#e8b94a', weapon: 'sword', shield: true, dot2: 'knight' },
-  mage: { name: '마법사', face: { eyes: 'calm', mouth: 'tiny', blush: false }, hair: '#dfe3f2', style: 'long', cloth: '#7b4bb8', arm: '#7b4bb8', pants: '#5a3590', boots: '#5b3a26', accent: '#f2c447', weapon: 'staff', robe: true, hat: 'wizard', hatc: '#6a3ea6', elf: true },
-  dwarf: { name: '전사', face: { eyes: 'squint', brow: 'bushy', nose: 'big', mouth: 'none', brow2: 1 }, hair: '#e0702a', style: 'none', cloth: '#8a5a34', arm: '#9aa3b5', pants: '#5d4030', boots: '#4a2f20', accent: '#c9a04a', weapon: 'axe', dwarf: true, beard: '#e0702a', helm: '#a7afbf' },
+  mage: { name: '마법사', face: { eyes: 'calm', mouth: 'tiny', blush: false }, hair: '#dfe3f2', style: 'long', cloth: '#7b4bb8', arm: '#7b4bb8', pants: '#5a3590', boots: '#5b3a26', accent: '#f2c447', weapon: 'staff', robe: true, hat: 'wizard', hatc: '#6a3ea6', elf: true, dot2: 'mage' },
+  dwarf: { name: '전사', face: { eyes: 'squint', brow: 'bushy', nose: 'big', mouth: 'none', brow2: 1 }, hair: '#e0702a', style: 'none', cloth: '#8a5a34', arm: '#9aa3b5', pants: '#5d4030', boots: '#4a2f20', accent: '#c9a04a', weapon: 'axe', dwarf: true, beard: '#e0702a', helm: '#a7afbf', dot2: 'dwarf' },
   rogue: { name: '도적', face: { eyes: 'sly', mouth: 'smirk', freckle: true }, hair: '#c98a4a', style: 'short', cloth: '#7a4a2a', arm: '#e8d4b0', pants: '#3a3040', boots: '#5b3a26', accent: '#b8873e', weapon: 'dagger', hood: '#4f8a3a', elf: true, dual: true, dot2: 'rogue' },
   cleric: { name: '사제', face: { eyes: 'sparkle', mouth: 'tiny', brow: 'up' }, hair: '#f3d36b', style: 'braid', cloth: '#f4f0e6', arm: '#f4f0e6', pants: '#d8cdb4', boots: '#8a6040', accent: '#e0a93a', weapon: 'holy', robe: true, cape: '#f8f4ec', dot2: 'cleric' },
   /** PARTY §1: 아래 HUNTER_DEF로 채운다 (같은 겉모습) */
   hunter: undefined as unknown as ClassDef,
-  keeper: { name: '노주인', face: { eyes: 'happy', mouth: 'none', glasses: true, nose: 'big', blush: true }, hair: '#d8d8d8', style: 'bald', cloth: '#7a4a2c', arm: '#f2ead8', pants: '#4a3a30', boots: '#3e2a1e', accent: '#efe6cf', weapon: null, apron: '#efe6cf', stache: '#f4f4f4' },
-  post: { name: '우체부', face: { eyes: 'round', mouth: 'o', freckle: true }, hair: '#d9542e', style: 'short', cloth: '#3f6fd1', arm: '#3f6fd1', pants: '#2f3f6a', boots: '#5b3a26', accent: '#e8b94a', weapon: null, bandana: '#2f57b0' },
-  hero: { name: '나', face: { eyes: 'dot', brow: 'angry', mouth: 'grin', scar: true }, hair: '#5a3424', style: 'short', cloth: '#8a5a34', arm: '#efe0bf', pants: '#4a3f5a', boots: '#5b3a26', accent: '#4f9a4a', weapon: null, bandana: '#4f9a4a', apron: '#e9dcc0' },
+  keeper: { name: '노주인', face: { eyes: 'happy', mouth: 'none', glasses: true, nose: 'big', blush: true }, hair: '#d8d8d8', style: 'bald', cloth: '#7a4a2c', arm: '#f2ead8', pants: '#4a3a30', boots: '#3e2a1e', accent: '#efe6cf', weapon: null, apron: '#efe6cf', stache: '#f4f4f4', dot2: 'keeper' },
+  post: { name: '우체부', face: { eyes: 'round', mouth: 'o', freckle: true }, hair: '#d9542e', style: 'short', cloth: '#3f6fd1', arm: '#3f6fd1', pants: '#2f3f6a', boots: '#5b3a26', accent: '#e8b94a', weapon: null, bandana: '#2f57b0', dot2: 'post' },
+  hero: { name: '나', face: { eyes: 'dot', brow: 'angry', mouth: 'grin', scar: true }, hair: '#5a3424', style: 'short', cloth: '#8a5a34', arm: '#efe0bf', pants: '#4a3f5a', boots: '#5b3a26', accent: '#4f9a4a', weapon: null, bandana: '#4f9a4a', apron: '#e9dcc0', dot2: 'hero', apron2: '#4f9a4a' },
 };
 
 /** 리마스터: 사냥꾼 겉모습 (활 + 화살통) — PARTY §1: 여섯 번째 손님 직업 「사냥꾼」도 이 겉모습 */
-export const HUNTER_DEF: ClassDef = { name: '사냥꾼', face: { eyes: 'dot', mouth: 'grin', freckle: true }, hair: '#7a4a2a', style: 'short', cloth: '#4f6a3a', arm: '#e8d4b0', pants: '#5d4030', boots: '#5b3a26', accent: '#8a6040', weapon: 'bow', quiver: true, bandana: '#4f8a3a' };
+export const HUNTER_DEF: ClassDef = { name: '사냥꾼', face: { eyes: 'dot', mouth: 'grin', freckle: true }, hair: '#7a4a2a', style: 'short', cloth: '#4f6a3a', arm: '#e8d4b0', pants: '#5d4030', boots: '#5b3a26', accent: '#8a6040', weapon: 'bow', quiver: true, bandana: '#4f8a3a', dot2: 'hunter' };
 CLASSES.hunter = HUNTER_DEF;
 
 /** 손님으로 오는 직업 — PARTY §1: 사냥꾼까지 6개 (주인 출신과 같은 6개에서 닫는다) */
