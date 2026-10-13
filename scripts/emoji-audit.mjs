@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = 'src';
-const OUT = 'reports/visual/emoji_icons.md';
+const OUT = process.argv[2] ?? 'reports/visual/emoji_icons.md';
 // 그림 문자(이모지) + 자주 쓰는 기호 몇 개(★☆☾☀♥✓✕ 같은 글꼴 기호는 Galmuri에 있어서 뺀다)
 const EMOJI = /(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier})*)/gu;
 const FONT_OK = new Set(['©', '®', '™', '↔', '↕', '↩', '↪', '▶', '◀', '☀', '☁', '☾', '☽', '★', '☆', '♥', '♡', '✓', '✔', '✕', '✖', '❤', '‼', '⁉', '↻', '⌨']);
