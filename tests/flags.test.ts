@@ -4,8 +4,9 @@ import { flag, FLAG_DEFAULTS, setFlag } from '../src/world/flags';
 import { autoGoldMult, convItems } from '../src/world/goldsink';
 
 describe('flags', () => {
-  it('기본값은 모두 켬', () => {
-    for (const k of Object.keys(FLAG_DEFAULTS) as (keyof typeof FLAG_DEFAULTS)[]) expect(flag(k)).toBe(true);
+  it('기본값은 모두 켬 (VISUAL 실험실 플래그만 꺼짐)', () => {
+    const LAB = new Set(['paletteV2', 'calmWorld', 'visualLabOpen']);
+    for (const k of Object.keys(FLAG_DEFAULTS) as (keyof typeof FLAG_DEFAULTS)[]) expect(flag(k)).toBe(!LAB.has(k));
   });
   it('끄면 자동 사냥 금화 100% · 변환 목록 없음', () => {
     setFlag('goldsinkAutoCap', false);
