@@ -1,5 +1,6 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import { openNotices } from './ui/notice';
+import { loadFlags } from './world/flags';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
@@ -735,6 +736,7 @@ async function boot() {
   const TIPS = ['손님을 누르면 체크인!', '모닥불 곁에 손님들이 모여요', '장부의 할 일을 따라가면 마을이 커져요', '밤하늘 별똥별을 눌러 보세요'];
   const tip = TIPS[(Math.random() * TIPS.length) | 0];
   try {
+    await loadFlags();
     await loadAssets((p) => (loading.innerHTML = `<div class="lbar"><i style="width:${Math.round(p * 100)}%"></i></div><small>불러오는 중… ${Math.round(p * 100)}%</small><small class="tip">${tip}</small>`));
   } catch (err) {
     console.error(err);

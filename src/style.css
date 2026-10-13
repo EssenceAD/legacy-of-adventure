@@ -1659,3 +1659,6 @@ body.in-combat a{pointer-events:none}
 .top .stat{position:relative}
 #blessIco{position:absolute;right:-6px;top:-10px;white-space:nowrap;color:#ffe9a0;cursor:pointer;font-size:var(--f-tiny);padding:1px 5px;background:rgba(40,30,70,.92);box-shadow:0 0 0 2px var(--ink);z-index:5}
 #storyWait{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);padding:4px 8px;font-size:var(--f-tiny);color:#cfd8ff;background:rgba(14,20,48,.85);box-shadow:0 0 0 2px var(--ink);z-index:3;pointer-events:none}
+
+/* 우편함: 읽은 편지 지우기 */
+.mail .mldel{min-width:28px;padding:2px 6px;opacity:.7}

@@ -1,6 +1,7 @@
 // GOLDSINK §1~§5: 쌓이는 금화에 쓸 곳 — 의뢰 새로고침(유료) · 연금술 변환 · 예배당 축복 · 자동 사냥 금화 완만하게 · 마을 부탁
 //  값은 전부 「기준 × m(r)」 (m = 2^사냥 최고 지역 번호) · 하루 카운터는 한국 시간 0시 · 주간은 한국 시간 월요일 0시
 import { CONFIG } from '../data/config';
+import { flag } from './flags';
 import { BOSSES } from '../data/bosses';
 import { REGIONS, type RegionId } from '../data/items';
 import { fLv } from './facilities';
@@ -96,6 +97,7 @@ export function onceEver(key: string): boolean {
 export const refreshCost = (n = gsState().refreshPaid, m = mR()) => Math.round(GS().refresh.base * m * GS().refresh.grow ** n);
 /** 금화를 내고 새로고침할 수 있으면 값을 빼고 true */
 export function payRefresh(): boolean {
+  if (!flag('goldsinkRefresh')) return false;
   const g = gsState();
   const c = refreshCost(g.refreshPaid);
   if (S.gold < c) return false;
@@ -126,6 +128,7 @@ export const bossKilled = (id: string) => {
 };
 const DUST_NAME: Record<string, [string, 'n' | 'r' | 'e' | 'l']> = { ash: ['잿빛 가루', 'n'], dustR: ['희귀 가루', 'r'], dustE: ['영웅 가루', 'e'], dustL: ['전설 가루', 'l'] };
 export function convItems(): ConvItem[] {
+  if (!flag('goldsinkConvert')) return [];
   const g = gsState();
   const C = GS().conv;
   const top = mR();
@@ -200,6 +203,7 @@ export function blessFx(k: 'xp' | 'drop' | 'expTime' | 'mood', now = Date.now())
 /** 더 받을 수 있나 (남은 시간 + 2시간이 8시간을 넘지 않게) */
 export const blessRoom = (now = Date.now()) => blessLeft(now) <= (GS().bless.maxHours - GS().bless.hours) * 3600000;
 export function buyBless(now = Date.now()): { err: string } | { ext: boolean } {
+  if (!flag('goldsinkBless')) return { err: '지금은 쉬어 가요' };
   if (!fLv('chapel')) return { err: '예배당이 필요해요' };
   if (!blessRoom(now)) return { err: `축복은 최대 ${GS().bless.maxHours}시간까지예요` };
   const c = blessCost();
@@ -229,6 +233,7 @@ export function taperAt(n: number): number {
 }
 /** 자동·방치·접은 판 하나: 오늘 판 수를 세고 금화 비율을 돌려준다 */
 export function autoGoldMult(now = Date.now()): number {
+  if (!flag('goldsinkAutoCap')) return 1;
   const g = gsState(now);
   const v = taperAt(g.autoN);
   g.autoN++;

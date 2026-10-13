@@ -102,5 +102,6 @@ export const MANUAL_V2: { key: string; icon: string; title: string; lines: strin
   { key: 'shop', icon: 'm_shop', title: '상점 · 출석 · 우편함', lines: [
     '상점 진열은 매일 바뀌어요. 인연 선물도 여기서.',
     '매일 첫 접속 때 출석 도장 — 보상은 우편함으로.',
+    '읽은 편지는 ✕로 지울 수 있어요 (받을 보상이 남은 편지는 그대로).',
   ] },
 ];

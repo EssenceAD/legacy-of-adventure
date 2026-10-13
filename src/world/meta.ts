@@ -159,6 +159,21 @@ export function claimMail(id: number): Mail['reward'] | null {
   markDirty();
   return r;
 }
+/** 우편함: 받음·읽음 편지만 지운다 (안 받은 보상이 있는 편지는 못 지움 · 운영자 답장은 서버엔 그대로) */
+export function deleteMail(id: number): boolean {
+  const i = P.meta.mail.findIndex((m) => m.id === id && m.claimed);
+  if (i < 0) return false;
+  P.meta.mail.splice(i, 1);
+  markDirty();
+  return true;
+}
+export const readMailCount = () => P.meta.mail.filter((m) => m.claimed).length;
+export function deleteReadMail(): number {
+  const n = readMailCount();
+  P.meta.mail = P.meta.mail.filter((m) => !m.claimed);
+  if (n) markDirty();
+  return n;
+}
 export function claimAllMail(): number {
   let n = 0;
   for (const m of P.meta.mail) if (!m.claimed && claimMail(m.id)) n++;

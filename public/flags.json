@@ -1,0 +1,9 @@
+{
+  "goldsinkAutoCap": true,
+  "goldsinkRefresh": true,
+  "goldsinkConvert": true,
+  "goldsinkBless": true,
+  "villageFavors": true,
+  "storyWaitHint": true,
+  "mailDelete": true
+}

@@ -1,5 +1,6 @@
 // GOLDSINK UI: 연금술 공방 「변환」 탭 · 예배당 「축복 받기」 · 게시판 「마을 부탁」 탭 · HUD 축복 아이콘 · 다음 이야기 기다림 한 줄
 import { CONFIG } from '../data/config';
+import { flag } from '../world/flags';
 import { fLv } from '../world/facilities';
 import { boxReady, claimBox, claimFavor, ensureFavors, favorDef, favorDone, favorProg, swapCost, swapFavor } from '../world/favors';
 import {
@@ -39,6 +40,7 @@ function convRow(key: string, label: string, pick = ''): string {
   return `<div class="cvrow ${on ? 'on' : ''}"><span><b>${esc(label)}${it.qty > 1 ? ` ×${it.qty}` : ''}</b>${pick}<small>가진 ${fmt(it.have)} · 지금 ${fmtKo(now)} G · 오늘 ${it.bought}/${it.cap}</small></span><span class="cvq">${left > 0 ? `${btn(1, '1')}${btn(Math.min(10, left), String(Math.min(10, left)))}${btn(mx, `최대${mx ? ` ${mx}` : ''}`)}` : '<em>오늘은 다 샀어요</em>'}</span></div>`;
 }
 export function convHtml(): string {
+  if (!flag('goldsinkConvert')) return '';
   if (!fLv('alchemy')) return '<p class="note">연금술 공방을 지으면 열려요</p>';
   const items = convItems();
   const mats = items.filter((x) => x.key.startsWith('mat:'));
@@ -70,6 +72,7 @@ function alchTabs(): string {
 // ───────── §3 예배당 축복 ─────────
 
 export function blessHtml(): string {
+  if (!flag('goldsinkBless')) return '';
   const lv = fLv('chapel');
   if (!lv) return '';
   const B = GSC().bless;
@@ -163,6 +166,7 @@ function doBless() {
 export function refreshBtn(): string {
   const free = CONFIG.expedition.freeRefreshPerDay - P.quests.refreshUsed;
   if (free > 0) return `<button id="qRef">새로고침 (무료 ${free})</button>`;
+  if (!flag('goldsinkRefresh')) return '<button id="qRef" disabled>새로고침 (내일 다시)</button>';
   const cost = refreshCost();
   return `<button id="qRef" class="paid" ${S.gold >= cost ? '' : 'disabled'}>새로고침 · ${fmtKo(cost)} G</button>`;
 }
@@ -175,6 +179,7 @@ export function afterPaidRefresh(done: () => void) {
 }
 
 export function favorsHtml(): string {
+  if (!flag('villageFavors')) return '<p class="note">마을 부탁은 잠시 쉬어요</p>';
   const list = ensureFavors();
   const g = gsState();
   const F = GSC().favor;
@@ -239,6 +244,7 @@ export function favorIntro(done: () => void) {
 // ───────── §4 사냥 창 한 줄 ─────────
 
 export function taperLine(): string {
+  if (!flag('goldsinkAutoCap')) return '';
   const t = taperInfo();
   const m = Math.round(t.mult * 100);
   const nx = t.upto ? taperAt(t.upto) : 0;
@@ -251,7 +257,7 @@ export function taperLine(): string {
 
 export function storyWaitText(): string {
   const d = storyWaitDay();
-  if (!d || S.visiting) return '';
+  if (!d || S.visiting || !flag('storyWaitHint')) return '';
   return `다음 이야기: ${d}일차 (지금 ${S.day}일차) · ☾로 밤을 넘기면 하루가 빨리 가요`;
 }
 export function tickGoldsinkHud() {
