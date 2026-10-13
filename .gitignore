@@ -17,3 +17,5 @@ tests/fixtures/real_*
 .env.ops
 reports/
 dist-before
+screenshots/hotfix20/
+screenshots/propfilter/
