@@ -3,7 +3,8 @@
 import { CONFIG } from '../data/config';
 import type { RegionId } from '../data/items';
 import type { Actor } from '../world/state';
-import { attack, dodge, grade, makeField, skill, step, ultimate, type Field } from './field';
+import { roleMult } from '../world/party';
+import { applyRolesHp, attack, dodge, grade, makeField, skill, step, ultimate, type Field, type FieldOpts } from './field';
 
 const C = CONFIG.combat;
 
@@ -15,12 +16,17 @@ export interface SimResult {
   kills: number;
   maxStreak: number;
   items: number;
+  /** 토벌: 보스에게 준 피해 (필드 단위) */
+  raidDmg: number;
 }
 
 /** 봇 한 판. powerK = 추천 전투력 대비 파티 힘 (1 = 딱 추천) · skill = 0~1 (구르기 성공률·반응) */
-export function simulate(region: RegionId, stage: number, members: Actor[], powerK = 1, skillLv = 0.7, auto = false): SimResult {
-  const f: Field = makeField(region, stage, members, auto);
-  for (const u of f.allies) u.power = (f.rec / 3) * powerK;
+//  ROLES §6: 역할 조합 보너스(전투력 +10%)는 실제 판처럼 넣는다 · 토벌은 opts로 (mode 'raid')
+export function simulate(region: RegionId, stage: number, members: Actor[], powerK = 1, skillLv = 0.7, auto = false, opts?: FieldOpts): SimResult {
+  const f: Field = makeField(region, stage, members, auto, opts);
+  const rm = roleMult(members.slice(0, CONFIG.party4.max));
+  for (const u of f.allies) u.power = (f.rec / 3) * powerK * rm;
+  applyRolesHp(f);
   const dt = 1 / 30;
   let react = 0;
   for (let t = 0; t < C.timeLimit + 5 && !f.done; t += dt) {
@@ -29,7 +35,7 @@ export function simulate(region: RegionId, stage: number, members: Actor[], powe
   }
   // 끝 처리(줍기)까지
   for (let i = 0; i < 60; i++) step(f, dt);
-  return { win: f.done === 'win', grade: grade(f), time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: f.picked.length };
+  return { win: f.done === 'win', grade: grade(f), time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: f.picked.length, raidDmg: Math.round(f.raidDmg) };
 }
 
 function brain(f: Field, dt: number, skillLv: number, tick: () => void, reset: () => void, reactT: () => number) {

@@ -1,5 +1,6 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
+import { flag } from '../world/flags';
 import { communityLink } from './community';
 import { landReqs, landWhy } from '../world/landreq';
 import { GROUPS, groupOf, markSeen, unseenDrops } from '../world/decodrop';
@@ -102,7 +103,10 @@ function showHead(title: string) {
   if (hp) hb.onclick = () => helpHook.open(hp);
   $('#winBack').hidden = !stack.length;
 }
+/** 핫픽스 v0.23.4: 창이 열린 시각 — 터치를 떼며 브라우저가 뒤따라 보내는 click이 바로 바깥(어두운 곳)으로 가서 창을 닫지 않게 */
+let openedAt = 0;
 const setOpen = (on: boolean) => {
+  if (on && !$('#scrim').classList.contains('on')) openedAt = performance.now();
   $('#scrim').classList.toggle('on', on);
   document.body.classList.toggle('winopen', on);
 };
@@ -257,6 +261,7 @@ export function initWindows() {
   addEventListener('resize', stackHud);
   // 바깥 어두운 곳: 닫기 (글을 쓰는 창은 빼고)
   $('#scrim').onclick = () => {
+    if (flag('tapV2') && performance.now() - openedAt < 450) return;
     if ($('#winB').querySelector('input[type=text], input:not([type]), textarea')) return;
     userClose();
   };

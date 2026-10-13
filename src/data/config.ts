@@ -28,6 +28,8 @@ export interface HarmonyFx {
 }
 
 export const CONFIG = {
+  /** 핫픽스 v0.23.4: 모바일 탭 — 손가락은 이만큼(px) 덜 움직이고 이 시간(ms) 안에 떼면 탭 · 손님은 건물과 겹치면 이 거리(px) 안일 때만 먼저 · tap_miss 기록 기기당 하루 */
+  touchTap: { slopPx: 14, maxMs: 450, actorFirstPx: 8, missLogPerDay: 30 },
   /** 유저 톡방 (카카오톡 오픈채팅) — 게임 안 모든 톡방 링크는 여기서 읽는다 */
   /** FEEDBACK: 손님 내보내기 — 옛 단골로 남는 날(실제) · 최대 수 · 단골 작별 대사 */
   dismiss: { recallDays: 3, formerMax: 20, farewellLines: ['…그래, 또 들를게. 그때도 이 자리 비워 둬야 해.', '신세 많이 졌어, 주인장. 가는 길에 소문 많이 내 줄게!'] },
@@ -1072,6 +1074,29 @@ export const CONFIG = {
     grade: { perHit: 4, timeFree: 0.1, perTime: 100, perStreak: 1, streakCap: 20, s: 90, a: 70, bonus: { S: 0.3, A: 0.15, B: 0 } },
     sweep: 0.7,
     allyVol: 0.6,
+    /** ROLES §1~§5 (플래그 rolesV2): 체력 = 그 판 일반 몬스터 한 대 × 직업 배수 × (1 + (레벨−1)×lvK) · 방어 · 탱 · 힐 · 조합 */
+    roles: {
+      hpMult: { knight: 10, dwarf: 8, cleric: 6, rogue: 5, hunter: 5, mage: 4, hero: 8 } as Record<string, number>,
+      lvK: 0.004,
+      /** §2 받는 피해 × (1 − 방어/(방어+defK)) · 최대 defMax */
+      defK: 300,
+      defMax: 0.4,
+      /** §3 기사: 늘 받는 피해 − · 넉백 배 · 보호(곁 칸 · 대신 받는 몫) · 도발(초 · 받는 피해 − · 범위) · 드워프 버티기(체력 비율 아래 · 받는 피해 −) */
+      knightCut: 0.2,
+      knightKnock: 0.5,
+      guardR: 1.5,
+      guardShare: 0.3,
+      taunt: { t: 4, cut: 0.5, r: 4.5 },
+      dwarfLow: 0.3,
+      dwarfCut: 0.25,
+      /** §4 사제: 치유의 빛 · 범위 · 곁 회복(칸 · 초당 비율) · 한 번 살리기(초 · 체력 · 사냥/토벌 횟수) */
+      heal: 0.35,
+      healR: 3,
+      aura: { r: 3, pct: 0.01 },
+      revive: { t: 3, hp: 0.3, hunt: 1, raid: 2 },
+      /** §5 탱·힐·딜 조합: 예고 + 초 (피해 +10%는 원래 있던 역할 보너스 party.rolePowerPct) */
+      comboTele: 0.1,
+    },
   },
   /**
    * GROWTH §2~§4: 선물 힌트 · 아끼는 영웅 · 강화 재조정 · 소모품 · 고유 장비 · 재련 · 자랑 · 낚시

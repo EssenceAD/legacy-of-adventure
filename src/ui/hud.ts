@@ -42,6 +42,7 @@ import { applyTidy, planTidy } from '../world/tidy';
 import { openGridMenu } from './menu';
 import { achReady, mailWaiting } from '../world/meta';
 import { tickGoldsinkHud } from './goldsink';
+import { tickWayfind } from './wayfind';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -721,6 +722,8 @@ export function tickHud() {
     if (hr && (hr.items.length || hr.levelUps.length)) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>맡겨 둔 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
     // GOLDSINK: 축복 아이콘 · §6 다음 이야기 기다림 한 줄
     tickGoldsinkHud();
+    // WAYFIND §1: 「!」 · 처음 써 본 반응
+    tickWayfind();
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
     fitDay();

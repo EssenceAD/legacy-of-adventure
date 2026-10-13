@@ -12,7 +12,7 @@ import { josa } from '../data/josa';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { track } from './progress';
-import { legendHooks, markDirty, P, S, world, type Building, type Item } from './state';
+import { legendHooks, markDirty, P, S, wfHit, world, type Building, type Item } from './state';
 import { enhanceBonus, ownerGain, stat } from './owner';
 import { bfx, hfx } from './harmony';
 import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
@@ -301,6 +301,7 @@ export function craftWhet(r: RegionId): string | null {
   P.dust.n -= c.ash;
   S.gold -= c.gold;
   P.growth.whet++;
+  wfHit('whet');
   track('craft');
   markDirty();
   return null;

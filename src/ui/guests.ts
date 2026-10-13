@@ -10,6 +10,7 @@ import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAM
 import { CLASS_WEAPON, CLASSES, KIND_LINES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
+import { flag } from '../world/flags';
 import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
@@ -183,7 +184,7 @@ export function showActor(a: Actor) {
       ${bar('체력', a.hp, '#e0544a')}${bar('포만', a.food, '#e8a23a')}${bar('기분', a.mood, '#6fb04b')}
       ${bar('경험', a.xp, '#6f8fff', xpToNext(a.lvl))}
     </div></div>
-    <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b></span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
+    <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b>${k === 'def' && flag('rolesV2') ? `<small class="defcut"> 받는 피해 −${Math.round(Math.min(CONFIG.combat.roles.defMax, Math.max(0, st.def) / (Math.max(0, st.def) + CONFIG.combat.roles.defK)) * 100)}%</small>` : ''}</span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
     ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? '<button class="bigbtn sm best" id="aBest">✨ 가장 좋은 걸로 입히기</button>' : ''}${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
     ${a.legendId ? legendPanel(a) : ''}
