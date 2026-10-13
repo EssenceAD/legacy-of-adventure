@@ -17,6 +17,8 @@ export const FLAG_DEFAULTS = {
   mailDelete: true,
   /** ROLES: 직업마다 체력·탱·힐·조합 (끄면 예전 전투) */
   rolesV2: true,
+  /** 핫픽스: 모바일 짧게 누르기(탭) 판정 */
+  tapV2: true,
   /** WAYFIND §1 처음 해 보기 「!」 말풍선 */
   wayfindBubbles: true,
   /** WAYFIND §2 결의 (같은 첫 돌파 판 연속 패배 보정) */
