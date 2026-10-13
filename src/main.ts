@@ -62,7 +62,7 @@ import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
 import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startMoveEntrance, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
-import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomsNow } from './ui/screen';
+import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomIdx, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
 import { initMenu, openAttend, openGridMenu, openManual } from './ui/menu';
 import { _abyss } from './ui/abyss';
@@ -511,7 +511,7 @@ function bindInput() {
       wheelAcc += e.deltaY;
       if (Math.abs(wheelAcc) < 80) return;
       const zs = zoomsNow();
-      const i = zs.indexOf(S.zoom);
+      const i = zoomIdx(S.zoom, zs);
       const n = zs[Math.max(0, Math.min(zs.length - 1, i + (wheelAcc < 0 ? 1 : -1)))];
       wheelAcc = 0;
       if (n != null && n !== S.zoom) setZoom(n);
@@ -589,7 +589,7 @@ function bindInput() {
       if (r > P || r < 1 / P) {
         // 핀치: 배율 목록에서 한 칸씩 (×0.5 포함)
         const zs = zoomsNow();
-        const i = zs.indexOf(S.zoom);
+        const i = zoomIdx(S.zoom, zs);
         setZoom(zs[Math.max(0, Math.min(zs.length - 1, (i < 0 ? 0 : i) + (r > 1 ? 1 : -1)))]);
         pinchBase = pinchDist();
       }

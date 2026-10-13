@@ -1,7 +1,9 @@
 // 화면 크기 3단계(폰·태블릿·넓은 화면) · 글자 크기 · 마을 캔버스 배율 (핫픽스 3)
 // <html data-size="phone|tablet|wide"> 와 CSS 변수(--f-*, --port)를 여기서 정한다.
 import { CONFIG } from '../data/config';
-import { TW, view } from '../engine/iso';
+import { canvasScale, TW, view } from '../engine/iso';
+import { saverOn } from '../engine/fps';
+import { flag } from '../world/flags';
 import { getPref, setPref } from '../save/save';
 import { S } from '../world/state';
 import { snap } from './kit';
@@ -31,7 +33,41 @@ export function sizeClass(w: number, h: number): SizeClass {
 
 /** 지금 크기 구간에서 고를 수 있는 배율 */
 /** LAND2: 폰에서 기기 픽셀 2배 이상이면 ×0.5 (논리 1px = 기기 1px · 도트 그대로) — 손으로만 고른다 (자동 배율은 그대로) */
-export const zoomsNow = () => (screen.size === 'phone' ? (devicePixelRatio >= 2 ? [0.5, ...CONFIG.view.zooms] : CONFIG.view.zooms) : U.wideZooms);
+const rawZooms = (size: SizeClass, dpr: number) => (size === 'phone' ? (dpr >= 2 ? [0.5, ...CONFIG.view.zooms] : CONFIG.view.zooms) : U.wideZooms);
+/** 지금 캔버스 픽셀 상한 (배터리 절약이면 더 낮게) */
+export const dprCapNow = (saver = saverOn()) => (saver ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
+/** 이 배율이 화면에서 실제로 내는 크기 (view.SC) */
+export const zoomSC = (z: number, size: SizeClass = screen.size, dpr = devicePixelRatio || 1, saver = saverOn()) => canvasScale(z, size !== 'phone', dpr, dprCapNow(saver));
+/**
+ * v0.24.4 zoomDedupe: 상한(dprCap)에 걸려 같은 크기가 되는 배율은 하나만 (dpr 2.6 넓은 화면 ×1·×2 = 0.77 · dpr 2 + 절약 ×0.5·×1 = 1)
+ *  — 매번 지금 상한·절약 모드로 계산 · 버튼·핀치·휠이 같은 목록
+ */
+export function zoomList(size: SizeClass, dpr: number, saver: boolean): number[] {
+  const zs = rawZooms(size, dpr);
+  if (!flag('zoomDedupe')) return zs;
+  const out: number[] = [];
+  const seen: number[] = [];
+  for (const z of zs) {
+    const sc = zoomSC(z, size, dpr, saver);
+    // 같은 크기면 큰 배율 쪽 이름을 남긴다 (상한에 걸리면 크기가 위로 올림되어 큰 배율과 같아진다)
+    const i = seen.findIndex((v) => Math.abs(v - sc) < 1e-6);
+    if (i >= 0) out[i] = z;
+    else {
+      seen.push(sc);
+      out.push(z);
+    }
+  }
+  return out;
+}
+export const zoomsNow = () => zoomList(screen.size, devicePixelRatio || 1, saverOn());
+/** 목록에 없는 배율(걸러졌거나 예전 저장값) → 같은 크기의 배율, 없으면 크기가 가장 가까운 배율 */
+export function snapZoom(z: number, zs = zoomsNow()): number {
+  if (zs.includes(z)) return z;
+  const sc = zoomSC(z);
+  return zs.reduce((b, v) => (Math.abs(zoomSC(v) - sc) < Math.abs(zoomSC(b) - sc) - 1e-9 ? v : b), zs[0]);
+}
+/** 목록에서 지금 배율의 자리 (걸러진 배율이면 같은 크기 자리) */
+export const zoomIdx = (z: number, zs = zoomsNow()) => zs.indexOf(snapZoom(z, zs));
 
 /**
  * 땅 개편 §5: 지금 땅(가로 size×TW)이 화면 짧은 변의 70~80%를 채우는 정수 배율.
@@ -67,7 +103,7 @@ function pickZoom() {
   const zs = zoomsNow();
   const def = landZoom();
   const z = getPref<number>(zoomKey(), def);
-  S.zoom = zs.includes(z) ? z : def;
+  S.zoom = zs.includes(z) ? z : flag('zoomDedupe') ? snapZoom(z, zs) : def;
 }
 /** 사용자가 이 크기 구간에서 배율을 고른 적이 있나 */
 export const hasZoomPref = () => getPref<number | null>(zoomKey(), null) !== null;

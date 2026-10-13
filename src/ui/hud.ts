@@ -34,7 +34,7 @@ import { fitDay } from './dayfit';
 import { foldInfo } from '../combat/ui';
 import { openGuests } from './guests';
 import { openVillage } from './neighbors';
-import { saveZoom, zoomsNow } from './screen';
+import { saveZoom, zoomIdx, zoomsNow } from './screen';
 import { tickTimers } from './common';
 import { buildHooks, isWinOpen, openBuild, openLand, toast, toastHtml } from './windows';
 import { isTalking, talk } from './dialogue';
@@ -566,7 +566,7 @@ export function initHud() {
   $('#bZoom').onclick = () => {
     // 1 → 2 → 3 → 1 …
     const zs = zoomsNow();
-    setZoom(zs[(zs.indexOf(S.zoom) + 1) % zs.length]);
+    setZoom(zs[(zoomIdx(S.zoom, zs) + 1) % zs.length]);
   };
   // BUILDUX §1-4: ✓/✕/↻ 를 고스트 옆으로 (id 그대로) · 이유·어울림 말풍선
   const gb = document.createElement('div');
