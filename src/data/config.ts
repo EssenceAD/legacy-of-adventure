@@ -1175,6 +1175,12 @@ export const CONFIG = {
     /** §5 마을 부탁: 하루 몇 개 · 바꾸기(무료 1번 뒤 base × m × 2^(n−1)) · 주간 목표 · 보너스 상자 고유 장비 확률 배수 */
     favor: { perDay: 3, swapFree: 1, swapBase: 500, weekGoal: 15, weekBossMats: 3, weekTokens: 1, uniqueMult: 2, tavernBoost: 0.1, blessMin: 30 },
   },
+  /** GOLDSINK §7 끝없는 심연: 층마다 강함 ×grow (복리, 1층 = 심연의 바닥 10 추천 전투력) · bossEvery층마다 보스 · restEvery층마다 쉼터(축복 restMin분)
+   *  보상(금화 없음): 잿빛 가루 dustN[0] + dustN[1]×층 · 희귀 가루 1 + 층/dustREvery · 심연 재료 matBase + 층/matEvery · 보스 층: 보스 재료 bossMats · 영웅 가루 1 + 층/dustEEvery · 고유 장비 확률 ×uniqueMult
+   *  이어하기 contBase × contGrow^층 · 자랑 층 · AUTO 「계속 오르기」 대기(초) */
+  abyss: { grow: 1.07, bossEvery: 5, restEvery: 10, restMin: 30, dustN: [20, 2] as [number, number], dustREvery: 10, dustEEvery: 25, matBase: 2, matEvery: 10, bossMats: 2, uniqueMult: 2, contBase: 5000, contGrow: 1.15, brags: [25, 50, 100], autoNextSec: 3 },
+  /** GOLDSINK §8 주사위 술내기: 목표 점수 · 그롬은 이번 차례 점수가 aiStop을 넘으면 멈춤 · 판돈 base × m(r) × 배수 · 주점 몫(판 전체의 cut) · 이기면 인연 +tieWin · 연승 업적 */
+  dice: { goal: 3000, aiStop: 500, base: 1000, mults: [1, 2, 5, 10], cut: 0.1, tieWin: 2, streakGoal: 10, winLineEvery: 10, aiStepMs: 650 },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

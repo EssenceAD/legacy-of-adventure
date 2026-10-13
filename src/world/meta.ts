@@ -68,6 +68,8 @@ function stat(k: AchStat, d?: AchDef): number {
     case 'fishN': return Object.values(P.growth.fish.rec).reduce((s, r) => s + r.n, 0);
     case 'fishKinds': return FISH.filter((x) => (P.growth.fish.rec[x.id]?.n ?? 0) > 0).length;
     case 'fishLegend': return FISH.filter((x) => x.grade === 'l' && (P.growth.fish.rec[x.id]?.n ?? 0) > 0).length;
+    // GOLDSINK §8
+    case 'diceAch': return d && P.gs?.dice?.ach?.includes(d.id) ? 1 : 0;
   }
 }
 

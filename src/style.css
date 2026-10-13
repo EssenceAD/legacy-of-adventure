@@ -1662,3 +1662,27 @@ body.in-combat a{pointer-events:none}
 
 /* 우편함: 읽은 편지 지우기 */
 .mail .mldel{min-width:28px;padding:2px 6px;opacity:.7}
+/* GOLDSINK §7 끝없는 심연 · §8 주사위 술내기 */
+.huntw .tab.abtab{position:relative;color:#d9c8ff}
+.huntw .tab.abtab::after{content:'';position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:var(--rc);pointer-events:none}
+.abauto{display:flex;align-items:center;gap:6px;margin:6px 0;font-size:var(--f-small);color:#cdd5f5}
+.abcount{color:#ffd76a}
+.dtable{background:linear-gradient(#6b4423,#5a381c);border:3px solid #3a2410;box-shadow:inset 0 0 0 2px #8a5a30;padding:10px;border-radius:4px}
+.dtable .note,.dtable .sub{color:#f3e2c4}
+.dscore{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#f3e2c4}
+.dscore span{padding:3px 8px;border:2px solid transparent}.dscore span.on{border-color:#ffd76a;background:#0003}
+.dscore b{color:#ffd76a;font-size:1.2em}.dscore small{opacity:.8;font-size:var(--f-tiny)}
+.dsay{background:#fff8e6;color:#3a2410;padding:6px 8px;margin:8px 0;border:2px solid #3a2410;font-size:var(--f-small)}
+.dturn{text-align:center;color:#f3e2c4;margin:6px 0}
+.dbust{text-align:center;color:#ff6a6a;font-size:1.6em;font-weight:700;margin:4px 0}
+.drow{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;min-height:46px;margin:6px 0}
+.drow.kept{min-height:30px;opacity:.85}
+.die{width:42px;height:42px;padding:4px;background:#fdfdf8;border:2px solid #222;box-shadow:2px 2px 0 #0006;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:1px;cursor:pointer;image-rendering:pixelated}
+.die i{display:block}.die i.p{background:#1a1a1a;margin:2px}
+.die.sel{background:#ffe27a;transform:translateY(-4px);border-color:#a0520a}
+.die.k{width:28px;height:28px;padding:2px;cursor:default}.die.k i.p{margin:1px}
+.die:disabled{cursor:default}
+.dbtns,.dstakes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}
+.dstakes .bigbtn{flex:1 1 45%;margin:0;display:flex;flex-direction:column;align-items:center}.dstakes small{font-size:var(--f-tiny);opacity:.85}
+.dbtns .bigbtn{flex:1 1 45%;margin:0}
+.dend{margin-top:8px;padding:8px;background:#0004;text-align:center;color:#f3e2c4}.dend h3{margin:0 0 4px}.dend.good h3{color:#8fe08f}.dend.bad h3{color:#ff8a8a}

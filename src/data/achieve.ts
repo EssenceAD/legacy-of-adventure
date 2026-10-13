@@ -7,7 +7,7 @@ export interface AchCtx {
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos' | 'regFirst' | 'regGuide' | 'fishN' | 'fishKinds' | 'fishLegend';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos' | 'regFirst' | 'regGuide' | 'fishN' | 'fishKinds' | 'fishLegend' | 'diceAch';
 
 export interface AchDef {
   id: string;
@@ -120,6 +120,10 @@ export const ACHIEVEMENTS: AchDef[] = [
   A('fish1', '첫 손맛', '물고기를 처음 낚아요', 'fishN', 1, { gold: 200 }),
   A('fish20', '연못의 주인', '물고기 20종을 모두 낚기', 'fishKinds', 20, { gold: 5000, dust: 300, title: '연못의 주인' }),
   A('fishL', '전설을 낚은 자', '전설 물고기를 낚기', 'fishLegend', 1, { gold: 3000, title: '전설을 낚은 자' }),
+  // GOLDSINK §8 주사위 술내기 (그롬) — 칭호만 (id = world/dice.ts DICE_ACH)
+  A('diceClean', '꽝 없이 3,000점', '주사위 술내기에서 한 번도 꽝 없이 이기기', 'diceAch', 1, { title: '꽝을 모르는 손목' }, true),
+  A('diceStraight', '스트레이트', '주사위 술내기에서 1~6 스트레이트 굴리기', 'diceAch', 1, { title: '스트레이트' }, true),
+  A('diceStreak', '그롬에게 10연승', '주사위 술내기에서 그롬을 10판 내리 이기기', 'diceAch', 1, { title: '드워프 손목을 꺾은 자' }, true),
   // REGIONS2 §5-7: 지역 6~10 「첫 발자국」(첫 입장) · 「길잡이」(보스) — 금화 + 칭호 (열리기 전엔 숨김)
   ...REGIONS.slice(BASE_REGIONS).flatMap((r, i) => {
     const t = REGION_TITLES[r.id as keyof typeof REGION_TITLES];

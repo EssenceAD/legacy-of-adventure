@@ -5,5 +5,7 @@
   "goldsinkBless": true,
   "villageFavors": true,
   "storyWaitHint": true,
-  "mailDelete": true
+  "mailDelete": true,
+  "endlessAbyss": true,
+  "diceGame": true
 }

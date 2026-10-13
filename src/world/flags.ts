@@ -15,6 +15,10 @@ export const FLAG_DEFAULTS = {
   storyWaitHint: true,
   /** 우편함 읽은 편지 지우기 */
   mailDelete: true,
+  /** GOLDSINK §7 끝없는 심연 */
+  endlessAbyss: true,
+  /** GOLDSINK §8 주사위 술내기 */
+  diceGame: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

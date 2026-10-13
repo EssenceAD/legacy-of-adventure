@@ -13,6 +13,7 @@ import { showActor, talkGuest } from './guests';
 import { openGifts } from './owner';
 import { closeWin, openReport, openWin, toast } from './windows';
 import { track as trackEv } from '../net/telemetry';
+import { canDice, openDice } from './dice';
 
 /** 선물 아이콘 (그림이 없어 이모지) */
 export const GIFT_ICON: Record<GiftKey, string> = { tea: '🍵', trinket: '📿', cake: '🍰', ale: '🍺', book: '📕', gem: '💎', flower: '💐', jerky: '🥓', whet: '🪨', candle: '🕯️', map: '🗺️', toy: '🪀' };
@@ -39,7 +40,7 @@ export function openPersonMenu(a: Actor, x: number, y: number) {
   el.id = 'pmenu';
   el.className = 'pmenu card px';
   const name = npc ? '모모' : a.name;
-  el.innerHTML = `<b class="pmname">${esc(name)}</b><button id="pmTalk">💬 말 걸기</button><button id="pmGift">🎁 선물하기</button>${npc ? '<button id="pmLetter" class="ghost">✉️ 편지 쓰기</button>' : a.id ? '<button id="pmInfo" class="ghost">📋 정보</button>' : ''}`;
+  el.innerHTML = `<b class="pmname">${esc(name)}</b><button id="pmTalk">💬 말 걸기</button><button id="pmGift">🎁 선물하기</button>${canDice(a) ? '<button id="pmDice">🎲 주사위 한 판?</button>' : ''}${npc ? '<button id="pmLetter" class="ghost">✉️ 편지 쓰기</button>' : a.id ? '<button id="pmInfo" class="ghost">📋 정보</button>' : ''}`;
   document.body.appendChild(el);
   menuEl = el;
   const r = el.getBoundingClientRect();
@@ -56,6 +57,7 @@ export function openPersonMenu(a: Actor, x: number, y: number) {
   };
   on('pmTalk', () => talkPerson(a, bid));
   on('pmGift', () => openGiftPick(a));
+  on('pmDice', () => openDice());
   on('pmInfo', () => showActor(a));
   on('pmLetter', () => openReport());
   // 메뉴 밖을 누르면 닫힘 (이번 탭이 끝난 뒤부터)

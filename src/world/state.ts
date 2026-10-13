@@ -658,6 +658,10 @@ export function freshGoldsink() {
     /** 보너스 상자: 다음 지역 보스 고유 장비 확률 ×2 남은 횟수 · 주점 수입 +10% 날 */
     uniqueBoost: 0,
     tavernDay: '',
+    /** §7 끝없는 심연: 최고 층 · 주(월요일) · 이번 주 최고 · 이어하기 할 수 있는 층(0 = 없음) · 자랑한 층 */
+    abyss: { best: 0, week: '', weekBest: 0, lost: 0, brags: [] as number[] },
+    /** §8 주사위: 판 수 · 이긴 수 · 지금 연승 · 최고 연승 · 이룬 업적 id */
+    dice: { games: 0, wins: 0, streak: 0, bestStreak: 0, ach: [] as string[] },
   };
 }
 export type GoldsinkState = ReturnType<typeof freshGoldsink>;
