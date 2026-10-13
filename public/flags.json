@@ -21,5 +21,8 @@
   "keycapLabels": true,
   "zoomDedupe": true,
   "abyssResume": true,
-  "autoPathStrict": true
+  "autoPathStrict": true,
+  "paletteV2": false,
+  "calmWorld": false,
+  "visualLabOpen": false
 }

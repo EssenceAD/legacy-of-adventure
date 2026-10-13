@@ -47,6 +47,12 @@ export const FLAG_DEFAULTS = {
   abyssResume: true,
   /** v0.24.6 자동 길 끔: 던전 길은 울타리 밖(숲) 칸만 · 입구 길도 지우개로 지울 수 있게 */
   autoPathStrict: true,
+  /** VISUAL §1 팔레트 통일 — 실험실(기본 꺼짐 · 운영자 「새 화면 미리 보기」) */
+  paletteV2: false,
+  /** VISUAL §2 조용한 바닥 · 또렷한 사람 — 실험실(기본 꺼짐) */
+  calmWorld: false,
+  /** VISUAL 실험실 토글을 운영자 말고 모두에게 보이기 (테스터 공개 단계) */
+  visualLabOpen: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

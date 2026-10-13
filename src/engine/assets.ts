@@ -11,6 +11,8 @@ import { LIT_SPRITES } from '../data/catalog';
 import { BASE_GUEST_KINDS, RACES } from '../data/classes';
 import { canvas, hsl, hslToRgb } from './pixel';
 import { canvasAlive, drawable, Lru } from './lru';
+import { paletteMap } from './palette';
+import { vis } from '../world/visual';
 
 export interface SpriteMeta {
   w: number;
@@ -119,8 +121,8 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     ...BOSSES.filter((b) => !b.fresh).map((b) => loadImage(`${BASE}sprites/boss_${b.id}.png`).then((im) => (BOSS_IMG[b.id] = toCanvas(im)))),
     ...REGIONS.slice(0, BASE_REGIONS).map((r) => loadImage(`${BASE}sprites/${r.id === 'forest' ? 'raid_bg' : 'raid_bg_' + r.id}.png`).then((im) => (RAID_BG[r.id] = im))),
     // 5단계 사냥 몬스터 10종 (왼쪽을 봄) · 마을 등급 장식 8종
-    ...MOB_KEYS.map((k) => loadImage(`${BASE}monsters/mob_${k}.png`).then((im) => named((MOB_IMG[k] = toCanvas(im)), 'mob:' + k))),
-    ...PROP_KEYS.map((k) => loadImage(`${BASE}props/${k}.png`).then((im) => named((PROP_IMG[k] = toCanvas(im)), 'prop:' + k))),
+    ...MOB_KEYS.map((k) => loadImage(`${BASE}monsters/mob_${k}.png`).then((im) => named((MOB_IMG[k] = mobCanvas(im)), 'mob:' + k))),
+    ...PROP_KEYS.map((k) => loadImage(`${BASE}props/${k}.png`).then((im) => named((PROP_IMG[k] = propCanvas(im)), 'prop:' + k))),
     loadImage(`${BASE}sprites/campfire.png`).then((im) => {
       for (let i = 0; i < im.width / FIRE_W; i++) {
         const c = canvas(FIRE_W, im.height);
@@ -186,7 +188,8 @@ function named<T extends object>(d: T, name: string): T {
 }
 /** 건물 그림 넣기 (처음 불러올 때 · 다시 불러올 때 같은 길): 창문 빛 · 좌우 반전 */
 function setSprite(k: string, im: HTMLImageElement) {
-  IMG[k] = named(im, k);
+  // VISUAL §1: 팔레트 통일 (건물·장식 = 색 외곽선) — 전투 배경·보스 원화는 빼고
+  IMG[k] = named(vis('paletteV2') && !/^(raid_bg|boss_)/.test(k) ? paletteMap(im, { colorLine: true }) : im, k);
   if (LIT_SPRITES.includes(k)) LIGHTS[k] = named(windowMask(im, WINDOWS[k] || (k === 'monument' ? glowPts(im) : [])), 'light:' + k);
   makeFlipped(k);
 }
@@ -253,8 +256,8 @@ export function reloadSprite(name: string) {
   im.onload = () => {
     if (!im.naturalWidth) return;
     try {
-      if (name.startsWith('prop:')) PROP_IMG[name.slice(5)] = named(toCanvas(im), name);
-      else if (name.startsWith('mob:')) MOB_IMG[name.slice(4)] = named(toCanvas(im), name);
+      if (name.startsWith('prop:')) PROP_IMG[name.slice(5)] = named(propCanvas(im), name);
+      else if (name.startsWith('mob:')) MOB_IMG[name.slice(4)] = named(mobCanvas(im), name);
       else {
         forgetSprite(k);
         setSprite(k, im);
@@ -301,6 +304,9 @@ export function scaled(src: HTMLCanvasElement, k: number): HTMLCanvasElement {
 /** 전투 배경: 지역별 (숲 = raid_bg.png) */
 export const RAID_BG: Partial<Record<string, HTMLImageElement>> = {};
 
+/** VISUAL §1: 마을 장식 = 색 외곽선 · 몬스터 = 검은 외곽선 그대로 */
+const propCanvas = (im: Drawable) => (vis('paletteV2') ? paletteMap(im, { colorLine: true }) : toCanvas(im));
+const mobCanvas = (im: Drawable) => (vis('paletteV2') ? paletteMap(im) : toCanvas(im));
 function toCanvas(im: Drawable): HTMLCanvasElement {
   const c = canvas(im.width, im.height);
   c.getContext('2d')!.drawImage(im, 0, 0);

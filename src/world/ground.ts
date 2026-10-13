@@ -7,6 +7,36 @@ import { world } from './state';
 import { N, sx, sy, TH, TW } from '../engine/iso';
 import { curLand, entrance, groundVersion, inLand, landBounds, paintOf, pathT, roundOf } from './town';
 import { gradeFolk, gradeNow, gradeProps, outerRoad } from './grade';
+import { calmTree } from '../engine/palette';
+import { vis } from './visual';
+
+// ───────── VISUAL §2 calmWorld: 조용한 바닥 · 또렷한 사람 ─────────
+const hx = (h: string) => [1, 3, 5].map((o) => parseInt(h.slice(o, o + 2), 16));
+const toHex = (c: number[]) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const mix = (a: string, b: string, t: number) => { const p = hx(a), q = hx(b); return toHex(p.map((v, i) => v + (q[i] - v) * t)); };
+/** 밝기 k배 · 채도 s배 */
+const dim = (h: string, k: number, s: number) => { const c = hx(h); const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]; return toHex(c.map((v) => (l + (v - l) * s) * k)); };
+const CALM_MEMO = new Map<string, string>();
+/** 숲 바닥(울타리 밖): 밝기 −20% · 채도 −25% */
+export const calmForest = (h: string) => (vis('calmWorld') ? (CALM_MEMO.get('f' + h) ?? (CALM_MEMO.set('f' + h, dim(h, 0.8, 0.75)), CALM_MEMO.get('f' + h)!)) : h);
+/** 마을 풀밭: 무늬 대비 −40% · 한 톤 따뜻하게 → [밝은 칸, 어두운 칸] */
+export function grassPair(a: string, b: string): [string, string] {
+  if (!vis('calmWorld')) return [a, b];
+  const w = (h: string) => mix(h, '#c8b060', 0.1);
+  return [w(a), w(mix(b, a, 0.4))];
+}
+/** 숲 나무 그림: 먼 나무(굽기) = 외곽선 없이 어둡게 · 울타리 가까운 2겹 = 외곽선 두고 조금 어둡게 */
+const TREE_MEMO = new Map<string, { src: unknown; c: HTMLCanvasElement }>();
+export function treeImg(k: string, edge: boolean) {
+  const im = IMG[k];
+  if (!im || !vis('calmWorld') || k === 'expand_sign') return im;
+  const key = k + (edge ? '|e' : '|f');
+  const hit = TREE_MEMO.get(key);
+  if (hit && hit.src === im && hit.c.width) return hit.c;
+  const c = edge ? calmTree(im, 0.9, 0.85, true) : calmTree(im, 0.8, 0.75);
+  TREE_MEMO.set(key, { src: im, c });
+  return c;
+}
 
 /** 맵 밖으로 숲을 몇 칸 더 그릴지 (배율 1에서도 화면이 비지 않게) */
 const M = CONFIG.UI_SCALE.groundRing;
@@ -85,12 +115,13 @@ function drawGround(g: number, key: string): Ground {
   const oy = TH * M;
   const r = rng(11);
   // 맵 밖 숲 바닥
-  p.rect(0, 0, W, H, '#3e6a34');
-  for (let i = 0; i < 500; i++) p.px((r() * W) | 0, (r() * H) | 0, '#4a7a3c');
+  p.rect(0, 0, W, H, calmForest('#3e6a34'));
+  for (let i = 0; i < 500; i++) p.px((r() * W) | 0, (r() * H) | 0, calmForest('#4a7a3c'));
   // 5단계 마을 등급: 입구 길(울타리 밖)도 길로 · 0 오두막 흙길 · 1 쉼터 다져진 길 · 2 마을부터 돌길
   const road = new Set(outerRoad(g).map(([x, y]) => `${x},${y}`));
   const isPath = (x: number, y: number) => (x >= 0 && y >= 0 && x < N && y < N && pathT.has(y * N + x)) || road.has(`${x},${y}`);
   const stone = g >= 2;
+  const grassDot = vis('calmWorld') ? mix('#9ad860', '#78b84a', 0.5) : '#9ad860';
   // 땅 개편: 등급 개간(cleared) 삭제 — 풀밭 = 울타리 안 = 지을 수 있는 땅. 울타리 밖은 바로 숲
   //  다음 단계 땅은 미리 보여 준다 (조금 밝은 숲 바닥 · 어린 나무 · 점선 테두리)
   const st = curLand();
@@ -121,18 +152,17 @@ function drawGround(g: number, key: string): Ground {
         a = g >= 1 ? '#b88a52' : '#c99a5e';
         b = g >= 1 ? '#a87a44' : '#b8864e';
       } else if (land) {
-        a = v < 2 ? '#78b84a' : '#6fae45';
-        b = '#5f9a3c';
+        [a, b] = grassPair(v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c');
       } else if (nextIn(x, y)) {
         // 다음 단계 땅: 숲 바닥이지만 조금 밝게 (어린 나무가 자라는 곳)
-        a = v < 2 ? '#5e9448' : '#5a8e45';
-        b = '#4f8040';
+        a = calmForest(v < 2 ? '#5e9448' : '#5a8e45');
+        b = calmForest('#4f8040');
       } else if (inMap) {
-        a = '#58894a';
-        b = '#4c7a42';
+        a = calmForest('#58894a');
+        b = calmForest('#4c7a42');
       } else {
-        a = '#476f3c';
-        b = '#3e6a34';
+        a = calmForest('#476f3c');
+        b = calmForest('#3e6a34');
       }
       for (let j = 0; j < TH; j++) {
         const hw = (j < TH / 2 ? j + 1 : TH - j) * 2;
@@ -146,7 +176,7 @@ function drawGround(g: number, key: string): Ground {
         decoTile(p, pc, X, Y, x, y, r);
         continue;
       }
-      if (land && !path && r() < 0.35) p.px(X + ((r() * 16 - 8) | 0), Y + 4 + ((r() * 8) | 0), '#9ad860');
+      if (land && !path && r() < 0.35) p.px(X + ((r() * 16 - 8) | 0), Y + 4 + ((r() * 8) | 0), grassDot);
       // 오두막: 풀이 무성하다 (길 위까지 풀포기)
       if (g === 0 && (land || path) && r() < 0.45) {
         const gx = X + ((r() * 18 - 9) | 0);
@@ -290,7 +320,7 @@ function drawGround(g: number, key: string): Ground {
   let fR = 0;
   let fb = 0;
   for (const w of baked) {
-    const im = IMG[w.k];
+    const im = treeImg(w.k, false);
     if (!im) continue;
     const inFront = w.x >= lb || w.y >= lb;
     const X = Math.round(ox + sx(w.x + 0.5, w.y + 0.5) - im.width / 2);
@@ -348,7 +378,7 @@ function decoTile(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x: 
       if (dl && dr) c ||= cut(1 - v, Math.abs(u));
       if (ur && dr) c ||= cut(1 - u, Math.abs(v));
       if (ul && dl) c ||= cut(1 + u, Math.abs(v));
-      if (c) p.px(X + i, Y + j, BAYER[(Y + j) & 3][(X + i + 64) & 3] < 3 ? '#5f9a3c' : (x * 7 + y * 13) % 5 < 2 ? '#78b84a' : '#6fae45');
+      if (c) { const [ga, gb] = grassPair((x * 7 + y * 13) % 5 < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'); p.px(X + i, Y + j, BAYER[(Y + j) & 3][(X + i + 64) & 3] < 3 ? gb : ga); }
     }
   }
 }
@@ -445,7 +475,7 @@ export function patchTiles(tiles: [number, number][]) {
           step: [v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'], flower: [v < 2 ? '#7cbc4c' : '#72b247', '#5f9a3c'], sand: ['#e6d29a', '#d2ba80'], gravel: ['#a39e94', '#86817a'],
           pond: ['#4a8ac4', '#3a76b0'],
         };
-        const [a, b] = pc && PAL[pc] ? PAL[pc] : path && stone ? PAL.stone : path ? [g >= 1 ? '#b88a52' : '#c99a5e', g >= 1 ? '#a87a44' : '#b8864e'] : [v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c'];
+        const [a, b] = pc && PAL[pc] ? PAL[pc] : path && stone ? PAL.stone : path ? [g >= 1 ? '#b88a52' : '#c99a5e', g >= 1 ? '#a87a44' : '#b8864e'] : grassPair(v < 2 ? '#78b84a' : '#6fae45', '#5f9a3c');
         for (let jj = 0; jj < TH; jj++) {
           const hw = (jj < TH / 2 ? jj + 1 : TH - jj) * 2;
           for (let ii = -hw; ii < hw; ii++) {

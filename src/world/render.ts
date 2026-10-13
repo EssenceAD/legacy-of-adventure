@@ -19,7 +19,8 @@ import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL, setPhotoNL } from './daynight';
 import { puff, updDrawParts } from './fx';
-import { ground, ensureGround, groundFor, groundKey, groundMem, signSpot, trimGround, type Wild } from './ground';
+import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, signSpot, treeImg, trimGround, type Wild } from './ground';
+import { vis } from './visual';
 import { stars } from './progress';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
@@ -141,7 +142,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   if (!anim.on) trimGround();
 
   // 1) 바닥 + 밤 색 한 번
-  ctx.fillStyle = '#3e6a34';
+  ctx.fillStyle = calmForest('#3e6a34');
   ctx.fillRect(0, 0, LW, LH);
   if (okToDraw(ground.c)) ctx.drawImage(ground.c, OX - ground.ox, OY - ground.oy);
   // 5단계: 마을 등급이 오르는 중 — 새 바닥이 위에서 아래로 덮어쓴다
@@ -161,6 +162,23 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle = tintColor(NL / CONFIG.dayNight.tintSteps);
     ctx.fillRect(0, 0, LW, LH);
+    // VISUAL §2: 밤엔 숲을 더 어둡게 → 마을이 「불 켜진 섬」 (울타리 안은 그대로)
+    if (vis('calmWorld')) {
+      const [a, b] = landBounds();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, LW, LH);
+      ctx.moveTo(OX + sx(a, a), OY + sy(a, a));
+      ctx.lineTo(OX + sx(a, b), OY + sy(a, b));
+      ctx.lineTo(OX + sx(b, b), OY + sy(b, b));
+      ctx.lineTo(OX + sx(b, a), OY + sy(b, a));
+      ctx.closePath();
+      ctx.clip('evenodd');
+      ctx.globalAlpha = Math.min(1, (NL / CONFIG.dayNight.tintSteps) * 0.9);
+      ctx.fillStyle = '#6a6c9a';
+      ctx.fillRect(0, 0, LW, LH);
+      ctx.restore();
+    }
     ctx.globalCompositeOperation = 'source-over';
   }
   // 땅 개편: 넓히는 중 쓰러지는 나무 (바닥 다음 · 건물보다 먼저)
@@ -670,7 +688,7 @@ function smokeOf(key: string | null): [number, number][] | undefined {
 }
 
 function drawWild(ctx: CanvasRenderingContext2D, w: Wild) {
-  const im0 = IMG[w.k];
+  const im0 = treeImg(w.k, true);
   if (!im0) return;
   const X = Math.round(view.OX + sx(w.x + 0.5, w.y + 0.5) - im0.width / 2);
   const Y = Math.round(view.OY + sy(w.x + 0.5, w.y + 0.5) + TH / 2 - im0.height + 3);

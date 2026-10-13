@@ -42,7 +42,8 @@ import { screen, setFontStep } from './screen';
 import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
-import { setPref } from '../save/save';
+import { setPref, writeSave } from '../save/save';
+import { labOn, setLab } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
@@ -343,10 +344,16 @@ export function openShop() {
 
 // ───────── 설정 (예전 메뉴의 설정 칸) ─────────
 
+/** VISUAL 실험실: 「새 화면 미리 보기」 — 운영자(또는 테스터 공개 플래그)만 · 이미 켠 기기는 끌 수 있게 늘 보임 */
+function labRowHtml(): string {
+  if (!amAdmin() && !flag('visualLabOpen') && !labOn()) return '';
+  return `<label class="tog"><input type="checkbox" id="mLab" ${labOn() ? 'checked' : ''}> 새 화면 미리 보기 <small>(실험 중 · 팔레트·조용한 숲 · 이 기기만 · 바꾸면 다시 불러와요)</small></label>`;
+}
+
 export function openSettings() {
   openWin(
     '설정',
-    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p></div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
+    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
@@ -372,6 +379,15 @@ export function openSettings() {
   };
   $('#mLetter').onclick = () => openReport();
   $('#mKeys').onclick = () => openKeys();
+  const lab = $('#mLab') as HTMLInputElement | null;
+  if (lab)
+    lab.onchange = () => {
+      setLab(lab.checked);
+      trackEv('visual_lab', { on: lab.checked });
+      toast(lab.checked ? '새 화면으로 다시 불러와요…' : '원래 화면으로 다시 불러와요…');
+      writeSave();
+      setTimeout(() => location.reload(), 600);
+    };
   bindSoundSettings();
   ($('#mChem') as HTMLSelectElement).onchange = (e) => {
     const v = (e.target as HTMLSelectElement).value;
