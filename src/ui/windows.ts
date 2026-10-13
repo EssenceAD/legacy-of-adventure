@@ -394,7 +394,8 @@ export function appendMoveButton(o: Building) {
   const b = document.createElement('button');
   b.className = 'bigbtn sm ghost';
   b.id = 'moveB';
-  b.textContent = '옮기기 · 방향 바꾸기 ↻';
+  // v0.25.4 actionsTidy: 이름 하나 「좌우 뒤집기」 (배치 중 ↔ 버튼 · 꾸미기 범위 선택과 같게)
+  b.textContent = vis('actionsTidy') ? '옮기기 · 좌우 뒤집기' : '옮기기 · 방향 바꾸기 ↻';
   b.onclick = () => {
     // BUILDUX §2-2: 옮기기는 언제나 무료 · 공사 중이어도 (공사는 그대로 이어진다)
     closeWin();

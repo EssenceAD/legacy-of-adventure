@@ -23,6 +23,9 @@ import { $, $$, esc, fmt } from './common';
 import { talk, talkDuo } from './dialogue';
 import { closeWin, openWin, setWinLock, toast } from './windows';
 import { myTitle } from '../world/meta';
+import { vis } from '../world/visual';
+import { today } from '../world/progress';
+import { actorOfBond, giftPerson, talkPerson } from './personActions';
 
 const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender)] : PORTRAITS.hero) || '';
 const portOf = (d: BondDef) => PORTRAITS[d.port] || '';
@@ -288,21 +291,29 @@ export function openTie(id: string) {
   const st = t.stage;
   const toNext = st >= 5 ? '' : ` · 다음 「${stageName(st + 1)}」까지 ${Math.max(0, Math.ceil(st * CONFIG.ties.perStage - t.pts))}`;
   const owned = GIFT_KEYS.filter((g) => (P.gifts[g] ?? 0) > 0);
+  // v0.25.4 personActionsV2: 말 걸기·선물하기는 마을·손님 상세와 같은 함수 · 같은 선물 고르기 창 (좋아하는 것/싫어하는 것 줄은 그대로)
+  const v2 = vis('personActionsV2');
+  const tieGifts = v2
+    ? ''
+    : `<div class="qhd"><b class="g">선물하기</b><span class="note">하루 한 번</span></div>
+    <div class="gifts">${owned.length ? owned.map((g) => `<button data-gift="${g}">${GIFTS[g].name} ×${P.gifts[g]}</button>`).join('') : '<p class="note">가방에 선물이 없어요 · 선물 가게에서 사요</p>'}</div>`;
   openWin(
     `인연 · ${d.name}`,
     `<div class="ohd"><img src="${portOf(d)}" alt=""><div><b>${esc(d.name)} <span class="hearts">${hearts(st)}</span></b><small>${stageName(st)}${t.rel ? ` · ${t.rel === 'lover' ? '연인' : '전우'}` : ''}${toNext}</small>
       <small>${P.owner?.linked.includes(id) ? '연결된 영웅 · 인연 1.3배' : ''}</small></div></div>
     <div class="bar"><span>인연</span><i><b style="width:${t.pts}%;background:#e86a8a"></b></i><em>${Math.floor(t.pts)}</em></div>
     <div class="acc"><div>좋아하는 것<b>${t.knowLike ? GIFTS[d.likes].name : '???'}</b></div><div>싫어하는 것<b>${t.knowHate ? GIFTS[d.hates].name : '???'}</b></div></div>
-    <div class="menu grid"><button id="tTalk">말 걸기</button><button id="tShop">선물 가게</button></div>
-    <div class="qhd"><b class="g">선물하기</b><span class="note">하루 한 번</span></div>
-    <div class="gifts">${owned.length ? owned.map((g) => `<button data-gift="${g}">${GIFTS[g].name} ×${P.gifts[g]}</button>`).join('') : '<p class="note">가방에 선물이 없어요 · 선물 가게에서 사요</p>'}</div>
+    <div class="menu grid"><button id="tTalk">말 걸기</button>${v2 ? '<button id="tGift">선물하기</button>' : ''}<button id="tShop">선물 가게</button></div>
+    ${v2 ? `<p class="note">하루 한 번씩 · 행동력 ${energyLeft()}/${energyMax()}${t.talkDay === today() ? ' · 오늘 이야기 함' : ''}${t.giftDay === today() ? ' · 오늘 선물 함' : ''}</p>` : tieGifts}
     <button class="bigbtn ghost" id="tBack">목록으로</button>`,
     'tie1',
   );
   $('#tBack').onclick = () => openTies();
   $('#tShop').onclick = () => openGifts(id);
+  const tg = document.getElementById('tGift');
+  if (tg) tg.onclick = () => giftPerson(actorOfBond(id), id);
   $('#tTalk').onclick = () => {
+    if (vis('personActionsV2')) return talkPerson(actorOfBond(id), id);
     const err = talkTo(id);
     if (err) return toast(err);
     closeWin();

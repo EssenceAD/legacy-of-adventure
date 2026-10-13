@@ -22,7 +22,9 @@ export type IconKey =
   | 'm_raid' | 'm_rank' | 'm_settings' | 'm_shop' | 'm_smith' | 'm_title'
   | 'skill_attack' | 'skill_auto' | 'skill_block' | 'skill_combo' | 'skill_fireslash' | 'skill_pray'
   | 'harmony' | 'eval_gourmet' | 'eval_relax' | 'eval_adventure' | 'eval_scenery'
-  | 'cur_gold' | 'cur_seed' | 'cur_token' | 'cur_dust_n' | 'cur_dust_r' | 'cur_dust_e' | 'cur_dust_l' | 'cur_dust_a';
+  | 'cur_gold' | 'cur_seed' | 'cur_token' | 'cur_dust_n' | 'cur_dust_r' | 'cur_dust_e' | 'cur_dust_l' | 'cur_dust_a'
+  // CHECKIN §E 그림 (asset_raw/checkin → public/assets/icons)
+  | 'box_gift';
 export const iconSrc = (k: IconKey, small = false) => av(`assets/icons/${k}${small ? '_16' : ''}.png`);
 /** 아이콘 <img>: 크기는 그림의 정수배만 (24 → 24·48, 16 → 16·32) */
 export const icon = (k: IconKey, px: 16 | 24 | 32 | 48 = 24, cls = '') =>

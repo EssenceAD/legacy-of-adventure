@@ -18,7 +18,7 @@ import { departParty, returnParty } from '../world/actors';
 import {
   activeRuns, boardLevel, boardState, fullPartyHint, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
   partyMax,
-  isCompanion, companionText, partyEligible,
+  isCompanion, companionText, partyEligible, resendPlan,
 } from '../world/expeditions';
 import { equip, itemPower } from '../world/items';
 import { floatW } from '../world/fx';
@@ -36,6 +36,8 @@ import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openBuild, openWin, toast } from './windows';
 import * as game from '../game';
+import { showWelcome } from './welcome';
+import { def } from '../data/catalog';
 import { afterPaidRefresh, bindFavors, favorIntro, favorsHtml, refreshBtn, refreshHint } from './goldsink';
 
 const TIER = CONFIG.expedition.tierNames;
@@ -119,7 +121,7 @@ export function openBoard(tab?: number) {
     : `<div class="qlock">🔒 토벌전 — 장부 ${featureChapter('raid')}장을 마치면 열려요</div>`;
   openWin(
     '원정 · 의뢰 게시판',
-    `${boardTabs()}${huntHtml}${raidHtml}
+    `${boardTabs()}${vis('actionsTidy') ? `<p class="sub objinfo">${esc(def('board').desc)} · 게시판 레벨마다 ${esc(def('board').levelText ?? '')}</p>` : ''}${huntHtml}${raidHtml}
     ${vis('boardLevelUp') ? boardLine() : `<p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>`}
     ${runs.length ? `<div class="runs">${runs.map(runRow).join('')}</div>` : ''}
     <div class="qhd"><b class="g">오늘의 의뢰</b>${refreshBtn()}</div>
@@ -138,7 +140,7 @@ export function openBoard(tab?: number) {
     (b) =>
       (b.onclick = () => {
         closeWin();
-        showReport(P.runs.find((r) => r.id === +b.dataset.run!)!);
+        openReportCard(P.runs.find((r) => r.id === +b.dataset.run!)!);
       }),
   );
   bindBoardTabs();
@@ -304,7 +306,7 @@ export function openRunLog(run: Run) {
   if (!run) return;
   if (run.result) {
     closeWin();
-    return showReport(run);
+    return openReportCard(run);
   }
   const names = run.members.map((id) => homeActors().find((a) => a.id === id)?.name ?? '?').join(' · ');
   const draw = () =>
@@ -352,6 +354,16 @@ export function showReport(run: Run) {
     ...res.report.map(([who, t, name]) => [who, t, undefined, who === 'narr' ? undefined : name] as TalkLine),
   ];
   talk(lines, () => showLoot(run));
+}
+
+/**
+ * v0.25.4 K6 (resendRun): 게시판·진행 줄에서 「보고서 보기」 = 대화 없이 바로 보고서 카드 (카드에 사건 줄이 그대로 있다)
+ *  저절로 뜨는 귀환 보고서(uiHooks.report)는 지금처럼 대화부터 · 끄면 늘 대화부터
+ */
+export function openReportCard(run: Run) {
+  if (!vis('resendRun') || !run.result) return showReport(run);
+  addEmber(CONFIG.ember.report);
+  showLoot(run);
 }
 
 /** 전리품 창 (게시판의 「보고서 보기」에서도) */
@@ -404,14 +416,44 @@ function showLoot(run: Run) {
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
     ${res.newChem.length ? `<p class="sub heart">새 케미 발견! ${res.newChem.map(esc).join(', ')}</p>` : ''}
     ${res.chemUps?.length ? `<p class="sub heart">${res.chemUps.map(esc).join(' · ')}</p>` : ''}
-    <button class="bigbtn" id="repOk">${vis('firstFlowFix') ? '확인' : '받기'}</button>`,
+    ${resendHtml(run, vis('firstFlowFix') ? '확인' : '받기')}`,
   );
+  bindResend(run);
   dropFanfare(res.items);
   $('#repOk').onclick = () => {
     claimRun(run);
     closeWin();
     checkSlot5();
     if (run.quest.tutorial) guideEquip(run);
+  };
+}
+
+// ───────── v0.25.4 K6 [다시 보내기] (resendRun) ─────────
+/** 보고서 아래 버튼 줄: 끄면 [받기] 하나 그대로 · 켜면 [받기] [다시 보내기] (못 보내면 회색 + 이유 한 줄) */
+function resendHtml(run: Run, ok: string): string {
+  if (!vis('resendRun') || run.quest.tutorial) return `<button class="bigbtn" id="repOk">${ok}</button>`;
+  const p = resendPlan(run);
+  const label = 'why' in p ? '다시 보내기' : p.same ? '다시 보내기' : `다시 보내기 · ${regionById(p.q.region).name} ${TIER[p.q.tier]}`;
+  return `<div class="btnrow resend"><button class="bigbtn ghost" id="repOk">${ok}</button><button class="bigbtn" id="repAgain" ${'why' in p ? 'disabled' : ''}>${esc(label)}</button></div>${
+    'why' in p ? `<p class="note">다시 보내기: ${esc(p.why)}</p>` : `<p class="note">같은 파티로 · ${esc(questName(p.q))} · 추천 전투력 ${fmt(p.q.power)}</p>`
+  }`;
+}
+function bindResend(run: Run) {
+  const b = document.getElementById('repAgain');
+  if (!b) return;
+  b.onclick = () => {
+    const p = resendPlan(run);
+    if ('why' in p) return toast(p.why);
+    claimRun(run);
+    checkSlot5();
+    const r = sendParty(p.q, p.members);
+    if (typeof r === 'string') return toast(r);
+    trackEv('run_resend', { same: p.same, tier: p.q.tier });
+    departParty(r);
+    markDirty();
+    closeWin();
+    const reg = regionById(p.q.region);
+    toast(`${reg.name}${josa(reg.name, '로')} 다시 출발! (${durText(partyInfo(p.members, p.q).minutes)})`);
   };
 }
 
@@ -459,6 +501,8 @@ function claimRun(run: Run) {
 export function showOffline(s: OfflineSummary) {
   // 끝난 원정의 파티는 이미 마을에 돌아와 있다
   for (const r of s.runs) returnParty(r, false);
+  // v0.25.4 CHECKIN §C3: 「다녀오셨어요」 카드 (끄면 아래 예전 창)
+  if (vis('welcomeBack')) return showWelcome(s);
   const h = Math.floor(s.seconds / 3600);
   const m = Math.floor((s.seconds % 3600) / 60);
   // ECONOMY §1: 8시간 상한에 닿으면 「창고가 가득」 (들어오고 싶게)

@@ -44,6 +44,7 @@ import { openGridMenu } from './menu';
 import { achReady, mailWaiting } from '../world/meta';
 import { tickGoldsinkHud } from './goldsink';
 import { tickWayfind } from './wayfind';
+import { applyHudDots, redDotsOn } from './redDots';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 // VISUAL §5 uiKitV2(실험실)면 큰 수 줄임(bigNum) · 끄면 예전 그대로
@@ -578,10 +579,12 @@ export function initHud() {
   gb.appendChild($('#placebar .pbtns'));
   $('#placebar').parentElement!.appendChild(gb);
   $('#placeNo').textContent = '✕';
-  $('#placeRot').textContent = '↻';
+  // v0.25.4 actionsTidy: 「좌우 뒤집기」 이름 하나 (↻는 회전처럼 보여서 ↔)
+  $('#placeRot').textContent = vis('actionsTidy') ? '↔' : '↻';
   $('#placeOk').textContent = '✓';
   $('#placeNo').setAttribute('aria-label', '취소');
-  $('#placeRot').setAttribute('aria-label', '좌우 반전');
+  $('#placeRot').setAttribute('aria-label', vis('actionsTidy') ? '좌우 뒤집기' : '좌우 반전');
+  if (vis('actionsTidy')) $('#placeRot').title = '좌우 뒤집기';
   $('#placeOk').setAttribute('aria-label', '확정');
   $('#placeNo').onclick = () => cancelPlace(true);
   $('#placeRot').onclick = rotatePlacement;
@@ -722,6 +725,8 @@ export function tickHud() {
       const t = nn > 99 ? '99+' : `${nn}`;
       if (nb.textContent !== t) nb.textContent = t;
     }
+    // v0.25.4 CHECKIN §C4 (redDots): 받을 게 있는 곳에만 점 하나 — 위의 깜빡임·메뉴 점·건설 숫자를 덮어쓴다
+    if (redDotsOn()) applyHudDots();
     // 5단계: 자동 사냥 — 켜 있으면 30초마다 한 판
     // 핫픽스 10 (11-3): 판마다 토스트는 끄고 마을 줄 숫자만 · 장비를 얻었거나 레벨업일 때만 토스트
     const hr = autoTick();

@@ -42,5 +42,12 @@
   "thumbZone": false,
   "pressFeel": false,
   "timeBars": false,
-  "confirmSheet": false
+  "confirmSheet": false,
+  "welcomeBack": false,
+  "redDots": false,
+  "bulkTidy": false,
+  "resendRun": false,
+  "gardenLevelUp": false,
+  "personActionsV2": false,
+  "actionsTidy": false
 }

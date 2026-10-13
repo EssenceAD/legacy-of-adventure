@@ -6,7 +6,10 @@ import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
-import { craftWhet, whetCost } from '../world/craft';
+import { craftWhet, gardenLevelState, gardenPlots, whetCost } from '../world/craft';
+import { vis } from '../world/visual';
+import { def } from '../data/catalog';
+import { maxLevel } from '../world/town';
 import { favActors, favRank } from '../world/growth';
 import { openReforge, reforgeTab } from './reforge';
 import type { Item } from '../world/state';
@@ -19,7 +22,6 @@ import { $, $$, bindTabs, esc, fmt, itemCell, leftText, liveWin, tabs } from './
 import { showItem } from './guests';
 import { appendMoveButton, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
-import { vis } from '../world/visual';
 import { enhMsg, enhUse, openEnhance, pityText } from './enhance';
 
 let craftRegion: RegionId = 'forest';
@@ -260,9 +262,11 @@ export function openGarden(o: Building) {
       return `<div class="plot"><b>${c.name} 자라는 중</b><div class="pbar" data-start="${p.at}" data-end="${now + left}"><i><b></b></i><em>${leftText(left)}</em></div></div>`;
     })
     .join('');
+  // v0.25.4: 맨 위 정보 한 줄(actionsTidy) · 텃밭 레벨 줄(gardenLevelUp)
+  const head = (vis('actionsTidy') ? `<p class="sub objinfo">${esc(def('garden').desc)} · ${esc(def('garden').levelText ?? '')}</p>` : '') + (vis('gardenLevelUp') ? gardenLine(o) : '');
   openWin(
     '텃밭',
-    `<p class="sub">창고: ${Object.entries(P.crops).filter(([, n]) => n > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로 · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
+    `${head}<p class="sub">창고: ${Object.entries(P.crops).filter(([, n]) => n > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로 · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
   );
   $$('[data-c]').forEach(
     (b) =>
@@ -287,8 +291,34 @@ export function openGarden(o: Building) {
     openGarden(o);
     for (const i of fresh) document.querySelector(`[data-h="${i}"]`)?.closest('.plot')?.classList.add('fresh');
   });
+  const gu = document.getElementById('gdUp');
+  if (gu) gu.onclick = () => game.upgrade(o);
   appendMoveButton(o);
   void S;
+}
+
+// ───────── v0.25.4 텃밭 레벨업 (gardenLevelUp): 「텃밭 Lv.x · 밭 n칸」 줄 오른쪽에 버튼 (게시판 레벨업과 같은 모양 · 공사 규칙은 game.upgrade) ─────────
+function gardenLine(o: Building): string {
+  const g = gardenLevelState(o);
+  const btn = S.visiting
+    ? ''
+    : g.state === 'up'
+    ? `<button id="gdUp" ${S.gold >= g.cost! ? '' : 'disabled'}>텃밭 Lv.${g.lv + 1} · ${fmt(g.cost!)} G</button>`
+    : g.state === 'land'
+    ? `<button disabled>Lv.${g.lv + 1} · 땅 ${g.needLand}단계 필요</button>`
+    : g.state === 'con'
+    ? '<span class="note">🔨 공사 중</span>'
+    : '';
+  let note = '';
+  if (g.state === 'up' || g.state === 'land') {
+    if (g.next! > g.plots) note = `Lv.${g.lv + 1}이 되면 밭 ${g.next}칸`;
+    else {
+      let L = g.lv + 1;
+      while (L < maxLevel('garden') && gardenPlots(L) <= g.plots) L++;
+      if (gardenPlots(L) > g.plots) note = `Lv.${L}에 밭 +1칸 (2레벨마다)`;
+    }
+  }
+  return `<div class="qhd brdln"><span class="sub">텃밭 <b>Lv.${g.lv}</b>${g.state === 'max' ? ' · 최대' : ''} · 밭 ${g.plots}칸</span>${btn}</div>${note ? `<p class="note">${note}</p>` : ''}`;
 }
 
 /** HOTFIX21: 다른 재료·금화·가방으로는 더 만들 수 있는데 잿빛 가루만 모자란 양 (최대 제작 기준) */

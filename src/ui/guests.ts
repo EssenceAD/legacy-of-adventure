@@ -17,7 +17,7 @@ import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
-import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
+import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage, openTidyConfirm, tidyBtnHtml } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
@@ -421,11 +421,13 @@ export function openBag() {
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>
     ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
-    <button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>
+    ${visOn('bulkTidy') ? `<div class="btnrow"><button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>${tidyBtnHtml()}</div>` : '<button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>'}
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
     ${autoSalvageHtml('autoS')}
-    <button class="bigbtn sm" id="salAll">일괄 분해…</button>`,
+    <button class="bigbtn sm ${visOn('bulkTidy') ? 'ghost' : ''}" id="salAll">일괄 분해…</button>`,
   );
+  const td = document.getElementById('bagTidy');
+  if (td) td.onclick = () => openTidyConfirm(openBag);
   $$('.bag .ic').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!)));
   bindAutoSalvage('autoS');
   $('#salAll').onclick = () => openBulkSalvage(openBag);

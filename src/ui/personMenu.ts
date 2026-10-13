@@ -15,6 +15,7 @@ import { closeWin, openReport, openWin, pushLayer, toast } from './windows';
 import { vis } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 import { canDice, openDice } from './dice';
+import { talkPerson as talkPersonV2 } from './personActions';
 
 /** 선물 아이콘 (그림이 없어 이모지) */
 export const GIFT_ICON: Record<GiftKey, string> = { tea: '🍵', trinket: '📿', cake: '🍰', ale: '🍺', book: '📕', gem: '💎', flower: '💐', jerky: '🥓', whet: '🪨', candle: '🕯️', map: '🗺️', toy: '🪀' };
@@ -44,7 +45,8 @@ export function openPersonMenu(a: Actor, x: number, y: number) {
   el.id = 'pmenu';
   el.className = 'pmenu card px';
   const name = npc ? '모모' : a.name;
-  el.innerHTML = `<b class="pmname">${esc(name)}</b><button id="pmTalk">💬 말 걸기</button><button id="pmGift">🎁 선물하기</button>${canDice(a) ? '<button id="pmDice">🎲 주사위 한 판?</button>' : ''}${npc ? '<button id="pmLetter" class="ghost">✉️ 편지 쓰기</button>' : a.id ? '<button id="pmInfo" class="ghost">📋 정보</button>' : ''}`;
+  const v2 = vis('personActionsV2');
+  el.innerHTML = `<b class="pmname">${esc(name)}</b><button id="pmTalk">${v2 ? '' : '💬 '}말 걸기</button><button id="pmGift">${v2 ? '' : '🎁 '}선물하기</button>${canDice(a) ? '<button id="pmDice">🎲 주사위 한 판?</button>' : ''}${npc ? '<button id="pmLetter" class="ghost">✉️ 편지 쓰기</button>' : a.id ? '<button id="pmInfo" class="ghost">📋 정보</button>' : ''}`;
   document.body.appendChild(el);
   menuEl = el;
   if (vis('backRule')) dropLayer = pushLayer(closePersonMenu);
@@ -60,7 +62,7 @@ export function openPersonMenu(a: Actor, x: number, y: number) {
         f();
       };
   };
-  on('pmTalk', () => talkPerson(a, bid));
+  on('pmTalk', () => (vis('personActionsV2') ? talkPersonV2(a) : talkPerson(a, bid)));
   on('pmGift', () => openGiftPick(a));
   on('pmDice', () => openDice());
   on('pmInfo', () => showActor(a));
@@ -92,17 +94,18 @@ const hateMark = '<i class="gmark hate" title="싫어함">✕</i>';
 const hintMark = '<i class="gmark hint" title="좋아한다는 얘기를 들은 것 같아요">💭</i>';
 const hintHate = '<i class="gmark hint hate" title="싫어한다는 얘기를 들은 것 같아요">🌧</i>';
 
-/** 선물 고르기 창 */
-export function openGiftPick(a: Actor) {
-  const bid = bondIdOf(a);
+/** 선물 고르기 창 (v0.25.4 personActionsV2: 인연 창에서 마을에 없는 사람은 a 없이 bid로) */
+export function openGiftPick(a: Actor | null, bidIn?: string) {
+  const bid = bidIn ?? (a ? bondIdOf(a) : null);
+  if (!a && !bid) return;
   const d = bid ? bondById(bid) : null;
-  const name = a.role === 'npc' ? '모모' : a.name;
+  const name = a ? (a.role === 'npc' ? '모모' : a.name) : d?.name ?? '';
   if (!P.owner) return toast('주인을 만들면 선물할 수 있어요');
   if (bid && !tieAvailable(bid)) return toast('아직 인연을 쌓을 수 없어요');
   const guest = !d;
-  if (guest && !(a.status === 'regular')) return toast('선물은 단골·영웅·전설·마을 사람에게 줄 수 있어요');
+  if (guest && !(a!.status === 'regular')) return toast('선물은 단골·영웅·전설·마을 사람에게 줄 수 있어요');
   const t = bid ? P.ties[bid] : null;
-  const done = guest ? guestGiftedToday(a) : t?.giftDay === today();
+  const done = guest ? guestGiftedToday(a!) : t?.giftDay === today();
   const owned = GIFT_KEYS.filter((g) => (P.gifts[g] ?? 0) > 0);
   const fish = guest ? [] : FISH.filter((f) => f.use.includes('gift') && (P.growth.fish.bag[f.id] ?? 0) > 0);
   const mark = (g: GiftKey) => {
@@ -113,9 +116,9 @@ export function openGiftPick(a: Actor) {
       if (g === d.hates && hintSeen(hintKey(d.id, 'hate'))) return hintHate;
       return '';
     }
-    const like = guestLikes(a);
-    if (g === like && hintSeen(`guestknow:${a.kind}`)) return heartMark;
-    if (g === like && hintSeen(`guest:${a.kind}`)) return hintMark;
+    const like = guestLikes(a!);
+    if (g === like && hintSeen(`guestknow:${a!.kind}`)) return heartMark;
+    if (g === like && hintSeen(`guest:${a!.kind}`)) return hintMark;
     return '';
   };
   const rows = [
@@ -137,9 +140,10 @@ export function openGiftPick(a: Actor) {
   void $;
 }
 
-function give(a: Actor, bid: string | null, g: GiftKey | null, fishId: string | null) {
-  const name = a.role === 'npc' ? '모모' : a.name;
+function give(a: Actor | null, bid: string | null, g: GiftKey | null, fishId: string | null) {
   if (!bid) {
+    if (!a) return;
+    const name = a.role === 'npc' ? '모모' : a.name;
     const r = giveGuest(a, g!);
     if (r.err) return toast(r.err);
     if (r.kind === 'like' && !P.growth.hints.includes(`guestknow:${a.kind}`)) P.growth.hints.push(`guestknow:${a.kind}`);
