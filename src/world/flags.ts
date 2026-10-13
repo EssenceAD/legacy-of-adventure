@@ -37,6 +37,12 @@ export const FLAG_DEFAULTS = {
   accountDelete: true,
   /** v0.24.2 여관·주점 레벨 장식을 진짜 장식으로 */
   innDecoObj: true,
+  /** v0.24.4 AUTO·동료가 보스를 거리와 상관없이 노리고 · 근접은 덩치만큼 떨어져서도 친다 */
+  aiBossTarget: true,
+  /** v0.24.4 키캡에 Space·Shift·1·2·3 */
+  keycapLabels: true,
+  /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
+  zoomDedupe: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

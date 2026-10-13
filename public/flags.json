@@ -16,5 +16,8 @@
   "todayPicks": true,
   "raidNoWind": true,
   "accountDelete": true,
-  "innDecoObj": true
+  "innDecoObj": true,
+  "aiBossTarget": true,
+  "keycapLabels": true,
+  "zoomDedupe": true
 }

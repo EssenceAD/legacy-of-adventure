@@ -4,6 +4,8 @@ import { CONFIG } from '../data/config';
 import type { RegionId } from '../data/items';
 import type { Actor } from '../world/state';
 import { roleMult } from '../world/party';
+import type { BossLook } from './mons';
+import { floorRec, floorStage } from '../world/abyss';
 import { applyRolesHp, attack, dodge, grade, makeField, skill, step, ultimate, type Field, type FieldOpts } from './field';
 
 const C = CONFIG.combat;
@@ -96,4 +98,19 @@ function inTele(x: number, y: number, t: { x: number; y: number; r: number; x2?:
   const l2 = dx * dx + dy * dy || 1;
   const k = Math.max(0, Math.min(1, ((x - t.x) * dx + (y - t.y) * dy) / l2));
   return Math.hypot(x - (t.x + dx * k), y - (t.y + dy * k)) <= (t.w ?? 0.5) + r + 0.15;
+}
+
+/** v0.24.4: 끝없는 심연 보스 층 AUTO — 심연 화면과 같은 판 옵션(rec·noFold·look)으로 한 판 · 보스에게 들어간 피해 */
+export function simAbyssBoss(floor: number, members: Actor[], look: BossLook, powerK = 1): { bossDmg: number; bossMax: number; win: boolean; time: number } {
+  const f: Field = makeField('deep', floorStage(floor), members, true, { rec: floorRec(floor), noFold: true, look });
+  const rm = roleMult(members.slice(0, CONFIG.party4.max));
+  for (const u of f.allies) u.power = (f.rec / 3) * powerK * rm;
+  applyRolesHp(f);
+  const dt = 1 / 30;
+  let boss: Field['elite'] = null;
+  for (let t = 0; t < C.timeLimit + 5 && !f.done; t += dt) {
+    step(f, dt);
+    if (!boss && f.elite?.boss) boss = f.elite;
+  }
+  return { bossDmg: boss ? Math.round(boss.max - Math.max(0, boss.hp)) : 0, bossMax: boss?.max ?? 0, win: f.done === 'win', time: Math.round(C.timeLimit - f.time) };
 }

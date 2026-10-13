@@ -956,6 +956,14 @@ function ultHit(f: Field) {
 
 // ───────── AI (동료 · AUTO) ─────────
 
+/** v0.24.4: 9칸 안에 적이 없을 때 — 살아 있는 보스(정예), 없으면 가장 가까운 적 (거리 상관없이) */
+function farTarget(f: Field, u: Unit): Unit | null {
+  if (!flag('aiBossTarget')) return null;
+  const e = f.elite;
+  if (e && !e.dead && e.st !== 'spawn') return e;
+  return aimTarget(f, u, 1e9);
+}
+
 function aiAlly(f: Field, u: Unit, dt: number) {
   // 동료끼리 너무 붙지 않게 살짝 밀어낸다 (한 덩어리로 겹치지 않게)
   for (const o of f.allies) {
@@ -992,7 +1000,7 @@ function aiAlly(f: Field, u: Unit, dt: number) {
   }
   // ROLES §3: 기사는 보스(정예) 쪽으로 먼저 붙는다 · §4 사제는 치유가 준비되면 체력 50% 아래 동료 곁으로 (늘 따라다니면 딜이 줄어 시간 안에 못 깬다 — 실세이브 이카몰리)
   const big = f.roles && u.role === 'tank' && f.elite && !f.elite.dead && f.elite.st !== 'spawn' ? f.elite : null;
-  const t = big ?? aimTarget(f, u, 9);
+  const t = big ?? aimTarget(f, u, 9) ?? farTarget(f, u);
   if (!t) {
     // 적이 없으면 조종 캐릭터 곁의 내 자리로 (약 1.5칸, 동료마다 다른 방향)
     if (u !== f.me) {
@@ -1013,7 +1021,8 @@ function aiAlly(f: Field, u: Unit, dt: number) {
     gx = t.x - t.ax * 0.6;
     gy = t.y - t.ay * 0.6;
   }
-  const want = ranged ? 2.6 : 0.85;
+  // v0.24.4: 근접은 덩치 큰 보스(r 0.6~0.85)와 겹치지 않는 거리(내 r + 보스 r)에서도 친다 — 예전엔 0.85까지 붙으려다 밀려나 AUTO로 보스를 못 때렸다
+  const want = ranged ? 2.6 : flag('aiBossTarget') ? Math.max(0.85, u.r + t.r + 0.2) : 0.85;
   const d = dist(u, t);
   if (ranged && d < 1.6) moveToward(f, u, u.x * 2 - t.x, u.y * 2 - t.y, dt);
   else if (d > want) moveToward(f, u, gx, gy, dt);
