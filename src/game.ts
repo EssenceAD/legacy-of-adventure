@@ -47,6 +47,7 @@ import { refreshNoticeDot } from './ui/notice';
 import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
 import { closeWin, isWinOpen, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
+import { mergePrefsOnLoad } from './ui/prefsSync';
 import { track as trackEv } from './net/telemetry';
 import { refundOf, removeBuilding, spentOn } from './world/demolish';
 import { addMail } from './world/meta';
@@ -259,6 +260,8 @@ function applySave(d: SaveData) {
   S.innName = d.innName;
   Object.assign(S.ledger, d.ledger);
   resetProgress(d.progress);
+  // CHECKIN §C2: 세이브의 설정값 ↔ 이 기기 설정 — 둘 중 최근 것 (settingsTabs 끔이면 아무것도 안 함)
+  mergePrefsOnLoad();
   sanitizeOwner();
   sanitizeAlbum();
   // REGIONS2: 새 지역 칸 · 길잡이 별 기록 (있는 값은 그대로)

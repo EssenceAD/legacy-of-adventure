@@ -49,5 +49,10 @@
   "resendRun": false,
   "gardenLevelUp": false,
   "personActionsV2": false,
-  "actionsTidy": false
+  "actionsTidy": false,
+  "gearAlways": false,
+  "settingsTabs": false,
+  "sound70": false,
+  "screenSaver": false,
+  "uiHide": false
 }

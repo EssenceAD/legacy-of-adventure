@@ -23,6 +23,8 @@ export const COMBAT_ACTIONS: Action[] = ['up', 'down', 'left', 'right', 'attack'
 export const VILLAGE_ACTIONS: Action[] = ['build', 'board', 'hunt', 'chat', 'menu', 'photo'];
 
 let custom: Partial<Record<Action, string>> = getPref<Partial<Record<Action, string>>>('keys', {});
+/** CHECKIN §C2: 세이브의 설정값을 받은 뒤 다시 읽기 */
+export const reloadKeys = () => void (custom = getPref<Partial<Record<Action, string>>>('keys', {}));
 export const keysFor = (a: Action): string[] => (custom[a] ? [custom[a]!] : DEFAULT_KEYS[a]);
 /** v0.24.4: 키캡·안내에 먼저 보이는 키 — 기본 키면 Space(공격)·Shift(구르기)·1·2·3(스킬1·스킬2·합동기) · 바꾼 키는 그 키 */
 const CAP_PREF: Partial<Record<Action, string>> = { attack: ' ', dodge: 'shift', s1: '1', s2: '2', ult: '3' };

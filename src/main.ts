@@ -6,6 +6,10 @@ import { loadFlags } from './world/flags';
 import { vis } from './world/visual';
 import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
+import { gearHooks, initGear } from './ui/gear';
+import { initPrefsSync } from './ui/prefsSync';
+import { enterSaver, exitSaver, initScreenSaver, ssOn, ssStats } from './ui/screenSaver';
+import { enterUiHide, exitUiHide, initUiHide, uiHidden, uiHideTap } from './ui/uiHide';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
@@ -69,7 +73,7 @@ import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startMoveEntrance, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
 import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomIdx, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
-import { initMenu, openAttend, openGridMenu, openManual } from './ui/menu';
+import { initMenu, openAttend, openGridMenu, openManual, openSettings } from './ui/menu';
 import { _abyss } from './ui/abyss';
 import { _dice } from './ui/dice';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
@@ -157,7 +161,8 @@ function loadFonts() {
 
 function resize() {
   // 렌더 메모리: 마을 캔버스는 CSS 1px당 기기 픽셀 2배까지 (배터리 절약 1.5배) — 도트라 눈에 차이가 없다
-  resizeCanvas(cv, host, S.zoom, screen.devicePx, saverOn() ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
+  // CHECKIN §L1: 화면 보호 중엔 기기 픽셀 1배
+  resizeCanvas(cv, host, S.zoom, screen.devicePx, ssOn() ? 1 : saverOn() ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
 }
 
 // ───────── 루프 ─────────
@@ -179,7 +184,7 @@ function update(dt: number) {
   if (!photoFrozen()) updActors(dt);
   t = mark('actors', t);
   // HOTFIX20 §2: 마을 화면에서 창·전투·대화·사진·이웃 방문·꾸미기가 없을 때만 대기 이벤트(단골 제안 등)를 꺼낸다
-  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid') || combatOn() || teaserOn() || photoOn() || !!S.visiting || decorView.on || overlayHold();
+  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid') || combatOn() || teaserOn() || photoOn() || !!S.visiting || decorView.on || overlayHold() || uiHidden() || ssOn();
   tickDayNight(dt);
   t = mark('daynight', t);
   if (!S.started) wasStarted = false;
@@ -262,6 +267,8 @@ let hudAcc = 0;
 const visualBusy = () => isTyping() || tour.on || spectacles.length > 0 || burstOn() || !!placing.pl || gradeAnim.on;
 function drawStep(winOpen: boolean): number {
   const L = CONFIG.loop;
+  // CHECKIN §L1: 화면 보호 = 초당 2번
+  if (ssOn()) return 0.5 - 0.002;
   let fps: number;
   if (teaserOn()) fps = saverOn() ? L.drawFpsBattleSaver : L.drawFpsBattle;
   else {
@@ -689,6 +696,8 @@ function catchStarAt(e: PointerEvent) {
 
 function tap(e: PointerEvent) {
   if (!S.started || isTalking()) return;
+  // CHECKIN §L2 구경 모드: 짧게 누르기는 아무것도 열지 않는다 (두 번 = 복귀)
+  if (uiHidden()) return uiHideTap();
   if (placing.pl) {
     const [fx, fy] = toTile(cv, e.clientX, e.clientY);
     movePlacement(fx, fy);
@@ -893,6 +902,12 @@ async function boot() {
   initPowerUI();
   // VISUAL §4 새 HUD (실험실 · 끄면 아무것도 안 함)
   initHud2();
+  // CHECKIN §C1·§C2·§L1·§L2 (플래그·실험실 끔이면 아무것도 안 만든다)
+  gearHooks.open = () => openSettings();
+  initGear();
+  initPrefsSync();
+  initUiHide();
+  initScreenSaver(() => !!S.started && !S.visiting && !isWinOpen() && !isTalking() && !combatOn() && !document.getElementById('raid') && !teaserOn() && !photoOn() && !decorView.on && !placing.pl && !uiHidden() && document.getElementById('title')!.hidden === true);
   initSound();
   void initChat();
   // DIRECTION §2: 함께 만든 사람들 · 승인된 소문 · 로그인하면 답장 배달 (서버 함수가 없으면 조용히 없음)
@@ -1088,6 +1103,10 @@ async function boot() {
         return s;
       },
       __openHunt: openHunt,
+      // CHECKIN C1·C2·L1·L2 시험용
+      __openSettings: (tab?: string) => openSettings(tab as never),
+      __ss: { enter: () => enterSaver(), exit: () => exitSaver(), on: ssOn, stats: ssStats },
+      __uiHide: { enter: enterUiHide, exit: exitUiHide, on: uiHidden },
       // REGIONS2 시험용: 다음 컷 · 새 지역 열림 · 지역 10 보스 처치 컷
       __reg2: { next: nextRegionCut, open: openNewRegions, defeat: deepDefeat },
       // 전투 2차 시험: 사람처럼 조작하는 봇으로 n판 (평가 비율·시간)
