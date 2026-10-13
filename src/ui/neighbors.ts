@@ -10,7 +10,7 @@ import { CONFIG } from '../data/config';
 import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
 import { $$, esc, fmt } from './common';
-import { openWin, toast } from './windows';
+import { isWinOpen, openWin, toast } from './windows';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
 export function toNeighbor(r: VillageRow): Neighbor | null {
@@ -90,7 +90,8 @@ export async function openVillage() {
     more = rows.length > n;
     real = rows.slice(0, n).map(toNeighbor).filter((x): x is Neighbor => !!x);
     mineRow = mine ? toNeighbor(mine) : null;
-    if (document.getElementById('winT')?.textContent === '마을 · 이웃 여관') draw(false);
+    // 불러오는 사이 창을 닫았거나(이웃 방문·다른 창) 방문 중이면 다시 열지 않는다 — 닫힌 창도 제목(#winT)은 남아 있어서 예전엔 늦게 온 응답이 목록 창을 다시 띄웠다 (돌아온 마을에서 끊긴 단골 제안이 막힘)
+    if (isWinOpen() && !S.visiting && document.getElementById('winT')?.textContent === '마을 · 이웃 여관') draw(false);
   };
   draw(!!sb);
   if (!sb) return;
