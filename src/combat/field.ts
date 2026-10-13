@@ -6,7 +6,8 @@ import { mythicAtk, mythicDef, mythicHeal } from '../world/mythic';
 import { buffOf } from '../world/facilities';
 import { shakeParams } from '../engine/shake';
 import type { RegionId } from '../data/items';
-import { appearance, powerOf } from '../world/adventurers';
+import { appearance, powerOf, totalStats } from '../world/adventurers';
+import { flag } from '../world/flags';
 import type { Actor } from '../world/state';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { TH, TW } from '../engine/iso';
@@ -20,11 +21,12 @@ import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
 import { partySpecial, specialSum } from '../world/uniques';
-import { memberSynMult, synergyFx, type SynFx } from '../world/synergy';
+import { isBalanced, memberSynMult, synergyFx, type SynFx } from '../world/synergy';
 
 const HC = CONFIG.hunter;
 
 const C = CONFIG.combat;
+const RV = C.roles;
 export type Job = 'knight' | 'warrior' | 'rogue' | 'mage' | 'priest' | 'hunter';
 export const JOB_OF: Record<string, Job> = { knight: 'knight', dwarf: 'warrior', rogue: 'rogue', mage: 'mage', cleric: 'priest', hunter: 'hunter', hero: 'warrior' };
 const RANGED = new Set<Job>(['mage', 'hunter']);
@@ -135,6 +137,9 @@ export interface Unit {
   escape?: { x: number; y: number; t: number };
   /** PARTY §2: 스킬 대기 시간 (조합 「별빛 기도」로 줄어든 값) */
   cdMax?: [number, number];
+  /** ROLES §2: 방어로 줄어드는 받는 피해 (0~0.4) · §3 드워프 「아직 멀었다!」 했나 */
+  defCut?: number;
+  lowSaid?: boolean;
 }
 export interface Proj {
   x: number;
@@ -272,6 +277,10 @@ export interface Field {
   bossLine?: string;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
+  /** ROLES (플래그 rolesV2): 켜졌나 · 사제 한 번 살리기 남은 횟수 · 탱·힐·딜 조합 (예고 +초) */
+  roles?: boolean;
+  rvLeft?: number;
+  comboTele?: number;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -326,6 +335,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   const syn = synergyFx(ms);
   // GROWTH §3-4 고유 효과 「파티 전원 받는 피해 −N%」
   const partyCut = partySpecial(ms, 'partyHp');
+  const rolesOn = flag('rolesV2');
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
     const { key, def } = appearance(a);
@@ -336,6 +346,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], cdMax: [C.skillCd[0] * (1 - syn.cdCut), C.skillCd[1] * (1 - syn.cdCut)], taunt: 0, guard: 0, atkAnim: 0,
       critAdd: (optSum(a, 'critPct') + specialSum(a, 'crit')) / 100 + syn.crit, dmgCut: Math.min(0.5, (optSum(a, 'dmgCut') + partyCut) / 100 + syn.dmgCut),
       spd: specialSum(a, 'speed') / 100, revive: specialSum(a, 'reviveOnce') / 100, stunFirst: specialSum(a, 'firstHitStun') > 0, bounce: specialSum(a, 'bounce') / 100,
+      defCut: rolesOn ? Math.min(RV.defMax, Math.max(0, totalStats(a).def) / (Math.max(0, totalStats(a).def) + RV.defK)) : 0,
     };
   };
   const allies = ms.map(mk);
@@ -355,6 +366,12 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.half = opts.half;
   f.bossLine = opts.bossLine;
   f.syn = syn;
+  if (rolesOn) {
+    f.roles = true;
+    f.rvLeft = mode === 'raid' ? RV.revive.raid : RV.revive.hunt;
+    f.comboTele = isBalanced(ms) ? RV.comboTele : 0;
+    applyRolesHp(f);
+  }
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -365,6 +382,23 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
 }
 
 // ───────── 전투 2차: 무리 · 정예 · 보스 ─────────
+
+/**
+ * ROLES §1: 아군 최대 체력 = 그 판 일반 몬스터 한 대 × 직업 배수 × (1 + (레벨−1)×0.004)
+ *  기준 전투력 = min(파티 평균 전투력 × 3, 추천) — 약한데 무리하면 여전히 녹는다 · 예전 체력보다 낮아지지는 않는다 (쉬운 판을 도는 높은 레벨 보호)
+ *  (시뮬레이터가 전투력을 바꾼 뒤 다시 부른다)
+ */
+export function applyRolesHp(f: Field) {
+  if (!f.roles) return;
+  const basis = Math.min(f.rec, avgPow(f) * 3);
+  const atk = C.mobAtk + basis * C.mobAtkK;
+  for (const u of f.allies) {
+    const a = u.actor;
+    if (!a) continue;
+    const old = C.hpBase + a.lvl * C.hpPerLv;
+    u.hp = u.max = Math.round(Math.max(old, atk * (RV.hpMult[a.kind] ?? 5) * (1 + (a.lvl - 1) * RV.lvK)));
+  }
+}
 
 /** 몬스터 체력 기준: 추천 전투력 파티의 한 사람이 2~3대에 쓰러뜨릴 만큼 (스테이지가 오르면 조금씩 단단) */
 export function mobBaseHp(rec: number, stage: number, avgPower: number): number {
@@ -530,16 +564,32 @@ function killMob(f: Field, m: Unit) {
 }
 
 /** 몬스터 → 아군 */
-function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
+function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit, heavy = false) {
   if (u.dead || (u.inv ?? 0) > 0) return;
+  let cut = (u.guard ?? 0) > 0 ? 0.6 : 1;
+  if (f.roles) {
+    // ROLES §3 보호: 기사 곁(1.5칸)의 동료가 보스 바닥·돌진에 맞으면 30%를 기사가 대신 받는다
+    if (heavy && u.job !== 'knight') {
+      const k = f.allies.find((a) => a !== u && !a.dead && a.job === 'knight' && dist(a, u) <= RV.guardR);
+      if (k) {
+        hurtAlly(f, k, dmg * RV.guardShare, from);
+        dmg *= 1 - RV.guardShare;
+        sprFx(f, 'shield', k.x, k.y, 0.4, { oy: 24 });
+      }
+    }
+    // §3 도발 −50% · 기사 늘 −20% · 드워프 버티기(체력 30% 아래 −25%) · §2 방어
+    cut = ((u.guard ?? 0) > 0 ? 1 - RV.taunt.cut : 1) * (u.job === 'knight' ? 1 - RV.knightCut : 1) * (u.actor?.kind === 'dwarf' && u.hp < u.max * RV.dwarfLow ? 1 - RV.dwarfCut : 1) * (1 - (u.defCut ?? 0));
+  }
   // BUILDINGS_SPEC §3: 돌피부 물약 — 받는 피해 −15%
-  dmg = Math.round(dmg * ((u.guard ?? 0) > 0 ? 0.6 : 1) * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
+  dmg = Math.round(dmg * cut * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
   u.hp -= dmg;
   u.flash = 1 / 30 + 0.001;
   u.hurtT = 0.22;
   const [nx, ny] = norm(u.x - from.x, u.y - from.y);
-  u.vx += nx * pxToTile(C.knock.hit) * 8;
-  u.vy += ny * pxToTile(C.knock.hit) * 8;
+  // ROLES §3: 기사는 넉백 절반 (바닥 찍기 안에서도 버틴다)
+  const kb = pxToTile(C.knock.hit) * 8 * (f.roles && u.job === 'knight' ? RV.knightKnock : 1);
+  u.vx += nx * kb;
+  u.vy += ny * kb;
   f.nums.push({ x: u.x, y: u.y, text: String(dmg * 10), crit: false, t: 0, dx: 0 });
   if (isMe(f, u)) {
     f.hitsTaken++;
@@ -561,7 +611,39 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit) {
       const next = f.allies.slice(0, 3).find((a) => !a.dead) ?? f.allies.find((a) => !a.dead);
       if (next) f.me = next;
     }
+    if (f.roles) reviveLater(f, u);
+  } else if (f.roles && u.actor?.kind === 'dwarf' && !u.lowSaid && u.hp < u.max * RV.dwarfLow) {
+    // ROLES §3 드워프 버티기
+    u.lowSaid = true;
+    f.banner = `${u.actor.name}: 아직 멀었다!`;
+    f.bannerT = 1.2;
   }
+}
+/** ROLES §4 한 번 살리기: 사제가 살아 있으면 3초 뒤 체력 30%로 (사냥 1번 · 토벌 2번) */
+function reviveLater(f: Field, u: Unit) {
+  if ((f.rvLeft ?? 0) <= 0 || u.job === 'priest' || !f.allies.some((a) => !a.dead && a.job === 'priest')) return;
+  f.rvLeft!--;
+  (f.later ??= []).push({
+    t: RV.revive.t,
+    fn: () => {
+      if (!u.dead || f.done) return;
+      if (!f.allies.some((a) => !a.dead && a.job === 'priest')) {
+        f.rvLeft!++;
+        return;
+      }
+      u.dead = false;
+      u.deadT = 0;
+      u.hp = Math.round(u.max * RV.revive.hp);
+      u.inv = 1;
+      // 금빛 기둥
+      sprFx(f, 'holy', u.x, u.y, 0.6, { q: 1, oy: 16 });
+      f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.8, r: 0.9 });
+      const nm = u.actor?.name ?? '동료';
+      f.banner = `${nm}, 일어나요!`;
+      f.bannerT = 1.6;
+      sfx('skill_priest', { vol: C.allyVol });
+    },
+  });
 }
 const shake = (f: Field, amp: number) => {
   // HOTFIX15: 설정이 끔이면 화면은 그대로 — 보스급 충격만 가장자리 붉은 비네트 0.3초
@@ -702,9 +784,9 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
     }
     case 'knight1':
       // 도발 함성: 주변 적이 나를 노림 · 3초 받는 피해 -40%
-      u.taunt = 3;
-      u.guard = 3;
-      for (const m of near(3.5)) {
+      // ROLES §3: 4초 · −50% · 범위 4.5
+      u.taunt = u.guard = f.roles ? RV.taunt.t : 3;
+      for (const m of near(f.roles ? RV.taunt.r : 3.5)) {
         m.target = u;
         m.alertT = 0.9;
       }
@@ -777,12 +859,14 @@ export function skill(f: Field, u: Unit, i: 0 | 1) {
       // 치유의 빛: 지팡이를 하늘로 · 바닥에 금빛 원 · 아군 머리 위 초록 +숫자
       u.castAnim = 0.5;
       sprFx(f, 'circlegold', u.x, u.y, 0.6, { oy: 0 });
-      f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.6, r: 2.5 });
+      // ROLES §4: 30% → 35% · 범위 2.5 → 3
+      const hr = f.roles ? RV.healR : 2.5;
+      f.fx.push({ kind: 'heal', x: u.x, y: u.y, t: 0, dur: 0.6, r: hr });
       for (const a of f.allies)
-        if (!a.dead && dist(a, u) <= 2.5) {
+        if (!a.dead && dist(a, u) <= hr) {
           // REGIONS2: 「길 잃은 마음」이 곁에 붙어 있으면 회복이 반으로
           const blocked = f.units.some((m) => m.team === 'mob' && !m.dead && monDef(m.mon ?? '').noHeal && m.mon && dist(m, a) < 1.6);
-          const h = Math.round(a.max * 0.3 * mythicHeal(f.allies.map((x) => x.actor!).filter(Boolean)) * (blocked ? 0.5 : 1));
+          const h = Math.round(a.max * (f.roles ? RV.heal : 0.3) * mythicHeal(f.allies.map((x) => x.actor!).filter(Boolean)) * (blocked ? 0.5 : 1));
           a.hp = Math.min(a.max, a.hp + h);
           f.nums.push({ x: a.x, y: a.y, text: '+' + h * 10, crit: false, heal: true, t: 0, dx: 0 });
         }
@@ -876,6 +960,8 @@ function aiAlly(f: Field, u: Unit, dt: number) {
     if (u.dodgeDecided === m.id) continue;
     u.dodgeDecided = m.id;
     f.stats.teleIn++;
+    // ROLES §3: 도발 중인 기사는 피하지 않고 막는다
+    if (f.roles && u.job === 'knight' && (u.taunt ?? 0) > 0) continue;
     if (Math.random() < C.autoDodge) {
       f.stats.dodged++;
       const [nx, ny] = norm(u.x - m.tele.x, u.y - m.tele.y);
@@ -884,8 +970,15 @@ function aiAlly(f: Field, u: Unit, dt: number) {
     }
   }
   // 힐러: 체력 50% 아래 아군을 치유
-  if (u.role === 'heal' && u.cd![0] <= 0 && f.allies.some((a) => !a.dead && a.hp < a.max * 0.5 && dist(a, u) < 3.5)) return skill(f, u, 0);
-  const t = aimTarget(f, u, 9);
+  if (u.role === 'heal' && u.cd![0] <= 0 && f.allies.some((a) => !a.dead && a.hp < a.max * 0.5 && dist(a, u) < (f.roles ? RV.healR : 3.5))) return skill(f, u, 0);
+  if (f.roles && u.role === 'heal') {
+    // ROLES §4: 체력이 가장 낮은 동료 곁으로
+    const low = f.allies.filter((a) => a !== u && !a.dead && a.hp < a.max * 0.8).sort((a, b) => a.hp / a.max - b.hp / b.max)[0];
+    if (low && dist(u, low) > 2) return moveToward(f, u, low.x, low.y, dt);
+  }
+  // ROLES §3: 기사는 보스(정예) 쪽으로 먼저 붙는다
+  const big = f.roles && u.role === 'tank' && f.elite && !f.elite.dead && f.elite.st !== 'spawn' ? f.elite : null;
+  const t = big ?? aimTarget(f, u, 9);
   if (!t) {
     // 적이 없으면 조종 캐릭터 곁의 내 자리로 (약 1.5칸, 동료마다 다른 방향)
     if (u !== f.me) {
@@ -912,7 +1005,8 @@ function aiAlly(f: Field, u: Unit, dt: number) {
   else if (d > want) moveToward(f, u, gx, gy, dt);
   else {
     faceTo(u, t);
-    if (u.cd![0] <= 0 && u.role !== 'heal' && Math.random() < 0.02) skill(f, u, 0);
+    if (big && u.cd![1] <= 0) skill(f, u, 1);
+    else if (u.cd![0] <= 0 && u.role !== 'heal' && Math.random() < 0.02) skill(f, u, 0);
     else if (u.cd![1] <= 0 && Math.random() < 0.015) skill(f, u, 1);
     else attack(f, u);
   }
@@ -1030,7 +1124,7 @@ function aiMob(f: Field, m: Unit, dt: number) {
   }
   const allies = f.allies.filter((a) => !a.dead);
   if (!allies.length) return;
-  const taunter = allies.find((a) => (a.taunt ?? 0) > 0 && dist(a, m) < 4);
+  const taunter = allies.find((a) => (a.taunt ?? 0) > 0 && dist(a, m) < (f.roles ? RV.taunt.r : 4));
   if (taunter) m.target = taunter;
   if (!m.target || m.target.dead) m.target = allies.sort((a, b) => dist(a, m) - dist(b, m))[0];
   if (m.boss) return aiBoss(f, m, m.target, dt);
@@ -1044,7 +1138,7 @@ function aiMob(f: Field, m: Unit, dt: number) {
       if (d <= reach) {
         faceTo(m, t);
         m.st = 'tele';
-        m.stT = m.teleMax = C.tele * (m.elite ? 1.1 : 1);
+        m.stT = m.teleMax = C.tele * (m.elite ? 1.1 : 1) + (f.comboTele ?? 0);
         const off = md.hop ? 0.85 : 0.75;
         m.tele = { x: m.x + m.ax * off, y: m.y + m.ay * off, r: md.hitR * (m.elite ? 1.35 : 1) };
         return;
@@ -1131,7 +1225,7 @@ function aiBoss(f: Field, m: Unit, t: Unit, dt: number) {
       m.pat = (m.pat ?? 0) + 1;
       faceTo(m, t);
       m.st = 'tele';
-      const tl = [0.95, 1.1, 0.7][p] / fast;
+      const tl = [0.95, 1.1, 0.7][p] / fast + (f.comboTele ?? 0);
       m.stT = m.teleMax = tl;
       if (p === 0) {
         const L = 4.5;
@@ -1156,9 +1250,9 @@ function aiBoss(f: Field, m: Unit, t: Unit, dt: number) {
         const L = Math.hypot(tl.x2! - tl.x, tl.y2! - tl.y);
         m.dash = { vx: ((tl.x2! - tl.x) / 0.3), vy: ((tl.y2! - tl.y) / 0.3), t: 0.3 };
         void L;
-        for (const a of f.allies) if (!a.dead && segDist(a.x, a.y, tl.x, tl.y, tl.x2!, tl.y2!) <= tl.w! + a.r) hurtAlly(f, a, m.atk! * 1.3, m);
+        for (const a of f.allies) if (!a.dead && segDist(a.x, a.y, tl.x, tl.y, tl.x2!, tl.y2!) <= tl.w! + a.r) hurtAlly(f, a, m.atk! * 1.3, m, true);
       } else if (p === 1) {
-        for (const a of f.allies) if (!a.dead && Math.hypot(a.x - tl.x, a.y - tl.y) <= tl.r + a.r) hurtAlly(f, a, m.atk! * 1.5, m);
+        for (const a of f.allies) if (!a.dead && Math.hypot(a.x - tl.x, a.y - tl.y) <= tl.r + a.r) hurtAlly(f, a, m.atk! * 1.5, m, true);
         f.fx.push({ kind: 'ring', x: tl.x, y: tl.y, t: 0, dur: 0.45, r: tl.r });
         shake(f, 3);
       } else {
@@ -1321,6 +1415,10 @@ export function step(f: Field, dt: number) {
       }
     }
   }
+  // ROLES §4: 사제 곁 3칸 동료는 초당 최대 체력 1% 회복
+  if (f.roles)
+    for (const a of f.allies)
+      if (!a.dead && a.hp < a.max && f.allies.some((pr) => !pr.dead && pr.job === 'priest' && dist(pr, a) <= RV.aura.r)) a.hp = Math.min(a.max, a.hp + a.max * RV.aura.pct * dt);
   // 서로 겹치지 않게
   const live = f.units.filter((u) => !u.dead);
   for (let i = 0; i < live.length; i++)

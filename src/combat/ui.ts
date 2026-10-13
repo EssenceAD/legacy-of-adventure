@@ -783,7 +783,9 @@ function finish() {
 export function showCombatResult(html: string, bind: (card: HTMLElement) => void) {
   // 접어 둔 판은 화면(root)이 문서에 없다 → root 안에서 찾는다 (버튼 연결도 root 기준)
   const r = (root?.querySelector('#cbRes') ?? $('#cbRes')) as HTMLElement;
-  r.innerHTML = `<div class="card px res">${html}</div>`;
+  // ROLES §5: 탱·힐·딜 조합이면 「역할 조합 보너스 ✓」
+  const combo = F?.roles && F.mode === 'hunt' && (F.comboTele ?? 0) > 0 ? '<p class="rolecombo">역할 조합 보너스 ✓</p>' : '';
+  r.innerHTML = `<div class="card px res">${html}${combo}</div>`;
   r.hidden = false;
   bind(r);
 }

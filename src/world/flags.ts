@@ -15,6 +15,8 @@ export const FLAG_DEFAULTS = {
   storyWaitHint: true,
   /** 우편함 읽은 편지 지우기 */
   mailDelete: true,
+  /** ROLES: 직업마다 체력·탱·힐·조합 (끄면 예전 전투) */
+  rolesV2: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
