@@ -297,7 +297,8 @@ export function showActor(a: Actor) {
 }
 
 // ───────── GROWTH §3-1: 「가장 좋은 걸로 입히기」 미리보기 → 확인 ─────────
-export function openBestPreview(a: Actor) {
+/** back = 닫은 뒤 돌아갈 창 (J7 대장간 [자동 장착] — 없으면 손님 상세 그대로) */
+export function openBestPreview(a: Actor, back: () => void = () => showActor(a)) {
   const plan = bestPlan(a);
   if (!plan.slots.length) return toast('이미 가장 좋은 걸 입고 있어요');
   const rows = plan.slots
@@ -315,9 +316,9 @@ export function openBestPreview(a: Actor) {
     trackEv('auto_equip', { mode: 'best', gain: r.gain, fav: isFav(a) });
     markDirty();
     toast(r.changed ? `${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
-    showActor(a);
+    back();
   };
-  $('#bNo').onclick = () => showActor(a);
+  $('#bNo').onclick = back;
 }
 
 // ───────── 전설 영웅: 부탁 진행 · 바치기/보여 주기 · 인연의 증표로 ★ ─────────
@@ -375,7 +376,7 @@ function bindLegend(a: Actor) {
 }
 
 /** 장비 칸을 누르면: 가방에서 그 부위를 고른다 (전투력 차이 초록/빨강) */
-function pickGear(a: Actor, slot: Slot) {
+export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActor(a)) {
   const cur = P.bag.find((x) => x.id === a.equip[slot]);
   const before = powerOf(a);
   const cands = P.bag.filter((it) => it.slot === slot && it.id !== cur?.id).sort((p, q) => itemPower(q) - itemPower(p));
@@ -399,7 +400,7 @@ function pickGear(a: Actor, slot: Slot) {
       (b.onclick = () => {
         equip(a, P.bag.find((x) => x.id === +b.dataset.id!)!);
         markDirty();
-        showActor(a);
+        back();
       }),
   );
   const un = document.getElementById('unEq');
@@ -407,7 +408,7 @@ function pickGear(a: Actor, slot: Slot) {
     un.onclick = () => {
       unequip(a, slot);
       markDirty();
-      showActor(a);
+      back();
     };
 }
 

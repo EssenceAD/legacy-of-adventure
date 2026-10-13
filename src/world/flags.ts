@@ -121,6 +121,8 @@ export const FLAG_DEFAULTS = {
   heroCards: false,
   /** v0.25.5 CHECKIN §J6 파티 후보 한 규칙 (형철 결정 — 켬): 방문 중인 전설(동행)이 토벌에도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · 사냥·심연은 지쳐도 갈 수 있고 「체력 n · 지쳤어요」 · 추천 편성은 원정·사냥·토벌·심연 네 곳 모두 */
   partyRulesV2: true,
+  /** CHECKIN §J7 대장간 「영웅 중심 한 화면」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 탭 5개 → 장비 손질(강화·초월·재련) · 제작 · 가방 정리 · 맨 위 「지금 할 만한 것」 2개 · 영웅 카드 줄 → 장비 칸 → 행동 판 하나(망치 연출 + 숫자 튀어 오름) · [자동 장착] · 창 맨 위 설명·레벨업·지붕 색 */
+  smithOne: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

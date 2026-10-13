@@ -21,6 +21,13 @@ export function openBulkEnhance(back: () => void, trans = false) {
   if (!trans && opts.goal > SM().maxEnhance) opts.goal = 5;
   draw(back, trans);
 }
+/** CHECKIN §J7 smithOne: 행동 판 아래 [모두 강화(이 영웅)] · [★ 영웅 전부 +n까지] — 같은 일괄 창을 「직접 고르기」 + 목표를 채운 채로 연다 (대상·목표·예산은 거기서 바꿀 수 있음) */
+export function openBulkFor(ids: number[], goal: number, back: () => void, trans = false) {
+  opts.target = 'pick';
+  opts.picked = ids.slice();
+  opts.goal = goal;
+  draw(back, trans);
+}
 function draw(back: () => void, trans: boolean) {
   const lo = trans ? SM().maxEnhance + 1 : 1;
   const hi = trans ? maxGoal() : SM().maxEnhance;
