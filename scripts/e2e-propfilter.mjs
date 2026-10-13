@@ -119,6 +119,9 @@ await p.evaluate(() => window.__openMenu());
 await W(400);
 await p.evaluate(() => [...document.querySelectorAll('.mtile')].find((b) => b.textContent.trim() === '설정')?.click());
 await W(500);
+// v0.25.5 설정 3탭(실험실): 두 줄은 「알림」 탭
+await p.evaluate(() => document.querySelector('[data-stab="noti"]')?.click());
+await W(400);
 const rows = await p.evaluate(() => ({ f: [...(document.querySelector('#mPropF')?.options ?? [])].map((o) => o.textContent), i: [...(document.querySelector('#mInbox')?.options ?? [])].map((o) => o.textContent) }));
 ok(rows.f.join('|') === '쓸 만한 손님만|모두|안 받기(대기 명단에만)', `설정 「단골 제안 받을 손님」 ${rows.f.join('|')}`);
 ok(rows.i.join('|') === '모아 보기|바로 보기', `설정 「곁이야기」 ${rows.i.join('|')}`);
