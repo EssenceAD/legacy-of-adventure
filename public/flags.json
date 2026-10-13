@@ -26,5 +26,9 @@
   "calmWorld": false,
   "hudV2": false,
   "uiKitV2": false,
-  "visualLabOpen": false
+  "visualLabOpen": false,
+  "guestSortPin": false,
+  "autoPathNone": false,
+  "boardLevelUp": false,
+  "mythicGuide": false
 }

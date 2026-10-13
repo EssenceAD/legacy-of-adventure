@@ -1,4 +1,5 @@
 // 원정 창: 의뢰 게시판(목록·진행 중 파티·천장) → 파티 고르기(전투력·성공률·전투력 올리기 안내) → 보고서 · 방치 요약
+import { vis } from '../world/visual';
 import { dropFanfare } from './fanfare';
 import { BASE_REGIONS } from '../data/items';
 import { huntRegionOpen } from '../world/hunt';
@@ -15,7 +16,7 @@ import { openHunt } from './hunt';
 import { iconSrc } from './kit';
 import { departParty, returnParty } from '../world/actors';
 import {
-  activeRuns, boardLevel, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
+  activeRuns, boardLevel, boardState, fullPartyHint, canSend, ensureQuests, maxParties, partyInfo, partyMinFor, powerTips, refreshQuests, regionUnlocked, runLog, sendParty,
   partyMax,
 } from '../world/expeditions';
 import { equip, itemPower } from '../world/items';
@@ -32,7 +33,8 @@ import { mentorBadge, recButton, roleIcon, roleRow, synRow, tagLine } from './pa
 import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
-import { closeWin, openWin, toast } from './windows';
+import { closeWin, openBuild, openWin, toast } from './windows';
+import * as game from '../game';
 import { afterPaidRefresh, bindFavors, favorIntro, favorsHtml, refreshBtn, refreshHint } from './goldsink';
 
 const TIER = CONFIG.expedition.tierNames;
@@ -117,7 +119,7 @@ export function openBoard(tab?: number) {
   openWin(
     '원정 · 의뢰 게시판',
     `${boardTabs()}${huntHtml}${raidHtml}
-    <p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>
+    ${vis('boardLevelUp') ? boardLine() : `<p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>`}
     ${runs.length ? `<div class="runs">${runs.map(runRow).join('')}</div>` : ''}
     <div class="qhd"><b class="g">오늘의 의뢰</b>${refreshBtn()}</div>
     <div class="quests">${P.quests.list.map(questRow).join('') || '<p class="note">오늘 의뢰를 다 받았어요 · 내일 아침 새로 붙어요</p>'}</div>${refreshHint()}
@@ -139,6 +141,7 @@ export function openBoard(tab?: number) {
       }),
   );
   bindBoardTabs();
+  bindBoardLine();
   $('#qRef').onclick = () => {
     const k = refreshQuests();
     if (!k) return toast('금화가 모자라요');
@@ -154,6 +157,33 @@ export function openBoard(tab?: number) {
     openBoard();
     for (const id of P.runs.filter((r) => !r.claimed && r.result && !shown.has(r.id)).map((r) => r.id)) document.querySelector(`.run.done[data-run="${id}"]`)?.classList.add('fresh');
   });
+}
+
+// ───────── v0.25.2 §I 게시판 레벨업: 「파티 n/m · 게시판 Lv.x」 줄 오른쪽에 버튼 (공사 규칙은 다른 건물과 같게 game.upgrade) ─────────
+function boardLine(): string {
+  const b = boardState();
+  const full = activeRuns().length >= maxParties();
+  const lvText = b.state === 'none' ? '게시판 없음' : `게시판 Lv.${b.lv}${b.state === 'max' ? ' · 최대' : ''}`;
+  const btn = S.visiting
+    ? ''
+    : b.state === 'none'
+    ? '<button id="brdBuild">게시판 짓기</button>'
+    : b.state === 'up'
+    ? `<button id="brdUp" class="${full ? 'glow' : ''}" ${S.gold >= b.cost! ? '' : 'disabled'}>게시판 Lv.${b.lv + 1} · ${fmt(b.cost!)} G</button>`
+    : b.state === 'con'
+    ? '<span class="note">🔨 공사 중</span>'
+    : '';
+  return `<div class="qhd brdln"><span class="sub">파티 <b>${activeRuns().length}/${maxParties()}</b> · ${lvText}</span>${btn}</div>${full && !S.visiting ? `<p class="note brdfull">파티가 꽉 찼어요 · ${fullPartyHint()}</p>` : ''}`;
+}
+function bindBoardLine() {
+  const bb = document.getElementById('brdBuild');
+  if (bb) bb.onclick = () => openBuild();
+  const up = document.getElementById('brdUp');
+  if (up)
+    up.onclick = () => {
+      const o = boardState().o;
+      if (o) game.upgrade(o);
+    };
 }
 
 // ───────── 파티 고르기 ─────────

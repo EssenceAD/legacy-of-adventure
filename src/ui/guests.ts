@@ -1,4 +1,5 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
+import { vis as visOn } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
 import { tapCameo } from './easter';
@@ -25,7 +26,8 @@ import { speakerOf, talk } from './dialogue';
 import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, pic, portrait, tabs } from './common';
 import { dustLine } from './smith';
 import { applyBest, bestPlan, whoWears } from '../world/autoEquip';
-import { favRank, guestHint, isFav, toggleFav } from '../world/growth';
+import { favRank, guestHint, isFav, sortGuests, toggleFav } from '../world/growth';
+import { getPref, setPref } from '../save/save';
 import { uniqueById } from '../world/uniques';
 import { enhMsg, enhUse, openEnhance } from './enhance';
 import { closeWin, openWin, toast } from './windows';
@@ -54,10 +56,18 @@ export function openGuests() {
   const vis = all.filter((a) => a.status === 'visitor' || a.status === 'passer');
   const list = (gTab === 0 ? regs : gTab === 1 ? vis : []).slice();
   const key = [(a: Actor) => a.lvl, (a: Actor) => powerOf(a), (a: Actor) => RARITIES.indexOf(a.rarity) * 1000 + a.lvl][gSort];
-  // GROWTH §3-1: ★ 아끼는 영웅이 늘 맨 위
-  list.sort((a, b) => favRank(a) - favRank(b) || key(b) - key(a));
+  // v0.25.2 §I #19: ★ 맨 위 고정 켜기/끄기 · ★ 묶음과 나머지 사이 구분 줄 · 지금 정렬 기준 한 줄
+  const pinUi = visOn('guestSortPin');
+  const pin = pinUi ? getPref<boolean>('guestFavPin', true) : true;
+  // GROWTH §3-1: ★ 아끼는 영웅이 늘 맨 위 (플래그 끄면 예전: ★끼리는 ★한 순서)
+  if (pinUi) list.splice(0, list.length, ...sortGuests(list, key, P.growth.favs, pin));
+  else list.sort((a, b) => favRank(a) - favRank(b) || key(b) - key(a));
+  const divAt = pinUi && pin ? list.findIndex((a) => !isFav(a)) : -1;
+  const sortLine = pinUi
+    ? `<div class="sortb gsortln"><span>지금: <b>${SORTS[gSort]}</b> 높은 순${gSort === 2 ? '(같으면 레벨)' : ''}${pin ? ' · ★ 먼저' : ' · ★도 섞어서'}</span><button id="gPin" class="${pin ? 'on' : ''}" aria-pressed="${pin}">★ 맨 위 고정</button></div>`
+    : '';
   const rows = list
-    .map((a) => `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`)
+    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`)
     .join('');
   openWin(
     `손님 ${all.length}명`,
@@ -69,7 +79,7 @@ export function openGuests() {
         ? `<p class="note">단골 자리가 꽉 찼을 때 단골이 되고 싶어 한 손님이에요 · 자리가 나면 다시 찾아와 제안해요</p><div class="glist">${
             P.waitlist.map((w) => `<div class="wrow"><b style="color:${RARITY_INFO[w.rarity].color}">${esc(w.name)}</b> · Lv.${w.lvl} ${RACE_NAME[w.race]} ${CLASSES[w.kind].name}</div>`).join('') || '<p class="note">대기 중인 손님이 없어요</p>'
           }</div>`
-        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>
+        : `<div class="sortb">정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
     <div class="glist">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
@@ -77,13 +87,19 @@ export function openGuests() {
     gTab = i;
     openGuests();
   });
-  $$('.sortb button').forEach(
+  $$('.sortb button[data-s]').forEach(
     (b) =>
       (b.onclick = () => {
         gSort = +b.dataset.s!;
         openGuests();
       }),
   );
+  const pinB = document.getElementById('gPin');
+  if (pinB)
+    pinB.onclick = () => {
+      setPref('guestFavPin', !pin);
+      keepScroll(openGuests);
+    };
   $$('.glist button').forEach((b) => (b.onclick = () => showActor(all.find((a) => a.id === +b.dataset.id!)!)));
   $$('[data-pick]').forEach(
     (b) =>

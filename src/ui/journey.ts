@@ -1,9 +1,11 @@
 // DIRECTION §1-1 「여정」 한 화면 — 칸마다 x/N · 누르면 그 도감 · 다 채우면 칭호 + 간판 금테 · 이번 회차의 바람
+import { vis } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { journeyCells, journeyComplete, syncJourney, type JourneyKey } from '../world/journey';
 import { P } from '../world/state';
 import { curWind, WIND_INFO } from '../world/wind';
 import { openDexTab } from './book';
+import { MYTHIC_GUIDE } from '../data/story/mythic';
 import { $$, esc } from './common';
 import { openAlbum } from './owner';
 import { openWin, toast } from './windows';
@@ -28,7 +30,7 @@ export function openJourney() {
   const tot = cells.reduce((s, c) => s + c.total, 0);
   openWin(
     '여정',
-    `<p class="sub">제 ${P.legacy.gen}회차 · 지금까지 ${sum}/${tot}</p>
+    `${vis('mythicGuide') ? `<p class="mythgd">${esc(MYTHIC_GUIDE)}</p>` : ''}<p class="sub">제 ${P.legacy.gen}회차 · 지금까지 ${sum}/${tot}</p>
     ${wi ? `<div class="jwind"><i>${wi.icon}</i><span><b>이번 회차의 바람 — ${esc(wi.name)}</b><small>${esc(wi.fx)}</small><small>${esc(wi.mood)}</small></span></div>` : P.legacy.gen < CONFIG.direction.windFrom ? '<p class="note">2회차부터 회차마다 「이번 회차의 바람」이 불어요</p>' : ''}
     ${done ? `<div class="jdone">「${esc(CONFIG.direction.journeyTitle)}」<small>여정을 모두 채웠어요 · 여관 간판에 금테가 둘렸어요</small></div>` : ''}
     <div class="jgrid">${cells

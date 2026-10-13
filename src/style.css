@@ -1473,6 +1473,11 @@ img.port.pixel{image-rendering:pixelated}
 .glist .gpick + button{flex:1}
 .glist .grow{display:flex;align-items:stretch;gap:2px}
 .glist .grow > button{flex:1}
+/* v0.25.2 §I #19 지금 정렬 기준 한 줄 · ★ 묶음 구분 줄 */
+.gsortln{flex-wrap:wrap}.gsortln span{flex:1;min-width:0}.gsortln b{color:var(--gold)}
+/* v0.25.2 §I 게시판 레벨업 줄 */
+.brdln{margin:6px 0;gap:6px}.brdln .sub{margin:0;flex:1;min-width:0}.brdln button{white-space:nowrap}.qhd button.glow{animation:mglow 1s steps(2) 3}
+.glist .gdiv{border-top:2px dashed #9aa6d8;opacity:.6;margin:3px 4px}
 
 /* REGIONS2: 컷 연출 (열기 · 등대 · 잿불 · 하늘 · 심연 바닥 · 고요) · 전투 중 50% 컷은 대화창을 전투 위로 */
 #storyFx.sfx-heat{background:linear-gradient(180deg,rgba(255,200,110,.22),rgba(224,180,90,.12));animation:sheat 2.4s ease-in-out infinite alternate}
@@ -1593,6 +1598,8 @@ body.in-combat a{pointer-events:none}
 .jwind{display:flex;gap:8px;align-items:center;padding:6px 8px;margin:4px 0 8px;background:#2a2440;box-shadow:0 0 0 2px var(--ink),0 0 0 3px #8fd0ff}
 .jwind i{font-style:normal;font-size:24px}.jwind span{display:flex;flex-direction:column;gap:1px}.jwind b{color:var(--gold)}.jwind small{font-size:var(--f-small);color:#cfd8ff}
 .jdone{margin:4px 0 8px;padding:6px 8px;text-align:center;color:var(--gold);font-weight:700;background:#3a2c18;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold)}
+/* v0.25.2 §H 신화 안내 한 줄 (도감 신화 탭 · 여정 맨 위) */
+.mythgd{margin:2px 0 8px;padding:6px 8px;text-align:center;color:var(--gold);font-weight:700;font-size:var(--f-big);line-height:1.35;overflow-wrap:anywhere;background:#2a2450;box-shadow:0 0 0 2px var(--ink)}
 .jdone small{display:block;font-weight:400;color:var(--cream);font-size:var(--f-small)}
 .jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:8px}
 .jcell{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"i b e" "u u u" "s s s";gap:2px 6px;align-items:center;padding:6px 8px;border:0;background:#161a30;color:var(--cream);box-shadow:0 0 0 2px var(--ink);text-align:left;cursor:pointer;font:inherit}

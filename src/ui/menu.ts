@@ -1,7 +1,7 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
 import { ACHIEVEMENTS } from '../data/achieve';
-import { flag } from '../world/flags';
+import { flag, type FlagKey } from '../world/flags';
 import { MANUAL_V2 } from '../data/story/manual';
 import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
@@ -43,7 +43,7 @@ import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
 import { setPref, writeSave } from '../save/save';
-import { labOn, setLab } from '../world/visual';
+import { labOn, setLab, vis } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
@@ -487,10 +487,17 @@ export const HELP_OF: [RegExp, string][] = [
   [/^여정/, 'story'], [/^소문 보내기/, 'social'],
 ];
 
+/** v0.25.2: 「@플래그 」 줄은 켜졌을 때만 · 「!플래그 」 줄은 꺼졌을 때만 (형철 확인 전 기능의 안내 줄) */
+export const manualLines = (lines: string[]) =>
+  lines.flatMap((l) => {
+    const m = /^([@!])([A-Za-z0-9]+) /.exec(l);
+    if (!m) return [l];
+    return vis(m[2] as FlagKey) === (m[1] === '@') ? [l.slice(m[0].length)] : [];
+  });
 export function openManual(key?: string) {
   const page = MANUAL.find((p) => p.key === key);
   if (page) {
-    openWin(`안내서 · ${page.title}`, `<div class="mpage"><img src="${iconSrc(page.icon)}" alt=""><div>${page.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div></div><button class="bigbtn ghost sm" id="mnBack">목차</button>`);
+    openWin(`안내서 · ${page.title}`, `<div class="mpage"><img src="${iconSrc(page.icon)}" alt=""><div>${manualLines(page.lines).map((l) => `<p>${esc(l)}</p>`).join('')}</div></div><button class="bigbtn ghost sm" id="mnBack">목차</button>`);
     $('#mnBack').onclick = () => openManual();
     return;
   }

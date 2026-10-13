@@ -6,7 +6,8 @@
 //  실행: node scripts/shot-checkin.mjs <항목> <before|after> <URL>   예) ... a1 before http://localhost:4310/
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const [item, label = 'after', URL = 'http://localhost:4190/'] = process.argv.slice(2);
+const [item, label = 'after', URL = 'http://localhost:4190/', LAB] = process.argv.slice(2);
+//  4번째 인자 `lab` = 「새 화면 미리 보기」(실험실) 켠 채로 찍기 (형철 확인 전 꺼진 기능의 「후」 사진)
 if (!item) throw new Error('항목 이름을 주세요');
 const scene = fs.readFileSync(`scripts/checkin-scenes/${item}.js`, 'utf8');
 const saveFile = /^\/\/\s*save:\s*(\S+)/m.exec(scene)?.[1] ?? (fs.existsSync('tests/fixtures/real_ttabam.json') ? 'tests/fixtures/real_ttabam.json' : 'tests/fixtures/real_lotte.json');
@@ -26,7 +27,7 @@ for (const [w, dev] of Object.entries(SIZES))
   for (const night of [false, true]) {
     const save = JSON.stringify({ ...sv, clock: night ? 17 * 60 : 6 * 60, night });
     const ctx = await b.newContext(dev);
-    await ctx.addInitScript(([s, ver]) => {
+    await ctx.addInitScript(([s, ver, lab]) => {
       try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
       localStorage.clear();
       localStorage.setItem('legacy-of-adventure-save', s);
@@ -34,8 +35,9 @@ for (const [w, dev] of Object.entries(SIZES))
       localStorage.setItem('legacy-of-adventure-lastVersion', ver);
       localStorage.setItem('legacy-of-adventure-settleOff', 'true');
       localStorage.setItem('legacy-of-adventure-telemetry', 'false');
+      if (lab) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
       localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
-    }, [save, VER]);
+    }, [save, VER, LAB === 'lab']);
     const p = await ctx.newPage();
     p.on('pageerror', (e) => errs.push(`${w}/${night ? '밤' : '낮'}: ${String(e).slice(0, 160)}`));
     await p.goto(URL, { waitUntil: 'domcontentloaded' });

@@ -213,5 +213,7 @@ export const MYTHIC: MythicDef[] = [
 ];
 
 // 신화 실루엣 힌트 (1회차 도감)
+/** v0.25.2 §H 신화 안내 (도감 「신화」 탭 · 여정 맨 위 한 줄) — 신화는 장비가 아니라 영웅 */
+export const MYTHIC_GUIDE = '신화는 2회차부터 — 전설 영웅과 인연 5를 맺고 엔딩을 본 뒤, 다음 여관에서 만나요';
 export const MYTHIC_HINT = '이 영웅과 인연 5를 맺고 다음 여관을 열면, 기억을 되찾은 모습으로 찾아와요.';
 export const MYTHIC_SEED_LINE: SLine = ['post', '…주인님, 이 사람 눈빛이요. 꼭 아주 오래 알던 사람 같아요.'];
