@@ -15,6 +15,8 @@ export const FLAG_DEFAULTS = {
   storyWaitHint: true,
   /** 우편함 읽은 편지 지우기 */
   mailDelete: true,
+  /** 핫픽스: 모바일 짧게 누르기(탭) 판정 */
+  tapV2: true,
   /** WAYFIND §1 처음 해 보기 「!」 말풍선 */
   wayfindBubbles: true,
   /** WAYFIND §2 결의 (같은 첫 돌파 판 연속 패배 보정) */

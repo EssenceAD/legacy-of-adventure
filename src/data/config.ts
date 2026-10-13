@@ -28,6 +28,8 @@ export interface HarmonyFx {
 }
 
 export const CONFIG = {
+  /** 핫픽스 v0.23.4: 모바일 탭 — 손가락은 이만큼(px) 덜 움직이고 이 시간(ms) 안에 떼면 탭 · 손님은 건물과 겹치면 이 거리(px) 안일 때만 먼저 · tap_miss 기록 기기당 하루 */
+  touchTap: { slopPx: 14, maxMs: 450, actorFirstPx: 8, missLogPerDay: 30 },
   /** 유저 톡방 (카카오톡 오픈채팅) — 게임 안 모든 톡방 링크는 여기서 읽는다 */
   /** FEEDBACK: 손님 내보내기 — 옛 단골로 남는 날(실제) · 최대 수 · 단골 작별 대사 */
   dismiss: { recallDays: 3, formerMax: 20, farewellLines: ['…그래, 또 들를게. 그때도 이 자리 비워 둬야 해.', '신세 많이 졌어, 주인장. 가는 길에 소문 많이 내 줄게!'] },

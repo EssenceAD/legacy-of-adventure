@@ -9,5 +9,6 @@
   "wayfindBubbles": true,
   "huntResolve": true,
   "stuckCard": true,
-  "todayPicks": true
+  "todayPicks": true,
+  "tapV2": true
 }

@@ -1,5 +1,7 @@
 // 부팅, 루프(규칙 갱신 30fps / 그리기 rAF), 화면 입력(드래그·탭)
 import { openNotices } from './ui/notice';
+import { kstDay } from './world/goldsink';
+import { flag } from './world/flags';
 import { loadFlags } from './world/flags';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
@@ -394,6 +396,22 @@ function onGhost(clientX: number, clientY: number): boolean {
 }
 /** 화면에 닿아 있는 손가락들 (핀치용) */
 const touches = new Map<number, { x: number; y: number }>();
+/** 핫픽스 v0.23.4: 누른 시각 · 핀치 있었나 · 마지막 탭(이동 px, 누른 ms) */
+let downAt = 0;
+let pinchUsed = false;
+let lastTapInfo: [number, number] = [0, 0];
+/** 놓친 탭 기록 (기기당 하루 30개까지) */
+function tapMiss(dist: number, ms: number, why: 'moved' | 'pinch' | 'nohit') {
+  try {
+    const k = 'tapMiss:' + kstDay();
+    const n = +(localStorage.getItem(k) ?? 0);
+    if (n >= CONFIG.touchTap.missLogPerDay) return;
+    localStorage.setItem(k, String(n + 1));
+  } catch {
+    return;
+  }
+  trackEv('tap_miss', { px: Math.round(dist), ms: Math.round(ms), why });
+}
 /** 핀치 기준 거리 — 이 비율을 넘을 때마다 배율을 한 단계 바꾼다 */
 let pinchBase = 0;
 /** TOWN T2: 꾸미기 붓질·범위 고르기 중 */
@@ -510,6 +528,9 @@ function bindInput() {
         return;
       }
     }
+    // 핫픽스: 새 첫 손가락이면 남아 있던 포인터를 비운다 (핀치로 오인 방지)
+    if (flag('tapV2') && e.isPrimary) touches.clear();
+    downAt = performance.now();
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.size === 2) {
       // TOWN T2: 꾸미기 붓질 중 두 번째 손가락이 닿으면 붓질을 끝내고 핀치
@@ -519,6 +540,7 @@ function bindInput() {
       }
       // 두 손가락: 드래그·탭 대신 핀치
       pinchBase = pinchDist();
+      pinchUsed = true;
       drag = null;
       moved = true;
       return;
@@ -535,6 +557,7 @@ function bindInput() {
     }
     drag = { x: e.clientX, y: e.clientY, cx: view.cam.x, cy: view.cam.y };
     moved = false;
+    pinchUsed = false;
     ghostDrag = onGhost(e.clientX, e.clientY);
     if (ghostDrag) {
       lastPtr = [e.clientX, e.clientY];
@@ -577,7 +600,9 @@ function bindInput() {
     if (!drag) return;
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > CONFIG.view.dragThreshold) moved = true;
+    // 핫픽스: 터치는 엄지 흔들림을 끌기로 보지 않게 (마우스는 그대로)
+    const touchTap = flag('tapV2') && e.pointerType === 'touch';
+    if (touchTap ? Math.hypot(dx, dy) >= CONFIG.touchTap.slopPx : Math.abs(dx) + Math.abs(dy) > CONFIG.view.dragThreshold) moved = true;
     // FEEDBACK23 §2: 꾹 누르는 동안 손가락이 조금 흔들려도(태블릿) 들기는 그대로 — 그 이상 끌면 둘러보기
     if (moved && !ghostDrag && Math.abs(dx) + Math.abs(dy) > CONFIG.feedback23.longPressSlopPx) clearTimeout(lpTimer);
     if (ghostDrag) lastPtr = [e.clientX, e.clientY];
@@ -606,11 +631,31 @@ function bindInput() {
     drag = null;
     ghostDrag = false;
     lastPtr = null;
+    if (flag('tapV2') && e.pointerType === 'touch' && was) {
+      const dist = Math.hypot(e.clientX - was.x, e.clientY - was.y);
+      const ms = performance.now() - downAt;
+      if (e.type === 'pointercancel' || pinchUsed) return tapMiss(dist, ms, 'pinch');
+      if (dist >= CONFIG.touchTap.slopPx || ms >= CONFIG.touchTap.maxMs) return moved ? tapMiss(dist, ms, 'moved') : undefined;
+      // 조금 밀린 화면은 제자리로 돌리고 탭
+      view.cam.x = was.cx;
+      view.cam.y = was.cy;
+      lastTapInfo = [dist, ms];
+      tap(e);
+      return;
+    }
     if (moved || !was || e.type === 'pointercancel') return;
     tap(e);
   };
   cv.addEventListener('pointerup', end);
   cv.addEventListener('pointercancel', end);
+  // 핫픽스: 포인터를 놓쳐도 지워 둔다 (남은 포인터 때문에 핀치로 오인 방지)
+  const drop = (e: PointerEvent) => {
+    if (!flag('tapV2')) return;
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinchBase = 0;
+  };
+  cv.addEventListener('lostpointercapture', drop);
+  cv.addEventListener('pointerleave', drop);
 }
 
 /** 별 잡기: 글씨는 누른 자리(타일)에 — 예전엔 고정 타일 (7,5)라 넓어진 맵에선 숲 속에 떴다 */
@@ -664,6 +709,8 @@ function tap(e: PointerEvent) {
       best = a;
     }
   }
+  // 핫픽스: 건물과 겹친 자리면 손님은 아주 가까울 때(8px)만 먼저
+  if (best && flag('tapV2') && bd >= CONFIG.touchTap.actorFirstPx && lastPtrType === 'touch' && buildingAt(mx, my, alphaAt)) best = null;
   if (best) {
     // GROWTH §2: 사람을 누르면 작은 메뉴 [말 걸기] [선물하기] (모모는 + 편지 · 손님은 + 정보)
     if (best.role === 'npc') {
@@ -680,7 +727,12 @@ function tap(e: PointerEvent) {
     else showActor(best);
     return;
   }
-  const o = buildingAt(mx, my, alphaAt);
+  let o = buildingAt(mx, my, alphaAt);
+  // 핫픽스: 그림 판정에 안 걸리면 바닥 칸의 건물로 한 번 더 (꾹 눌러 들기와 같은 방식)
+  if (!o && flag('tapV2')) {
+    const [gx, gy] = toTile(cv, e.clientX, e.clientY);
+    o = grid[Math.floor(gy)]?.[Math.floor(gx)] ?? null;
+  }
   // CONSTRUCTION_SPEC §4: 공사 중인 건물을 톡톡 → 1초씩 빨리 (한도까지 줄이면 그다음 탭은 창)
   if (o && o.con && !S.visiting && tapCon(o)) {
     audioSfx.sfx('tap', { vol: 0.5 });
@@ -692,7 +744,9 @@ function tap(e: PointerEvent) {
   // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
   const [fx, fy] = toTile(cv, e.clientX, e.clientY);
   const pr = propsNow().find((p) => fx >= p.x && fx < p.x + p.fw && fy >= p.y && fy < p.y + p.fh);
-  if (pr) openPropInfo(pr);
+  if (pr) return openPropInfo(pr);
+  // 핫픽스: 아무것도 안 걸린 터치 탭 기록 (원인 확인용)
+  if (flag('tapV2') && e.pointerType === 'touch') tapMiss(lastTapInfo[0], lastTapInfo[1], 'nohit');
 }
 
 // ───────── 부팅 ─────────
