@@ -58,5 +58,6 @@
   "bldStatus": false,
   "heroCards": false,
   "partyRulesV2": true,
-  "heroDotV2": false
+  "heroDotV2": false,
+  "smithOne": false
 }

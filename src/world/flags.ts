@@ -123,6 +123,8 @@ export const FLAG_DEFAULTS = {
   partyRulesV2: true,
   /** HERODOT 영웅·손님 도트 리마스터 2 (1단계: 기사·사제·도적) — 형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」(실험실)로만 켜 봄 (vis) */
   heroDotV2: false,
+  /** CHECKIN §J7 대장간 「영웅 중심 한 화면」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 탭 5개 → 장비 손질(강화·초월·재련) · 제작 · 가방 정리 · 맨 위 「지금 할 만한 것」 2개 · 영웅 카드 줄 → 장비 칸 → 행동 판 하나(망치 연출 + 숫자 튀어 오름) · [자동 장착] · 창 맨 위 설명·레벨업·지붕 색 */
+  smithOne: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

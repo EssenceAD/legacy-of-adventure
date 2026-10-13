@@ -2110,3 +2110,49 @@ html[data-size="wide"] .hcgrid{grid-template-columns:repeat(auto-fill,minmax(cal
 /* 12명 이하: 폰에서 4열 — 위 판 + 격자가 스크롤 없이 한 화면 */
 html[data-size="phone"] .hdk-grid.few{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 4px}
 html[data-size="phone"] .hdk-grid.few .hcd-pw{font-size:var(--f-ui)}
+/* ───────── CHECKIN §J7 대장간 「영웅 중심 한 화면」 (smithOne · 실험실) — 남색 창 그대로 · 있는 글자 변수만 ───────── */
+.smo-roofs{align-items:center;gap:6px;margin:2px 0 4px;flex-wrap:wrap}
+.smo-roofs .note{margin:0 2px 0 0}
+.smo-roofs button,html:not([data-size="phone"]) #winB .smo-roofs button{min-height:28px;min-width:28px;width:28px;height:28px}
+.smo-picks{display:flex;flex-direction:column;gap:4px;margin:4px 0 6px}
+.smo-pick{width:100%;margin:0;border:0;color:var(--cream);text-align:left;cursor:pointer}
+.smo-pick:active{transform:translateY(1px)}
+.smo-pk0{margin:2px 0 4px}
+.smo-heroes{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:4px 3px 6px;margin:4px -2px 2px;scrollbar-width:thin}
+.smo-heroes .hcd{flex:none;width:calc(30px * var(--k))}
+.smo-bagc .smo-bagpic{display:flex;align-items:center;justify-content:center}
+.smo-bagc .smo-bagpic img{width:auto;height:auto;margin:0;transform:none}
+.smo-hhd{margin:4px 0 4px}.smo-hhd button{white-space:nowrap}
+.smo-top{margin:0 0 2px}.smo-top small{color:#9aa6d8}
+.smo-hhd small{color:#9aa6d8}
+.smo-slots{display:flex;gap:10px;justify-content:center;margin:4px 0 8px}
+.smo-slot{border:0;background:none;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:#9aa6d8;min-width:0}
+.smo-slot .ic{width:calc(28px * var(--k));height:calc(28px * var(--k))}
+.smo-slot .ic img{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+html:not([data-size="phone"]) .smo-slot .ic{width:calc(28px * var(--k));height:calc(28px * var(--k))}html:not([data-size="phone"]) .smo-slot .ic img{width:calc(24px * var(--k));height:calc(24px * var(--k))}
+.smo-slot .ic i{font-size:var(--f-small)}
+.smo-slot small{font-size:var(--f-small)}
+.smo-slot.on{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold)}
+.smo-slot.on small{color:var(--gold)}
+.smo-bag .ic.smo-on{outline:2px solid var(--gold);outline-offset:2px}
+.smo-panel{position:relative;margin:4px 0 6px;padding:8px;background:#1e2132;box-shadow:0 0 0 2px var(--ink),inset 0 0 0 1px #3a3f5c}
+.smo-panel .enhrate{margin:6px 0 2px}
+.smo-panel .note{margin:2px 0}
+.smo-go{align-items:stretch;flex-wrap:nowrap}
+.smo-go #smoGo{flex:1 1 0;min-width:0}
+.smo-go #smoRf{flex:none}
+.smo-sub{margin-top:4px}
+.smo-who{margin-top:6px}
+.smo-who img{width:24px;height:24px;image-rendering:pixelated}
+.smo-bulk{margin:2px 0 6px}
+/* J3 강화 연출: 망치(말풍선 망치 그림) 0.6초 + 불꽃(전투 spark 10칸) + 숫자 튀어 오름 · 흔들림 끔·절전 0.3초 · 누르면 바로 끝 */
+.smo-fx{position:absolute;inset:0;pointer-events:none;z-index:4;--fxd:.6s}
+.smo-ham{position:absolute;right:-30%;top:-40%;width:calc(16px * var(--k));height:calc(16px * var(--k));image-rendering:pixelated;transform-origin:80% 80%;animation:smoHam var(--fxd) steps(4) forwards}
+.smo-spk{position:absolute;left:50%;top:50%;width:27px;height:35px;margin:-18px 0 0 -14px;background-repeat:no-repeat;background-size:270px 35px;image-rendering:pixelated;opacity:0;animation:smoSpk var(--fxd) steps(10) forwards}
+.smo-num{position:absolute;left:50%;top:-6px;transform:translate(-50%,0);font-size:var(--f-big);line-height:1;color:var(--gold);text-shadow:1px 1px 0 var(--ink),-1px -1px 0 var(--ink),1px -1px 0 var(--ink),-1px 1px 0 var(--ink);white-space:nowrap;opacity:0;animation:smoNum var(--fxd) ease-out forwards}
+.smo-fx.great .smo-num{color:#ffd36b}
+.smo-fx.fail .smo-num{color:#cfd8ff}.smo-fx.drop .smo-num{color:#ff9a8a}
+.smo-fx.fail .smo-spk,.smo-fx.drop .smo-spk{display:none}
+@keyframes smoHam{0%{transform:rotate(-50deg)}50%{transform:rotate(20deg)}75%{transform:rotate(0)}100%{transform:rotate(0);opacity:0}}
+@keyframes smoSpk{0%,40%{opacity:0;background-position:0 0}41%{opacity:1;background-position:0 0}100%{opacity:1;background-position:-270px 0}}
+@keyframes smoNum{0%,40%{opacity:0;transform:translate(-50%,6px) scale(.6)}60%{opacity:1;transform:translate(-50%,-10px) scale(1.25)}100%{opacity:1;transform:translate(-50%,-16px) scale(1)}}

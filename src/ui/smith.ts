@@ -23,6 +23,7 @@ import { showItem } from './guests';
 import { appendMoveButton, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { enhMsg, enhUse, openEnhance, pityText } from './enhance';
+import { openSmithOne } from './smithOne';
 
 let craftRegion: RegionId = 'forest';
 let smTab = 0;
@@ -72,15 +73,13 @@ function useHtml(): string {
 }
 
 export function openSmith(o: Building, tab = smTab) {
+  // CHECKIN §J7: 「영웅 중심 한 화면」 (smithOne · 끄면 아래 예전 탭 5개 그대로)
+  if (vis('smithOne')) return openSmithOne(o);
   smTab = tab;
   const lv = smithLvl();
   let body = '';
   if (tab === 0) {
-    const rows = sorted()
-      .filter((it) => it.owner == null && !it.locked)
-      .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${salvageText(it.grade)}</small></span><button data-sal="${it.id}">분해</button></div>`)
-      .join('');
-    body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">일괄 분해…</button><button class="bigbtn sm ghost" id="dSwap">가루 바꾸기…</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
+    body = salvageHtml();
   } else if (tab === 1) {
     const rows = sorted()
       .map((it) => {
@@ -116,36 +115,11 @@ export function openSmith(o: Building, tab = smTab) {
   } else if (tab === 4) {
     body = reforgeTab(sorted());
   } else {
-    const c = craftCost(craftRegion);
-    const regs = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
-    const reg = REGIONS.find((r) => r.id === craftRegion)!;
-    const next = nextLevelCost(o);
-    const have = P.bossMats[c.boss.id] ?? 0;
-    body = `<p class="sub"><b class="g">세트 제작</b> — 「${reg.set.name}」 부위를 골라 만들어요</p>
-    <div class="regs">${regs}</div>
-    <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
-    ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
-    ${ashShort(craftRegion) > 0 && swappableAsh() > 0 ? `<button class="bigbtn sm" id="cFill">가루 바꾸기로 채우기 (${DUST_NAME.n} ${fmt(ashShort(craftRegion))} 모자람)</button>` : ''}
-    <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
-    <div class="crow2 whetrow"><span>🪨 <b>행운의 숫돌</b> <small>(가진 것 ${P.growth.whet}) · 다음 1회 강화·초월 성공률 +${Math.round(CONFIG.growth.whet.add * 100)}%p<br>${DUST_NAME.n} ${whetCost(craftRegion).ash}/${fmt(P.dust.n)} · ${reg.mat} ${whetCost(craftRegion).mats}/${P.mats[reg.id]} · 금화 ${fmt(whetCost(craftRegion).gold)}</small></span><button id="cWhet">만들기</button></div>
-    <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
-    ${next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
+    body = craftHtml(o);
   }
   openWin(`대장간 Lv.${lv}`, `${tabs(['분해', '강화', '제작', '초월', '재련'], tab, 'smT')}${goalLine()}<p class="sub">${dustLine()} · 가방 ${P.bag.filter((x) => x.owner == null).length}/${bagSize()}</p>${body}`);
   bindTabs('smT', (i) => openSmith(o, i));
   $$('#winB .ic[data-id]').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!, () => openSmith(o))));
-  $$('[data-sal]').forEach(
-    (b) =>
-      (b.onclick = async () => {
-        const it = P.bag.find((x) => x.id === +b.dataset.sal!)!;
-        // J4 confirmSheet: 희귀 이상 분해는 아래 확인 시트 (끄면 예전 confirm 그대로)
-        if (it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
-        if (!P.bag.includes(it)) return;
-        salvage(it);
-        toast(`분해 · ${salvageText(it.grade)}`);
-        openSmith(o);
-      }),
-  );
   $$('[data-enh]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -166,50 +140,6 @@ export function openSmith(o: Building, tab = smTab) {
         openSmith(o);
       }),
   );
-  const sa = document.getElementById('salAll');
-  if (sa)
-    sa.onclick = () => openBulkSalvage(() => openSmith(o));
-  $$('.regs button').forEach(
-    (b) =>
-      (b.onclick = () => {
-        craftRegion = b.dataset.r as RegionId;
-        openSmith(o);
-      }),
-  );
-  // SMITH §3: 부위마다 1 · 5 · 최대 → 요약 카드
-  $$('[data-cs]').forEach(
-    (b) =>
-      (b.onclick = () => {
-        const slot = b.dataset.cs as Slot;
-        const n = b.dataset.n === 'max' ? craftMax(craftRegion) : +b.dataset.n!;
-        if (n <= 0) return toast(P.bag.filter((x) => x.owner == null).length >= bagSize() ? '가방이 꽉 찼어요 · 분해 탭에서 비워요' : '재료가 모자라요');
-        if (n === 1) {
-          const r = craft(craftRegion, slot);
-          if (typeof r === 'string') return toast(r);
-          toast(`${GRADE_INFO[r.grade].name} ${r.name} 완성!`);
-          openWin('제작 완료!', `<div class="idet">${itemCell(r)}<div><b style="color:${GRADE_INFO[r.grade].color}">${esc(r.name)}</b><small>세트 부위</small></div></div><button class="bigbtn sm" id="cOk">자세히</button>`);
-          $('#cOk').onclick = () => showItem(r, () => openSmith(o));
-          return;
-        }
-        const slots = Array.from({ length: n }, () => slot);
-        craftSummary(craftRegion, craftMany(craftRegion, slots), () => openSmith(o), slots);
-      }),
-  );
-  const cf = document.getElementById('cFill');
-  if (cf)
-    cf.onclick = () => {
-      const got = fillAsh(ashShort(craftRegion));
-      toast(got ? `가루를 바꿔 ${DUST_NAME.n} +${fmt(got)}` : '바꿀 가루가 없어요');
-      openSmith(o);
-    };
-  const ds = document.getElementById('dSwap');
-  if (ds) ds.onclick = () => openDustSwap(() => openSmith(o));
-  const cs = document.getElementById('cSet');
-  if (cs)
-    cs.onclick = () => {
-      const slots = missingSetSlots(craftRegion);
-      craftSummary(craftRegion, craftMany(craftRegion, slots), () => openSmith(o), slots);
-    };
   // SMITH §2: 일괄 강화 · 일괄 초월 · 줄마다 「목표까지」
   const be = document.getElementById('bulkEnh');
   if (be) be.onclick = () => openBulkEnhance(() => openSmith(o), false);
@@ -234,17 +164,112 @@ export function openSmith(o: Building, tab = smTab) {
   if (sc) sc.onchange = () => (enhUse.charm = sc.checked);
   const sw = document.getElementById('sWhet') as HTMLInputElement | null;
   if (sw) sw.onchange = () => (enhUse.whet = sw.checked);
+  $$('[data-rf]').forEach((b) => (b.onclick = () => openReforge(P.bag.find((x) => x.id === +b.dataset.rf!)!, () => openSmith(o, 4))));
+  bindSalvage(() => openSmith(o));
+  bindCraft(o, () => openSmith(o));
+  appendMoveButton(o);
+}
+
+// ───────── 분해 탭 · 제작 탭 본문 (J7 smithOne 「가방 정리」·「제작」 탭이 같이 씀 — 예전 탭과 글·동작 같음) ─────────
+/** 분해 탭 본문 */
+export function salvageHtml(): string {
+  let body = '';
+  const rows = sorted()
+    .filter((it) => it.owner == null && !it.locked)
+    .map((it) => `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${salvageText(it.grade)}</small></span><button data-sal="${it.id}">분해</button></div>`)
+    .join('');
+  body = `<p class="note">장비를 부수면 그 등급의 가루가 나와요 · 끼운 장비는 목록에 없어요</p><button class="bigbtn sm" id="salAll">일괄 분해…</button><button class="bigbtn sm ghost" id="dSwap">가루 바꾸기…</button><div class="ilist">${rows || '<p class="note">분해할 장비가 없어요</p>'}</div>`;
+return body;
+}
+/** 분해 탭 버튼들 (redraw = 다시 그리기) */
+export function bindSalvage(redraw: () => void) {
+  $$('[data-sal]').forEach(
+    (b) =>
+      (b.onclick = async () => {
+        const it = P.bag.find((x) => x.id === +b.dataset.sal!)!;
+        // J4 confirmSheet: 희귀 이상 분해는 아래 확인 시트 (끄면 예전 confirm 그대로)
+        if (it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
+        if (!P.bag.includes(it)) return;
+        salvage(it);
+        toast(`분해 · ${salvageText(it.grade)}`);
+        redraw();
+      }),
+  );
+  const sa = document.getElementById('salAll');
+  if (sa)
+    sa.onclick = () => openBulkSalvage(() => redraw());
+  const ds = document.getElementById('dSwap');
+  if (ds) ds.onclick = () => openDustSwap(() => redraw());
+}
+/** 제작 탭 본문 · level = 맨 아래 대장간 레벨업 버튼 (J7 smithOne은 창 맨 위 줄로 옮김) */
+export function craftHtml(o: Building, level = true): string {
+  let body = '';
+  const c = craftCost(craftRegion);
+  const regs = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
+  const reg = REGIONS.find((r) => r.id === craftRegion)!;
+  const next = nextLevelCost(o);
+  const have = P.bossMats[c.boss.id] ?? 0;
+  body = `<p class="sub"><b class="g">세트 제작</b> — 「${reg.set.name}」 부위를 골라 만들어요</p>
+  <div class="regs">${regs}</div>
+  <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
+  ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
+  ${ashShort(craftRegion) > 0 && swappableAsh() > 0 ? `<button class="bigbtn sm" id="cFill">가루 바꾸기로 채우기 (${DUST_NAME.n} ${fmt(ashShort(craftRegion))} 모자람)</button>` : ''}
+  <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
+  <div class="crow2 whetrow"><span>🪨 <b>행운의 숫돌</b> <small>(가진 것 ${P.growth.whet}) · 다음 1회 강화·초월 성공률 +${Math.round(CONFIG.growth.whet.add * 100)}%p<br>${DUST_NAME.n} ${whetCost(craftRegion).ash}/${fmt(P.dust.n)} · ${reg.mat} ${whetCost(craftRegion).mats}/${P.mats[reg.id]} · 금화 ${fmt(whetCost(craftRegion).gold)}</small></span><button id="cWhet">만들기</button></div>
+  <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
+  ${!level ? '' : next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
+  return body;
+}
+/** 제작 탭 버튼들 */
+export function bindCraft(o: Building, redraw: () => void) {
+  $$('.regs button').forEach(
+    (b) =>
+      (b.onclick = () => {
+        craftRegion = b.dataset.r as RegionId;
+        redraw();
+      }),
+  );
+  // SMITH §3: 부위마다 1 · 5 · 최대 → 요약 카드
+  $$('[data-cs]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const slot = b.dataset.cs as Slot;
+        const n = b.dataset.n === 'max' ? craftMax(craftRegion) : +b.dataset.n!;
+        if (n <= 0) return toast(P.bag.filter((x) => x.owner == null).length >= bagSize() ? '가방이 꽉 찼어요 · 분해 탭에서 비워요' : '재료가 모자라요');
+        if (n === 1) {
+          const r = craft(craftRegion, slot);
+          if (typeof r === 'string') return toast(r);
+          toast(`${GRADE_INFO[r.grade].name} ${r.name} 완성!`);
+          openWin('제작 완료!', `<div class="idet">${itemCell(r)}<div><b style="color:${GRADE_INFO[r.grade].color}">${esc(r.name)}</b><small>세트 부위</small></div></div><button class="bigbtn sm" id="cOk">자세히</button>`);
+          $('#cOk').onclick = () => showItem(r, () => redraw());
+          return;
+        }
+        const slots = Array.from({ length: n }, () => slot);
+        craftSummary(craftRegion, craftMany(craftRegion, slots), () => redraw(), slots);
+      }),
+  );
+  const cf = document.getElementById('cFill');
+  if (cf)
+    cf.onclick = () => {
+      const got = fillAsh(ashShort(craftRegion));
+      toast(got ? `가루를 바꿔 ${DUST_NAME.n} +${fmt(got)}` : '바꿀 가루가 없어요');
+      redraw();
+    };
+  const cs = document.getElementById('cSet');
+  if (cs)
+    cs.onclick = () => {
+      const slots = missingSetSlots(craftRegion);
+      craftSummary(craftRegion, craftMany(craftRegion, slots), () => redraw(), slots);
+    };
   const cw = document.getElementById('cWhet');
   if (cw)
     cw.onclick = () => {
       const err = craftWhet(craftRegion);
       toast(err ?? `🪨 행운의 숫돌 완성! (가진 것 ${P.growth.whet})`);
-      openSmith(o);
+      redraw();
     };
-  $$('[data-rf]').forEach((b) => (b.onclick = () => openReforge(P.bag.find((x) => x.id === +b.dataset.rf!)!, () => openSmith(o, 4))));
   const up = document.getElementById('smUp');
-  if (up) up.onclick = () => (game.upgrade(o), openSmith(o));
-  appendMoveButton(o);
+  if (up) up.onclick = () => (game.upgrade(o), redraw());
 }
 
 export function openGarden(o: Building) {
