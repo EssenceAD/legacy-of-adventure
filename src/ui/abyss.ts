@@ -10,13 +10,19 @@ import { huntCrew, partyPower } from '../world/hunt';
 import { huntPartyMax } from '../world/party4';
 import { markDirty, P, S, type Actor } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
-import { $$, esc, fmt, itemCell, nameTag, pic } from './common';
+import { $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
+import { recButton } from './partyUi';
+import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
+import { partyBlock, partyNote, partyPool, recommendFor, rulesV2 } from '../world/partyRules';
+import { vis } from '../world/visual';
 import { talk } from './dialogue';
 import { dropFanfare } from './fanfare';
 import { closeWin, openWin, toast } from './windows';
 
 let picked: number[] = [];
 let manual = false;
+/** J6: 마지막 「추천 편성」 이유 */
+let abWhy = '';
 /** 「계속 오르기」 자동 (AUTO로 시작하면 켬) */
 let autoClimb = true;
 let timer = 0;
@@ -40,22 +46,73 @@ export function openAbyss() {
   const cur = resumeFloor();
   const start = cur || rec.lost || 1;
   const pw = ms.length ? partyPower(ms) : 0;
-  const rows = crew
-    .map((a) => `<button class="pm ${picked.includes(a.id) ? 'on' : ''}" data-ab="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>체력 ${Math.round(a.hp)}</small></span><em>${fmt(powerOf(a))}</em></button>`)
-    .join('');
+  // J6 partyRulesV2: 원정 중인 사람도 흐리게 + 이유 · 지친 사람은 「체력 n · 지쳤어요」 · [추천 편성]
+  const v2 = rulesV2();
+  const blocked = v2 ? partyPool().filter((a) => partyBlock(a, 'abyss')).sort((x, y) => powerOf(y) - powerOf(x)) : [];
+  const rows =
+    crew
+      .map((a) => `<button class="pm ${picked.includes(a.id) ? 'on' : ''}" data-ab="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${(v2 && partyNote(a, 'abyss')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`)
+      .join('') +
+    blocked.map((a) => `<button class="pm" disabled><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'abyss')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   const dis = ms.length ? '' : 'disabled';
+  const rec1 = floorRec(start);
+  const recOn = v2 && crew.length > 0;
   const cps = checkpoints(rec.best);
   const cont = cur
     ? `<div class="hopt"><button class="bigbtn keep" id="abResume" ${dis}>${cur}층부터 이어가기 · 무료</button><small>나갔던 층을 기억해 둬요</small></div>`
     : rec.lost
     ? `<div class="hopt"><button class="bigbtn keep" id="abCont" ${dis}>${rec.lost}층부터 이어하기 · ${fmtKo(contCost(rec.lost))} G</button><small>버나드가 길을 기억해 둬요 · 안 내면 1층부터</small></div>`
     : '';
+  if (vis('heroCards')) {
+    // CHECKIN §J6 카드 덱: 맨 위 [추천 편성][이어가기 / 1층부터] · 나머지(체크포인트 · 1층부터)는 격자 아래
+    const primary = cur ? 'abResume' : rec.lost ? 'abCont' : 'abNew';
+    const goLabel = cur ? `${cur}층부터 이어가기` : rec.lost ? `${rec.lost}층부터 · ${fmtKo(contCost(rec.lost))} G` : '1층부터 오르기';
+    const cfg: DeckCfg = {
+      where: 'abyss',
+      pool: v2 ? partyPool() : crew,
+      sel: ms,
+      max: huntPartyMax(),
+      block: (a) => (v2 ? partyBlock(a, 'abyss') : crew.includes(a) ? null : '원정 중'),
+      note: (a) => (v2 ? partyNote(a, 'abyss') : null),
+      lead: true,
+      lockCell: lock4Cell(ms, huntPartyMax()),
+      power: pw,
+      rec: rec1,
+      recLabel: `${start}층 추천`,
+      synWhere: 'hunt',
+      recId: recOn ? 'abRec' : undefined,
+      recWhy: abWhy,
+      go: `<button class="bigbtn ${primary === 'abNew' ? 'red' : 'keep'}" id="${primary}" ${dis}>${goLabel}</button>`,
+      empty: '데려갈 단골이 없어요',
+    };
+    openWin(
+      '끝없는 심연',
+      `${deckTopHtml(cfg)}${deckGridHtml(cfg)}<p class="sub">최고 <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
+      <label class="abauto"><input type="checkbox" id="abAuto" ${autoClimb ? 'checked' : ''}> AUTO 전투 · 이기면 「계속 오르기」 자동</label>
+      <p class="note abrule">층마다 몬스터가 강해져요 (×${C().grow}) · ${C().bossEvery}층마다 보스 · ${C().restEvery}층마다 쉼터(축복 ${C().restMin}분) · 금화 대신 가루·재료 · 질 때까지 계속 올라요</p>
+      <div class="hopts">${primary === 'abNew' ? '' : `<div class="hopt"><button class="bigbtn ghost" id="abNew" ${dis}>1층부터 오르기</button></div>`}${
+        cps.length > 1
+          ? `<div class="hopt"><div class="abcps">${cps.slice(1).map((c) => `<button class="abcp" data-cp="${c.floor}" ${dis}><b>${c.floor}층부터</b><small>${fmtKo(c.fee)} G</small></button>`).join('')}</div><small>체크포인트: 최고 층까지 10층마다 · 입장료를 내고 그 층부터 새로</small></div>`
+          : ''
+      }<small>맡겨 두기 · 소탕은 없어요</small></div>`,
+      'huntw',
+    );
+    bindDeck(
+      cfg,
+      (id) => {
+        picked = picked.includes(id) ? picked.filter((x) => x !== id) : picked.length < huntPartyMax() ? [...picked, id] : picked;
+        manual = true;
+        keepScroll(openAbyss);
+      },
+      openAbyss,
+    );
+  } else
   openWin(
     '끝없는 심연',
     `<p class="sub">최고 <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
     <p class="note abrule">층마다 몬스터가 강해져요 (×${C().grow}) · ${C().bossEvery}층마다 보스 · ${C().restEvery}층마다 쉼터(축복 ${C().restMin}분) · 금화 대신 가루·재료 · 질 때까지 계속 올라요</p>
     <div class="pw"><span>${start}층 추천 전투력</span><em>${fmt(floorRec(start))}</em><span>우리 파티</span><em class="${pw < floorRec(start) ? 'bad' : 'good'}">${fmt(pw)}</em></div>
-    <p class="sub">파티 ${ms.length}/${huntPartyMax()} · 첫 번째가 대장</p>
+    <p class="sub">파티 ${ms.length}/${huntPartyMax()} · 첫 번째가 대장</p>${recOn ? recButton('abRec', abWhy) : ''}
     <div class="plist">${rows || '<p class="note">데려갈 단골이 없어요</p>'}</div>
     <label class="abauto"><input type="checkbox" id="abAuto" ${autoClimb ? 'checked' : ''}> AUTO 전투 · 이기면 「계속 오르기」 자동</label>
     <div class="hopts">${cont}<div class="hopt"><button class="bigbtn ${rec.lost || cur ? 'ghost' : 'red'}" id="abNew" ${dis}>1층부터 오르기</button>${
@@ -74,6 +131,19 @@ export function openAbyss() {
         openAbyss();
       }),
   );
+  // J6 partyRulesV2: 심연도 추천 편성 (시작 층 추천 전투력 기준 · 대장은 가장 센 사람)
+  const ar = document.getElementById('abRec');
+  if (ar)
+    ar.onclick = () => {
+      const best = recommendFor('abyss', { power: rec1, region: 'deep', min: 1, max: huntPartyMax() }, crew);
+      if (!best) return toast('데려갈 단골이 없어요');
+      picked = best.members.sort((x, y) => powerOf(y) - powerOf(x)).map((m) => m.id);
+      manual = true;
+      abWhy = best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(rec1)}`;
+      trackEv('party_recommend', { where: 'abyss', action: 'use', n: picked.length });
+      if (vis('heroCards')) deckGlow(picked);
+      keepScroll(openAbyss);
+    };
   const au = document.getElementById('abAuto') as HTMLInputElement | null;
   if (au) au.onchange = () => (autoClimb = au.checked);
   document.getElementById('abNew')!.onclick = () => {

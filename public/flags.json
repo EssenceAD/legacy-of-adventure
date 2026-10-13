@@ -37,5 +37,7 @@
   "firstFlowFix": false,
   "harmonyLabels": true,
   "heroDetailGift": true,
-  "harmonyV2": true
+  "harmonyV2": true,
+  "heroCards": false,
+  "partyRulesV2": true
 }

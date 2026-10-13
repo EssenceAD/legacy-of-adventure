@@ -80,6 +80,10 @@ export const FLAG_DEFAULTS = {
   heroDetailGift: true,
   /** v0.25.4 K10 어울림 「모아 놨는데 안 생김」: 1칸 장식 개수 제한 없음 · 어울림마다 한 세트 먼저 · 구역은 이어진 덩어리 · 같은 이름 장식(술통 더미·장미 아치) 같은 물건 · 로드 때 재계산 (버그 수정 — 켬) */
   harmonyV2: true,
+  /** v0.25.5 CHECKIN §J6 영웅 카드 — 손님 창 · 원정·사냥·토벌·심연 파티 고르기 · 단골 제안 카드를 초상 카드 격자로 (위 고정 = 파티 자리·역할·조합·추천 전투력 막대·[추천 편성][출발]) · 형철 확인 전 꺼짐(실험실로만) */
+  heroCards: false,
+  /** v0.25.5 CHECKIN §J6 파티 후보 한 규칙 (형철 결정 — 켬): 방문 중인 전설(동행)이 토벌에도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · 사냥·심연은 지쳐도 갈 수 있고 「체력 n · 지쳤어요」 · 추천 편성은 원정·사냥·토벌·심연 네 곳 모두 */
+  partyRulesV2: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

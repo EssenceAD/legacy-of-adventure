@@ -31,6 +31,8 @@ import { checkSlot5 } from '../world/meta';
 import { track as trackEv } from '../net/telemetry';
 import { recommendParty } from '../world/party';
 import { mentorBadge, recButton, roleIcon, roleRow, synRow, tagLine } from './partyUi';
+import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, type DeckCfg } from './heroCard';
+import { partyBlock, rulesV2 } from '../world/partyRules';
 import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
@@ -201,14 +203,17 @@ function openParty(q: Quest, picked: number[] = [], fresh = false) {
   const info = sel.length ? partyInfo(sel, q) : null;
   const short = info && info.power < q.power;
   const tips = short ? powerTips(sel) : [];
+  // J6 partyRulesV2: 못 가는 이유는 네 화면 같은 글 (원정 중 n분 · 쉬는 중)
+  const block = (a: Actor) => (rulesV2() ? partyBlock(a, 'exp') : canSend(a));
+  const pmin = partyMinFor(q);
+  if (vis('heroCards')) return openPartyCards(q, picked, list, sel, info, tips, pmin, block);
   const rows = list
     .map((a) => {
-      const why = canSend(a);
+      const why = block(a);
       const on = picked.includes(a.id);
       return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${isCompanion(a) && !why ? `${companionText(a)} · ` : ''}${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
-  const pmin = partyMinFor(q);
   if (ff) return openPartyFF(q, picked, list, sel, info, tips, rows, pmin);
   openWin(
     questName(q),
@@ -260,6 +265,47 @@ function openPartyFF(q: Quest, picked: number[], list: Actor[], sel: Actor[], in
   bindParty(q, picked, list, sel);
 }
 
+/**
+ * CHECKIN §J6 (플래그 heroCards · 실험실): 영웅 카드 덱 — 맨 위 고정(자리 · 역할 · 조합 · 추천 전투력 막대 · [추천 편성][출발!]) + 카드 격자
+ *  5번째 자리 조건은 자리 줄 끝의 잠긴 칸(🔒)을 눌렀을 때 (firstFlowFix와 같게)
+ */
+function openPartyCards(q: Quest, picked: number[], list: Actor[], sel: Actor[], info: ReturnType<typeof partyInfo> | null, tips: ReturnType<typeof powerTips>, pmin: number, block: (a: Actor) => string | null) {
+  const max = partyMax();
+  const rate = info ? (q.tutorial ? '100%' : pct(info.success)) : '—';
+  const cfg: DeckCfg = {
+    where: 'exp',
+    pool: list,
+    sel,
+    max,
+    block,
+    extra: (a) => mentorBadge(a, sel),
+    lockCell: P.meta.slot5 ? '' : '<span class="pty-slot lock" id="pSlot5" role="button" tabindex="0" title="5번째 자리">🔒</span>',
+    power: info?.power ?? 0,
+    rec: q.power,
+    info: `성공률 <b class="${info ? (info.power < q.power ? 'bad' : 'good') : ''}">${rate}</b> · ${sel.length}/${max}명 · ${durText(info ? info.minutes : q.minutes)}${info && info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''}`,
+    synWhere: 'exp',
+    recId: list.length ? 'pRec' : undefined,
+    recWhy: recWhy.q === q.id ? recWhy.text : '',
+    go: `<button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
+    empty: '단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요',
+  };
+  const opened = P.meta.slot5 && !P.meta.slot5Seen ? slot5Banner() : '';
+  openWin(
+    questName(q),
+    `${deckTopHtml(cfg)}${opened}${tagLine(q.tag, sel)}
+    ${deckGridHtml(cfg)}<p class="sub">파티 ${pmin}~${max}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
+    ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}`,
+  );
+  const s5 = document.getElementById('pSlot5');
+  if (s5) s5.onclick = () => toast(slot5Text());
+  bindDeck(
+    cfg,
+    (id) => keepScroll(() => openParty(q, picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])),
+    () => openParty(q, picked),
+  );
+  bindParty(q, picked, list, sel);
+}
+
 function bindParty(q: Quest, picked: number[], list: Actor[], sel: Actor[]) {
   const reg = regionById(q.region);
   $$('.pm').forEach(
@@ -277,6 +323,7 @@ function bindParty(q: Quest, picked: number[], list: Actor[], sel: Actor[]) {
       if (!best) return toast('보낼 수 있는 단골이 없어요');
       recWhy = { q: q.id, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(q.power)}`, ids: best.members.map((m) => m.id).sort().join(',') };
       trackEv('party_recommend', { where: 'expedition', action: 'use', n: best.members.length });
+      if (vis('heroCards')) deckGlow(best.members.map((m) => m.id));
       keepScroll(() => openParty(q, best.members.map((m) => m.id)));
     };
   $('#pGo').onclick = () => {

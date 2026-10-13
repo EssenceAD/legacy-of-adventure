@@ -10,7 +10,7 @@ import { submitRecord as submitOnline } from '../net/sync';
 import { gainXp, powerOf } from './adventurers';
 import { partyChemMult } from './chem';
 import { queueEvent } from './events';
-import { regionUnlocked } from './expeditions';
+import { partyEligible, regionUnlocked } from './expeditions';
 import { addRep, today, track } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type RaidRecord } from './state';
 import { addEmber, ownerGain, raidDmgMult, tieRaid } from './owner';
@@ -149,9 +149,11 @@ export function maybeWander(region: RegionId): BossDef | null {
 
 // ───────── 파티 · 기대 피해량 ─────────
 
-/** 토벌에 갈 수 있는 손님 (단골·영웅·전설, 원정 중 아님, 체력 30 이상) */
+/** 토벌에 갈 수 있는 손님 (단골·영웅·전설, 원정 중 아님, 체력 30 이상) · J6 partyRulesV2: 방문 중인 전설(동행)도 */
 export const raidCrew = () =>
-  homeActors().filter((a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero') && a.runId == null && a.hp >= CONFIG.expedition.minHp);
+  homeActors().filter(
+    (a) => !a.role && !a.leaving && (a.status === 'regular' || a.status === 'hero' || (flag('partyRulesV2') && partyEligible(a))) && a.runId == null && a.hp >= CONFIG.expedition.minHp,
+  );
 
 export interface RaidExpect {
   power: number;
