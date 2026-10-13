@@ -46,6 +46,7 @@ import { openSmith } from './smith';
 import { craftMax } from '../world/bulk';
 import { enhanceBossCost, enhanceCost, smithObj } from '../world/craft';
 import type { Item } from '../world/state';
+import { taperLine } from './goldsink';
 
 const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
@@ -93,7 +94,7 @@ export function openHunt(region?: RegionId) {
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap" style="--rc:${themeOf(curRegion).band}">${cells}</div>
     <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
-    <p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
+    ${taperLine()}<p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
   );
   $$('[data-r]').forEach(
@@ -628,13 +629,14 @@ export function deepDefeat(finalRaid = false): boolean {
 }
 
 /** 한 판 끝: 보상 · 기록 → 결과 카드 HTML (전투 화면 · 접은 판 · 다시 켰을 때 정산 공통) */
-function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult): string {
+function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, folded = !!P.hunt.folded): string {
   queueEvent(() => void checkSlot5(), 'slot5');
   P.hunt.folded = null;
   trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
   const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
   // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
-  const out = res.win ? clearStage(r, s, ms, 1 + bonus, false) : failStage(r, s, ms);
+  // GOLDSINK §4: 접어 둔 판은 자동 사냥과 같은 하루 판 수로 센다
+  const out = res.win ? clearStage(r, s, ms, 1 + bonus, false, folded) : failStage(r, s, ms);
   out.items.push(...res.items);
   for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
   markAdventured(ms);
@@ -735,7 +737,7 @@ export function settleFolded(): boolean {
   const ms = fo.members.map((id) => huntCrew().find((a) => a.id === id)).filter(Boolean) as Actor[];
   if (!ms.length || !REGIONS.some((x) => x.id === r)) return false;
   const res = runHeadless(r, fo.stage, ms);
-  const html = settleHunt(r, fo.stage, ms, res);
+  const html = settleHunt(r, fo.stage, ms, res, true);
   openWin('사냥 결과 (접어 둔 판)', `<div class="res huntres">${html}</div>`);
   bindResult($('#winB'), r, fo.stage, ms, closeWin);
   dropFanfare(lastLoot);

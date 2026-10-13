@@ -33,8 +33,8 @@ import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
 import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
 import { closeWin, openWin, toast } from './windows';
+import { afterPaidRefresh, bindFavors, favorIntro, favorsHtml, refreshBtn, refreshHint } from './goldsink';
 
-const E = CONFIG.expedition;
 const TIER = CONFIG.expedition.tierNames;
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -64,17 +64,39 @@ addEventListener('click', (e) => {
   if ((e.target as HTMLElement)?.closest?.('[data-goboard]')) openBoard();
 });
 
+/** GOLDSINK §5: 게시판 탭 (0 의뢰 · 1 마을 부탁) */
+let boardTab = 0;
+const boardTabs = () =>
+  `<div class="tabs" id="bdT"><button class="tab ${boardTab ? '' : 'on'}" data-bt="0">오늘의 의뢰</button><button class="tab ${boardTab ? 'on' : ''}" data-bt="1">📜 마을 부탁</button></div>`;
+function bindBoardTabs() {
+  $$('[data-bt]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const t = +b.dataset.bt!;
+        if (t === boardTab) return;
+        if (t === 1) favorIntro(() => openBoard(1));
+        else openBoard(0);
+      }),
+  );
+}
+
 /** 의뢰 게시판 */
-export function openBoard() {
+export function openBoard(tab?: number) {
   checkSlot5();
   if (S.visiting) return toast('이웃 마을에선 원정을 못 보내요');
+  if (tab != null) boardTab = tab;
+  if (boardTab === 1) {
+    openWin('원정 · 의뢰 게시판', `${boardTabs()}${favorsHtml()}`);
+    bindBoardTabs();
+    bindFavors(() => openBoard(1));
+    return;
+  }
   ensureQuests();
   // 핫픽스 11 §9-1: 돌아온 파티(보고서) 먼저 → 진행 중은 많이 간 순
   const runs = claimOrder(
     P.runs.filter((r) => !r.claimed),
     (r) => ({ ready: !!r.result, got: false, ratio: (Date.now() - r.start) / Math.max(1, r.end - r.start) }),
   );
-  const free = E.freeRefreshPerDay - P.quests.refreshUsed;
   const pity = REGIONS.filter((_, i) => regionUnlocked(i))
     .map((r) => `<span style="color:${r.color}">${r.name}</span> 전설까지 <b>${pityLimit() - P.pity[r.id]}</b>`)
     .join(' · ');
@@ -94,11 +116,11 @@ export function openBoard() {
     : `<div class="qlock">🔒 토벌전 — 장부 ${featureChapter('raid')}장을 마치면 열려요</div>`;
   openWin(
     '원정 · 의뢰 게시판',
-    `${huntHtml}${raidHtml}
+    `${boardTabs()}${huntHtml}${raidHtml}
     <p class="sub">파티 ${activeRuns().length}/${maxParties()} ${boardLevel() ? `(게시판 Lv.${boardLevel()})` : '· 게시판을 지으면 더 보낼 수 있어요'}</p>
     ${runs.length ? `<div class="runs">${runs.map(runRow).join('')}</div>` : ''}
-    <div class="qhd"><b class="g">오늘의 의뢰</b><button id="qRef" ${free > 0 ? '' : 'disabled'}>새로고침 ${free > 0 ? '(무료)' : '(내일)'}</button></div>
-    <div class="quests">${P.quests.list.map(questRow).join('') || '<p class="note">오늘 의뢰를 다 받았어요 · 내일 아침 새로 붙어요</p>'}</div>
+    <div class="qhd"><b class="g">오늘의 의뢰</b>${refreshBtn()}</div>
+    <div class="quests">${P.quests.list.map(questRow).join('') || '<p class="note">오늘 의뢰를 다 받았어요 · 내일 아침 새로 붙어요</p>'}</div>${refreshHint()}
     ${locked}<p class="note pity">${pity}</p>`,
   );
   $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
@@ -116,11 +138,15 @@ export function openBoard() {
         showReport(P.runs.find((r) => r.id === +b.dataset.run!)!);
       }),
   );
+  bindBoardTabs();
   $('#qRef').onclick = () => {
-    if (refreshQuests()) {
-      markDirty();
-      openBoard();
-    }
+    const k = refreshQuests();
+    if (!k) return toast('금화가 모자라요');
+    markDirty();
+    trackEv('quest_refresh', { kind: k, n: P.gs.refreshPaid });
+    // GOLDSINK §9: 그날 첫 유료 새로고침에 버나드
+    if (k === 'paid') afterPaidRefresh(() => openBoard());
+    else openBoard();
   };
   // 핫픽스 10 §10: 열어 둔 사이 돌아온 파티 → 「보고서 보기」로 바로 바뀌게
   const shown = new Set(runs.filter((r) => r.result).map((r) => r.id));

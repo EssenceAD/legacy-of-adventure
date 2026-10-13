@@ -41,6 +41,7 @@ import { isTalking, talk } from './dialogue';
 import { applyTidy, planTidy } from '../world/tidy';
 import { openGridMenu } from './menu';
 import { achReady, mailWaiting } from '../world/meta';
+import { tickGoldsinkHud } from './goldsink';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -718,6 +719,8 @@ export function tickHud() {
     // 핫픽스 10 (11-3): 판마다 토스트는 끄고 마을 줄 숫자만 · 장비를 얻었거나 레벨업일 때만 토스트
     const hr = autoTick();
     if (hr && (hr.items.length || hr.levelUps.length)) toastHtml(`<img src="${iconSrc('skill_auto')}" alt=""><span>맡겨 둔 사냥 · 금화 +${fmt(hr.gold)}${hr.items.length ? ` · 장비 ${hr.items.length}` : ''}${hr.levelUps.length ? ` · ${esc(hr.levelUps.join(', '))}` : ''}</span>`);
+    // GOLDSINK: 축복 아이콘 · §6 다음 이야기 기다림 한 줄
+    tickGoldsinkHud();
     const st = '★' + stars();
     if ($('#starv').textContent !== st) $('#starv').textContent = st;
     fitDay();
