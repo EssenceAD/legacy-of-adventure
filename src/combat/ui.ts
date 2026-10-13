@@ -10,7 +10,7 @@ import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic } from '../ui/sound';
 import { uiHooks, type Actor, type Item } from '../world/state';
 import { skipFrame } from '../engine/fps';
-import { ACTION_NAME, actionOf, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, type Action } from '../engine/keys';
+import { ACTION_NAME, actionOf, capKey, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, keysShown, type Action } from '../engine/keys';
 import { getPref, setPref } from '../save/save';
 import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, drawVignette, fxLite, labelsOut, loadFx, numsOut, setFxLite, sheets } from './draw';
@@ -750,7 +750,7 @@ function giveUp() {
 }
 /** 버튼 모서리 키캡 글자 (PC에서만 보인다 — CSS) */
 function syncKeycaps() {
-  root?.querySelectorAll<HTMLElement>('kbd.kc').forEach((k) => (k.textContent = keyLabel(keysFor(k.dataset.k as Action)[0])));
+  root?.querySelectorAll<HTMLElement>('kbd.kc').forEach((k) => (k.textContent = keyLabel(capKey(k.dataset.k as Action))));
 }
 const keyCardOpen = () => !!root && !(root.querySelector('#cbKeyCard') as HTMLElement).hidden;
 function hideKeyCard() {
@@ -762,7 +762,7 @@ function showKeyCard(auto: boolean) {
   const c = root.querySelector('#cbKeyCard') as HTMLElement;
   const rows = COMBAT_ACTIONS.filter((a) => a !== 'up' && a !== 'down' && a !== 'left' && a !== 'right' && (a !== 'fold' || !!root!.querySelector('#cbFold')));
   const move = (['up', 'left', 'down', 'right'] as Action[]).map((a) => keyLabel(keysFor(a)[0])).join('');
-  c.innerHTML = `<div class="card px"><b>⌨ 단축키</b><dl><dt>${move} / 방향키</dt><dd>이동</dd>${rows.map((a) => `<dt>${keysFor(a).map(keyLabel).join(' / ')}</dt><dd>${ACTION_NAME[a]}</dd>`).join('')}</dl><p>설정 → 단축키 바꾸기에서 바꿀 수 있어요 · 아무 키나 눌러 닫기</p></div>`;
+  c.innerHTML = `<div class="card px"><b>⌨ 단축키</b><dl><dt>${move} / 방향키</dt><dd>이동</dd>${rows.map((a) => `<dt>${keysShown(a).map(keyLabel).join(' / ')}</dt><dd>${ACTION_NAME[a]}</dd>`).join('')}</dl><p>설정 → 단축키 바꾸기에서 바꿀 수 있어요 · 아무 키나 눌러 닫기</p></div>`;
   c.hidden = false;
   clearTimeout(keyCardT);
   if (auto) keyCardT = window.setTimeout(hideKeyCard, 3000);

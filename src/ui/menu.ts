@@ -44,7 +44,7 @@ import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
 import { setPref } from '../save/save';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
-import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysFor, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
+import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
 const has = (k: string) => (world.home?.objs ?? world.objs).some((o) => o.kind === k && o.build === undefined);
 
@@ -406,7 +406,7 @@ export function openSettings() {
 let keyWait: Action | null = null;
 let keyListen: ((e: KeyboardEvent) => void) | null = null;
 export function openKeys() {
-  const row = (a: Action) => `<button class="stp keyrow ${keyWait === a ? 'cur' : ''}" data-act="${a}"><span style="grid-column:1/3"><b>${ACTION_NAME[a]}</b></span><em>${keyWait === a ? '누를 키…' : keysFor(a).map(keyLabel).join(' / ')}</em></button>`;
+  const row = (a: Action) => `<button class="stp keyrow ${keyWait === a ? 'cur' : ''}" data-act="${a}"><span style="grid-column:1/3"><b>${ACTION_NAME[a]}</b></span><em>${keyWait === a ? '누를 키…' : keysShown(a).map(keyLabel).join(' / ')}</em></button>`;
   openWin(
     '단축키',
     `<p class="sub">바꿀 동작을 누르고, 쓰고 싶은 키를 눌러요 (Esc = 그만두기)</p>

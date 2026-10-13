@@ -1,6 +1,7 @@
 // 핫픽스 12 §5: PC 단축키 — 동작 ↔ 키 (기본값 · 사용자가 바꾼 키는 setPref('keys'))
 //  전투: 이동·공격·구르기·스킬·합동기·동료 바꾸기·AUTO·접기·일시정지 · 마을: 건설·원정·사냥·채팅·메뉴
 import { getPref, setPref } from '../save/save';
+import { flag } from '../world/flags';
 
 export type Action =
   | 'up' | 'down' | 'left' | 'right' | 'attack' | 'dodge' | 's1' | 's2' | 'ult' | 'swap' | 'auto' | 'fold' | 'pause'
@@ -23,6 +24,16 @@ export const VILLAGE_ACTIONS: Action[] = ['build', 'board', 'hunt', 'chat', 'men
 
 let custom: Partial<Record<Action, string>> = getPref<Partial<Record<Action, string>>>('keys', {});
 export const keysFor = (a: Action): string[] => (custom[a] ? [custom[a]!] : DEFAULT_KEYS[a]);
+/** v0.24.4: 키캡·안내에 먼저 보이는 키 — 기본 키면 Space(공격)·Shift(구르기)·1·2·3(스킬1·스킬2·합동기) · 바꾼 키는 그 키 */
+const CAP_PREF: Partial<Record<Action, string>> = { attack: ' ', dodge: 'shift', s1: '1', s2: '2', ult: '3' };
+export function keysShown(a: Action): string[] {
+  const ks = keysFor(a);
+  const c = CAP_PREF[a];
+  if (!flag('keycapLabels') || !c || !ks.includes(c)) return ks;
+  return [c, ...ks.filter((k) => k !== c)];
+}
+/** 키캡 한 글자 (버튼 모서리) */
+export const capKey = (a: Action): string => keysShown(a)[0];
 /** 이 키가 이 묶음(전투·마을)의 어떤 동작인가 */
 export function actionOf(key: string, group: Action[]): Action | null {
   const k = key.toLowerCase();

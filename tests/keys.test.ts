@@ -1,6 +1,6 @@
 // 핫픽스 12 §5: 단축키 — 기본값 · 바꾸기 · 겹침 경고 · 되돌리기
 import { beforeEach, describe, expect, it } from 'vitest';
-import { actionOf, COMBAT_ACTIONS, keyLabel, keysFor, resetKeys, setKey, VILLAGE_ACTIONS } from '../src/engine/keys';
+import { actionOf, capKey, COMBAT_ACTIONS, keyLabel, keysFor, keysShown, resetKeys, setKey, VILLAGE_ACTIONS } from '../src/engine/keys';
 
 describe('단축키', () => {
   beforeEach(() => resetKeys());
@@ -32,5 +32,18 @@ describe('단축키', () => {
     expect(keyLabel(' ')).toBe('Space');
     expect(keyLabel('escape')).toBe('Esc');
     expect(keyLabel('u')).toBe('U');
+  });
+  it('v0.24.4 키캡 = 실제로 눌리는 키: Space 공격 · Shift 구르기 · 1·2·3 스킬1·스킬2·합동기', () => {
+    const want = { attack: ' ', dodge: 'shift', s1: '1', s2: '2', ult: '3' } as const;
+    for (const [a, k] of Object.entries(want)) {
+      expect(capKey(a as never)).toBe(k);
+      expect(actionOf(k, COMBAT_ACTIONS)).toBe(a);
+      expect(keysShown(a as never).sort()).toEqual([...keysFor(a as never)].sort());
+    }
+    expect(['attack', 'dodge', 's1', 's2', 'ult'].map((a) => keyLabel(capKey(a as never)))).toEqual(['Space', 'Shift', '1', '2', '3']);
+    // 바꾼 키는 그 키가 키캡에
+    setKey('s1', 'q');
+    expect(capKey('s1')).toBe('q');
+    expect(actionOf('q', COMBAT_ACTIONS)).toBe('s1');
   });
 });
