@@ -126,7 +126,7 @@ export function openBoard(tab?: number) {
     <div class="quests">${P.quests.list.map(questRow).join('') || '<p class="note">오늘 의뢰를 다 받았어요 · 내일 아침 새로 붙어요</p>'}</div>${refreshHint()}
     ${locked}<p class="note pity">${pity}</p>`,
   );
-  $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!)));
+  $$('.quest').forEach((b) => (b.onclick = () => openParty(P.quests.list.find((q) => q.id === +b.dataset.q!)!, [], true)));
   $$('[data-log]').forEach((b) => (b.onclick = () => openRunLog(P.runs.find((r) => r.id === +b.dataset.log!)!)));
   const rh = document.getElementById('rHunt');
   if (rh) rh.onclick = () => openHunt();
@@ -189,9 +189,14 @@ function bindBoardLine() {
 
 // ───────── 파티 고르기 ─────────
 
-function openParty(q: Quest, picked: number[] = []) {
-  const reg = regionById(q.region);
+function openParty(q: Quest, picked: number[] = [], fresh = false) {
   const list = crew().sort((a, b) => powerOf(b) - powerOf(a));
+  // CHECKIN §B-2: 첫 원정(튜토리얼 의뢰)은 추천 편성을 미리 골라 둔다 — 바로 [출발!]
+  const ff = vis('firstFlowFix');
+  if (ff && fresh && q.tutorial && !picked.length) {
+    const best = recommendParty(list.filter((a) => !canSend(a)), { power: q.power, region: q.region, min: partyMinFor(q), max: partyMax(), tag: q.tag });
+    if (best) picked = best.members.map((m) => m.id);
+  }
   const sel = list.filter((a) => picked.includes(a.id));
   const info = sel.length ? partyInfo(sel, q) : null;
   const short = info && info.power < q.power;
@@ -204,6 +209,7 @@ function openParty(q: Quest, picked: number[] = []) {
     })
     .join('');
   const pmin = partyMinFor(q);
+  if (ff) return openPartyFF(q, picked, list, sel, info, tips, rows, pmin);
   openWin(
     questName(q),
     `${slot5Banner()}<p class="sub">파티 ${pmin}~${partyMax()}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
@@ -218,6 +224,44 @@ function openParty(q: Quest, picked: number[] = []) {
     ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
     <button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
   );
+  bindParty(q, picked, list, sel);
+}
+
+/**
+ * CHECKIN §B-2 (플래그 firstFlowFix): 맨 위 = [추천 편성] · 성공률 · [출발!]
+ *  5번째 자리 조건은 맨 위 안내 대신 자리 줄의 잠긴 칸(🔒)을 눌렀을 때만
+ */
+function openPartyFF(q: Quest, picked: number[], list: Actor[], sel: Actor[], info: ReturnType<typeof partyInfo> | null, tips: ReturnType<typeof powerTips>, rows: string, pmin: number) {
+  const short = info && info.power < q.power;
+  const rate = info ? (q.tutorial ? '100%' : pct(info.success)) : '—';
+  const reason = recWhy.q === q.id ? recWhy.text : '';
+  const max = partyMax();
+  const cells: string[] = [];
+  for (let i = 0; i < max; i++) cells.push(sel[i] ? `<span class="pty-slot on"><img src="${pic(sel[i])}" alt=""></span>` : '<span class="pty-slot"></span>');
+  if (!P.meta.slot5) cells.push('<span class="pty-slot lock" id="pSlot5" role="button" tabindex="0" title="5번째 자리">🔒</span>');
+  const opened = P.meta.slot5 && !P.meta.slot5Seen ? slot5Banner() : '';
+  openWin(
+    questName(q),
+    `<div class="recb ffTop">${list.length ? '<button class="bigbtn sm" id="pRec">추천 편성</button>' : ''}<small>성공률 <b class="${info ? (short ? 'bad' : 'good') : ''}">${rate}</b> · ${sel.length}/${max}명</small><button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button></div>
+    ${reason ? `<p class="note">${esc(reason)}</p>` : ''}${opened}<div class="pty-slots">${cells.join('')}</div>
+    <p class="sub">파티 ${pmin}~${max}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
+    ${tagLine(q.tag, sel)}${roleRow(sel)}${synRow(sel, list.filter((a) => !canSend(a)), max, 'exp')}
+    <div class="plist">${rows || '<p class="note">단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요</p>'}</div>
+    <div class="psum">${
+      info
+        ? `파티 전투력 <b class="${short ? 'bad' : 'good'}">${fmt(info.power)}</b> / ${fmt(q.power)}${info.chem > 1 ? ` · 케미 ×${info.chem.toFixed(2)}` : ''} · 걸리는 시간 ${durText(info.minutes)}`
+        : '함께 갈 손님을 골라요'
+    }</div>
+    ${chemLine(sel)}
+    ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}`,
+  );
+  const s5 = document.getElementById('pSlot5');
+  if (s5) s5.onclick = () => toast(slot5Text());
+  bindParty(q, picked, list, sel);
+}
+
+function bindParty(q: Quest, picked: number[], list: Actor[], sel: Actor[]) {
+  const reg = regionById(q.region);
   $$('.pm').forEach(
     (b) =>
       (b.onclick = () => {
@@ -342,8 +386,9 @@ function slot5Banner(): string {
     markDirty();
     return '<p class="cen good slot5">✨ 5번째 자리 열림!</p>';
   }
-  return `<p class="note">폐광 의뢰 3번 성공 또는 폐광 사냥터 1-10 돌파 → 원정 5번째 자리 (지금 폐광 성공 ${Math.min(3, P.counters.regionWins.mine ?? 0)}/3)</p>`;
+  return `<p class="note">${slot5Text()}</p>`;
 }
+const slot5Text = () => `폐광 의뢰 3번 성공 또는 폐광 사냥터 1-10 돌파 → 원정 5번째 자리 (지금 폐광 성공 ${Math.min(3, P.counters.regionWins.mine ?? 0)}/3)`;
 
 function showLoot(run: Run) {
   const res = run.result;
@@ -359,7 +404,7 @@ function showLoot(run: Run) {
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
     ${res.newChem.length ? `<p class="sub heart">새 케미 발견! ${res.newChem.map(esc).join(', ')}</p>` : ''}
     ${res.chemUps?.length ? `<p class="sub heart">${res.chemUps.map(esc).join(' · ')}</p>` : ''}
-    <button class="bigbtn" id="repOk">받기</button>`,
+    <button class="bigbtn" id="repOk">${vis('firstFlowFix') ? '확인' : '받기'}</button>`,
   );
   dropFanfare(res.items);
   $('#repOk').onclick = () => {

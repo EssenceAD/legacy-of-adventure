@@ -30,7 +30,8 @@ import { favRank, guestHint, isFav, sortGuests, toggleFav } from '../world/growt
 import { getPref, setPref } from '../save/save';
 import { uniqueById } from '../world/uniques';
 import { enhMsg, enhUse, openEnhance } from './enhance';
-import { closeWin, openWin, toast } from './windows';
+import { closeWin, glowOnce, openWin, toast } from './windows';
+import { equipCandidates } from '../world/firstFlow';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -48,6 +49,21 @@ function regLine(a: Actor): string {
 }
 let gTab = 0;
 let gSort = 0;
+/** CHECKIN §B-3: 이번 한 번 그릴 때 반짝일 사람 (장비 임무 바로가기) */
+let sparkIds: number[] = [];
+/** CHECKIN §B-3 장비 임무 바로가기: 늘 「단골」 탭 · 가방의 희귀 이상 장비를 낄 수 있는 사람에 반짝 3초 */
+export function openGuestsEquip() {
+  gTab = 0;
+  const can = equipCandidates(homeActors(), P.bag, fitsClass);
+  // 전투력이 오르는 사람(장비마다 상위 3명)이 있으면 그 사람만 · 없으면 낄 수 있는 사람 모두
+  const best = new Set(P.bag.filter((it) => it.owner == null && it.grade !== 'n').flatMap((it) => whoWears(it, 3).map((w) => w.a.id)));
+  sparkIds = can.some((id) => best.has(id)) ? can.filter((id) => best.has(id)) : can;
+  try {
+    openGuests();
+  } finally {
+    sparkIds = [];
+  }
+}
 const SORTS = ['레벨', '전투력', '희귀도'];
 
 export function openGuests() {
@@ -101,6 +117,7 @@ export function openGuests() {
       keepScroll(openGuests);
     };
   $$('.glist button').forEach((b) => (b.onclick = () => showActor(all.find((a) => a.id === +b.dataset.id!)!)));
+  for (const id of sparkIds) glowOnce(document.querySelector<HTMLElement>(`.glist button[data-id="${id}"]`), CONFIG.firstFlow.equipGlowMs);
   $$('[data-pick]').forEach(
     (b) =>
       ((b as HTMLInputElement).onchange = () => {

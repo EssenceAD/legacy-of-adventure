@@ -72,6 +72,8 @@ export const FLAG_DEFAULTS = {
   mythicGuide: false,
   /** v0.25.2 버그: 방문 중인 전설도 의뢰·사냥 파티에 「동행 · 방문 중」으로 (루나 부탁) — 단골 자리엔 안 셈 · 다녀와도 방문객 · 방문 시간은 계속 흐름 */
   legendCompanion: true,
+  /** v0.25.2 CHECKIN §B 첫 30분 동선 — 실험실(기본 꺼짐 · 「새 화면 미리 보기」로 켬 · 형철 OK 뒤 true): 임무 건설 대상 맨 위+반짝 · 원정 파티 맨 위 추천·성공률·출발(5번째 자리 설명은 잠긴 칸 눌러야) · 장비 임무는 늘 단골 탭+반짝 · 보고서 버튼 「확인」 */
+  firstFlowFix: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

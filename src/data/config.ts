@@ -1214,6 +1214,8 @@ export const CONFIG = {
   dice: { goal: 3000, aiStop: 500, base: 1000, mults: [1, 2, 5, 10], cut: 0.1, tieWin: 2, streakGoal: 10, winLineEvery: 10, aiStepMs: 650 },
   /** CHECKIN §A2 「모아 보기」(플래그 storyInbox): 곁이야기가 하루(현실 날짜)에 저절로 뜨는 최대 수 · 모아 둔 단골 제안이 유효한 게임 시간(지나면 손님이 조용히 떠남) */
   storyInbox: { autoPerDay: 2, propHoldHours: 24 },
+  /** CHECKIN §B 첫 30분 동선: 임무로 연 건설 창의 대상 건물 반짝 테두리(ms) · 장비 임무 바로가기의 장착 가능한 사람 반짝(ms) */
+  firstFlow: { glowMs: 3000, equipGlowMs: 3000 },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,
