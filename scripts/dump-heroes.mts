@@ -38,9 +38,15 @@ async function sheets() {
       w.CL = await import('/src/data/classes.ts');
       w.IT = await import('/src/data/items.ts');
       w.OR = await import('/src/data/origins.ts');
+      w.LG = await import('/src/data/legends.ts');
+      w.HR = await import('/src/data/heroes.ts');
     });
     savePng(`${OUT}/classes.png`, await p.evaluate(classesSheet));
     savePng(`${OUT}/guests.png`, await p.evaluate(guestsSheet));
+    savePng(`${OUT}/legends.png`, await p.evaluate(legendsSheet));
+    const lt = await p.evaluate(measureNamed);
+    fs.writeFileSync(`${OUT}/timing_named.json`, JSON.stringify(lt, null, 2));
+    console.error('전설·영웅 첫 생성(ms):', JSON.stringify(lt));
     const timing = await p.evaluate(measure);
     fs.writeFileSync(`${OUT}/timing.json`, JSON.stringify(timing, null, 2));
     console.error('첫 생성 시간(ms, 끔·켬 번갈아 30회 중앙값):', JSON.stringify(timing));
@@ -190,6 +196,101 @@ function guestsSheet(): string {
   return cv.toDataURL('image/png');
 }
 
+/** 페이지 안: 전설 14 · 영웅 10 — 초상화 · 지금 도트 · 새 도트(서기·걷기·뒤·신화) · 시그니처 동작 · 공격 궤적 (4배) */
+async function legendsSheet(): Promise<string> {
+  const w = window as any;
+  const { buildFrom } = w.SP;
+  const { setFlag } = w.FL;
+  const { CLASSES } = w.CL;
+  const { LEGENDS } = w.LG;
+  const { HEROES } = w.HR;
+  const mk = (kind: string, race: string, hair: string, named: string, mythic = false) => {
+    const b = CLASSES[kind];
+    return { ...b, face: { ...b.face }, elf: race === 'elf', dwarf: race === 'dwarf' || race === 'halfling', beard: race === 'dwarf' ? hair : undefined, hair, named, mythic };
+  };
+  const rows: { name: string; key: string; pic: string; def: any; legend: boolean }[] = [
+    ...LEGENDS.map((l: any) => ({ name: `${l.name} · ${l.title}`, key: l.key, pic: `/assets/portraits/legend_${l.key}.png`, def: mk(l.kind, l.race, l.hair, l.key), legend: true })),
+    ...HEROES.map((h: any) => ({ name: `${h.name} · ${h.title}`, key: h.id, pic: `/assets/portraits/hero_${h.id}.png`, def: mk(h.kind, h.race, h.hair, h.id), legend: false })),
+  ];
+  const load = (src: string) => new Promise<HTMLImageElement | null>((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  const S = 4;
+  const CH = 35 * S;
+  const RH = CH + 30;
+  const cols = ['초상화', '지금', '새 서기', '새 걷기', '새 뒤', '신화', '동작1', '동작2', '동작3', '동작4', '공격 궤적'];
+  const CW = 26 * S + 10;
+  const PW = CH;
+  const cv = document.createElement('canvas');
+  cv.width = 220 + PW + 10 + (cols.length - 1) * CW;
+  cv.height = 40 + rows.length * RH;
+  const x = cv.getContext('2d')!;
+  x.imageSmoothingEnabled = false;
+  x.fillStyle = '#1b1622';
+  x.fillRect(0, 0, cv.width, cv.height);
+  x.font = '600 15px sans-serif';
+  x.fillStyle = '#f3e7c9';
+  cols.forEach((n, i) => x.fillText(n, 220 + (i === 0 ? 0 : PW + 10 + (i - 1) * CW) + 4, 26));
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    const y0 = 40 + r * RH;
+    x.fillStyle = r % 2 ? '#211b2b' : '#1e1828';
+    x.fillRect(0, y0, cv.width, RH - 4);
+    x.fillStyle = row.legend ? '#ffd36b' : '#cfd8ff';
+    x.fillText(row.name, 10, y0 + RH / 2);
+    x.fillText(row.legend ? '전설' : '영웅', 10, y0 + RH / 2 + 20);
+    const im = await load(row.pic);
+    if (im) x.drawImage(im, 220, y0 + 4, PW, PW);
+    const put = (fr: HTMLCanvasElement | undefined, col: number) => {
+      if (!fr) return;
+      const X0 = 220 + PW + 10 + (col - 1) * CW;
+      x.fillStyle = '#2a2236';
+      x.fillRect(X0, y0 + 4, 26 * S, CH);
+      x.fillStyle = '#3a3048';
+      x.fillRect(X0, y0 + 4 + CH - 3 * S, 26 * S, 1);
+      x.drawImage(fr, X0 + (26 - fr.width) * S / 2, y0 + 4 + CH - fr.height * S, fr.width * S, fr.height * S);
+    };
+    setFlag('heroDotV2', false);
+    put(buildFrom({ ...row.def }).idle[0], 1);
+    setFlag('heroDotV2', true);
+    const f = buildFrom({ ...row.def });
+    put(f.idle[0], 2);
+    put(f.walk[0], 3);
+    put(f.idleB[0], 4);
+    if (row.legend) put(buildFrom({ ...row.def, mythic: true }).idle[0], 5);
+    (f.sig ?? []).forEach((s: HTMLCanvasElement, i: number) => put(s, 6 + i));
+    put(f.cb().atk[1], 10);
+  }
+  setFlag('heroDotV2', false);
+  return cv.toDataURL('image/png');
+}
+
+/** 페이지 안: 전설·영웅 첫 생성 시간 (끔·켬 번갈아 20회 중앙값) */
+function measureNamed() {
+  const w = window as any;
+  const { buildFrom } = w.SP;
+  const { setFlag } = w.FL;
+  const { CLASSES } = w.CL;
+  const { LEGENDS } = w.LG;
+  const { HEROES } = w.HR;
+  const list = [...LEGENDS.map((l: any) => [l.key, l.kind, l.race, l.hair]), ...HEROES.map((h: any) => [h.id, h.kind, h.race, h.hair])];
+  const out: Record<string, { before: number; after: number; ratio: number }> = {};
+  for (const [key, kind, race, hair] of list) {
+    const xs: Record<string, number[]> = { before: [], after: [] };
+    for (let i = 0; i < 24; i++)
+      for (const on of [false, true]) {
+        setFlag('heroDotV2', on);
+        const b = CLASSES[kind];
+        const d = { ...b, face: { ...b.face }, elf: race === 'elf', dwarf: race === 'dwarf' || race === 'halfling', hair, named: key, weaponColor: '#' + (0x100000 + i * 7771).toString(16).slice(0, 6) };
+        const t0 = performance.now();
+        buildFrom(d).cb();
+        if (i >= 4) xs[on ? 'after' : 'before'].push(performance.now() - t0);
+      }
+    const med = (a: number[]) => (a.sort((p, q) => p - q), Math.round(a[a.length >> 1] * 100) / 100);
+    out[key] = { before: med(xs.before), after: med(xs.after), ratio: Math.round((med(xs.after) / med(xs.before)) * 100) / 100 };
+  }
+  setFlag('heroDotV2', false);
+  return out;
+}
+
 /** 페이지 안: 첫 생성 시간 (마을 프레임 + 전투 프레임 모두 · 캐시 없이 새 겉모습) · 끔/켬 번갈아 30회 중앙값 */
 function measure() {
   const w = window as any;
@@ -223,6 +324,8 @@ async function village() {
   const ICA = process.env.ICA ?? 'C:/Users/choly/AppData/Local/Temp/claude/C--Users-choly/aeed0df9-0ecc-49a1-923e-e1b70684cfba/scratchpad/gs3/save_03.json';
   const SAVES = ([['ttabam', '따밤', 'tests/fixtures/real_ttabam.json'], ['woongs', '웅스', 'tests/fixtures/real_woongs.json'], ['ikamolly', '이카몰리', ICA]] as const).filter(([, , p]) => fs.existsSync(p));
   const ONLY = process.env.ONLY;
+  // STAGE=1: 따밤 마을 여관 앞에 전설 몇 명(엘리시아는 신화) + 이름 있는 영웅을 세워 찍는다 → village_legends_*
+  const STAGE = !!process.env.STAGE;
   const b = await chromium.launch({ channel: 'chrome' });
   const VER = await (async () => {
     const c = await b.newContext();
@@ -233,6 +336,7 @@ async function village() {
   const errs: string[] = [];
   for (const [id, who, file] of SAVES) {
     if (ONLY && ONLY !== id) continue;
+    if (STAGE && id !== 'ttabam') continue;
     const sv = JSON.parse(fs.readFileSync(file, 'utf8'));
     for (const night of [false, true]) {
       const save = JSON.stringify(night ? { ...sv, clock: 17 * 60, night: true } : { ...sv, clock: 6 * 60, night: false });
@@ -269,8 +373,8 @@ async function village() {
           const p = await ctx.newPage();
           p.on('pageerror', (e) => errs.push(`${id} ${width} ${on ? '켬' : '끔'}: ${String(e).slice(0, 160)}`));
           try {
-            (shots[`${width}`] ??= {})[on ? 'on' : 'off'] = await townShot(p);
-            if (!night) (shots['hunt' + width] ??= {})[on ? 'on' : 'off'] = await huntShot(p);
+            (shots[`${width}`] ??= {})[on ? 'on' : 'off'] = await townShot(p, STAGE);
+            if (!night && !STAGE) (shots['hunt' + width] ??= {})[on ? 'on' : 'off'] = await huntShot(p);
           } catch (e) {
             errs.push(`${id} ${night ? '밤' : '낮'} ${width} 못 찍음: ${String(e).slice(0, 120)}`);
           }
@@ -279,8 +383,8 @@ async function village() {
       }
       const tag = night ? 'night' : 'day';
       for (const width of [412, 1280]) {
-        await pair(b, `village_${id}_${tag}_${width}`, `${who} 마을 · ${night ? '밤' : '낮'} · 폭 ${width}`, shots[`${width}`]);
-        if (!night) await pair(b, `hunt_${id}_${width}`, `${who} · 사냥 필드 (숲 1-10) · 폭 ${width}`, shots[`hunt${width}`]);
+        await pair(b, `village_${STAGE ? 'legends' : id}_${tag}_${width}`, `${who} 마을 · ${night ? '밤' : '낮'} · 폭 ${width}${STAGE ? ' · 전설·영웅 세움 (엘리시아 = 신화)' : ''}`, shots[`${width}`]);
+        if (!night && !STAGE) await pair(b, `hunt_${id}_${width}`, `${who} · 사냥 필드 (숲 1-10) · 폭 ${width}`, shots[`hunt${width}`]);
       }
     }
   }
@@ -288,7 +392,37 @@ async function village() {
   console.error(errs.length ? '✗ 오류:\n' + errs.join('\n') : '✓ 오류 0');
 }
 
-async function townShot(p: Page): Promise<Buffer> {
+/** 여관 앞에 전설·영웅 세우기 (개발용 전역 __arrive · __mythic) */
+async function stageNamed(p: Page) {
+  await p.evaluate(() => {
+    const w = window as any;
+    const o = w.__world.objs.find((x: any) => x.kind === 'inn');
+    const cx = o.tx + o.fw / 2;
+    const cy = o.ty + o.fh + 1.5;
+    const L: [string, string, string, string, string, string?][] = [
+      ['elysia', '엘리시아', 'knight', 'human', '#f3e08a'],
+      ['nyx', '닉스', 'rogue', 'human', '#2a2030'],
+      ['luna', '루나', 'rogue', 'halfling', '#e8ecf4'],
+      ['scarlet', '스칼렛', 'mage', 'human', '#d8402a'],
+      ['grom', '그롬', 'dwarf', 'human', '#5a3424'],
+      ['kael', '카엘', 'knight', 'human', '#b03a2a', 'hero'],
+    ];
+    w.__mythic.seed('elysia');
+    const st = w.__P.story;
+    st.mythic = { ...(st.mythic ?? {}), elysia: { ...(st.mythic?.elysia ?? {}), met: true } };
+    L.forEach(([key, name, kind, race, hair, hero], i) => {
+      const a = w.__arrive('visitor');
+      if (!a) return;
+      Object.assign(a, { kind, race, hair, name, face: undefined, rarity: 'legend', path: null, st: 'idle', back: false, dir: i % 2 ? -1 : 1, pop: 0, fading: undefined });
+      if (hero) a.heroId = key;
+      else a.legendId = key;
+      a.x = cx - 2.5 + (i % 3) * 2.2;
+      a.y = cy + Math.floor(i / 3) * 1.6;
+    });
+  });
+}
+
+async function townShot(p: Page, stage = false): Promise<Buffer> {
   const W = (ms: number) => p.waitForTimeout(ms);
   await p.goto(process.env.URL ?? 'http://localhost:4331/', { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => !!(window as any).__S, null, { timeout: 30000 });
@@ -309,6 +443,10 @@ async function townShot(p: Page): Promise<Buffer> {
     if (o) w.__game.focusTile(o.tx + o.fw / 2, o.ty + o.fh / 2 + 2);
   });
   await W(1800);
+  if (stage) {
+    await stageNamed(p);
+    await W(450);
+  }
   return await p.screenshot();
 }
 

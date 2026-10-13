@@ -54,6 +54,9 @@ export interface ClassDef {
   dot2?: 'knight' | 'cleric' | 'rogue' | 'mage' | 'dwarf' | 'hunter' | 'keeper' | 'post' | 'hero';
   /** HERODOT 새 도트 앞치마 색 (나: 기준 그림의 초록 앞치마 · 있으면 셔츠는 arm 색) */
   apron2?: string;
+  /** HERODOT 3: 전설(legendId)·이름 있는 영웅(heroId) 고정 겉모습 열쇠 · 신화 (heroDotV2 켰을 때 appearance()가 넣는다) */
+  named?: string;
+  mythic?: boolean;
 }
 
 export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'hunter' | 'keeper' | 'post' | 'hero';

@@ -113,3 +113,73 @@ describe('HERODOT heroDotV2 켬', () => {
 });
 
 const BEFORE: Record<string, string> = { knight: 'b703f086838d1fa5', cleric: '4bb8d42d2698ad20', rogue: '7104d9090fe97940', mage: '91b2669581fb93f2', dwarf: 'f66f6cbe5a6fcf48', hunter: 'b04b406be0c62932', keeper: 'abe132f9ea146602', post: '52913e05621bb701', hero: '567fc3d6be87c8e1', owner: 'f680cab19f283f25' };
+
+// ───────── 3단계: 전설 14 · 이름 있는 영웅 10 (appearance()와 같은 방식으로 만든 겉모습) ─────────
+const namedDefs = async (): Promise<[string, ClassDef][]> => {
+  const { LEGENDS } = await import('../src/data/legends');
+  const { HEROES } = await import('../src/data/heroes');
+  const mk = (kind: ClassKey, race: string, hair: string, named: string, mythic = false): ClassDef => {
+    const b = CLASSES[kind];
+    return { ...b, face: { ...b.face }, elf: race === 'elf', dwarf: race === 'dwarf' || race === 'halfling', beard: race === 'dwarf' ? hair : undefined, hair, named, mythic } as ClassDef;
+  };
+  return [
+    ...LEGENDS.map((l) => [l.key, mk(l.kind, l.race, l.hair, l.key)] as [string, ClassDef]),
+    ...LEGENDS.map((l) => ['M:' + l.key, mk(l.kind, l.race, l.hair, l.key, true)] as [string, ClassDef]),
+    ...HEROES.map((h) => [h.id, mk(h.kind, h.race, h.hair, h.id)] as [string, ClassDef]),
+  ];
+};
+describe('HERODOT 3단계 · 꺼짐 = 예전 그대로', () => {
+  it('전설·신화·영웅 겉모습 해시가 바꾸기 전과 같다', async () => {
+    setFlag('heroDotV2' as never, false);
+    const h = createHash('sha256');
+    const n = await namedDefs();
+    expect(n.length).toBe(38);
+    for (const [k, d] of n) h.update(k + '=' + dump((await framesOf(d)).all));
+    expect(h.digest('hex').slice(0, 16)).toBe(NAMED_BEFORE);
+  });
+});
+const NAMED_BEFORE = '04bb88a9bacd5428';
+
+describe('HERODOT 3단계 · 켬', () => {
+  /** 가장 아래 칠한 줄 (발바닥 외곽선) · 몸 가운데 칸 */
+  const foot = (cv: HTMLCanvasElement) => {
+    const px = PIX.get(cv) ?? [];
+    let low = -1;
+    for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (px[y * cv.width + x]) low = y;
+    return low;
+  };
+  it('전설은 26×35 · 영웅은 24×33 · 시그니처 동작 1~4장 · 발 위치(화면)는 일반과 같다', async () => {
+    setFlag('heroDotV2' as never, true);
+    // 마을 drawActor: y = Y - 32 - (h - 33) → 발 줄 = foot - (h - 33)
+    const footScreen = (cv: HTMLCanvasElement) => foot(cv) - (cv.height - 33);
+    for (const [k, d] of await namedDefs()) {
+      const { f, c } = await framesOf(d);
+      // 같은 겉모습의 일반 손님(이름 표시 없음)과 발 줄이 같아야 한다
+      const base = (await framesOf({ ...d, named: undefined, mythic: undefined })).f.idle[0];
+      const legend = !(await import('../src/engine/named2')).NAMED[d.named!]?.tier.startsWith('h');
+      for (const [n, cv] of [...f.idle, ...f.walk, ...f.walkB, ...f.idleB, ...f.atk, ...c.idle, ...c.atk, ...c.cast, ...c.hurt].entries()) {
+        expect([cv.width, cv.height]).toEqual(legend ? [26, 35] : [24, 33]);
+        expect(footScreen(cv), k + "#" + n).toBe(footScreen(base));
+      }
+      expect(f.sig!.length).toBeGreaterThan(0);
+      expect(f.sig!.length).toBeLessThanOrEqual(4);
+      expect(f.tier).toBe(legend ? (k.startsWith('M:') ? 'mythic' : 'legend') : 'hero');
+      // 순검정 없음
+      expect([...f.idle, ...f.sig!].some((cv) => (PIX.get(cv) ?? []).includes('#000000'))).toBe(false);
+    }
+    setFlag('heroDotV2' as never, false);
+  });
+  it('appearance(): 켜면 전설·영웅 표시 + 열쇠에 이름 · 끄면 예전 열쇠 그대로', async () => {
+    const { appearance } = await import('../src/world/adventurers');
+    const a = { kind: 'rogue', race: 'human', hair: '#2a2030', face: undefined, legendId: 'nyx', equip: {}, stars: 1 } as never;
+    setFlag('heroDotV2' as never, false);
+    const off = appearance(a);
+    expect(off.def.named).toBeUndefined();
+    expect(off.key).not.toContain('N:');
+    setFlag('heroDotV2' as never, true);
+    const on = appearance(a);
+    expect(on.def.named).toBe('nyx');
+    expect(on.key).toBe(off.key + '|N:nyx');
+    setFlag('heroDotV2' as never, false);
+  });
+});

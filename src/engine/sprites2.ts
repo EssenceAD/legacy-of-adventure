@@ -3,6 +3,7 @@
 //  좌표는 예전 drawChar와 같은 그리기 좌표 (Grid(24,33,1,3) · 발바닥 = 27줄)
 import type { ClassDef } from '../data/classes';
 import { dk, Grid, lt, mix, ramp, type GridT } from './pixel';
+import { applyNamed, NAMED, namedArm, namedBehind, namedFront, namedHead, namedOf, namedTrail, shadowStep, telescopeRest, walkGlint, type NCtx } from './named2';
 
 export type Dot2 = 'knight' | 'cleric' | 'rogue' | 'mage' | 'dwarf' | 'hunter' | 'keeper' | 'post' | 'hero';
 
@@ -29,6 +30,9 @@ export interface Pose2 {
   lag?: number;
   /** 마법사 지팡이 구슬 1px 반짝 */
   tw?: number;
+  /** HERODOT 3: 시그니처 동작 번호(1~4) · 걷기 프레임 번호(전설 걸을 때 움직임) */
+  sig?: number;
+  wf?: number;
 }
 
 const SKIN = '#f2c49b';
@@ -44,14 +48,18 @@ const VEIL = '#eef0f8';
 const SHAFT = '#9a6436';
 const HORN = '#efe2c6';
 const HANDLE = '#7a5030';
-const FEATHER = '#3fa58a';
+export const FEATHER = '#3fa58a';
 const STRING = '#efe2c6';
 
 /** 무기 그리기 (예전 weapon() — 도끼·활 같은 다른 무기는 예전 모양을 빌린다) */
 export type WeaponFn = (G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low', frame?: number) => void;
 
-export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: WeaponFn): GridT {
-  const G = Grid(24, 33, 1, 3);
+export function drawChar2(def0: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: WeaponFn): GridT {
+  // HERODOT 3: 전설·이름 있는 영웅은 고정 겉모습 · 전설은 세로 +2 (26×35 · 발 위치는 같은 칸)
+  const L = namedOf(def0);
+  const def = L ? applyNamed(def0, L) : def0;
+  const tall = L?.tier === 'legend' ? 2 : 0;
+  const G = tall ? Grid(26, 35, 2, 5) : Grid(24, 33, 1, 3);
   const SKN = def.skin ?? SKIN;
   const SKN2 = def.skin ? dk(def.skin, 0.18) : '#d99a78';
   const dw = def.dwarf ? 2 : 0;
@@ -59,18 +67,24 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   const b = (pose.bob ?? 0) + sit + dw;
   const lean = pose.hurt ? -1 : 0;
   const hx = 11 + lean;
-  const hy = 6.5 + b;
-  const by = 12 + b;
-  const legTop = 21 + (pose.bob ?? 0) + sit;
+  const hy = 6.5 + b - tall;
+  const by = 12 + b - tall;
+  const legTop = 21 + (pose.bob ?? 0) + sit - (tall ? 1 : 0);
   const back = !!pose.back;
   const robe = !!def.robe;
-  const hood = kind === 'rogue' ? def.hood ?? '#4f8a3a' : null;
+  const classHead = !L || L.head === 'class';
+  const hood = kind === 'rogue' && classHead ? def.hood ?? '#4f8a3a' : null;
+  const capeC = def.hood ?? '#4f8a3a';
+  const rcape = kind === 'rogue' && !L?.noCape;
+  const veil = kind === 'cleric' && classHead;
   const wc = def.weaponColor;
+  const nc: NCtx | null = L ? { G, def, L, kind, pose, hx, hy, by, back, SKN } : null;
 
-  // ── 몸 뒤: 도적 망토 자락 · 사제 베일 뒷자락 ──
-  if (kind === 'rogue' && !back) cape(G, hx, by, hood!, pose, false);
-  if (kind === 'cleric' && !back) veilBack(G, hx, hy, by, def.accent, false);
-  const own = kind === 'knight' || kind === 'cleric' || kind === 'rogue';
+  // ── 몸 뒤: 도적 망토 자락 · 사제 베일 뒷자락 · (전설·영웅) 망토 · 꼬리 · 목도리 ──
+  if (rcape && !back) cape(G, hx, by, capeC, pose, false);
+  if (veil && !back) veilBack(G, hx, hy, by, def.accent, false);
+  if (nc) namedBehind(nc);
+  const own = (kind === 'knight' || kind === 'cleric' || kind === 'rogue') && classHead;
   if (!own && !back) hairBack(G, def, hx, hy, by, pose, false);
   if (kind === 'hunter' && def.quiver !== false && !back && !sit) quiver(G, by, false);
 
@@ -91,7 +105,7 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   if (pose.cast) {
     G.rect(5, by + 1, 2, 3, backArm);
     G.rect(4, by + 3, 2, 2, SKN2);
-  } else if (pose.atk === 1 && kind === 'rogue') {
+  } else if (pose.atk === 1 && kind === 'rogue' && def.dual !== false) {
     G.rect(5, by + 1, 2, 2, backArm);
     G.rect(4, by - 1, 2, 2, SKN2);
     dagger(G, 4, by - 1, 'up', wc, true);
@@ -100,7 +114,7 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   } else {
     G.rect(5, by + 1, 2, 4 + aB, backArm);
     G.rect(5, by + 5 + aB, 2, 2, SKN2);
-    if (kind === 'rogue' && !sit && !pose.eat) dagger(G, 5, by + 5 + aB, pose.atk ? 'low' : 'rest', wc, true);
+    if (kind === 'rogue' && def.dual !== false && !sit && !pose.eat) dagger(G, 5, by + 5 + aB, pose.atk ? 'low' : 'rest', wc, true);
   }
   };
   if (!robe) drawBackArm();
@@ -115,7 +129,7 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   if (!own && back) hairBack(G, def, hx, hy, by, pose, true);
   if (kind === 'hunter' && def.quiver !== false && back && !sit) quiver(G, by, true);
   if (robe) drawBackArm();
-  if (kind === 'cleric' && back) veilBack(G, hx, hy, by, def.accent, true);
+  if (veil && back) veilBack(G, hx, hy, by, def.accent, true);
   if (def.towel) {
     G.rect(7, by, 8, 1, def.towel, 'flat');
     G.rect(13, by + 1, 2, 2, def.towel, 'flat');
@@ -127,8 +141,13 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
   // ── 머리 ──
   G.ell(hx + 0.2, hy, 6.1, 5.6, SKN);
   if (def.beard) G.ell(hx + 0.6, hy + 4.4, 4.6, 3.4, def.beard, null, (_x, y) => y >= hy + 2.4);
-  if (own) headgear(G, def, kind, hx, hy, by, back, hood);
-  else headgear2(G, def, kind, hx, hy, back);
+  // 미미 시그니처 1: 모자가 눈까지 흘러내림
+  const drop = L?.sig === 'hat' && pose.sig === 1 ? 2 : 0;
+  if (classHead) {
+    if (own) headgear(G, def, kind, hx, hy, by, back, hood);
+    else headgear2(G, def, kind, hx, hy + drop, back);
+  }
+  if (nc) namedHead(drop ? { ...nc, hy: hy + drop } : nc);
   // 엘프 귀: 투구·두건 밖으로 뾰족
   if (def.elf) {
     // 엘프 귀: 머리 장비 밖으로 뾰족 (피부 밝게 · 안쪽 1px 어둡게)
@@ -139,7 +158,7 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
     };
     const l = Math.round(hx) - 7;
     const r = Math.round(hx) + 8;
-    if (kind === 'rogue') {
+    if (kind === 'rogue' && hood) {
       // 두건 옆으로 귀 끝만 2px
       ear([[l - 1, 0], [l - 2, -1]], [l - 1, 0]);
       ear([[r, 0], [r + 1, -1]], [r, 0]);
@@ -152,25 +171,31 @@ export function drawChar2(def: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: Wea
     const fl: [number, number, string][] = [];
     for (let y = Math.floor(hy - 4); y <= hy + 6; y++)
       for (let x = Math.floor(hx - 6); x <= hx + 6; x++) {
-        const p = G.g[y + 3]?.[x + 1];
+        const p = G.g[y + G.oy]?.[x + G.ox];
         if (!p || p.c !== SKN || p.tag) continue;
-        const up = G.g[y + 2]?.[x + 1];
-        fl.push([x, y, up && up.c !== SKN ? ramp(SKN, -1) : SKN]);
+        const up = G.g[y - 1 + G.oy]?.[x + G.ox];
+        fl.push([x, y, up && up.c !== SKN ? (L ? mix(SKN, ramp(SKN, -1), 0.45) : ramp(SKN, -1)) : SKN]);
       }
     for (const [x, y, c] of fl) G.set(x, y, c, 'flat');
-    face(G, def, pose, hx, hy, SKN2);
+    if (!drop) face(G, def, pose, hx, hy, SKN2);
   }
   // 전사 수염: 두 갈래로 땋아 가슴까지
-  if (kind === 'dwarf' && def.beard && !back) beardBraids(G, def.beard, def.accent, hx, hy, by);
-  if (kind === 'cleric' && back) veilRim(G, def.accent);
+  if (kind === 'dwarf' && def.beard && !back && !L?.noBraids) beardBraids(G, def.beard, def.accent, hx, hy, by);
+  if (veil && back) veilRim(G, def.accent);
   // 도적 짧은 망토: 앞에서 어깨를 덮는다 (뒤에서는 등 전체)
-  if (kind === 'rogue') {
-    if (back) cape(G, hx, by, hood!, pose, true);
-    else mantle(G, hx, by, hood!, def.accent);
+  if (rcape) {
+    if (back) cape(G, hx, by, capeC, pose, true);
+    else mantle(G, hx, by, capeC, def.accent);
   }
+  if (nc) namedFront(nc);
 
-  // ── 앞쪽 팔 + 손 + 무기 ──
-  frontArm(G, def, kind, pose, by, SKN, oldWeapon);
+  // ── 앞쪽 팔 + 손 + 무기 (시그니처 동작이면 그 자세) ──
+  if (!(nc && namedArm(nc, def.arm))) frontArm(G, def, kind, pose, by, SKN, oldWeapon, nc ? () => namedTrail(nc) : undefined);
+  if (nc && L!.extras.includes('telescope') && !pose.sig && !pose.atk && !pose.cast && !pose.sit && !pose.eat && !pose.pray) telescopeRest(G, by);
+  if (nc) {
+    walkGlint(nc);
+    shadowStep(nc);
+  }
   return G;
 }
 
@@ -213,7 +238,7 @@ function tunic(G: GridT, def: ClassDef, kind: Dot2, hx: number, by: number, legT
   const belt = by + 5;
   G.rect(6, belt, 10, 1, kind === 'knight' ? '#6b4128' : dk(def.accent, 0.35));
   if (!back) G.set(Math.round(hx), belt, def.accent, 'flat');
-  if (kind === 'knight' && !back) {
+  if (kind === 'knight' && !back && !def.named) {
     // 금 십자 (가슴 가운데)
     const cx = Math.round(hx);
     G.rect(cx, by + 1, 1, 3, def.accent, 'flat');
@@ -265,7 +290,7 @@ function shield(G: GridT, cx: number, cy: number, back: boolean) {
 }
 
 /** 머리 위 장비: 기사 투구 · 사제 베일 · 도적 두건 (+ 보이는 머리카락) */
-function headgear(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: number, by: number, back: boolean, hood: string | null) {
+export function headgear(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: number, by: number, back: boolean, hood: string | null) {
   const hair = def.hair;
   const hl = ramp(hair, 1);
   if (kind === 'knight') {
@@ -317,7 +342,7 @@ function headgear(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: number, b
     if (!back)
       for (let y = Math.floor(hy - 8); y <= hy + 6; y++)
         for (let x = Math.floor(hx - 8); x <= hx + 8; x++) {
-          const p = G.g[y + 3]?.[x + 1];
+          const p = G.g[y + G.oy]?.[x + G.ox];
           if (!p || p.c !== VEIL) continue;
           if (op(x + 1, y) || op(x - 1, y) || op(x, y + 1) || op(x, y - 1)) if (y <= hy + 5) G.set(x, y, def.accent);
         }
@@ -490,7 +515,7 @@ function veilBack(G: GridT, hx: number, hy: number, by: number, gold: string, ba
 }
 
 /** 도적 짧은 망토 자락 (뒤 · 걸으면 끝이 1프레임 늦게 따라온다) */
-function cape(G: GridT, hx: number, by: number, H: string, pose: Pose2, front: boolean) {
+export function cape(G: GridT, hx: number, by: number, H: string, pose: Pose2, front: boolean) {
   const tr = pose.trail ?? 0;
   const lag = pose.lag ?? 0;
   const bot = by + 10 + (lag - (pose.bob ?? 0));
@@ -558,7 +583,16 @@ function sword(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | '
   if (mode === 'rest' || mode === 'up') {
     // 곧은 검: 손 위로 세움 (2px 날 · 금 손잡이)
     const x = hx + 1;
-    const top = mode === 'up' ? hy - 11 : hy - 9;
+    const top = (mode === 'up' ? hy - 11 : hy - 9) - (def.named === 'vael' ? 3 : 0);
+    if (def.named === 'jin') {
+      // 카타나: 가늘고 살짝 휜 날 · 둥근 날밑 · 감은 손잡이
+      G.rect(x, top + 2, 1, hy - top - 3, bl);
+      G.set(x + 1, top + 1, bl);
+      G.set(x + 1, top, lt(bl, 0.5));
+      G.rect(x - 1, hy - 1, 3, 1, '#2a2430');
+      G.rect(x, hy + 1, 1, 2, '#3a2a4a');
+      return;
+    }
     G.rect(x, top + 1, 1, hy - top - 2, bl);
     G.rect(x + 1, top + 1, 1, hy - top - 2, sh);
     G.set(x, top, lt(bl, 0.5));
@@ -617,9 +651,10 @@ function book(G: GridT, def: ClassDef, hx: number, hy: number) {
 
 /** 휘두름 궤적: 어깨를 중심으로 한 깔끔한 호 (바깥 흰색 · 안 연한 무기색 · 꼬리 옅게) — 흩어진 점 없이 */
 function swingArc(G: GridT, cx: number, cy: number, r: number, a0: number, a1: number, base: string) {
-  const outer = '#fffbea';
-  const inner = mix(base, WHITE, 0.45);
-  const tail = mix(base, '#c8d0e0', 0.5);
+  arcC(G, cx, cy, r, a0, a1, '#fffbea', mix(base, WHITE, 0.45), mix(base, '#c8d0e0', 0.5));
+}
+/** 호 궤적 (바깥 · 안 · 꼬리 색 · 머리 쪽 두께) — HERODOT 3 전설 궤적도 이걸로 */
+export function arcC(G: GridT, cx: number, cy: number, r: number, a0: number, a1: number, outer: string, inner: string, tail: string, thick = 1.9) {
   for (let y = Math.floor(cy - r - 2); y <= cy + r + 2; y++)
     for (let x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) {
       const dx = x + 0.5 - cx;
@@ -629,13 +664,13 @@ function swingArc(G: GridT, cx: number, cy: number, r: number, a0: number, a1: n
       if (a < a0 || a > a1) continue;
       const t = (a - a0) / (a1 - a0);
       // 꼬리 쪽은 가늘게 (1칸) · 머리 쪽은 2칸
-      const th = t < 0.35 ? 0.9 : 1.9;
+      const th = t < 0.35 ? Math.min(0.9, thick) : thick;
       if (d > r + 0.5 || d < r + 0.5 - th) continue;
       G.set(x, y, t < 0.35 ? tail : d > r - 0.5 ? outer : inner, 'fx');
     }
 }
 
-function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, SKN: string, oldWeapon: WeaponFn) {
+function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, SKN: string, oldWeapon: WeaponFn, trail?: () => boolean) {
   const arm = def.arm;
   const w = def.weapon;
   const sit = !!pose.sit;
@@ -714,7 +749,7 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     G.rect(18, by, 2, 2, SKN);
     const base = def.weaponColor ?? (w === 'holy' || w === 'staff' ? '#ffd34a' : '#d8e2f2');
     const r = kind === 'rogue' ? 7 : 8.5;
-    swingArc(G, 13.5, by + 1.5, r, -0.9, 2.1, base);
+    if (!trail?.()) swingArc(G, 13.5, by + 1.5, r, -0.9, 2.1, base);
     W(18, by, 'mid');
     return;
   }
@@ -812,7 +847,7 @@ function hairBack(G: GridT, def: ClassDef, hx: number, hy: number, by: number, p
 }
 
 /** 보이는 머리카락 (모자·두건 밑) · 하이라이트 줄 1개 */
-function hair2(G: GridT, def: ClassDef, hx: number, hy: number, back: boolean) {
+export function hair2(G: GridT, def: ClassDef, hx: number, hy: number, back: boolean) {
   const st = def.style;
   if (st === 'bald' || st === 'none') return;
   const H = def.hair;
@@ -992,7 +1027,7 @@ function mailBag(G: GridT, by: number, back: boolean, gold: string) {
 }
 
 /** 사냥꾼 화살통 (등 · 앞모습은 왼쪽 어깨 뒤로 화살 깃) */
-function quiver(G: GridT, by: number, back: boolean) {
+export function quiver(G: GridT, by: number, back: boolean) {
   const q = '#7a4a2a';
   const x = back ? 7 : 3;
   G.rect(x, by - 1, 3, 9, q);
@@ -1063,6 +1098,13 @@ function orbStaff(G: GridT, def: ClassDef, x: number, top: number, bottom: numbe
   if (glow >= 2) for (const [dx, dy] of [[-2, -2], [2, -2], [0, -3], [-3, 0], [3, 0], [2, 2], [-2, 2]]) G.set(x + dx, top + dy, gl, 'fx');
   if (glow >= 3) for (const [dx, dy] of [[0, -4], [-4, 0], [4, 0], [-3, -3], [3, -3]]) G.set(x + dx, top + dy, WHITE, 'fx');
   if (tw) G.set(x + 2, top - 2, WHITE, 'fx');
+  if (def.named === 'scarlet') {
+    // 불꽃 지팡이: 구슬 위로 불꽃 혀
+    G.set(x, top - 2, '#ffd36b', 'flat');
+    G.set(x - 1, top - 3, '#ff7a2a', 'flat');
+    G.set(x, top - 3, '#ff7a2a', 'flat');
+    G.set(x, top - 4, '#ffb04a', 'flat');
+  }
 }
 
 /** 큰 활 (몸 옆 세로) · 시위 · aim = 화살을 걸고 당김 */
@@ -1146,6 +1188,7 @@ export function drawLying2(def: ClassDef, kind: Dot2): GridT {
 
 /** 구르기·누움 머리 색: 투구 · 베일 · 두건 · 모자 */
 function headColor(def: ClassDef, kind: Dot2): string {
+  if (def.named && NAMED[def.named]?.head === 'hair') return def.style === 'bald' ? def.skin ?? SKIN : def.hair;
   switch (kind) {
     case 'knight':
       return STEEL;

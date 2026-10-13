@@ -1,7 +1,8 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
 import { specialSum } from './uniques';
 import { sfx } from '../audio/sfx';
-import { mythicStat } from './mythic';
+import { isMythic, mythicStat } from './mythic';
+import { vis } from './visual';
 import { CAMEO_DEF } from './easter';
 import { libraryXp } from './facilities';
 import {
@@ -183,6 +184,13 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
   if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
   // EASTER §2·§5: 놀러 온 개척자 — 고정 소품
   if (a.cameo && a.cameo in CAMEO_DEF) return { key: 'cameo|' + a.cameo, def: { ...def, ...CAMEO_DEF[a.cameo as keyof typeof CAMEO_DEF] } };
-  const key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
+  let key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
+  // HERODOT 3 (heroDotV2 켰을 때만): 전설·이름 있는 영웅은 고정 겉모습 · 신화 표시 — 끄면 예전 그대로 (키도 그대로)
+  const named = a.legendId ?? a.heroId;
+  if (named && vis('heroDotV2')) {
+    def.named = named;
+    def.mythic = isMythic(a);
+    key += '|N:' + named + (def.mythic ? ':M' : '');
+  }
   return { key, def };
 }

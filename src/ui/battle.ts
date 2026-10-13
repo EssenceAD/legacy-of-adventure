@@ -309,6 +309,8 @@ export const resetBattleHints = () => {
 export function drawChar(ctx: CanvasRenderingContext2D, fr: HTMLCanvasElement, x: number, y: number, flip = false) {
   const w = fr.width * 2;
   const h = fr.height * 2;
+  // HERODOT 3: 전설(26×35)도 몸 가운데·발이 같은 자리 (24폭이면 그대로)
+  x -= fr.width - 24;
   if (flip) {
     ctx.save();
     ctx.translate(Math.round(x + w), Math.round(y - h + 2));

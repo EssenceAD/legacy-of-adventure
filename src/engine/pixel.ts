@@ -147,6 +147,15 @@ interface Cell {
   tag?: string | null;
 }
 
+/** HERODOT 3: 외곽선 금빛·은빛 섞기 (같은 색 조합은 한 번만 계산) */
+const RIMC = new Map<string, string>();
+function rimMix(oc: string, rim: string): string {
+  const k = oc + rim;
+  let v = RIMC.get(k);
+  if (!v) RIMC.set(k, (v = mix(oc, rim, 0.72)));
+  return v;
+}
+
 /** 캐릭터용 격자: 칠한 뒤 render()가 테두리와 명암을 자동으로 넣는다 */
 export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
   const g: (Cell | null)[][] = Array.from({ length: h }, () => Array(w).fill(null));
@@ -159,6 +168,9 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
     g,
     w,
     h,
+    /** 그리기 좌표 → 격자 칸 (HERODOT: 26×35 격자도 같은 그리기 좌표) */
+    ox,
+    oy,
     set,
     rect(x: number, y: number, W: number, H: number, c: string, tag?: string | null) {
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) set(x + i, y + j, c, tag);
@@ -191,7 +203,8 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
     clear(x: number, y: number) {
       if (x >= 0 && y >= 0 && x < w && y < h) g[y][x] = null;
     },
-    render(opts: { outline?: string } = {}) {
+    /** rim: HERODOT 전설·신화 — 부위색 외곽선에 금빛·은빛을 한 겹 섞는다 (없으면 예전 그대로) */
+    render(opts: { outline?: string; rim?: string } = {}) {
       const cv = canvas(w, h);
       const ctx = cv.getContext('2d')!;
       // HERODOT: 'fx' = 빛·휘두름 궤적 — 명암·외곽선 없이 맨 위에 그대로 (예전 그림엔 없는 태그)
@@ -235,7 +248,8 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
             const n = g[y + nb[1]][x + nb[0]]!;
             const lit = nb[0] === 1 || nb[1] === 1;
             const base = n.tag === 'eye' || n.tag === 'flat' ? '#5a4a5a' : n.c;
-            ctx.fillStyle = mix(ramp(base, lit ? -2 : -3), OUTL, lit ? 0.35 : 0.55);
+            const oc = mix(ramp(base, lit ? -2 : -3), OUTL, lit ? 0.35 : 0.55);
+            ctx.fillStyle = opts.rim ? rimMix(oc, opts.rim) : oc;
           }
           ctx.fillRect(x, y, 1, 1);
         }

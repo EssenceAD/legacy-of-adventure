@@ -4,6 +4,7 @@ import { dk, Grid, lt, ramp, type GridT } from './pixel';
 import { CONFIG } from '../data/config';
 import { canvasAlive, Lru } from './lru';
 import { drawChar2, drawLying2, drawRoll2, type Dot2, type Pose2 } from './sprites2';
+import { applyNamed, LEGEND_RIM, MYTHIC_RIM, namedOf, sigPoses } from './named2';
 import { vis } from '../world/visual';
 
 const SK = { skin: '#f2c49b', skin2: '#d99a78', eye: '#2a1a2e', blush: '#ec8f86' };
@@ -578,6 +579,10 @@ export interface CharFrames {
   sleep: HTMLCanvasElement[];
   /** HERODOT: 대기 중 눈 깜빡임 1프레임 (새 도트만) */
   blink?: HTMLCanvasElement;
+  /** HERODOT 3: 전설·이름 있는 영웅 시그니처 동작 (최대 4장 · 가만히 있을 때 8~12초마다) */
+  sig?: HTMLCanvasElement[];
+  /** 전설(금빛 외곽선 · 26×35) · 이름 있는 영웅 · 신화 */
+  tier?: 'legend' | 'hero' | 'mythic';
 }
 
 /** 직업 하나의 모든 프레임: 앞 걷기4·뒤 걷기4·대기2·뒤 대기2·앉기2·공격2·기도/밭일2 */
@@ -687,25 +692,32 @@ function dot2Of(d: ClassDef): Dot2 | null {
 
 /** 마을 걷기 4: 벌림 → 지나감(들썩·발 들림) → 반대로 벌림 → 지나감 · 망토 끝은 앞 프레임 높이(1프레임 늦게) */
 const WALK4_2: Pose2[] = [
-  { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1 },
-  { bob: -1, liftR: 1, trail: 1, lag: 0, tw: 1 },
-  { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1 },
-  { bob: -1, liftL: 1, trail: 1, lag: 0 },
+  { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1, wf: 0 },
+  { bob: -1, liftR: 1, trail: 1, lag: 0, tw: 1, wf: 1 },
+  { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1, wf: 2 },
+  { bob: -1, liftL: 1, trail: 1, lag: 0, wf: 3 },
 ];
 /** 전투 걷기 6 */
 const WALK6_2: Pose2[] = [
-  { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1 },
-  { lx: -1, rx: 1, bob: -1, armF: 1, armB: -1, trail: 1, lag: 0 },
-  { bob: -1, liftR: 1, trail: 1, lag: -1, tw: 1 },
-  { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1 },
-  { lx: 1, rx: -1, bob: -1, armF: -1, armB: 1, trail: 1, lag: 0 },
-  { bob: -1, liftL: 1, trail: 1, lag: -1 },
+  { lx: -1, rx: 1, armF: 1, armB: -1, trail: 1, lag: -1, wf: 0 },
+  { lx: -1, rx: 1, bob: -1, armF: 1, armB: -1, trail: 1, lag: 0, wf: 1 },
+  { bob: -1, liftR: 1, trail: 1, lag: -1, tw: 1, wf: 2 },
+  { lx: 1, rx: -1, armF: -1, armB: 1, trail: 1, lag: -1, wf: 3 },
+  { lx: 1, rx: -1, bob: -1, armF: -1, armB: 1, trail: 1, lag: 0, wf: 4 },
+  { bob: -1, liftL: 1, trail: 1, lag: -1, wf: 5 },
 ];
 
+/** 전설은 금빛(신화는 은빛) 외곽선 한 겹 */
+const rimOf = (d: ClassDef) => (namedOf(d)?.tier === 'legend' ? (d.mythic ? MYTHIC_RIM : LEGEND_RIM) : undefined);
+const tierOf = (d: ClassDef) => { const L = namedOf(d); return !L ? undefined : L.tier === 'legend' && d.mythic ? 'mythic' : L.tier; };
+
 function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
-  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render();
+  const rim = rimOf(d);
+  const L = namedOf(d);
+  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : {});
   let cbf: CombatFrames | null = null;
-  return {
+  let sigC: HTMLCanvasElement[] | undefined;
+  const f: CharFrames = {
     def: d,
     cb: () => (cbf ??= buildCombat2(d, k)),
     idle: [R({}), R({ bob: 1, tw: 1 })],
@@ -715,13 +727,21 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
     sit: [R({ sit: 1, eat: 1 }), R({ sit: 1, eat: 2 })],
     atk: [R({ atk: 1, face: 'shout' }), R({ atk: 2, face: 'shout' })],
     pray: [R({ pray: 1 }), R({ pray: 1, bob: 1 })],
-    sleep: [drawSleep(d, 0).render(), drawSleep(d, 1).render()],
+    sleep: [drawSleep(L ? applyNamed(d, L) : d, 0).render(), drawSleep(L ? applyNamed(d, L) : d, 1).render()],
     blink: R({ blink: 1 }),
+    tier: tierOf(d),
   };
+  // 시그니처 동작은 처음 재생할 때 만든다 (첫 생성 시간을 늘리지 않게)
+  if (L) Object.defineProperty(f, 'sig', { enumerable: true, get: () => (sigC ??= sigPoses(L).map(R)) });
+  return f;
 }
 
 function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
-  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render();
+  const rim = rimOf(d);
+  const L = namedOf(d);
+  const dd = L ? applyNamed(d, L) : d;
+  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : {});
+  const RR = (g: GridT) => g.render(rim ? { rim } : {});
   return {
     idle: [R({}), R({ bob: 1, tw: 1 }), R({ bob: 1, armF: 1, armB: 1 })],
     idleB: [R({ back: 1 }), R({ back: 1, bob: 1 }), R({ back: 1, bob: 1, armF: 1 })],
@@ -729,10 +749,10 @@ function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
     walkB: WALK6_2.map((p) => R({ ...p, back: 1 })),
     // 공격 4: 들어 올림 → 휘두름(깔끔한 호) → 내려침 → 거두기
     atk: [R({ atk: 1, face: 'shout' }), R({ atk: 3, face: 'shout' }), R({ atk: 2, face: 'shout' }), R({ atk: 4 })],
-    roll: [0, 1, 2, 3].map((i) => drawRoll2(d, k, i).render()),
+    roll: [0, 1, 2, 3].map((i) => RR(drawRoll2(dd, k, i))),
     cast: [1, 2, 3].map((c) => R({ cast: c, face: 'shout' })),
     hurt: [R({ hurt: 1, face: 'hurt', armF: -1, armB: -1 })],
-    die: [R({ sit: 1, face: 'hurt' }), R({ sit: 1, bob: 2, face: 'hurt' }), drawLying2(d, k).render()],
+    die: [R({ sit: 1, face: 'hurt' }), R({ sit: 1, bob: 2, face: 'hurt' }), RR(drawLying2(dd, k))],
     blink: R({ blink: 1, bob: 1 }),
   };
 }
