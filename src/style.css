@@ -1733,8 +1733,9 @@ body.decor .wfbub,body.photo .wfbub{display:none}
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 
 /* ───────── §4 hudV2: 위 상태줄 1줄 · 소식 띠 1줄 · 오른쪽 가장자리 작은 버튼 · 아래 5칸 ───────── */
-body.hud2{--h2-bar:30px;--h2-band:22px;--h2-nav:44px;--h2-side:28px;--h2-top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + var(--h2-band) + 10px)}
-html:not([data-size="phone"]) body.hud2{--h2-bar:36px;--h2-band:26px;--h2-nav:52px;--h2-side:34px}
+/* 손가락 자리 44px: 상태줄·메뉴줄은 44px 그대로 그리고, 작게 그려야 하는 것(소식 띠·오른쪽 버튼·채팅 줄)은 ::after 덮개로 누르는 자리만 44px (scripts/e2e-touch44.mjs) */
+body.hud2{--h2-bar:44px;--h2-band:22px;--h2-nav:44px;--h2-side:26px;--h2-hit:44px;--h2-pad:calc((var(--h2-hit) - var(--h2-side)) / 2);--h2-under:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + var(--h2-hit) + 4px);--h2-top:calc(var(--h2-under) + var(--h2-pad))}
+html:not([data-size="phone"]) body.hud2{--h2-band:26px;--h2-nav:52px;--h2-side:34px}
 
 /* 위 상태줄: 여관 이름(줄임) · 금화 · 일차/시각 · ★ · 전투력 — 가장자리에 붙인 한 줄 (누르면 여관 정보 카드) */
 body.hud2 .top{left:0;right:0;top:0;gap:0;padding-top:env(safe-area-inset-top,0px)}
@@ -1746,38 +1747,44 @@ body.hud2 .stat .r1>span:first-child{order:1;flex:none;gap:3px}
 body.hud2 .stat .r1 #goldv{font-size:var(--f-small)}
 body.hud2 .stat #dayv{order:2;flex:0 1 auto;min-width:0;font-size:var(--f-small);padding:0}
 body.hud2 .stat #starv{order:3;flex:none}
-body.hud2 .stat #pwr{order:4;flex:none;font-size:var(--f-small)}
+/* 전투력(누르면 「왜 이 숫자?」): 상태줄 높이 그대로 누르는 자리 */
+body.hud2 .stat #pwr{order:4;flex:none;align-self:stretch;min-width:44px;justify-content:flex-end;font-size:var(--f-small)}
 body.hud2 #blessIco{display:none!important}
 
-/* 소식 띠: 장부 카드 · 평가 · 오늘 목표 · 다음 이야기 · 축복을 4초마다 번갈아 (원래 카드는 숨기기만) */
+/* 소식 띠: 장부 카드 · 평가 · 오늘 목표 · 다음 이야기 · 축복을 4초마다 번갈아 (원래 카드·「오늘 n/3」 알약은 숨기기만)
+   따로 떠 있는 알약처럼 보이지 않게 상태줄 바로 아래에 붙인 가로 한 줄 — 받을 게 있으면 테두리 대신 글자·왼쪽 금줄만 */
 body.hud2 :is(#mission,#evalbar,#goalPill,#storyWait){display:none!important}
-body.hud2 #newsBand{position:absolute;left:6px;top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + 3px);max-width:calc(100% - 12px);height:var(--h2-band);display:flex;align-items:center;gap:6px;padding:0 10px 0 6px;border:0;background:rgba(14,16,34,.86);box-shadow:0 0 0 2px var(--ink);color:var(--cream);font-size:var(--f-small);line-height:1;cursor:pointer;z-index:var(--z-hud);white-space:nowrap;overflow:hidden;text-align:left}
+body.hud2 #newsBand{position:absolute;left:0;right:auto;max-width:62%;top:calc(env(safe-area-inset-top,0px) + var(--h2-bar));height:var(--h2-band);display:flex;align-items:center;gap:6px;padding:0 10px;border:0;border-bottom:2px solid var(--ink);background:rgba(14,16,34,.82);box-shadow:none;color:var(--cream);font-size:var(--f-small);line-height:1;cursor:pointer;z-index:var(--z-hud);white-space:nowrap;text-align:left}
+body.hud2 #newsBand::after{content:'';display:block;position:absolute;left:0;right:0;top:0;height:var(--h2-hit)}
 body.hud2 #newsBand img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));flex:none}
-body.hud2 #newsBand span{overflow:hidden;text-overflow:ellipsis;min-width:0}
-body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none}
-body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:mglow 1s steps(2) infinite}
-body.hud2 #newsBand:active{transform:translateY(1px)}
+body.hud2 #newsBand span{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;min-width:0}
+body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none;margin-left:auto}
+body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:inset 3px 0 0 var(--gold);animation:none}
+body.hud2 #newsBand.hot span{animation:mglow 1s steps(2) infinite}
+body.hud2 #newsBand:active{background:rgba(30,34,64,.9)}
 body.hud2.winopen #newsBand,body.hud2 .talking #newsBand,body.hud2 .placing #newsBand{visibility:hidden}
 body.hud2.visiting #newsBand{display:none!important}
-/* 여관 정보 카드(상태줄을 누르면) · 단골 제안: 띠 아래 */
-body.hud2 #goalPanel{top:var(--h2-top)}
-body.hud2 #propBadge{left:6px;right:auto;top:var(--h2-top);bottom:auto;padding:4px 8px}
+/* 여관 정보 카드(상태줄을 누르면) · 단골 제안: 띠(누르는 자리까지) 아래 */
+body.hud2 #goalPanel{top:var(--h2-under)}
+body.hud2 #propBadge{left:6px;right:auto;top:calc(var(--h2-under) + 6px);bottom:auto;padding:4px 8px}
+body.hud2 #propBadge::after{content:'';display:block;position:absolute;left:0;right:0;top:calc(50% - var(--h2-hit) / 2);height:var(--h2-hit)}
 
-/* 오른쪽 가장자리: 낮밤 · 어울림 · 소리 · 배율 — 작은 아이콘 버튼 한 줄 */
-body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom){position:absolute;right:6px;bottom:auto;width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;z-index:var(--z-hud);font-size:var(--f-tiny)}
+/* 오른쪽 가장자리: 낮밤 · 어울림 · 소리 · 배율 — 작은 아이콘 버튼 한 줄 (그림은 작게, 누르는 자리는 44px 칸) */
+body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom){position:absolute;right:calc(var(--h2-pad) + 2px);bottom:auto;width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;z-index:var(--z-hud);font-size:var(--f-tiny)}
+body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom)::after{content:'';display:block;position:absolute;inset:calc(-1 * var(--h2-pad))}
 body.hud2 :is(#bDN,#bHarm,#hSpk) small{display:none}
 body.hud2 #bDN b{font-size:var(--f-small);line-height:1}
 body.hud2 #bDN{top:var(--h2-top)}
-body.hud2 #bHarm{top:calc(var(--h2-top) + var(--h2-side) + 4px)}
-body.hud2 #hSpk{top:calc(var(--h2-top) + 2 * (var(--h2-side) + 4px))}
-body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * (var(--h2-side) + 4px))}
+body.hud2 #bHarm{top:calc(var(--h2-top) + var(--h2-hit))}
+body.hud2 #hSpk{top:calc(var(--h2-top) + 2 * var(--h2-hit))}
+body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * var(--h2-hit))}
 
-/* 아래 메뉴줄 5칸: 건설 · 손님 · 모험 · 소식 · 메뉴 (주인·마을은 메뉴 격자 안) */
+/* 아래 메뉴줄 5칸: 건설 · 손님 · 모험 · 소식 · 메뉴 (주인·마을은 메뉴 격자 안) — 칸 높이 44px 이상 */
 body.hud2 :is(#bOwner,#bExp,#bVillage){display:none!important}
 /* 넓은 화면에서 창이 열리면 메뉴줄은 원래처럼 창 왼쪽 빈자리 가운데로 */
 html[data-size="wide"] body.hud2 #view:has(#win.on) nav.dk{transform:translateX(-50%)}
-body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:3px 2px calc(env(safe-area-inset-bottom,0px) + 3px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
-body.hud2 .dk button{gap:2px;justify-content:center;font-size:var(--f-tiny);line-height:1.05}
+body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:0 2px env(safe-area-inset-bottom,0px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+body.hud2 .dk button{gap:2px;justify-content:center;min-height:44px;font-size:var(--f-tiny);line-height:1.05}
 body.hud2 .dk .kic{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
 body.hud2 #bBuild{order:1}body.hud2 #bGuest{order:2}body.hud2 #bAdv{order:3}body.hud2 #bNews{order:4}body.hud2 #bMenu2{order:5}
 body.hud2 #bNews .dot{position:absolute;left:calc(50% + 8px);top:2px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
@@ -1785,13 +1792,32 @@ body.hud2 .dk button.ready .kic{animation:rdy 1s steps(2) infinite}
 body.hud2 .dk .ndot{top:2px;right:calc(50% - 18px)}
 body.hud2 #bBuild .nbadge{right:calc(50% - 26px)}
 
-/* 채팅 한 줄 · 진행 중 줄: 메뉴줄 바로 위 (가장자리) */
-body.hud2 #chatlog{left:4px;right:4px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 4px);min-height:0;height:calc(1.25 * var(--f-small) + 4px);padding:2px 8px;font-size:var(--f-small);line-height:1.25}
-body.hud2 #runbar{left:4px;right:calc(var(--h2-side) + 12px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 1.25 * var(--f-small) + 12px)}
+/* 채팅 한 줄 · 진행 중 줄: 메뉴줄 바로 위 (가장자리) — 채팅은 한 줄로 그리고 누르는 자리만 위로 44px */
+body.hud2 #chatlog{left:4px;right:calc(var(--h2-hit) + 8px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 4px);min-height:0;height:calc(1.25 * var(--f-small) + 4px);padding:2px 8px;font-size:var(--f-small);line-height:1.25;overflow:visible}
+body.hud2 #chatlog>div{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+body.hud2 #chatlog::after{content:'';display:block;position:absolute;left:0;right:0;bottom:0;height:var(--h2-hit)}
+body.hud2 #runbar{left:4px;right:calc(var(--h2-hit) + 8px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + var(--h2-hit) + 8px)}
 body.hud2 #runbar button{min-height:0}
-body.hud2 #runbar .hline{position:relative;flex-direction:row;padding:3px 8px 5px;margin-bottom:3px}
+/* 진행 줄은 얇게 그리고 누르는 자리만 위로 44px (줄이 여럿이면 그만큼 띄운다) */
+body.hud2 #runbar .hline{position:relative;flex-direction:row;height:24px;padding:3px 8px 5px;margin-bottom:calc(var(--h2-hit) - 24px)}
+body.hud2 #runbar>:last-child{margin-bottom:0}
+body.hud2 #runbar :is(.hline,.rbstrip)::after{content:'';display:block;position:absolute;left:0;right:0;bottom:0;height:var(--h2-hit)}
 body.hud2 #runbar .hline i{position:absolute;left:0;right:0;bottom:0;height:3px;padding:0;border-image:none;background:#161420}
-body.hud2 #runbar .rbstrip{min-height:0;padding:3px 8px}
+body.hud2 #runbar .rbstrip{position:relative;min-height:0;height:24px;padding:3px 8px;overflow:visible}
+/* 펼친 원정 줄: 맨 위 진행 줄의 누르는 자리(위로 20px) 위에 · 한 줄 44px */
+body.hud2 #runbar .rblist{bottom:calc(100% + var(--h2-hit) - 24px + 4px)}
+body.hud2 #runbar .rblist button{min-height:44px}
+
+/* PC(폭 900px 이상): 상태줄 · 소식 띠 · 메뉴줄 · 진행 줄 · 채팅은 가운데 한 기둥(최대 560px) · 상태줄 글자는 한 단계 크게 */
+@media (min-width:900px){
+  body.hud2 .top,body.hud2 #newsBand,body.hud2 nav.dk,body.hud2 #chatlog{left:max(0px,calc(50% - 280px));right:max(0px,calc(50% - 280px));max-width:none}
+  body.hud2 #runbar{left:max(4px,calc(50% - 280px));right:max(4px,calc(50% - 280px))}
+  body.hud2 .top .stat{gap:14px;padding:0 14px}
+  body.hud2 .top .stat :is(.nm,#goldv,#dayv,#pwr),body.hud2 .top .stat .r1 #goldv,body.hud2 .top .stat{font-size:var(--f-ui)}
+  body.hud2 #newsBand{font-size:var(--f-ui)}
+  /* 낮밤 버튼만 상태줄(.top) 안에 있어서 기둥 기준이 된다 → 다른 오른쪽 버튼처럼 화면 오른쪽 끝으로 */
+  body.hud2 #bDN{right:calc(var(--h2-pad) + 2px - max(0px,50vw - 280px))}
+}
 
 /* 모험 창: 네 칸 (사냥 · 원정 · 토벌 · 심연) */
 body.hud2 .advgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
@@ -1817,6 +1843,16 @@ body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd bu
 body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,#dChoice button,#rlBack,#goalPanel button,.mail button,.wfrow button,.acdel button,.bagb,#winF button):not([disabled]):not(.tab):active{background:#5e3820!important;box-shadow:inset 0 3px 0 #4a2c18,0 0 0 2px var(--ink)}
 body.ui2.ui2 #view :where(.bigbtn:not(.ghost):not(.red):not(.sm),#placeOk,.goal button,#nameOk,.seg button.on,#dChoice button:first-child,#goalPanel button.rd):not([disabled]){border:0 solid transparent;border-image:var(--ui-btn-primary) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--ink);text-shadow:none;font-weight:700}
 body.ui2.ui2.ui2 #view :where(.bigbtn.red,.bagb.red,[data-sell].red,#rmOk,#rmB,.acdel button,#acDel,.mldel,#placeNo):not([disabled]){border:0;border-image:none;background:#a8323a!important;box-shadow:inset 0 2px 0 #d0545a,inset 0 -3px 0 #6e1c22,0 0 0 2px var(--ink);color:#fff;text-shadow:1px 1px 0 var(--ink)}
+/* 손가락 자리 44px (창 안): 버튼·탭·접기 줄·고르기·체크 줄은 가로·세로 44px 이상 (scripts/e2e-touch44.mjs) */
+body.ui2 #win .hd :is(#winX,#winBack,#winHelp){width:44px;height:44px}
+body.ui2 #win :is(button,.tab,select,[role=button]):not(.mtile){min-height:44px}
+body.ui2 #win :is(button,.tab,select){min-width:44px}
+body.ui2 #win .tab{flex-shrink:0}
+body.ui2 #win .tabs:has(> .tab:nth-child(7)){flex-wrap:wrap;overflow-x:visible;row-gap:2px}
+body.ui2 #win label.tog{min-height:44px;margin-top:0}
+body.ui2 #win summary{min-height:44px;padding-block:12px;box-sizing:border-box}
+body.ui2 #win a.kbtn{display:inline-flex;align-items:center;min-height:44px}
+body.ui2 #winB #rmB{min-height:44px}
 /* ui2-fonts:begin — scripts/ui2-fonts.mjs 가 만듦 (손으로 고치지 말 것) */
 :where(body.ui2) .ibtn{font-size:var(--fs-body)}
 :where(body.ui2) .quest em{font-size:var(--fs-body)}
