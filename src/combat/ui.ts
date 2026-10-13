@@ -88,7 +88,7 @@ export function foldInfo(): { region: RegionId; stage: number; time: number; don
   return { region: F.region as RegionId, stage: F.stage, time: Math.max(0, F.time), done: foldEnded, win: F.done === 'win' };
 }
 export function foldCombat() {
-  if (!F || !root || folded || F.done || F.mode === 'raid') return;
+  if (!F || !root || folded || F.done || F.mode === 'raid' || F.noFold) return;
   // 그 순간부터 AUTO 취급 → 평가 보너스 없음
   F.auto = true;
   F.autoUsed = true;
@@ -161,6 +161,10 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     ids.add(REGION_BOSS[region].id);
     ids.add(REGION_BOSS[region].minion);
   }
+  if (opts.look) {
+    ids.add(opts.look.id);
+    ids.add(opts.look.minion);
+  }
   if (opts.raid) {
     ids.add(opts.raid.look.id);
     ids.add(opts.raid.look.minion);
@@ -201,7 +205,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   root.className = 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
-    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button><button id="cbQuit" aria-label="포기">✕</button></div>
+    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' || opts.noFold ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button><button id="cbQuit" aria-label="포기">✕</button></div>
     <div class="cbparty" id="cbParty"></div>
     <div class="cbchain" id="cbChain"></div>
     <div class="cbhit" id="cbHit"><b id="cbHitN"></b><small id="cbHitB"></small><strong id="cbKills"></strong></div>

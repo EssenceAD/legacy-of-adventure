@@ -270,6 +270,9 @@ export interface Field {
   /** REGIONS2: 보스 체력 50%에서 한 번 (지역 10 「목소리」) · 보스가 쓰러질 때 한 줄 */
   half?: () => void;
   bossLine?: string;
+  /** GOLDSINK §7 끝없는 심연: 보스 그림(다른 지역 보스) · 접기 없음 */
+  look?: BossLook;
+  noFold?: boolean;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
 }
@@ -315,6 +318,10 @@ export interface FieldOpts {
   half?: () => void;
   talkHalf?: (done: () => void) => void;
   bossLine?: string;
+  /** GOLDSINK §7 끝없는 심연: 추천 전투력(몬스터 강함) 직접 · 보스 그림 · 접기 없음 */
+  rec?: number;
+  look?: BossLook;
+  noFold?: boolean;
 }
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
@@ -347,13 +354,15 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   const boss = stage >= 10;
   const killGoal = mode === 'raid' ? 0 : boss ? C.bossKillGoal : Math.round(C.killGoal[0] + ((C.killGoal[1] - C.killGoal[0]) * (stage - 1)) / 8);
   const f: Field = {
-    region, stage, rec: opts.raid ? opts.raid.power : recPower(region, stage), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
+    region, stage, rec: opts.raid ? opts.raid.power : (opts.rec ?? recPower(region, stage)), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
     mode, killGoal, spawned: 0, elite: null, hit: 0, hitT: 0, streak: 0, streakT: 0, maxStreak: 0, loot: [], picked: [], lootLog: [], dropK: C.dropsPerRun / Math.max(1, killGoal), raidDmg: 0, banner: '', bannerT: 0,
     wave: 0, waveLeft: 0, time: opts.raid ? opts.raid.seconds : C.timeLimit, stop: 0, shake: 0, shakeAmp: 0, chem: 0, ult: 0, ultName: '', hitsTaken: 0, autoUsed: auto, auto, kills: 0, chain: 0, chainT: 0,
     done: '', doneT: 0, stick: { x: 0, y: 0 }, holdAtk: 0, nextId: 100, stats: { teleIn: 0, dodged: 0 }, castTxt: '', castT: 0, props: props.filter((p) => Math.hypot(p.x - N / 2, p.y - N / 2) > 2.2),
   };
   f.half = opts.half;
   f.bossLine = opts.bossLine;
+  f.look = opts.look;
+  f.noFold = opts.noFold;
   f.syn = syn;
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
@@ -422,7 +431,7 @@ function spawnElite(f: Field) {
   const N = C.field;
   const [x, y] = [Math.max(1.5, Math.min(N - 1.5, f.me.x + (f.me.x < N / 2 ? 3.5 : -3.5))), Math.max(1.5, Math.min(N - 1.5, f.me.y + (f.me.y < N / 2 ? 2.5 : -2.5)))];
   if (f.stage >= 10) {
-    const look = REGION_BOSS[f.region];
+    const look = f.look ?? REGION_BOSS[f.region];
     spawnBoss(f, look, Math.round(mobBaseHp(f.rec, f.stage, avgPow(f)) * C.bossHp), x, y);
     return;
   }

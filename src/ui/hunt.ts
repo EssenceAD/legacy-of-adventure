@@ -47,6 +47,8 @@ import { craftMax } from '../world/bulk';
 import { enhanceBossCost, enhanceCost, smithObj } from '../world/craft';
 import type { Item } from '../world/state';
 import { taperLine } from './goldsink';
+import { abyssOpen } from '../world/abyss';
+import { openAbyss } from './abyss';
 
 const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
@@ -90,7 +92,7 @@ export function openHunt(region?: RegionId) {
   const reg = REGIONS[regionIdx(curRegion)];
   openWin(
     '사냥터',
-    `<div class="tabs">${tabs}${huntRegionOpen(5) ? '<button class="tab fishtab" id="hFish" title="해안 낚시">🎣</button>' : ''}</div>
+    `<div class="tabs">${tabs}${abyssOpen() ? `<button class="tab abtab" id="hAbyss" style="--rc:${themeOf('deep').band}">끝없는 심연</button>` : ''}${huntRegionOpen(5) ? '<button class="tab fishtab" id="hFish" title="해안 낚시">🎣</button>' : ''}</div>
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap" style="--rc:${themeOf(curRegion).band}">${cells}</div>
     <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
@@ -107,6 +109,8 @@ export function openHunt(region?: RegionId) {
       }),
   );
   $$('[data-s]').forEach((el) => (el.onclick = () => openHuntPrep(curRegion, +el.dataset.s!)));
+  const ha = document.getElementById('hAbyss');
+  if (ha) ha.onclick = () => openAbyss();
   const hf = document.getElementById('hFish');
   if (hf) hf.onclick = () => openFishing('sea');
   const st = document.getElementById('hStop');
