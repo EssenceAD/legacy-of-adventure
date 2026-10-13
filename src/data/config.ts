@@ -1212,6 +1212,8 @@ export const CONFIG = {
   abyss: { grow: 1.07, bossEvery: 5, restEvery: 10, restMin: 30, dustN: [20, 2] as [number, number], dustREvery: 10, dustEEvery: 25, matBase: 2, matEvery: 10, bossMats: 2, uniqueMult: 2, contBase: 5000, contGrow: 1.15, cpEvery: 10, cpFeeMult: 0.5, brags: [25, 50, 100], autoNextSec: 3 },
   /** GOLDSINK §8 주사위 술내기: 목표 점수 · 그롬은 이번 차례 점수가 aiStop을 넘으면 멈춤 · 판돈 base × m(r) × 배수 · 주점 몫(판 전체의 cut) · 이기면 인연 +tieWin · 연승 업적 */
   dice: { goal: 3000, aiStop: 500, base: 1000, mults: [1, 2, 5, 10], cut: 0.1, tieWin: 2, streakGoal: 10, winLineEvery: 10, aiStepMs: 650 },
+  /** CHECKIN §B 첫 30분 동선: 임무로 연 건설 창의 대상 건물 반짝 테두리(ms) · 장비 임무 바로가기의 장착 가능한 사람 반짝(ms) */
+  firstFlow: { glowMs: 3000, equipGlowMs: 3000 },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

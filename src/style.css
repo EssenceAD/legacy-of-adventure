@@ -1568,6 +1568,10 @@ body.cbtalk #storyFx{z-index:45}
 .pty-slot.lock small{font-size:9px;color:#cfd8ff}
 .pty-slot.spark{box-shadow:0 0 0 2px #ffd36b;animation:ptySpark 1s steps(2) infinite}
 @keyframes ptySpark{50%{box-shadow:0 0 0 2px #fff6c8,0 0 8px #ffd36b}}
+/* CHECKIN §B 첫 30분 동선: 임무 대상 반짝 테두리 (1초 반짝 × --ffn번 · 탭하면 끝) · .calm = 절전·흔들림 끔 → 움직임 없이 테두리만 */
+:is(.cat,.glist,.plist,.pty-slots) :is(button,span).ffglow{box-shadow:0 0 0 2px #ffd36b;animation:ffGlow 1s steps(2) var(--ffn,3)}:is(.cat,.glist,.plist,.pty-slots) :is(button,span).ffglow.calm{animation:none}
+@keyframes ffGlow{50%{box-shadow:0 0 0 2px #fff6c8,0 0 8px #ffd36b}}
+#pSlot5{cursor:pointer}#pSlot5::after{content:'';position:absolute;inset:-5px}
 .pty-kf{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0}
 .pty-kf button{font:inherit;font-size:11px;padding:2px 6px;background:#1e1a2a;color:#cfd8ff;border:0;box-shadow:0 0 0 1px #4a4e68;cursor:pointer}
 .pty-kf button.on{color:#ffd36b;box-shadow:0 0 0 1px #ffd36b}

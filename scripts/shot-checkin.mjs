@@ -3,10 +3,12 @@
 //    (window.__world · __P · __S · __openMenu · __showActor … BOT_BUILD 전역 사용 · 마지막에 창을 열어 두면 그 모습을 찍음)
 //    첫 줄 주석 `// save: <파일 경로>` 로 저장을 바꿀 수 있다 (기본 tests/fixtures/real_ttabam.json · 없으면 real_lotte)
 //  결과: reports/checkin/<항목>/<label>_<폭>_<낮|밤>.png
-//  실행: node scripts/shot-checkin.mjs <항목> <before|after> <URL>   예) ... a1 before http://localhost:4310/
+//  실행: node scripts/shot-checkin.mjs <항목> <before|after> <URL> [lab]   예) ... a1 before http://localhost:4310/
+//    4번째 인자 lab = 「새 화면 미리 보기」(실험실)를 켠 채로 (기본 꺼짐 플래그로 나간 항목의 「후」 사진)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const [item, label = 'after', URL = 'http://localhost:4190/'] = process.argv.slice(2);
+const [item, label = 'after', URL = 'http://localhost:4190/', labArg] = process.argv.slice(2);
+const LAB = labArg === 'lab';
 if (!item) throw new Error('항목 이름을 주세요');
 const scene = fs.readFileSync(`scripts/checkin-scenes/${item}.js`, 'utf8');
 const saveFile = /^\/\/\s*save:\s*(\S+)/m.exec(scene)?.[1] ?? (fs.existsSync('tests/fixtures/real_ttabam.json') ? 'tests/fixtures/real_ttabam.json' : 'tests/fixtures/real_lotte.json');
@@ -26,7 +28,7 @@ for (const [w, dev] of Object.entries(SIZES))
   for (const night of [false, true]) {
     const save = JSON.stringify({ ...sv, clock: night ? 17 * 60 : 6 * 60, night });
     const ctx = await b.newContext(dev);
-    await ctx.addInitScript(([s, ver]) => {
+    await ctx.addInitScript(([s, ver, lab]) => {
       try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
       localStorage.clear();
       localStorage.setItem('legacy-of-adventure-save', s);
@@ -35,7 +37,8 @@ for (const [w, dev] of Object.entries(SIZES))
       localStorage.setItem('legacy-of-adventure-settleOff', 'true');
       localStorage.setItem('legacy-of-adventure-telemetry', 'false');
       localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
-    }, [save, VER]);
+      if (lab) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+    }, [save, VER, LAB]);
     const p = await ctx.newPage();
     p.on('pageerror', (e) => errs.push(`${w}/${night ? '밤' : '낮'}: ${String(e).slice(0, 160)}`));
     await p.goto(URL, { waitUntil: 'domcontentloaded' });

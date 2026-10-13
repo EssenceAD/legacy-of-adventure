@@ -57,6 +57,8 @@ export const FLAG_DEFAULTS = {
   uiKitV2: false,
   /** VISUAL 실험실 토글을 운영자 말고 모두에게 보이기 (테스터 공개 단계) */
   visualLabOpen: false,
+  /** v0.25.2 CHECKIN §B 첫 30분 동선 — 실험실(기본 꺼짐 · 「새 화면 미리 보기」로 켬 · 형철 OK 뒤 true): 임무 건설 대상 맨 위+반짝 · 원정 파티 맨 위 추천·성공률·출발(5번째 자리 설명은 잠긴 칸 눌러야) · 장비 임무는 늘 단골 탭+반짝 · 보고서 버튼 「확인」 */
+  firstFlowFix: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

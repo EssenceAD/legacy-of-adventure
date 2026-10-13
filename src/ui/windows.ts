@@ -2,6 +2,8 @@
 import { bigNum, vis } from '../world/visual';
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
 import { flag } from '../world/flags';
+import { orderBuildKinds } from '../world/firstFlow';
+import { shakeLv } from '../engine/shake';
 import { communityLink } from './community';
 import { landReqs, landWhy } from '../world/landreq';
 import { GROUPS, groupOf, markSeen, unseenDrops } from '../world/decodrop';
@@ -419,8 +421,21 @@ const GATED: Partial<Record<Kind, 'smith' | 'garden' | 'cottage'>> = { smith: 's
 export const buildHooks = { decor: () => {}, redraw: () => {}, pathTool: () => {} };
 /** BUILDUX: 보관함 등에서 쓰는 건설 썸네일 */
 export const thumbOf = (k: Kind) => thumb(k);
-export function openBuild() {
+/** CHECKIN §B-1: 건설 창에서 잠긴 건물인가 (카드 회색 · 임무로 열 때 아래로) */
+function buildLocked(k: Kind): boolean {
+  const d = def(k);
+  const gate = GATED[k];
+  const cap = maxCopies(k);
+  const full = Number.isFinite(cap) && countKind(k) > 0 && countKind(k) >= cap;
+  return d.unlock > S.land || (d.stars ?? 0) > stars() || (!!gate && !feature(gate)) || !!decoLock(k) || full;
+}
+/**
+ * 건설 창 · target = CHECKIN §B-1 장부 임무의 대상 건물 (플래그 firstFlowFix):
+ *  맨 위에 따로 + 반짝 테두리 3초 (탭하면 바로 끝 · 절전/흔들림 끔이면 반짝임 없이 테두리만) · 건물 목록은 열린 것 먼저, 잠긴 건 아래
+ */
+export function openBuild(target?: Kind) {
   if (S.visiting) return;
+  const tgt = vis('firstFlowFix') && typeof target === 'string' ? target : null;
   const card = (k: Kind) => {
       const d = def(k);
       // 베타: 어울림 장식 열림 조건
@@ -433,7 +448,7 @@ export function openBuild() {
       const cap = maxCopies(k);
       const full = Number.isFinite(cap) && countKind(k) > 0 && countKind(k) >= cap;
       const capMax = CONFIG.town.maxCopies[CONFIG.town.maxCopies.length - 1];
-      const locked = d.unlock > S.land || noStar || noGuide || !!dl || full;
+      const locked = buildLocked(k);
       // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ · 「두 번째 온천」
       const cost = buildCost(k);
       const nth = MULTI(k) ? 0 : countKind(k);
@@ -446,19 +461,24 @@ export function openBuild() {
     };
   // DECO_DROP §2: 뽐내기 장식은 「특별 장식」 탭에
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide' && !def(k).luxury);
+  // CHECKIN §B-1: 임무 대상은 맨 위 한 칸 · 나머지 건물은 열린 것 → 잠긴 것
+  const ord = tgt ? orderBuildKinds(kinds, tgt, buildLocked) : null;
+  const top = ord?.top ?? null;
+  const topRow = top ? `<p class="sub">장부 임무</p><div class="cat mtarget">${card(top)}</div>` : '';
   // BUILDUX §1-8: 최근 놓은 장식 5개 바로가기
   const recent = (PG.decor.recent ?? []).filter((k) => kinds.includes(k as Kind)) as Kind[];
   const recentRow = recent.length ? `<p class="sub">최근 놓은 것</p><div class="cat recent">${recent.map(card).join('')}</div>` : '';
   // 건물 → 장식 (장식은 어울림 재료)
   // DECO_DROP §1: 장식은 묶음 탭(둘레·정원·시장·마을·나무·계절·빛·동물) · 안 본 장식은 NEW
   const unseen = new Set<string>(unseenDrops());
-  const decoKinds = kinds.filter((k) => def(k).deco && k !== 'board');
+  const decoKinds = kinds.filter((k) => def(k).deco && k !== 'board' && k !== top);
   const g = buildGroup !== '전체' && !decoKinds.some((k) => groupOf(k) === buildGroup) ? '전체' : buildGroup;
   const gcount = (n: string) => decoKinds.filter((k) => groupOf(k) === n && unseen.has(k)).length;
   const gtabs = `<div class="dgrp">${['전체', ...GROUPS()].filter((n) => n === '전체' || decoKinds.some((k) => groupOf(k) === n)).map((n) => `<button data-dg="${n}" class="${n === g ? 'on' : ''}">${n}${n !== '전체' && gcount(n) ? ` <i class="newb">${gcount(n)}</i>` : ''}</button>`).join('')}</div>`;
   const decoCard = (k: Kind) => card(k).replace('<button data-k=', `<button data-g="${groupOf(k)}" ${g !== '전체' && groupOf(k) !== g ? 'hidden' : ''} data-k=`).replace('</b>', unseen.has(k) ? '</b><i class="newb">NEW</i>' : '</b>');
-  const items = kinds.filter((k) => !def(k).deco || k === 'board').map(card).join('') + `</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요${unseen.size ? ` · <b class="g">새 장식 ${unseen.size}</b>` : ''}</p>${gtabs}<div class="cat deco">` + decoKinds.map(decoCard).join('');
-  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${recentRow}<div class="cat">${items}</div>`);
+  const items = (ord ? ord.rest : kinds).filter((k) => !def(k).deco || k === 'board').map(card).join('') + `</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요${unseen.size ? ` · <b class="g">새 장식 ${unseen.size}</b>` : ''}</p>${gtabs}<div class="cat deco">` + decoKinds.map(decoCard).join('');
+  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${topRow}${recentRow}<div class="cat">${items}</div>`);
+  if (top) glowOnce(document.querySelector<HTMLElement>('.cat.mtarget button'), CONFIG.firstFlow.glowMs);
   $('#toLand').onclick = openLand;
   $('#toDecor').onclick = () => buildHooks.decor();
   $('#toLux').onclick = () => openLuxury();
@@ -504,6 +524,23 @@ export function openBuild() {
         startPlace(k);
       }),
   );
+}
+
+/**
+ * CHECKIN §B: 반짝 테두리 ms 동안 (1초 반짝 × n) · 창을 한 번 누르면 바로 끝
+ *  절전 모드 · 「화면 흔들림 끔」이면 움직임 없이 테두리만 (★품질 규칙 5)
+ */
+export function glowOnce(el: HTMLElement | null, ms: number) {
+  if (!el) return;
+  el.classList.add('ffglow');
+  el.classList.toggle('calm', shakeLv() === 'off');
+  el.style.setProperty('--ffn', String(Math.max(1, Math.round(ms / 1000))));
+  const end = () => {
+    el.classList.remove('ffglow', 'calm');
+    document.getElementById('winB')?.removeEventListener('pointerdown', end);
+  };
+  setTimeout(end, ms);
+  document.getElementById('winB')?.addEventListener('pointerdown', end, { once: true });
 }
 
 /** DECO_DROP §1: 건설 창 장식 묶음 (기억) */
@@ -565,7 +602,7 @@ export function openLand() {
         game.expandLand(l);
       }),
   );
-  $('#toBuild').onclick = openBuild;
+  $('#toBuild').onclick = () => openBuild();
 }
 
 const portrait = (k: string) => PORTRAITS[k] || '';
