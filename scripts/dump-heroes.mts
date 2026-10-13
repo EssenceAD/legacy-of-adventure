@@ -326,6 +326,8 @@ async function village() {
   const ONLY = process.env.ONLY;
   // STAGE=1: 따밤 마을 여관 앞에 전설 몇 명(엘리시아는 신화) + 이름 있는 영웅을 세워 찍는다 → village_legends_*
   const STAGE = !!process.env.STAGE;
+  // ZOOM: 마을 배율 (기본 2 · 1이면 영웅 흰 이름표는 숨는다)
+  const ZOOM = Number(process.env.ZOOM ?? 2);
   const b = await chromium.launch({ channel: 'chrome' });
   const VER = await (async () => {
     const c = await b.newContext();
@@ -349,7 +351,7 @@ async function village() {
               : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 };
           const ctx = await b.newContext(dev);
           await ctx.addInitScript(
-            ([s, on, ver]) => {
+            ([s, on, ver, zoom]) => {
               try {
                 if (sessionStorage.getItem('x')) return;
                 sessionStorage.setItem('x', '1');
@@ -365,10 +367,10 @@ async function village() {
               localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
               localStorage.setItem('legacy-of-adventure-visualLab', 'true');
               // 마을을 크게 (사람이 보이게)
-              for (const k of ['zoom', 'zoom-tablet', 'zoom-desktop', 'zoom-wide', 'zoom-pc']) localStorage.setItem('legacy-of-adventure-' + k, '2');
+              for (const k of ['zoom', 'zoom-tablet', 'zoom-desktop', 'zoom-wide', 'zoom-pc']) localStorage.setItem('legacy-of-adventure-' + k, String(zoom));
               if (!on) localStorage.setItem('legacy-of-adventure-heroDotOff', 'true');
             },
-            [save, on, VER],
+            [save, on, VER, ZOOM],
           );
           const p = await ctx.newPage();
           p.on('pageerror', (e) => errs.push(`${id} ${width} ${on ? '켬' : '끔'}: ${String(e).slice(0, 160)}`));
@@ -383,7 +385,7 @@ async function village() {
       }
       const tag = night ? 'night' : 'day';
       for (const width of [412, 1280]) {
-        await pair(b, `village_${STAGE ? 'legends' : id}_${tag}_${width}`, `${who} 마을 · ${night ? '밤' : '낮'} · 폭 ${width}${STAGE ? ' · 전설·영웅 세움 (엘리시아 = 신화)' : ''}`, shots[`${width}`]);
+        await pair(b, `village_${STAGE ? 'legends' + (ZOOM !== 2 ? '_z' + ZOOM : '') : id}_${tag}_${width}`, `${who} 마을 · ${night ? '밤' : '낮'} · 폭 ${width}${STAGE ? ` · 전설·영웅 세움 (엘리시아 = 신화 · 카엘 = 영웅) · 배율 ×${ZOOM}` : ''}`, shots[`${width}`]);
         if (!night && !STAGE) await pair(b, `hunt_${id}_${width}`, `${who} · 사냥 필드 (숲 1-10) · 폭 ${width}`, shots[`hunt${width}`]);
       }
     }

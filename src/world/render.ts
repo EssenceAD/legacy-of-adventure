@@ -312,13 +312,15 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.fillRect(0, 0, LW, LH);
     ctx.globalCompositeOperation = 'source-over';
   }
-  if (photoState.on) return;
+  if (photoState.on) return void (TAGS.length = 0);
   drawStar(ctx, T);
   drawNamePlate(ctx, nt);
   // 땅 개편: 땅 넓히기 팻말 글씨 (팻말 그림 위)
   if (!S.visiting) drawSignLabel(ctx);
   // 땅 개편 §4: 오프닝 뒤 울타리 반짝 한 바퀴
   if (performance.now() < landHint.fenceUntil) drawFenceSparkle(ctx, 1 - (landHint.fenceUntil - performance.now()) / 2600);
+  // HERODOT 이름표 (전설 금 · 신화 은+별 · 영웅 흰) — 사람을 다 그린 뒤 한 번에
+  drawNamedTags(ctx);
   // 베타: 어울림 점선 (보기 토글 · 발견 연출)
   drawHarmonyLines(ctx);
   if (!S.visiting) {
@@ -969,6 +971,56 @@ function sigAt(s: CharFrames, T: number, ph: number): HTMLCanvasElement | null {
   return fr?.length ? fr[Math.min(fr.length - 1, Math.floor((t / dur) * fr.length))] : null;
 }
 
+/** HERODOT 이름표 (R8 판정): 이번 프레임에 그릴 이름표 · 눌러 본 영웅(몇 초 동안 이름표) */
+const TAGS: { X: number; top: number; name: string; tier: 'legend' | 'hero' | 'mythic'; d: number }[] = [];
+const TAG_TAP = new WeakMap<Actor, number>();
+/** 손님 창을 열면(누르면) 그 영웅 이름표를 6초 동안 보인다 */
+export function tagTap(a: Actor) {
+  TAG_TAP.set(a, S.T + 6);
+}
+/** 이름표 한 번에: 전설·신화는 화면 가운데에 가까운 3명까지 · 겹치면 위로 한 줄씩 비켜 쌓는다 · 영웅(흰)은 그 다음 */
+function drawNamedTags(ctx: CanvasRenderingContext2D) {
+  if (!TAGS.length) return;
+  const p = P(ctx);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.font = '8px "Galmuri9"';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const legends = TAGS.filter((t) => t.tier !== 'hero').sort((q, r) => q.d - r.d).slice(0, 3);
+  const heroes = TAGS.filter((t) => t.tier === 'hero').sort((q, r) => q.d - r.d);
+  const placed: [number, number, number, number][] = [];
+  const hit = (b: [number, number, number, number]) => placed.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]);
+  for (const t of [...legends, ...heroes]) {
+    const w = Math.ceil(ctx.measureText(t.name).width) + (t.tier === 'mythic' ? 6 : 0);
+    let ty = t.top - 1;
+    const box = (): [number, number, number, number] => [t.X - w / 2 - 2, ty - 8, t.X + w / 2 + 2, ty + 2];
+    let b = box();
+    for (let n = 0; n < 6 && hit(b); n++) {
+      ty -= 9;
+      b = box();
+    }
+    // 영웅 이름표는 비킬 자리가 없으면 그리지 않는다 (전설 이름표를 가리지 않게)
+    if (t.tier === 'hero' && hit(b)) continue;
+    placed.push(b);
+    const col = t.tier === 'mythic' ? '#dfe6f5' : t.tier === 'legend' ? '#ffd36b' : '#ffffff';
+    const tx = t.X - (t.tier === 'mythic' ? 3 : 0);
+    ctx.fillStyle = '#1a1220';
+    ctx.fillText(t.name, tx + 1, ty + 1);
+    ctx.fillText(t.name, tx - 1, ty + 1);
+    ctx.fillText(t.name, tx, ty + 2);
+    ctx.fillStyle = col;
+    ctx.fillText(t.name, tx, ty);
+    if (t.tier === 'mythic') {
+      const sx3 = tx + Math.ceil((w - 6) / 2) + 4;
+      const sy3 = ty - 4;
+      p.px(sx3, sy3, '#ffffff');
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) p.px(sx3 + dx, sy3 + dy, '#dfe6f5');
+    }
+  }
+  TAGS.length = 0;
+}
+
 /** HERODOT 3: 전설 2초마다 1px 반짝 · 신화 발밑 별 입자 2~3개 · 머리 위 이름표 */
 function namedFx(ctx: CanvasRenderingContext2D, a: Actor, s: CharFrames, X: number, Y: number, top: number, dir: number, T: number) {
   const p = P(ctx);
@@ -993,26 +1045,9 @@ function namedFx(ctx: CanvasRenderingContext2D, a: Actor, s: CharFrames, X: numb
         p.px(px2 + 1, py2, '#ffd36b');
       }
     }
-  // 이름표: 작은 글씨 + 어두운 그림자 (머리 위)
-  ctx.font = '8px "Galmuri9"';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  const ty = top - 1 + Math.round(Math.sin(T * 2 + a.ph) * 0.6);
-  const col = s.tier === 'mythic' ? '#dfe6f5' : s.tier === 'legend' ? '#ffd36b' : '#ffffff';
-  const name = a.name;
-  ctx.fillStyle = '#1a1220';
-  ctx.fillText(name, X + 1, ty + 1);
-  ctx.fillText(name, X - 1, ty + 1);
-  ctx.fillText(name, X, ty + 2);
-  ctx.fillStyle = col;
-  ctx.fillText(name, X, ty);
-  if (s.tier === 'mythic') {
-    const w = Math.ceil(ctx.measureText(name).width);
-    const sx3 = X + Math.ceil(w / 2) + 3;
-    const sy3 = ty - 4;
-    p.px(sx3, sy3, '#ffffff');
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) p.px(sx3 + dx, sy3 + dy, '#dfe6f5');
-  }
+  // 이름표는 모아 두었다가 한 번에 (겹치면 위로 쌓기 · 전설·신화 최대 3 · 영웅은 확대 2배 이상이거나 눌렀을 때만)
+  const tier = s.tier!;
+  if (TAGS.length < 64 && (tier !== 'hero' || S.zoom >= 2 || (TAG_TAP.get(a) ?? -1) > T)) TAGS.push({ X, top: top + (s.idle[0].height - 33) + 2, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2) });
 }
 
 function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
