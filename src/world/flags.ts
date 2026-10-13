@@ -72,6 +72,8 @@ export const FLAG_DEFAULTS = {
   mythicGuide: false,
   /** v0.25.2 버그: 방문 중인 전설도 의뢰·사냥 파티에 「동행 · 방문 중」으로 (루나 부탁) — 단골 자리엔 안 셈 · 다녀와도 방문객 · 방문 시간은 계속 흐름 */
   legendCompanion: true,
+  /** HERODOT 영웅·손님 도트 리마스터 2 (1단계: 기사·사제·도적) — 형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」(실험실)로만 켜 봄 (vis) */
+  heroDotV2: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

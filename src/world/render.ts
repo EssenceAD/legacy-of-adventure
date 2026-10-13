@@ -961,6 +961,8 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   else if (a.st === 'atk') fr = s.atk[Math.floor(T * 3 + a.ph) % 2];
   else if (a.st === 'pray') fr = s.pray[Math.floor(T * 1.5 + a.ph) % 2];
   else if (a.st === 'sit') fr = s.sit[Math.floor(T * 2 + a.ph) % 2];
+  // HERODOT: 새 도트는 2~3초에 한 번 눈 깜빡임 (blink 프레임이 있을 때만)
+  else if (s.blink && (T + a.ph) % (2 + (a.ph % 1)) < 0.13) fr = s.blink;
   else fr = s.idle[Math.floor(T * 1.6 + a.ph) % 2];
   const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
   const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));

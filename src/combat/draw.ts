@@ -482,6 +482,8 @@ function drawAlly(ctx: CanvasRenderingContext2D, f: Field, u: Unit, W: (x: numbe
   else if ((u.castAnim ?? 0) > 0) img = cb.cast[Math.max(0, Math.min(2, Math.floor((1 - (u.castAnim ?? 0) / 0.3) * 3)))];
   else if ((u.swing ?? 0) > 0) img = cb.atk[Math.min(3, Math.floor((1 - (u.swing ?? 0) / (u.swingMax ?? C.combo.swing)) * 4))];
   else if (u.moving) img = (up ? cb.walkB : cb.walk)[Math.floor(u.t * 12) % 6];
+  // HERODOT: 새 도트는 2.5초에 한 번 눈 깜빡임 (blink 프레임이 있을 때만)
+  else if (!up && cb.blink && u.t % 2.5 < 0.12) img = cb.blink;
   else img = (up ? cb.idleB : cb.idle)[Math.floor(u.t * 3) % 3];
   let left = screenDx(u.ax, u.ay) < 0;
   // 회전 베기: 실제로 한 바퀴 (오른쪽 → 뒤 → 왼쪽 → 앞)

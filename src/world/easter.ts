@@ -58,13 +58,13 @@ const LOOK: Record<PioneerId, { kind: Actor['kind']; race: Actor['race']; hair: 
 /** 마을 도트 소품 (손님 생성기 옷 칸): 웅스 흰 수건 · 고느끼 베레모 + 금빛 붓 · 따뜻한밤 붉은 망토 + 등불 · 이카몰리 바람개비 */
 export const CAMEO_DEF: Record<PioneerId, Partial<ClassDef>> = {
   // 웅스: 인간 · 짧은 검은 머리 · 구릿빛 · 흰 도복 + 검은 띠 · 맨발 · 어깨에 흰 수건 · 무기 없음
-  woongs: { style: 'short', hair: '#1e1a1a', skin: '#d99a6c', face: { eyes: 'dot', mouth: 'grin', brow: 'up', blush: false }, cloth: '#f2efe8', arm: '#f2efe8', pants: '#f2efe8', accent: '#2a2a2a', boots: '#d99a6c', towel: '#ffffff', weapon: null, shield: false, hood: undefined, helm: undefined, robe: false, cape: undefined },
+  woongs: { style: 'short', hair: '#1e1a1a', skin: '#d99a6c', face: { eyes: 'dot', mouth: 'grin', brow: 'up', blush: false }, cloth: '#f2efe8', arm: '#f2efe8', pants: '#f2efe8', accent: '#2a2a2a', boots: '#d99a6c', towel: '#ffffff', weapon: null, shield: false, hood: undefined, helm: undefined, robe: false, cape: undefined, dot2: undefined },
   // 고느끼: 하플링 · 분홍 양갈래 · 반짝 눈 · 볼에 물감 · 청 멜빵바지 + 분홍 셔츠 · 남색 베레모 · 붓(끝 분홍)
-  gonu: { style: 'twin', hair: '#ef6f9a', face: { eyes: 'sparkle', mouth: 'o', blush: true, paint: '#e8506a' }, cloth: '#f4a3be', arm: '#f4a3be', pants: '#3f5a8f', apron: '#3f5a8f', accent: '#3f5a8f', boots: '#5a3a2a', hat: 'beret', hatc: '#2a2f55', weapon: 'brush', weaponColor: '#ef6f9a', robe: false, cape: undefined, hood: undefined, elf: false, dwarf: true, beard: undefined },
+  gonu: { style: 'twin', hair: '#ef6f9a', face: { eyes: 'sparkle', mouth: 'o', blush: true, paint: '#e8506a' }, cloth: '#f4a3be', arm: '#f4a3be', pants: '#3f5a8f', apron: '#3f5a8f', accent: '#3f5a8f', boots: '#5a3a2a', hat: 'beret', hatc: '#2a2f55', weapon: 'brush', weaponColor: '#ef6f9a', robe: false, cape: undefined, hood: undefined, elf: false, dwarf: true, beard: undefined, dot2: undefined },
   // 따뜻한밤: 인간 · 갈색 덥수룩 · 감은 눈 + 큰 볼터치 · 붉은 후드 망토 · 갈색 조끼 · 등불
-  warmnight: { style: 'short', hair: '#7a3f24', face: { eyes: 'happy', blush: true }, cape: '#c8352e', hood: '#c8352e', cloth: '#5a3a2a', arm: '#5a3a2a', pants: '#4a3428', accent: '#7a5a3a', boots: '#3a2a20', weapon: 'lantern', shield: false, robe: false, helm: undefined },
+  warmnight: { style: 'short', hair: '#7a3f24', face: { eyes: 'happy', blush: true }, cape: '#c8352e', hood: '#c8352e', cloth: '#5a3a2a', arm: '#5a3a2a', pants: '#4a3428', accent: '#7a5a3a', boots: '#3a2a20', weapon: 'lantern', shield: false, robe: false, helm: undefined, dot2: undefined },
   // 이카몰리: 인간 · 긴 갈색 웨이브 · 동그란 안경 · 크림 코트 · 하늘색 목도리 · 바람개비(빨강·노랑)
-  ikamolly: { style: 'long', hair: '#8a4a2e', face: { eyes: 'calm', mouth: 'tiny', glasses: true }, glassesColor: '#c9a46a', cloth: '#f1e6d2', arm: '#f1e6d2', pants: '#d8c8ae', accent: '#c9b48e', boots: '#7a5a3a', towel: '#8fc6e0', weapon: 'pinwheel', weaponColor: '#e8503c', hood: undefined, dual: false, quiver: false, elf: false, robe: false },
+  ikamolly: { style: 'long', hair: '#8a4a2e', face: { eyes: 'calm', mouth: 'tiny', glasses: true }, glassesColor: '#c9a46a', cloth: '#f1e6d2', arm: '#f1e6d2', pants: '#d8c8ae', accent: '#c9b48e', boots: '#7a5a3a', towel: '#8fc6e0', weapon: 'pinwheel', weaponColor: '#e8503c', hood: undefined, dual: false, quiver: false, elf: false, robe: false, dot2: undefined },
 };
 export function makeCameo(id: PioneerId, x: number, y: number): Actor {
   const L = LOOK[id];

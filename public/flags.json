@@ -33,5 +33,6 @@
   "autoPathNone": false,
   "boardLevelUp": false,
   "mythicGuide": false,
-  "legendCompanion": true
+  "legendCompanion": true,
+  "heroDotV2": false
 }
