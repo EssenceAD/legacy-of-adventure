@@ -96,7 +96,8 @@ export function addWhet(n = 1) {
 
 // ───────── §3-5 [알림] 자랑 ─────────
 
-export type BragKind = 'unique' | 'relic' | 'enh10' | 'tr15' | 'tr20' | 'set3' | 'fish';
+// GOLDSINK §5: weekly(마을 부탁 주간 · 「weekly|」) · B파트용 abyss(층 숫자) · dice(업적 이름) · harvest(장식·칭호 이름) — 서버 post_notice가 받는 종류
+export type BragKind = 'unique' | 'relic' | 'enh10' | 'tr15' | 'tr20' | 'set3' | 'fish' | 'weekly' | 'abyss' | 'dice' | 'harvest';
 /** 내 이름 (로그인했으면 닉네임 — ui가 채운다) */
 export const bragHooks = { name: () => P.owner?.name ?? (S.innName || '주인') };
 /** 자랑 문장 (서버가 문장을 만들 때 쓰는 인자도 같이) */
@@ -111,6 +112,10 @@ export function bragText(kind: BragKind, it?: Pick<Item, 'name'> | null, extra =
     case 'tr20': return `🌟 ${n}님의 「${x}」${josa(x, '이')} +20 극의에 닿았어요!`;
     case 'set3': return `🛡️ ${n}님이 「${x}」 세트 3부위를 처음 완성했어요!`;
     case 'fish': return `🎣 ${n}님이 전설의 물고기 「${x}」${josa(x, '을')} 낚았어요!`;
+    case 'weekly': return `📮 ${n}님이 이번 주 마을 부탁 ${CONFIG.goldsink.favor.weekGoal}개를 다 들어줬어요!`;
+    case 'abyss': return `🕳️ ${n}님이 끝없는 심연 ${x}층에 닿았어요!`;
+    case 'dice': return `🎲 ${n}님이 주사위 술내기 「${x}」 달성!`;
+    case 'harvest': return `🌾 ${n}님이 「${x}」${josa(x, '을')} 얻었어요!`;
   }
 }
 /** 자랑할 수 있나 (끄기 · 같은 사람 10분에 1번 · 같은 종류 하루 3번) — 되면 기록까지 */

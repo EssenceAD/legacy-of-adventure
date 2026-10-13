@@ -27,6 +27,7 @@ import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
 import { addCharm, mealGold } from './growth';
 import { partySpecial, rollUniqueAny } from './uniques';
 import { windQuestGold } from './wind';
+import { blessFx, payRefresh } from './goldsink';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -133,13 +134,16 @@ export function ensureQuests() {
   }
 }
 
-/** 무료 새로고침 (하루 1번) */
-export function refreshQuests(): boolean {
+/** 새로고침: 하루 무료 1번 → GOLDSINK §1 그 뒤는 금화로 (진행 중인 원정은 그대로, 안 받은 의뢰만 바뀐다) */
+export function refreshQuests(): false | 'free' | 'paid' {
   ensureQuests();
-  if (P.quests.refreshUsed >= E.freeRefreshPerDay) return false;
-  P.quests.refreshUsed++;
+  let kind: 'free' | 'paid' = 'free';
+  if (P.quests.refreshUsed >= E.freeRefreshPerDay) {
+    if (!payRefresh()) return false;
+    kind = 'paid';
+  } else P.quests.refreshUsed++;
   P.quests.list = rollQuests();
-  return true;
+  return kind;
 }
 
 // ───────── 파티 ─────────
@@ -174,7 +178,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')) * mythicAtk(members, q.region));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + pioneerExpCut() + mythicTimeCut(members) + hunterTimeCut(members));
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + blessFx('expTime') + pioneerExpCut() + mythicTimeCut(members) + hunterTimeCut(members));
   return {
     power,
     chem,

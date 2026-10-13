@@ -31,6 +31,7 @@ import { itemById } from './world/items';
 import { computeOffline } from './world/offline';
 import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
+import { gsState } from './world/goldsink';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
 import { addObj, astar, blocksDoor, buildCost, canPlace, countKind, maxCopies, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
@@ -645,7 +646,7 @@ export async function likeNeighbor() {
   if (!v) return;
   // 실제 유저 마을: 서버 (마을당 하루 한 번)
   if (v.uid) {
-    if (await likeReal(v)) { const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
+    if (await likeReal(v)) { gsState().cnt.likes++; const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
     updateLike();
     return;
   }
@@ -653,6 +654,7 @@ export async function likeNeighbor() {
   if (set.has(v.id)) return toast('이미 좋아요를 남겼어요');
   set.add(v.id);
   setPref('liked', [...set]);
+  gsState().cnt.likes++;
   updateLike();
   { const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
 }

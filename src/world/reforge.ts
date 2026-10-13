@@ -2,6 +2,7 @@
 import { CONFIG } from '../data/config';
 import { BASE_REGIONS, OPT_INFO, REGIONS, ROLL_KEYS, type Grade } from '../data/items';
 import { markDirty, P, S, type Item, type ItemOpt } from './state';
+import { gsState } from './goldsink';
 
 const RF = () => CONFIG.growth.reforge;
 /** 재련할 수 있는 옵션 번호들 (고유 옵션 · 잠근 옵션 빼고) */
@@ -39,6 +40,7 @@ export function reforge(it: Item, lock: number | null = null, rng: () => number 
   const c = reforgeCost(it, lock);
   P.dust[it.grade] -= c.dust;
   S.gold -= c.gold;
+  gsState().cnt.smith++;
   const cand = rerollable(it, lock);
   const idx = cand[Math.floor(rng() * cand.length)];
   const before = it.opts[idx];

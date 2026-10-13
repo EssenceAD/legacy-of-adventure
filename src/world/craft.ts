@@ -1,6 +1,7 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
 import { bestOf } from './town';
 import { towerEnhance } from './facilities';
+import { gsState } from './goldsink';
 import { addCrop } from './facilities';
 import { DUST_NAME, SLOTS } from '../data/items';
 import { track as trackEv } from '../net/telemetry';
@@ -152,6 +153,7 @@ export function enhance(it: Item, o: EnhOpts = {}): 'ok' | 'fail' | 'max' | 'poo
   if (bc) P.bossMats[bc.boss.id] -= bc.n;
   track('enhance');
   legendHooks.bond('enhanceTry');
+  gsState().cnt.smith++;
   ownerGain('enhance');
   markDirty();
   // GROWTH §3-2: 목표별 확률 · +7~+10 실패 30% 하락(부적) · 천장 · 대성공
@@ -209,6 +211,7 @@ export function transcend(it: Item, o: EnhOpts = {}): TranscendResult {
   if ((P.bossMats[c.boss.id] ?? 0) < c.bossMats) return 'boss';
   if ((P.dust[it.grade] ?? 0) < c.dust) return 'dust';
   S.gold -= c.gold;
+  gsState().cnt.smith++;
   P.mats[it.region] -= c.mats;
   P.bossMats[c.boss.id] -= c.bossMats;
   P.dust[it.grade] -= c.dust;

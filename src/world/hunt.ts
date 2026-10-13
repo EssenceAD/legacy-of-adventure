@@ -17,6 +17,8 @@ import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
 import { partySpecial, rollUnique } from './uniques';
 import { partySynMult, synergyFx } from './synergy';
+import { autoGoldMult, blessFx, gsState } from './goldsink';
+import { takeUniqueBoost } from './favors';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -79,13 +81,20 @@ export interface HuntReward {
   bossMats: number;
 }
 
-/** 한 판 보상 (mult = 방치처럼 비율을 낮출 때) */
-function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult = 1, dropItem = true): HuntReward {
+/** GOLDSINK §4: 자동 반복(맡겨 두기 · 방치 · 접은 판)이면 오늘 판 수를 세고 금화 비율 (첫 돌파 · 수동 판은 1) */
+function taperFor(s: number, first: boolean, auto: boolean): number {
+  if (!auto || first) return 1;
+  if (isBoss(s) && CONFIG.goldsink.taper.exemptBossStage) return 1;
+  return autoGoldMult();
+}
+/** 한 판 보상 (mult = 방치처럼 비율을 낮출 때 · goldMult = 자동 사냥 금화 비율) */
+function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult = 1, dropItem = true, goldMult = 1): HuntReward {
   const ri = regionIdx(r);
   // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
   const EC = CONFIG.economy;
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold));
-  const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult);
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult);
+  // GOLDSINK §3: 축복 — 사냥 경험치 +
+  const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult * (1 + blessFx('xp')));
   // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
   const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult) + (mult >= 1 ? partySpecial(members, 'matPlus') : 0);
   S.gold += g;
@@ -104,7 +113,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
   for (const m of members) if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
   const items: Item[] = [];
-  if (dropItem && (isBoss(s) || Math.random() < H.dropChance * (1 + buffOf('luck')))) {
+  if (dropItem && (isBoss(s) || Math.random() < H.dropChance * (1 + buffOf('luck') + blessFx('drop')))) {
     // 원정과 같은 등급표 · 같은 천장(지역별)
     const it = makeItem(r, rollGrade(r, isBoss(s) ? 1 : 0));
     if (addToBag(it) === 'ok') items.push(it);
@@ -128,8 +137,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   return { gold: g, xp, mats, items, firstDust, shards, token, levelUps, first, bossMats };
 }
 
-/** 스테이지 돌파 (직접·자동 전투 한 판) */
-export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true): HuntReward {
+/** 스테이지 돌파 (직접·자동 전투 한 판) · auto = 자동 반복(맡겨 두기·접은 판) — GOLDSINK §4 금화 비율 */
+export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true, auto = false): HuntReward {
   // MYTHIC 바엘 부탁: 별의 심연 x-10을 바엘과 함께
   mythicHuntWin(r, s, members);
   const key = `${r}-${s}`;
@@ -140,7 +149,8 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
   if (r === 'forest') P.counters.forestSends++;
   P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
-  const out = reward(r, s, members, first, mult, dropItem);
+  if (isBoss(s)) gsState().cnt.hboss++;
+  const out = reward(r, s, members, first, mult, dropItem, taperFor(s, first, auto));
   bossUnique(r, s, out);
   markDirty();
   return out;
@@ -148,7 +158,8 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
 /** GROWTH §3-4: 지역 사냥 보스(x-10) 0.5% 고유 장비 */
 function bossUnique(r: RegionId, s: number, out: HuntReward) {
   if (!isBoss(s)) return;
-  const u = rollUnique(r, CONFIG.growth.unique.hunt);
+  // GOLDSINK §5: 마을 부탁 보너스 상자 — 다음 지역 보스 한 번 고유 장비 확률 ×2
+  const u = rollUnique(r, CONFIG.growth.unique.hunt * takeUniqueBoost());
   if (u) out.items.push(u);
 }
 /** 소탕: 깬 스테이지만 · 전투 없이 기본 70% · 첫 돌파 보상 없음 */
@@ -205,7 +216,7 @@ export function autoTick(now = Date.now()): HuntReward | null {
     uiHooks.toast('맡겨 둔 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)');
     return null;
   }
-  const out = clearStage(a.region as RegionId, a.stage, ms);
+  const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true);
   a.n = (a.n ?? 0) + 1;
   a.gold = (a.gold ?? 0) + out.gold;
   return out;
@@ -238,7 +249,7 @@ export function idleHunt(seconds: number, goldCap: number): IdleHunt | null {
   let mats = 0;
   let nItems = 0;
   for (let i = 0; i < clears; i++) {
-    const out = reward(r as RegionId, s, ms, false, H.idleReward, nItems < H.idleItemsMax);
+    const out = reward(r as RegionId, s, ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(s, false, true));
     gold += out.gold;
     xp += out.xp;
     mats += out.mats;

@@ -17,6 +17,7 @@ import { queueEvent } from './events';
 import { repHook, stars, today } from './progress';
 import { guestGiftEffect, guestGiftedToday, talkHint } from './growth';
 import { FISH } from '../data/story/fish';
+import { tavernBoost } from './goldsink';
 import { markDirty, P, S, uiHooks, world, type Actor, type OwnerState, type TalkChoice, type TalkLine, type TieState } from './state';
 import { windTavern } from './wind';
 import { addChronicle } from './chronicle';
@@ -185,7 +186,7 @@ const seasonNow = () => (P.owner ? calendar().season : -1);
 /** 건물 수입 배율 */
 export function incomeMult(act: string): number {
   let m = 1 + legacySum('gold');
-  if (act === 'drink') m += (stat('cook') / 100) * O.cookIncome + legacySum('tavern') + windTavern() + (seasonNow() === 2 ? O.seasonBonus : 0);
+  if (act === 'drink') m += (stat('cook') / 100) * O.cookIncome + legacySum('tavern') + windTavern() + (seasonNow() === 2 ? O.seasonBonus : 0) + tavernBoost();
   if (act === 'bath' && seasonNow() === 1) m += O.seasonBonus;
   if (act === 'sleep' && seasonNow() === 3) m += O.seasonBonus;
   return m;

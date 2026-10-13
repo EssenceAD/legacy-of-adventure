@@ -558,6 +558,8 @@ export function freshProgress() {
     growth: freshGrowth(),
     /** ECONOMY §1: 금화 출처 하루 집계 (날짜 · 출처별 합) */
     goldLog: { day: '', by: {} as Record<string, number> },
+    /** GOLDSINK: 하루(한국 시간) 카운터 · 축복 · 마을 부탁 (world/goldsink.ts gsState가 칸을 바로잡는다) */
+    gs: freshGoldsink(),
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
     /** BUILDUX: store = 보관함 · recent = 최근 놓은 장식 5개 · hintSeen = 첫 진입 안내 봄 */
     /** FEEDBACK23: entX = 옮긴 마을 입구 x (null = 여관 문 줄 · 자동) · dgHome = 던전을 처음 옮기기 전 숲속 자리 (되돌릴 수 있게) */
@@ -624,6 +626,41 @@ export function freshGrowth() {
   };
 }
 export type GrowthState = ReturnType<typeof freshGrowth>;
+
+/** GOLDSINK §5: 마을 부탁 하나 (base = 받았을 때 기록 값 · 진행 = 지금 − base) */
+export interface Favor {
+  id: string;
+  base: number;
+  target: number;
+  claimed: boolean;
+}
+export function freshGoldsink() {
+  return {
+    /** 하루 카운터의 날 (한국 시간) · 유료 새로고침 수 · 변환 산 수(품목 키별) · 오늘 자동 사냥 판 수 · 오늘 부탁 바꾸기 수 */
+    day: '',
+    refreshPaid: 0,
+    conv: {} as Record<string, number>,
+    autoN: 0,
+    swaps: 0,
+    /** 본 대사 (계정당) · 하루 한 번 대사를 본 날 */
+    seen: [] as string[],
+    talkDay: {} as Record<string, string>,
+    /** 축복 끝나는 시각 */
+    blessUntil: 0,
+    /** 직접 세는 기록 (강화·초월·재련 · 변환 · 축복 · 지역 보스 사냥 · 이웃 좋아요) */
+    cnt: { smith: 0, conv: 0, bless: 0, hboss: 0, likes: 0 } as Record<string, number>,
+    /** 마을 부탁: 오늘 목록 · 보너스 상자 받았나 · 주(월요일) · 이번 주 완료 · 감사 편지 받았나 */
+    favors: [] as Favor[],
+    box: false,
+    week: '',
+    weekN: 0,
+    letter: false,
+    /** 보너스 상자: 다음 지역 보스 고유 장비 확률 ×2 남은 횟수 · 주점 수입 +10% 날 */
+    uniqueBoost: 0,
+    tavernDay: '',
+  };
+}
+export type GoldsinkState = ReturnType<typeof freshGoldsink>;
 
 /** 하루 마감 정산 한 장 */
 export interface DayLog {

@@ -4,6 +4,7 @@ import { def, INSIDE_TEXT, type Act } from '../data/catalog';
 import { copyIncomeMult } from './town';
 import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
+import { blessed, blessFx } from './goldsink';
 import { GUEST_KINDS, KIND_LINES, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
@@ -368,7 +369,9 @@ function goInside(a: Actor, o: Building) {
   o.inside.push(a);
   a.t = act === 'sleep' ? (S.night ? A.stay.sleepNight : A.stay.sleepDay) : A.stay.otherMin + Math.random() * (A.stay.otherMax - A.stay.otherMin);
   puffAt(o, '#efe2c6', 3, false);
-  if (act && act !== 'sleep' && LINES[act]) bldSay(o, pick(LINES[act]));
+  // GOLDSINK §3: 축복 중이면 기도하는 손님이 가끔 「축복이 느껴져요」
+  if (act === 'pray' && !S.visiting && blessed() && Math.random() < CONFIG.goldsink.bless.feelChance) bldSay(o, '축복이 느껴져요');
+  else if (act && act !== 'sleep' && LINES[act]) bldSay(o, pick(LINES[act]));
   fillNeeds(a, act);
   // 손님 접대 (전설 인연 활동): 기사·도적 손님이 건물을 쓸 때
   if (!S.visiting && a.id && act) {
@@ -871,7 +874,7 @@ function tickGuests(dt: number) {
     const dm = (low * NE.moodLowNeedPerHour + (crowded ? NE.moodCrowdedPerHour : 0)) * gh;
     // GROWTH §3-4 「첫 단골의 단추」: 낀 단골은 기분이 잘 안 떨어짐 (떨어지는 양 절반)
     // DIRECTION §1-2 고요한 해: 떨어지는 양 ×0.5
-    a.mood = clamp(a.mood + (dm < 0 ? dm * windMoodDecay() * (hasSpecial(a, 'regularMood') ? 0.5 : 1) : dm));
+    a.mood = clamp(a.mood + (dm < 0 ? dm * windMoodDecay() * (hasSpecial(a, 'regularMood') ? 0.5 : 1) * (1 - blessFx('mood')) : dm));
   }
   hourAcc += gh;
   if (hourAcc < 1) return;

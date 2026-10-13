@@ -1154,6 +1154,27 @@ export const CONFIG = {
     /** §2-2 「함께 만든 사람들」: 반영된 제보 몇 건부터 */
     contributorMin: 3,
   },
+  /** GOLDSINK §1~§5: 쌓이는 금화에 쓸 곳 — 값은 전부 기준 × m(r) (m = 2^사냥 최고 지역 번호, 숲 0 … 심연의 바닥 9) · 하루 초기화 = 한국 시간 0시 */
+  goldsink: {
+    /** §1 의뢰 새로고침: 무료(하루 1번) 다음부터 n번째 유료 = base × m × grow^(n−1) */
+    refresh: { base: 1000, grow: 1.5 },
+    /** §2 연금술 변환: 첫 값(× m) · 하나 살 때마다 첫 값 기준 +rise (복리 아님) · 하루 최대 · 한 번에 받는 수 · 지역 배수(region: 그 지역 m / top: 최고 지역 m) */
+    conv: {
+      mat: { first: 150, rise: 0.02, cap: 300, qty: 1, by: 'region' },
+      ash: { first: 500, rise: 0.03, cap: 50, qty: 10, by: 'top' },
+      dustR: { first: 1500, rise: 0.04, cap: 20, qty: 10, by: 'top' },
+      dustE: { first: 4000, rise: 0.04, cap: 20, qty: 10, by: 'top' },
+      dustL: { first: 10000, rise: 0.04, cap: 20, qty: 5, by: 'top' },
+      boss: { first: 20000, rise: 0.25, cap: 5, qty: 1, by: 'region' },
+      whet: { first: 2000, rise: 0.1, cap: 5, qty: 1, by: 'top' },
+    } as Record<string, { first: number; rise: number; cap: number; qty: number; by: 'region' | 'top' }>,
+    /** §3 예배당 축복: 값 base × m · 한 번에 hours시간 (최대 maxHours) · 효과(Lv1) + 레벨마다 perLv씩 */
+    bless: { base: 2000, hours: 2, maxHours: 8, xp: 0.2, drop: 0.1, expTime: 0.1, mood: 0.3, perLv: 0.02, feelChance: 0.35 },
+    /** §4 자동 사냥 금화: 오늘(현실) 자동 판 수 구간별 비율 · exemptBossStage = x-10 자동 반복은 줄이지 않기 */
+    taper: { steps: [[120, 1], [300, 0.5], [Infinity, 0.25]] as [number, number][], exemptBossStage: false },
+    /** §5 마을 부탁: 하루 몇 개 · 바꾸기(무료 1번 뒤 base × m × 2^(n−1)) · 주간 목표 · 보너스 상자 고유 장비 확률 배수 */
+    favor: { perDay: 3, swapFree: 1, swapBase: 500, weekGoal: 15, weekBossMats: 3, weekTokens: 1, uniqueMult: 2, tavernBoost: 0.1, blessMin: 30 },
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,
