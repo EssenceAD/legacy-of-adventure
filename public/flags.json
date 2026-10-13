@@ -26,5 +26,7 @@
   "calmWorld": false,
   "hudV2": false,
   "uiKitV2": false,
-  "visualLabOpen": false
+  "visualLabOpen": false,
+  "propFilter": false,
+  "storyInbox": false
 }

@@ -3,6 +3,7 @@
 import { ACHIEVEMENTS } from '../data/achieve';
 import { flag } from '../world/flags';
 import { MANUAL_V2 } from '../data/story/manual';
+import { INBOX_NAME, inboxMode, PROP_FILTER_NAME, propFilterMode, setInboxMode, setPropFilterMode, type InboxMode, type PropFilterMode } from '../world/storyInbox';
 import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { openFirstsList, setWfBubbles, wfBubblesOn } from './wayfind';
@@ -43,7 +44,7 @@ import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
 import { setPref, writeSave } from '../save/save';
-import { labOn, setLab } from '../world/visual';
+import { labOn, setLab, vis } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
@@ -350,11 +351,18 @@ function labRowHtml(): string {
   return `<label class="tog"><input type="checkbox" id="mLab" ${labOn() ? 'checked' : ''}> 새 화면 미리 보기 <small>(실험 중 · 팔레트·조용한 숲·새 HUD·창 틀 · 이 기기만 · 바꾸면 다시 불러와요)</small></label>`;
 }
 
+/** CHECKIN §A1 「단골 제안 받을 손님」 · §A2 「곁이야기」 — 케미 알림 옆 (플래그를 끄면 줄도 없음) */
+function checkinRowsHtml(): string {
+  const a1 = vis('propFilter') ? `<label class="tog">단골 제안 받을 손님 <select id="mPropF">${(['useful', 'all', 'none'] as const).map((k) => `<option value="${k}" ${propFilterMode() === k ? 'selected' : ''}>${PROP_FILTER_NAME[k]}</option>`).join('')}</select></label>` : '';
+  const a2 = vis('storyInbox') ? `<label class="tog">곁이야기 <select id="mInbox">${(['collect', 'now'] as const).map((k) => `<option value="${k}" ${inboxMode() === k ? 'selected' : ''}>${INBOX_NAME[k]}</option>`).join('')}</select></label>` : '';
+  return a1 + a2;
+}
+
 export function openSettings() {
   openWin(
     '설정',
     `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
-    <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
+    <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label>${checkinRowsHtml()}<label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
@@ -395,6 +403,20 @@ export function openSettings() {
     trackEv('chem_notice', { mode: v });
     toast(`케미 알림: ${CHEM_NOTICE_NAME[v as ChemNotice]}`);
   };
+  const pf = $('#mPropF') as HTMLSelectElement | null;
+  if (pf)
+    pf.onchange = () => {
+      setPropFilterMode(pf.value as PropFilterMode);
+      trackEv('prop_filter', { mode: pf.value });
+      toast(`단골 제안 받을 손님: ${PROP_FILTER_NAME[pf.value as PropFilterMode]}`);
+    };
+  const ib = $('#mInbox') as HTMLSelectElement | null;
+  if (ib)
+    ib.onchange = () => {
+      setInboxMode(ib.value as InboxMode);
+      trackEv('story_inbox', { mode: ib.value });
+      toast(`곁이야기: ${INBOX_NAME[ib.value as InboxMode]}`);
+    };
   ($('#mShake') as HTMLSelectElement).onchange = (e) => {
     setShakeLv((e.target as HTMLSelectElement).value as ShakeLv);
     toast(`화면 흔들림: ${SHAKE_NAME[(e.target as HTMLSelectElement).value as ShakeLv]}`);

@@ -5,7 +5,7 @@ import { P, S, world, type DayLog } from './state';
 
 /** 이번 날 모으기 시작 */
 function open() {
-  P.daily.cur = { day: S.day, gold0: P.counters.goldTotal, arrivals: 0, newHarm: 0, newDex: 0, moodSum: 0, moodN: 0 };
+  P.daily.cur = { day: S.day, gold0: P.counters.goldTotal, arrivals: 0, newHarm: 0, newDex: 0, moodSum: 0, moodN: 0, quietBye: 0 };
 }
 
 /** 마감: 기록에 넣고 보여 줄 차례에 둔다 */
@@ -19,6 +19,8 @@ function close() {
     mood: c.moodN ? Math.round(c.moodSum / c.moodN) : 0,
     newHarm: c.newHarm,
     newDex: c.newDex,
+    // CHECKIN §A1: 조용히 배웅한 평범한 손님 (0이면 안 남긴다 · 옛 저장엔 없음)
+    ...(c.quietBye ? { quietBye: c.quietBye } : {}),
   };
   P.daily.log.push(log);
   while (P.daily.log.length > 7) P.daily.log.shift();
@@ -73,6 +75,7 @@ export function takeSettlement(): { days: DayLog[]; sum: DayLog; record: boolean
     mood: Math.round(days.reduce((s, d) => s + d.mood, 0) / days.length),
     newHarm: days.reduce((s, d) => s + d.newHarm, 0),
     newDex: days.reduce((s, d) => s + d.newDex, 0),
+    quietBye: days.reduce((s, d) => s + (d.quietBye ?? 0), 0),
   };
   const prevBest = P.daily.best;
   const top = Math.max(...days.map((d) => d.gold));

@@ -37,4 +37,4 @@ export function bigNum(n: number): string {
   return (Math.abs(v) >= 10 ? Math.round(v).toLocaleString('ko-KR') : v.toFixed(1)) + u;
 }
 /** 새 화면 기능 하나가 켜졌나: 플래그(모두에게) 또는 실험실(이 기기) */
-export const vis = (k: Extract<FlagKey, 'paletteV2' | 'calmWorld' | 'hudV2' | 'uiKitV2'>): boolean => flag(k) || labOn();
+export const vis = (k: FlagKey): boolean => flag(k) || labOn();

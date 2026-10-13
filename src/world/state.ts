@@ -575,7 +575,7 @@ export function freshProgress() {
      * 베타 3장 하루 마감 정산: 이번 날(자정까지) 모으는 중 · 지난 날들 · 아직 못 보여 준 정산 · 최고 수입
      */
     daily: {
-      cur: { day: 0, gold0: -1, arrivals: 0, newHarm: 0, newDex: 0, moodSum: 0, moodN: 0 },
+      cur: { day: 0, gold0: -1, arrivals: 0, newHarm: 0, newDex: 0, moodSum: 0, moodN: 0, quietBye: 0 as number | undefined },
       log: [] as DayLog[],
       pending: [] as DayLog[],
       best: 0,
@@ -596,6 +596,8 @@ export function freshProgress() {
       /** 시즌 시작 시점 수치 (이번 시즌에 늘어난 만큼만 센다) */
       base: {} as Record<string, number>,
     },
+    /** CHECKIN §A2 모아 보기: 오늘(현실 날짜) 저절로 띄운 곁이야기 수 */
+    inbox: { day: '', shown: 0 },
   };
 }
 
@@ -708,6 +710,8 @@ export interface DayLog {
   mood: number;
   newHarm: number;
   newDex: number;
+  /** CHECKIN §A1: 조용히 배웅한 평범한 손님 (옛 기록엔 없음) */
+  quietBye?: number;
 }
 
 /** 우편함: 출석·랭킹·운영자 선물·앞 주인 편지 */

@@ -89,7 +89,8 @@ export function chemTalk(a: Actor, b: Actor, lv: number | null, discovered = fal
     lines.push(['narr', `「${pair.name}」 ${f.name} & ${s.name} — 친밀도 ${lv}단계!`], ['@' + f.id, t[0]], ['@' + s.id, t[1]]);
     if (lv === 5) lines.push(['narr', `5단계 보상: 둘이 같이 싸우면 전용 합동 오의 「${ultName5(pair)}」 · 칭호 「${title5(pair)}」`]);
   }
-  if (lines.length) queueEvent(() => uiHooks.talk(lines));
+  // CHECKIN §A2: 키 「chem:」 = 곁이야기 (모아 보기)
+  if (lines.length) queueEvent(() => uiHooks.talk(lines), `chem:${pair.id}:${lv ?? 0}:${f.id}:${s.id}`);
 }
 
 // ───────── 5단계 보상 ─────────

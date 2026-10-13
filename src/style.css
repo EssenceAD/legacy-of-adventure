@@ -813,6 +813,8 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 #settle .bars i.now b{background:#e8a23a;box-shadow:inset 0 2px 0 #ffd36b}
 #settle .bars small{position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:var(--f-tiny);color:#8a8fa8}
 #settle .tap{text-align:center;color:#6a7098;font-size:var(--f-tiny)}
+/* CHECKIN §A1: 조용히 배웅한 손님 한 줄 */
+#settle .qb{text-align:center;color:#9aa6d8;font-size:var(--f-small)}
 
 /* ── 베타 5장: 전투력 ── */
 .stat .nmrow{display:flex;align-items:center;gap:8px;justify-content:space-between}

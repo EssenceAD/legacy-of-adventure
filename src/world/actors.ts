@@ -15,7 +15,9 @@ import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
 import { orderPair } from '../data/chem';
 import { chemTalk, notifyChem } from './chemNews';
 import { absHours, hourNow, onNewDay } from './clock';
-import { queueEvent } from './events';
+import { dropEvent, hasEvent, queueEvent } from './events';
+import { roleOf } from './party';
+import { collecting, countQuietBye, propFilterDecide } from './storyInbox';
 import { dueRuns, resolveRun } from './expeditions';
 import { bldSay, floatW, puff, puffAt, say } from './fx';
 import { unequip } from './items';
@@ -570,14 +572,15 @@ export function arrive(a?: Actor): Actor | null {
   return a;
 }
 
-/** 입구로 걸어 나가 사라진다 */
-export function sendAway(a: Actor, happy: boolean) {
+/** 입구로 걸어 나가 사라진다 · line = 말풍선 대신 떠다니는 글씨 한 줄 (CHECKIN §A1) */
+export function sendAway(a: Actor, happy: boolean, line?: string) {
   pullOut(a);
   a.leaving = true;
   a.party = false;
   for (const s of ['weapon', 'armor', 'acc'] as const) unequip(a, s);
   addRep(happy ? CONFIG.reputation.happyLeave : CONFIG.reputation.angryLeave);
-  say(a, happy ? '잘 쉬다 가요!' : '다신 안 올래…', 1);
+  if (line) floatW(a.x, a.y, 34, line);
+  else say(a, happy ? '잘 쉬다 가요!' : '다신 안 올래…', 1);
   const [ex, ey] = entrance();
   const vanish = () => {
     a.fading = 0.6;
@@ -613,16 +616,66 @@ function callWaitlist() {
   calledId = w.id;
   const a = Object.assign(blankActor(w.kind, w.name, 0, 0), w, { status: 'visitor' as const, hp: 80, food: 70, mood: 85, leaveDay: S.day + 1 });
   arrive(a);
-  propose(a);
+  propose(a, false, true);
 }
 
-/** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 · fast = 새로 생긴 자리의 빠른 제안(받으면 fastSlots -1) */
-function propose(a: Actor, fast = false) {
-  queueEvent(() => {
-    if (!world.actors.includes(a) || a.leaving) return;
-    proposeTalk(a, fast);
-  }, 'prop' + a.id);
+/** CHECKIN §A1: 거르기 판단 재료 */
+function propCtx(a: Actor) {
+  const regs = guestsOf().filter((x) => x.status === 'regular' || x.status === 'hero');
+  const weak = weakestRegular();
+  const plain = regs.filter((x) => x.status === 'regular');
+  const weakest = weak ? powerOf(weak) : plain.length ? Math.min(...plain.map((x) => powerOf(x))) : null;
+  return { rarity: a.rarity, power: powerOf(a), role: roleOf(a), special: !!(a.heroId || a.legendId || a.cameo), regRoles: regs.map((x) => roleOf(x)), weakest, regulars: regs.length, capacity: capacity() };
 }
+/** CHECKIN §A1: 걸러진 손님 — 제안 대화 없이 「다음에 또 올게요!」 한 줄로 떠난다 (대기 명단 X) */
+function quietBye(a: Actor, count = true) {
+  sendAway(a, true, '다음에 또 올게요!');
+  if (count) countQuietBye();
+}
+/** CHECKIN §A1: 자리가 없을 때 — 걸러진 손님은 대기 명단 대신 조용히 배웅 */
+function waitOrBye(a: Actor) {
+  if (propFilterDecide(propCtx(a)) === 'quiet') quietBye(a);
+  else toWaitlist(a);
+}
+/** CHECKIN §A2: 모아 둔 단골 제안의 마감(게임 시간) — 지나면 손님이 조용히 떠난다 */
+const propHold = new Map<number, number>();
+function expireHeldProps() {
+  for (const [id, until] of propHold) {
+    const a = world.actors.find((x) => x.id === id);
+    if (!hasEvent('prop' + id) || !a || a.leaving) {
+      propHold.delete(id);
+      continue;
+    }
+    if (absHours() < until) continue;
+    propHold.delete(id);
+    dropEvent('prop' + id);
+    sendAway(a, true);
+  }
+}
+
+/** 단골 제안: 기분 좋게 묵은 손님이 「여기 눌러앉아도 될까요?」 · fast = 새로 생긴 자리의 빠른 제안(받으면 fastSlots -1) · recall = 대기 명단에서 다시 찾아온 손님(거르지 않음) */
+function propose(a: Actor, fast = false, recall = false) {
+  if (!recall) {
+    const d = propFilterDecide(propCtx(a));
+    if (d === 'quiet') return quietBye(a);
+    if (d === 'wait') return P.waitlist.length < G.waitlistMax ? toWaitlist(a) : quietBye(a, false);
+  }
+  const key = 'prop' + a.id;
+  const hold = collecting();
+  if (hold && !hasEvent(key)) propHold.set(a.id, absHours() + CONFIG.storyInbox.propHoldHours);
+  queueEvent(
+    () => {
+      propHold.delete(a.id);
+      if (!world.actors.includes(a) || a.leaving) return;
+      proposeTalk(a, fast);
+    },
+    key,
+    hold ? () => world.actors.includes(a) && !a.leaving && (a.status === 'visitor' || a.status === 'passer') : undefined,
+  );
+}
+
+/** 시험·DEV용: 이벤트 줄을 거치는 단골 제안 (거르기·모아 보기 그대로) */
+export const queueProposal = (a: Actor, fast = false) => propose(a, fast);
 
 /** HOTFIX16 §1: 제안 대화 그리기 (ui가 손님 카드 · [자세히] · 대신 받기 확인을 붙인다) */
 export const proposeUi = {
@@ -702,7 +755,7 @@ export function dailyGuests() {
     else if (S.day >= a.leaveDay) {
       if (avg < regularNeed()) sendAway(a, true);
       else if (regularsCount() < capacity()) propose(a);
-      else toWaitlist(a);
+      else waitOrBye(a);
     }
   }
 }
@@ -720,7 +773,7 @@ function passersLeave() {
     const avg = a.moodN ? (a.moodSum + a.mood) / (a.moodN + 1) : a.mood;
     // 단골 자리가 있으면 그 자리에서 제안, 없으면 대기 목록
     if (avg >= regularNeed() && regularsCount() < capacity()) propose(a);
-    else if (avg >= regularNeed() && P.waitlist.length < G.waitlistMax) toWaitlist(a);
+    else if (avg >= regularNeed() && P.waitlist.length < G.waitlistMax) waitOrBye(a);
     else sendAway(a, avg >= G.leaveMood);
   }
 }
@@ -885,6 +938,7 @@ function tickGuests(dt: number) {
     a.moodSum += a.mood;
     a.moodN++;
   }
+  expireHeldProps();
   passersLeave();
   callWaitlist();
   earlyRegular();

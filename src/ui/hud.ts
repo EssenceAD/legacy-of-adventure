@@ -1,6 +1,6 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
-import { pendingWith, runFirstWith } from '../world/events';
+import { pendingSide, pendingWith, runFirstSide, runFirstWith } from '../world/events';
 import { bigNum, vis } from '../world/visual';
 import { unseenDrops } from '../world/decodrop';
 import { canUndo, decorView, entranceWhy, moveEntrance, noteMove, rememberDungeonHome, undo } from '../world/decor';
@@ -688,7 +688,9 @@ export function tickHud() {
     // 메뉴 빨간 점: 받을 업적 · 우편
     $('#bMenu2 .ndot').hidden = !(achReady() + mailWaiting());
     // HOTFIX20 §2: 미뤄 둔 단골 제안 — 누르면 바로 제안 대화
-    const np = S.visiting ? 0 : pendingWith('prop');
+    // CHECKIN §A2 (storyInbox): 배지는 하나 — 모아 둔 곁이야기(단골 제안 포함) 「📖 새 이야기 n」 · 누르면 하나씩
+    const inbox = vis('storyInbox');
+    const np = S.visiting ? 0 : inbox ? pendingSide() : pendingWith('prop');
     let pb = document.getElementById('propBadge');
     if (!pb && np) {
       pb = document.createElement('button');
@@ -696,13 +698,15 @@ export function tickHud() {
       pb.className = 'px';
       pb.onclick = () => {
         if (isTalking() || isWinOpen()) return;
-        runFirstWith('prop');
+        if (vis('storyInbox')) runFirstSide();
+        else runFirstWith('prop');
       };
       $('#hud').appendChild(pb);
     }
     if (pb) {
       pb.hidden = !np;
-      const t = `💌 단골 제안 ${np}`;
+      pb.classList.toggle('inbox', inbox);
+      const t = inbox ? `📖 새 이야기 ${np}` : `💌 단골 제안 ${np}`;
       if (pb.textContent !== t) pb.textContent = t;
     }
     // DECO_DROP §3: 건설 버튼에 안 본 장식 수
