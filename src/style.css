@@ -1,5 +1,7 @@
 /* 시안 reference/index_template.html 의 스타일 그대로 (밤하늘 남색 도트 테두리 + 여관 나무·놋쇠). 글꼴은 main.ts에서 FontFace로 불러온다. */
 /* Single committed look: night-blue pixel frame (별의 검 lineage) warmed with inn wood & brass. */
+/* Z 레이어 (한 곳에서 관리): 창·모달 > 토스트 > HUD. 창이 열리면 겹칠 수 있는 HUD는 body.winopen 에서 숨김 */
+:root{--z-bubble:2;--z-hud:4;--z-toast:9;--z-scrim:10;--z-win:11;--z-dialog:20;--z-combat:30;--z-title:30}
 :root{
   --ink:#1c1018; --navy:#141a3a; --navy2:#1e2756; --line:#c9d6ff; --gold:#f2c447; --gold2:#e8a23a; --cream:#fff3d6;
   --wood:#5a3a24; --wood2:#7a4a2a; --red:#e0544a; --leaf:#6fb04b;
@@ -36,7 +38,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* HUD */
 #hud{position:absolute;inset:0;pointer-events:none}
 #hud>*{pointer-events:auto}
-#placebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);display:flex;gap:8px;align-items:center;padding:6px 8px;font-size:var(--f-ui);white-space:nowrap;z-index:5}
+#placebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);display:flex;gap:8px;align-items:center;padding:6px 8px;font-size:var(--f-ui);white-space:nowrap;z-index:calc(var(--z-hud) + 1)}
 #placebar button{border:0;padding:5px 9px;cursor:pointer;box-shadow:0 0 0 2px var(--ink);font-size:var(--f-ui)}#placeOk{background:#3f8a3a}#placeNo{background:#7a2a30}
 #bZoom{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 140px)}
 .cat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cat button{border:0;padding:6px 4px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);cursor:pointer;text-align:center}.cat button[disabled]{opacity:.45}.cat img{width:100%;height:56px;object-fit:contain;image-rendering:pixelated;display:block}.cat b{display:block;margin-top:2px}.cat small{display:block;color:var(--gold)}
@@ -67,7 +69,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .dk canvas{width:32px;height:32px;image-rendering:pixelated}
 .dk button.ready canvas{animation:rdy 1s steps(2) infinite}
 @keyframes rdy{50%{filter:brightness(1.5)}}
-#toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 96px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:var(--f-ui);white-space:nowrap;opacity:0;transition:opacity .2s ease;pointer-events:none}
+#toast{position:absolute;z-index:var(--z-toast);left:50%;top:calc(env(safe-area-inset-top,0px) + 96px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:var(--f-ui);white-space:nowrap;opacity:0;transition:opacity .2s ease;pointer-events:none}
 #toast.on{opacity:1}#toast img{width:32px;height:32px;image-rendering:pixelated}
 .r-n{color:#cfc2a8}.r-r{color:#6fb0ff}.r-e{color:#d08aff}.r-l{color:#ffb04a}
 #visitbar{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:6px 8px;font-size:var(--f-ui);white-space:nowrap}
@@ -75,9 +77,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 #visitbar #vLike{background:#7a2a40}
 
 /* windows */
-#scrim{position:absolute;inset:0;background:rgba(5,6,20,.55);opacity:0;pointer-events:none;transition:opacity .18s ease;will-change:opacity}
+#scrim{position:absolute;z-index:var(--z-scrim);inset:0;background:rgba(5,6,20,.55);opacity:0;pointer-events:none;transition:opacity .18s ease;will-change:opacity}
 #scrim.on{opacity:1;pointer-events:auto}
-.win{visibility:hidden;position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-height:76%;display:flex;flex-direction:column;
+.win{visibility:hidden;position:absolute;z-index:var(--z-win);left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-height:76%;display:flex;flex-direction:column;
   /* 자기 합성 레이어로 올려서, 움직이는 동안 테두리 그림자(box-shadow)를 다시 그리지 않게 */
   will-change:transform;backface-visibility:hidden;transform:translate3d(0,120%,0);
   /* 닫힐 때는 다 내려간 뒤에 숨긴다 */
@@ -124,7 +126,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .acc{display:flex;flex-direction:column;gap:4px;padding:8px;background:#0e1430}.acc div{display:flex;justify-content:space-between}.acc b{color:var(--gold);font-weight:400}
 
 /* dialogue (portrait + box), Z NEXT X SKIP */
-#dlg{position:absolute;inset:0;z-index:20;cursor:pointer;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55))}
+#dlg{position:absolute;inset:0;z-index:var(--z-dialog);cursor:pointer;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55))}
 #dlg .keys{position:absolute;right:14px;top:calc(env(safe-area-inset-top,0px) + 14px);font-size:var(--f-big);font-weight:700;color:#cfd8ff;text-shadow:2px 2px 0 #000;letter-spacing:1px}
 #dlg .keys button{border:0;background:none;padding:0 0 0 12px;cursor:pointer;font:inherit;color:inherit}
 #dlg .box{position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);min-height:120px;padding:12px 12px 14px 120px}
@@ -137,12 +139,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 #dlg.narr #dText{font-size:var(--f-big);line-height:30px;font-weight:700;margin-top:14px}
 #dlg .more{position:absolute;right:12px;bottom:6px;font-size:var(--f-ui);color:var(--gold);animation:blink .8s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-#namebox{z-index:25;position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 170px);padding:12px;display:flex;flex-direction:column;gap:8px;cursor:default}
+#namebox{z-index:calc(var(--z-dialog) + 5);position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 170px);padding:12px;display:flex;flex-direction:column;gap:8px;cursor:default}
 #namebox b{color:var(--gold);font-size:var(--f-ui)}
 #namebox .row{display:flex;gap:8px}
 
 /* title */
-#title{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:22% 0 calc(env(safe-area-inset-bottom,0px) + 70px);background:radial-gradient(ellipse at 50% 120%,rgba(20,30,80,0) 0,rgba(5,6,20,.55) 70%);transition:opacity .6s ease}
+#title{position:absolute;inset:0;z-index:var(--z-title);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:22% 0 calc(env(safe-area-inset-bottom,0px) + 70px);background:radial-gradient(ellipse at 50% 120%,rgba(20,30,80,0) 0,rgba(5,6,20,.55) 70%);transition:opacity .6s ease}
 #title.out{opacity:0;pointer-events:none}
 .logo{text-align:center}
 .logo .ko{font-size:44px;line-height:48px;font-weight:700;background:linear-gradient(180deg,#ffffff 0 40%,#bfe4ff 40% 70%,#7fb6ff 70%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(3px 0 0 #0a1030) drop-shadow(-3px 0 0 #0a1030) drop-shadow(0 3px 0 #0a1030) drop-shadow(0 -3px 0 #0a1030) drop-shadow(0 5px 0 #000)}
@@ -363,7 +365,7 @@ html:not([data-size="phone"]) #placebar{bottom:calc(env(safe-area-inset-bottom,0
 .res .go,#raid .go{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .res .go button{border:0;padding:10px;cursor:pointer;box-shadow:0 0 0 2px var(--ink);font-weight:700;min-height:44px}.res .go .a{background:#3f5fc8}.res .go .b{background:#8a3a2a}.res .go button[disabled]{opacity:.5}
 
-#raid{position:absolute;inset:0;z-index:30;background:#0d1435;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
+#raid{position:absolute;inset:0;z-index:var(--z-combat);background:#0d1435;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
 #raid .rwipe{position:absolute;inset:0;z-index:40;background:#05061a;pointer-events:none;animation:rwipe .7s cubic-bezier(.6,0,.3,1) forwards}
 @keyframes rwipe{0%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 0 0 100%)}}
 #rStageWrap{position:absolute;left:0;right:0;top:70px;overflow:hidden}
@@ -565,7 +567,7 @@ html:not([data-size="phone"]) #bOwnerImg{width:calc(24px * var(--k));height:calc
 .stp.cur,.pm.on,.quest.tut{border-image-source:var(--ui-tile-selected)}
 
 /* ── 핫픽스 5: 전투 HUD (토벌·사냥 공용 .battle) — 장면은 가로형 고정, HUD는 장면 위에 ── */
-.battle{position:absolute;inset:0;z-index:30;background:#07091a;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
+.battle{position:absolute;inset:0;z-index:var(--z-combat);background:#07091a;overflow:hidden;touch-action:none;font-size:var(--f-ui)}
 .battle .rwipe{position:absolute;inset:0;z-index:40;background:#05061a;pointer-events:none;animation:rwipe .7s cubic-bezier(.6,0,.3,1) forwards}
 .battle .stage{position:absolute;overflow:visible}
 .battle .stage canvas{display:block;image-rendering:pixelated}
@@ -646,7 +648,7 @@ html[data-size="phone"] .bhud.top{width:56%}
 .goal button.go{border-image-source:var(--ui-btn)!important;color:var(--cream)!important;font-weight:400}
 
 /* ── 5단계 1장: 임무 카드(왼쪽 위, HUD 아래) · 손가락 안내 ── */
-#mission{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;text-align:left;padding:6px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;cursor:pointer;color:var(--cream);z-index:4}
+#mission{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;text-align:left;padding:6px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;cursor:pointer;color:var(--cream);z-index:var(--z-hud)}
 #mission .mi,#mission .rw{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
 #mission span{display:flex;flex-direction:column;min-width:0}
 #mission small{color:#9aa6d8;font-size:var(--f-tiny)}
@@ -756,7 +758,7 @@ html[data-size="phone"] #bZoom{bottom:calc(env(safe-area-inset-bottom,0px) + 86p
 .battle.tall .btouch span{color:rgba(255,240,210,.28);font-size:var(--f-small);pointer-events:none}
 
 /* ── 베타 1장: 어울림 ── */
-#bHarm{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 70px);z-index:4}
+#bHarm{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 70px);z-index:var(--z-hud)}
 html:not([data-size="phone"]) #bHarm{top:calc(env(safe-area-inset-top,0px) + 80px)}
 #bHarm img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
 #bHarm.on{border-image-source:var(--ui-btn-primary)}
@@ -777,7 +779,7 @@ html:not([data-size="phone"]) #bHarm{top:calc(env(safe-area-inset-top,0px) + 80p
 .hrows img{width:calc(16px * var(--k1));height:calc(16px * var(--k1))}.hrows small{color:#cfd8ff}
 
 /* ── 베타 2장: 여관 평가단 ── */
-#evalbar{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:6px;align-items:center;padding:4px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;z-index:4;min-width:150px;text-align:left}
+#evalbar{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:6px;align-items:center;padding:4px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;z-index:var(--z-hud);min-width:150px;text-align:left}
 html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 150px)}
 #evalbar img{grid-row:1/3;width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
 #evalbar small{color:#9aa6d8;margin-left:3px}
@@ -796,7 +798,7 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 .evmiss{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#2a2440;margin:6px 0}.evmiss img{width:calc(11px * var(--k));height:calc(11px * var(--k))}.evmiss span{display:flex;flex-direction:column;gap:2px}.evmiss small{color:#cfd8ff}
 
 /* ── 베타 3장: 하루 마감 정산 ── */
-#settle{position:absolute;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,6,20,.45);opacity:0;transition:opacity .2s;cursor:pointer}
+#settle{position:absolute;inset:0;z-index:calc(var(--z-combat) + 5);display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,6,20,.45);opacity:0;transition:opacity .2s;cursor:pointer}
 #settle.on{opacity:1}
 #settle .card{width:100%;max-width:340px;padding:14px;display:flex;flex-direction:column;gap:8px;animation:hban .4s cubic-bezier(.2,1.6,.4,1)}
 #settle .t{font-size:var(--f-big);color:var(--gold);text-align:center}
@@ -818,7 +820,7 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 #pwr img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
 #pwr.up{animation:pwrup .9s ease}
 @keyframes pwrup{20%{transform:scale(1.25);filter:brightness(1.8)}}
-#pwrWhy{position:absolute;left:0;top:100%;white-space:nowrap;color:#8fe08f;font-size:var(--f-tiny);background:rgba(7,9,26,.85);padding:1px 5px;margin-top:2px;z-index:6;animation:blup .3s ease-out}
+#pwrWhy{position:absolute;left:0;top:100%;white-space:nowrap;color:#8fe08f;font-size:var(--f-tiny);background:rgba(7,9,26,.85);padding:1px 5px;margin-top:2px;z-index:calc(var(--z-hud) + 2);animation:blup .3s ease-out}
 #pcard{position:absolute;left:50%;top:26%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:31;display:flex;align-items:center;gap:10px;padding:10px 16px;border:0 solid transparent;border-image:var(--ui-dialog) 8 fill / calc(8px * var(--k1)) / 0 stretch;color:var(--cream);pointer-events:none}
 #pcard img{width:calc(11px * var(--k));height:calc(11px * var(--k));image-rendering:pixelated;animation:beat .6s ease infinite}
 #pcard span{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;min-width:180px;max-width:260px}
@@ -834,7 +836,7 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 /* ── 핫픽스 6(소리): 스피커 버튼 · 설정 「소리」 · 음악 목록 ── */
 .spk img{width:calc(12px * var(--k1));height:calc(12px * var(--k1));image-rendering:pixelated}
 #tSpk{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:5}
-#hSpk{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 118px);z-index:4}
+#hSpk{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 118px);z-index:var(--z-hud)}
 html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 132px)}
 .talking #hSpk,.placing #hSpk{visibility:hidden}
 .snd{margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #161420}
@@ -904,7 +906,7 @@ html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 132p
 .tlogo button{border:0;padding:12px 28px;font-size:var(--f-ui);font-weight:700;cursor:pointer}
 
 /* ── 전투 개편 1차: 쿼터뷰 필드 액션 ── */
-.cbt{position:absolute;inset:0;z-index:30;background:#1e3420;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.cbt{position:absolute;inset:0;z-index:var(--z-combat);background:#1e3420;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .cbt #cbCv{position:absolute;left:0;top:0;image-rendering:pixelated;display:block}
 .cbtop{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 8px);display:flex;align-items:center;justify-content:center;gap:12px;z-index:3;pointer-events:none;font-size:var(--f-small);color:#efe2c6;text-shadow:1px 1px 0 #140c18}
 .cbtop b{font-size:var(--f-ui);min-width:2.2em;text-align:center;font-variant-numeric:tabular-nums}.cbtop b.low{color:#ff7a6a}
@@ -971,7 +973,7 @@ html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 142p
 .stat .r1 #goldv{font-size:max(16px,var(--f-ui))}
 /* ── 핫픽스 7: 창·메뉴가 열리면 60% 어둡게 · 위 HUD 정보 숨김 · ✕ 44px · ← 뒤로 · 메뉴 묶음 판 ── */
 #scrim,html[data-size] #scrim{background:rgba(0,0,0,.6)}
-body.winopen :is(#mission,#evalbar,#runbar,#chatlog,#bHarm,#hSpk,#pcard,#hBanner,.bub){visibility:hidden}
+body.winopen :is(#mission,#evalbar,#runbar,#chatlog,#bHarm,#hSpk,#pcard,#hBanner,.bub,#storyWait,#blessIco,#goalPill,#goalPanel,#pwrWhy,.wfbub){visibility:hidden}
 .win .hd #winX{width:44px;height:44px;flex:none}
 .win .hd #winBack{width:44px;height:44px;flex:none;margin-right:6px;font-size:20px;font-weight:700;color:var(--gold);border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k1)) / 0 stretch;background:none;text-shadow:1px 1px 0 var(--ink)}
 .win .hd #winBack[hidden]{display:none}
@@ -1055,12 +1057,12 @@ html:not([data-size="phone"]) .logo .ko .ko2{font-size:46px;line-height:52px}
 #winF .btnrow,#winF .raidgo{margin:0}
 html[data-size="wide"] .win{max-height:none}
 /* 타이틀 화면에서 연 창(패치노트·편지·계정·설정): 타이틀 UI 전부보다 위 · 뒤는 60% 어둡게 · 타이틀 버튼은 못 누름 */
-#view:has(#title:not([hidden]):not(.out)) #scrim{z-index:31}
-#view:has(#title:not([hidden]):not(.out)) #win{z-index:32}
+#view:has(#title:not([hidden]):not(.out)) #scrim{z-index:calc(var(--z-title) + 1)}
+#view:has(#title:not([hidden]):not(.out)) #win{z-index:calc(var(--z-title) + 2)}
 body.winopen #title :is(.tbtns,.ver,#tSpk){pointer-events:none}
 /* 핫픽스 8 (2-6): 타이틀 화면에서 뜨는 대화(모모 편지 등)도 타이틀 UI·창보다 위 */
-#view:has(#title:not([hidden]):not(.out)) #dlg{z-index:34}
-#view:has(#title:not([hidden]):not(.out)) #namebox{z-index:35}
+#view:has(#title:not([hidden]):not(.out)) #dlg{z-index:calc(var(--z-title) + 4)}
+#view:has(#title:not([hidden]):not(.out)) #namebox{z-index:calc(var(--z-title) + 5)}
 /* ── 핫픽스 9 ── */
 /* 서술(narr): 이름표·초상화 없이 가운데 · 기울임 · 연한 금색 (소설 지문) */
 #dlg.narr #dText{font-style:italic;color:#f0d890;text-align:center}
@@ -1073,13 +1075,13 @@ body.winopen #title :is(.tbtns,.ver,#tSpk){pointer-events:none}
 .stat .r1 #gold{white-space:nowrap}
 /* 이웃 방문: 내 마을 HUD 숨김 · 방문 전용 HUD */
 body.visiting :is(.top .stat,#mission,#evalbar,#bHarm,#hSpk,nav.dk,#runbar,#chatlog,#pcard){display:none!important}
-#visitbar{top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;transform:none;justify-content:space-between;padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;z-index:6}
+#visitbar{top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;transform:none;justify-content:space-between;padding:8px 10px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;z-index:calc(var(--z-hud) + 2)}
 #visitbar .vtxt{display:flex;flex-direction:column;min-width:0}
 #visitbar .vtxt b{font-size:var(--f-ui);color:var(--gold);overflow:hidden;text-overflow:ellipsis}
 #visitbar .vtxt small{font-size:var(--f-small);color:#c9d0ee;overflow:hidden;text-overflow:ellipsis}
 #visitbar #vLike{flex:none;min-height:40px;padding:4px 12px}
 html:not([data-size="phone"]) #visitbar{left:50%;right:auto;transform:translateX(-50%);min-width:360px}
-#visitfoot{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:grid;grid-template-columns:3fr 2fr;gap:8px;z-index:6}
+#visitfoot{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:grid;grid-template-columns:3fr 2fr;gap:8px;z-index:calc(var(--z-hud) + 2)}
 #visitfoot[hidden]{display:none}
 #visitfoot .bigbtn{min-height:48px;font-size:var(--f-ui)}
 html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translateX(-50%);width:420px}
@@ -1285,7 +1287,7 @@ body.photo #view>*:not(#scene):not(#photoBar):not(#photoFrame):not(.photoflash):
 #propCard .role{font-style:normal;background:#3a3460;padding:1px 6px;box-shadow:0 0 0 1px #1c1018}
 #propCard .pc5 small{color:#ff9ab8}
 /* HOTFIX16 §2: 「🎯 오늘 2/4」 알약 · 펼침 패널 */
-#goalPill{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);z-index:5;padding:3px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;white-space:nowrap}
+#goalPill{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);z-index:calc(var(--z-hud) + 1);padding:3px 8px;border:0 solid transparent;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch;background:none;color:var(--cream);font-size:var(--f-small);cursor:pointer;white-space:nowrap}
 html:not([data-size="phone"]) #goalPill{top:calc(env(safe-area-inset-top,0px) + 150px)}
 #goalPill.ready{color:#ffd36b;animation:mglow 1s steps(2) infinite}
 #goalPill.over{color:#8a8fa8;filter:grayscale(.6)}
@@ -1333,7 +1335,7 @@ body.decor #over .bub{display:none}
 @keyframes rowFlash{0%{background:rgba(255,211,107,.45)}100%{background:transparent}}
 
 /* BUILDUX §1-4: 고스트 옆에 붙어 다니는 ✓ / ✕ / ↻ · 이유·어울림 말풍선 */
-#ghostBtns{position:fixed;left:0;top:0;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;will-change:transform}
+#ghostBtns{position:fixed;left:0;top:0;z-index:calc(var(--z-hud) + 2);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;will-change:transform}
 #ghostBtns .pbtns{display:flex;gap:10px;pointer-events:auto}
 #ghostBtns .pbtns button{width:52px;height:52px;border:0;border-radius:50%;font-size:22px;font-weight:700;color:#fff;box-shadow:0 0 0 3px var(--ink),0 3px 0 3px rgba(0,0,0,.35);cursor:pointer;background:#4a5070}
 #ghostBtns #placeOk{background:#3f8a3a}#ghostBtns #placeNo{background:#7a2a30}
@@ -1342,7 +1344,7 @@ body.decor #over .bub{display:none}
 #ghostTag.good{color:#fff3b0}
 #placebar .pbtns{display:none}
 /* 놓은 뒤 「↶ 되돌리기」 */
-#undoSnack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 100px);z-index:7;display:flex;gap:10px;align-items:center;padding:6px 8px 6px 12px;font-size:var(--f-ui);white-space:nowrap}
+#undoSnack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 100px);z-index:calc(var(--z-hud) + 3);display:flex;gap:10px;align-items:center;padding:6px 8px 6px 12px;font-size:var(--f-ui);white-space:nowrap}
 #undoSnack button{border:0;padding:8px 12px;min-height:40px;background:#4a5070;color:#fff;box-shadow:0 0 0 2px var(--ink);cursor:pointer;font-size:var(--f-ui)}
 /* BUILDUX §4: 꾸미기 첫 진입 안내 (꾹 → 끌기 → ✓) */
 #decorHint{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:30;padding:12px 16px;text-align:center;color:var(--cream);font-size:var(--f-ui);cursor:pointer}
@@ -1398,7 +1400,7 @@ body.decor #view:has(#win.on) #decorBar{display:none}
 #loading small{display:block;text-align:center}
 #loading .tip{margin-top:10px;color:#9aa6d8}
 /* HOTFIX20 §2: 미뤄 둔 단골 제안 배지 */
-#propBadge{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);z-index:4;padding:6px 10px;border:0;font-size:var(--f-small);color:var(--cream);cursor:pointer}
+#propBadge{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);z-index:var(--z-hud);padding:6px 10px;border:0;font-size:var(--f-small);color:var(--cream);cursor:pointer}
 .talking #propBadge,body.decor #propBadge{display:none}
 /* EASTER: 개척자 — 이웃 목록 금색 테두리 · 채팅 별 · 도감 개척자 칸 */
 .stp.pioneer{box-shadow:inset 0 0 0 2px #e8b84a,0 0 6px rgba(232,184,74,.6)}
@@ -1657,8 +1659,8 @@ body.in-combat a{pointer-events:none}
 .qhd button.paid{color:#ffd36b}
 .qhint{text-align:center;color:#ffd36b}
 .top .stat{position:relative}
-#blessIco{position:absolute;right:-6px;top:-10px;white-space:nowrap;color:#ffe9a0;cursor:pointer;font-size:var(--f-tiny);padding:1px 5px;background:rgba(40,30,70,.92);box-shadow:0 0 0 2px var(--ink);z-index:5}
-#storyWait{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);padding:4px 8px;font-size:var(--f-tiny);color:#cfd8ff;background:rgba(14,20,48,.85);box-shadow:0 0 0 2px var(--ink);z-index:3;pointer-events:none}
+#blessIco{position:absolute;right:-6px;top:-10px;white-space:nowrap;color:#ffe9a0;cursor:pointer;font-size:var(--f-tiny);padding:1px 5px;background:rgba(40,30,70,.92);box-shadow:0 0 0 2px var(--ink);z-index:calc(var(--z-hud) + 1)}
+#storyWait{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 70px);max-width:min(60%,260px);padding:4px 8px;font-size:var(--f-tiny);color:#cfd8ff;background:rgba(14,20,48,.85);box-shadow:0 0 0 2px var(--ink);z-index:var(--z-hud);pointer-events:none}
 
 /* 우편함: 읽은 편지 지우기 */
 .mail .mldel{min-width:28px;padding:2px 6px;opacity:.7}
@@ -1692,7 +1694,7 @@ body.in-combat a{pointer-events:none}
 .stuck>b{color:var(--gold);text-align:center}
 .stuck button{text-align:left;white-space:normal;line-height:1.3}
 /* WAYFIND §1: 인물 머리 위 「!」 · 반짝 테두리 · 처음 해 보기 목록 · §3 오늘 해 볼 만한 것 */
-.wfbub{position:absolute;transform:translate(-50%,calc(-100% - 16px));pointer-events:auto;min-width:26px;min-height:30px;padding:2px 8px;background:#ffd36b;color:#3a2000;font-weight:900;font-size:var(--f-big);line-height:1;border:0;box-shadow:0 0 0 2px var(--ink),2px 2px 0 2px rgba(0,0,0,.35);animation:wfhop 1.2s ease-in-out infinite;cursor:pointer;z-index:2}
+.wfbub{position:absolute;transform:translate(-50%,calc(-100% - 16px));pointer-events:auto;min-width:26px;min-height:30px;padding:2px 8px;background:#ffd36b;color:#3a2000;font-weight:900;font-size:var(--f-big);line-height:1;border:0;box-shadow:0 0 0 2px var(--ink),2px 2px 0 2px rgba(0,0,0,.35);animation:wfhop 1.2s ease-in-out infinite;cursor:pointer;z-index:var(--z-bubble)}
 .wfbub.rt{transform:translate(-50%,calc(-100% - 16px))}
 @keyframes wfhop{0%,100%{margin-top:0}50%{margin-top:-4px}}
 body.decor .wfbub,body.photo .wfbub{display:none}
