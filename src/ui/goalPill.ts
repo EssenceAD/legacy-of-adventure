@@ -8,6 +8,7 @@ import { esc, fmt } from './common';
 import { isTalking } from './dialogue';
 import { openPlace, type Place } from './nav';
 import { isWinOpen, toast } from './windows';
+import { bindTodayPicks, todayPicksHtml } from './wayfind';
 
 export const goalPillOn = () => !getPref<boolean>('goalPillOff', false);
 export const setGoalPill = (on: boolean) => (setPref('goalPillOff', !on), syncGoalPill());
@@ -52,7 +53,7 @@ function drawPanel() {
       return `<div class="gpr ${g.claimed ? 'got' : ''}"><span><b>${esc(t.text(g.target))}</b><i><u style="width:${pct}%"></u></i><small>${g.progress}/${g.target} · ${fmt(t.reward.gold)}G</small></span>${btn}</div>`;
     })
     .join('');
-  const html = `<div class="gph"><b>🎯 오늘의 목표</b><small>초기화까지 ${untilReset()}</small><button class="gx" aria-label="닫기">✕</button></div>${rows}<button class="gall">오늘의 목표 전체 보기</button>`;
+  const html = `<div class="gph"><b>🎯 오늘의 목표</b><small>초기화까지 ${untilReset()}</small><button class="gx" aria-label="닫기">✕</button></div>${rows}${todayPicksHtml()}<button class="gall">오늘의 목표 전체 보기</button>`;
   // 1초마다 다시 그려도 그대로면 건드리지 않는다 (누르는 중인 버튼이 바뀌지 않게)
   if (html === lastHtml) return;
   lastHtml = html;
@@ -70,6 +71,7 @@ function drawPanel() {
         syncGoalPill();
       }),
   );
+  bindTodayPicks(panel, closeGoalPanel);
   panel.querySelectorAll<HTMLElement>('[data-gg]').forEach((b) => (b.onclick = () => (closeGoalPanel(), openPlace(b.dataset.gg as Place))));
 }
 

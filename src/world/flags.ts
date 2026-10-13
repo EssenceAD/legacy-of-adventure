@@ -17,6 +17,14 @@ export const FLAG_DEFAULTS = {
   mailDelete: true,
   /** ROLES: 직업마다 체력·탱·힐·조합 (끄면 예전 전투) */
   rolesV2: true,
+  /** WAYFIND §1 처음 해 보기 「!」 말풍선 */
+  wayfindBubbles: true,
+  /** WAYFIND §2 결의 (같은 첫 돌파 판 연속 패배 보정) */
+  huntResolve: true,
+  /** WAYFIND §2 패배 결과 「막혔을 때」 카드 */
+  stuckCard: true,
+  /** WAYFIND §3 오늘 해 볼 만한 것 */
+  todayPicks: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

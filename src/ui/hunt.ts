@@ -47,6 +47,13 @@ import { craftMax } from '../world/bulk';
 import { enhanceBossCost, enhanceCost, smithObj } from '../world/craft';
 import type { Item } from '../world/state';
 import { taperLine } from './goldsink';
+import { flag } from '../world/flags';
+import { losesAt, noteHuntResult, RESOLVE, resolveOf, resolveText, unclearedStage } from '../world/wayfind';
+import { blessed, blessFx } from '../world/goldsink';
+import { fLv, potionCount } from '../world/facilities';
+import { bestOf } from '../world/town';
+import { showObj } from './windows';
+import { world } from '../world/state';
 
 const H = CONFIG.hunt;
 const stageName = (r: string, s: number) => `${regionIdx(r) + 1}-${s}`;
@@ -166,6 +173,7 @@ function openHuntPrep(r: RegionId, s: number) {
     `사냥 ${stageName(r, s)}${isBoss(s) ? ' · 보스' : ''}`,
     `<p class="sub">${esc(REGIONS[regionIdx(r)].name)} · 처치 ${esc(goal)} · ${esc(mobs.join(' · '))}</p>
     <div class="pw"><span>추천 전투력</span><em>${fmt(rec)}</em><span>우리 파티 ${prepLine('hunt', pw)}</span><em class="${low ? 'bad' : 'good'}">${fmt(pw)}</em></div>
+    ${resolveOf(r, s) ? `<p class="cen resolve">🔥 ${esc(resolveText(resolveOf(r, s)))} <small>(이기면 사라져요)</small></p>` : ''}
     ${low ? `<div class="tips"><b>전투력이 부족해요 (추천 ${fmt(rec)}) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
     <p class="sub">파티 ${ms.length}/${max} · 첫 번째가 대장${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(ms, max)}
     ${crew.length ? recButton('hRec', huntWhy.k === `${r}-${s}` ? huntWhy.text : '') : ''}${roleRow(ms)}${synRow(ms, crew, max, 'hunt')}
@@ -583,9 +591,10 @@ void LH;
 // ───────── 전투 개편 1차: 쿼터뷰 필드 액션 · 소탕 ─────────
 
 /** GROWTH §3-6: 「대장간에서 쓸 수 있는 것: 강화 3 · 제작 1」 (누르면 대장간) */
+export const enhCount = () => P.bag.filter((it) => it.owner != null && it.enh < CONFIG.smith.maxEnhance && P.dust[it.grade] >= enhanceCost(it) && (!enhanceBossCost(it) || (P.bossMats[enhanceBossCost(it)!.boss.id] ?? 0) >= enhanceBossCost(it)!.n)).length;
 export function smithLine(): string {
   if (!smithObj()) return '';
-  const enh = P.bag.filter((it) => it.owner != null && it.enh < CONFIG.smith.maxEnhance && P.dust[it.grade] >= enhanceCost(it) && (!enhanceBossCost(it) || (P.bossMats[enhanceBossCost(it)!.boss.id] ?? 0) >= enhanceBossCost(it)!.n)).length;
+  const enh = enhCount();
   const cr = REGIONS.filter((x, i) => (i < BASE_REGIONS || huntRegionOpen(i)) && craftMax(x.id) > 0).length;
   if (!enh && !cr) return '';
   return `<button class="b smithln" id="cSmith">⚒️ 대장간에서 쓸 수 있는 것: 강화 ${enh} · 제작 ${cr}</button>`;
@@ -632,7 +641,11 @@ export function deepDefeat(finalRaid = false): boolean {
 function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, folded = !!P.hunt.folded): string {
   queueEvent(() => void checkSlot5(), 'slot5');
   P.hunt.folded = null;
-  trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade });
+  // WAYFIND §2: 이 판에 걸려 있던 결의 (기록) → 결과로 쌓거나 초기화
+  const resolve = resolveOf(r, s);
+  const wasNew = unclearedStage(r, s);
+  trackEv('hunt_end', { stage: `${r}-${s}`, mode: res.autoUsed ? 'auto' : 'manual', result: res.win ? 'win' : 'lose', sec: res.time, grade: res.grade, resolve });
+  const resAfter = noteHuntResult(r, s, res.win);
   const bonus = gradeBonus(res.win, res.autoUsed, res.grade);
   // 장비는 전투 중에 떨어진 것을 이미 주웠다 (원정과 같은 등급표) → 결과에서 또 뽑지 않는다
   // GOLDSINK §4: 접어 둔 판은 자동 사냥과 같은 하루 판 수로 센다
@@ -656,12 +669,17 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   }, 'huntRedraw');
   const hint = res.win && !!out.first && !P.hunt.autoHint;
   if (hint) P.hunt.autoHint = true;
+  // WAYFIND §2: 패배 카드에 대장간이 있으면 위 「대장간에서 쓸 수 있는 것」 줄은 뺀다 (같은 말 두 번)
+  const stuck = res.win ? '' : stuckHtml(r, s, ms, wasNew, resAfter);
+  let loot = lootHtml(r, out);
+  if (stuck.includes('data-stk="smith"')) loot = loot.replace(smithLine(), '');
   const gradeLine = res.win
     ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
     : '';
   return `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
       <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
-      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${lootHtml(r, out)}
+      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${loot}
+      ${stuck}
       <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
       ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">이 스테이지 자동 사냥</button></div>` : ''}
       <div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
@@ -694,10 +712,76 @@ function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], clos
     close();
     openHuntPrep(r, s);
   });
+  card.querySelectorAll<HTMLElement>('[data-stk]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const k = b.dataset.stk!;
+        trackEv('stuck_card', { stage: `${r}-${s}`, pick: k });
+        close();
+        stuckGo(k, r, s);
+      }),
+  );
   on('cNext', () => {
     close();
     openHuntPrep(r, s + 1);
   });
+}
+
+// ───────── WAYFIND §2: 「막혔을 때」 카드 (그 사람 상태로 계산한 할 수 있는 것 3개) ─────────
+
+const homeObjs = () => world.home?.objs ?? world.objs;
+const objOf = (k: string) => bestOf(k as never, homeObjs(), true);
+/** 추천 파티 (지금보다 세면) */
+function betterParty(r: RegionId, s: number, ms: Actor[]) {
+  const best = recommendParty(huntCrew().filter((a) => a.hp >= 1), { power: recPower(r, s), region: r, min: 1, max: huntPartyMax() });
+  if (!best) return null;
+  const gain = best.power - partyPower(ms);
+  return gain > 0 ? { best, gain: Math.round(gain) } : null;
+}
+export function stuckPicks(r: RegionId, s: number, ms: Actor[]): { k: string; text: string }[] {
+  const out: { k: string; text: string }[] = [];
+  const bp = betterParty(r, s, ms);
+  if (bp) out.push({ k: 'party', text: `추천 파티로 바꾸기 (+${fmt(bp.gain)})` });
+  const enh = smithObj() ? enhCount() : 0;
+  if (enh) out.push({ k: 'smith', text: `대장간에서 강화할 수 있는 장비 ${enh}개` });
+  const rec = recPower(r, s);
+  const pw = partyPower(ms);
+  if (pw < rec * 0.8) out.push({ k: 'farm', text: `이 판 추천 전투력 ${fmt(rec)} · 지금 ${fmt(pw)} → 다른 지역에서 장비 모으기` });
+  if (flag('goldsinkBless') && fLv('chapel') && !blessed()) out.push({ k: 'bless', text: `예배당 축복 (경험치 +${Math.round(blessFxPreview('xp') * 100)}% · 드랍 +${Math.round(blessFxPreview('drop') * 100)}%)` });
+  else if (potionCount() > 0 && objOf('alchemy')) out.push({ k: 'potion', text: `가진 물약 ${potionCount()}개 마시고 가기` });
+  else if (flag('goldsinkConvert') && objOf('alchemy')) out.push({ k: 'alch', text: '연금술로 재료 사기' });
+  return out.slice(0, 3);
+}
+/** 축복 효과 미리 보기 (안 받았을 때도 숫자를 보여 준다) */
+function blessFxPreview(k: 'xp' | 'drop'): number {
+  const B = CONFIG.goldsink.bless;
+  return blessed() ? blessFx(k) : B[k] + B.perLv * Math.max(0, fLv('chapel') - 1);
+}
+function stuckHtml(r: RegionId, s: number, ms: Actor[], wasNew: boolean, res: number): string {
+  if (!wasNew) return '';
+  const lost = losesAt(r, s);
+  const rl = res ? `<p class="cen resolve">🔥 ${esc(resolveText(res))}${res < RESOLVE.max ? ' · 또 지면 +1' : ' (최대)'}</p>` : lost > 0 && lost < RESOLVE.after && flag('huntResolve') ? `<p class="note cen">이 판에서 ${RESOLVE.after - lost}번 더 지면 「결의」가 생겨요 (조금씩 강해져요)</p>` : '';
+  const bern = res >= 3 ? '<p class="cen momohint"><b>버나드</b> 「몇 번 넘어져도 괜찮네. 넘어질 때마다 발이 기억하는 법이지.」</p>' : '';
+  if (!flag('stuckCard')) return rl + bern;
+  const picks = stuckPicks(r, s, ms);
+  const card = picks.length ? `<div class="stuck"><b>막혔을 때 해 볼 것</b>${picks.map((p) => `<button class="b" data-stk="${p.k}">${esc(p.text)} ›</button>`).join('')}</div>` : '';
+  return rl + bern + card;
+}
+function stuckGo(k: string, r: RegionId, s: number) {
+  if (k === 'party') {
+    manualPick = false;
+    picked = [];
+    const bp = recommendParty(huntCrew().filter((a) => a.hp >= 1), { power: recPower(r, s), region: r, min: 1, max: huntPartyMax() });
+    if (bp) {
+      picked = bp.members.sort((a, b) => powerOf(b) - powerOf(a)).map((m) => m.id);
+      manualPick = true;
+    }
+    return openHuntPrep(r, s);
+  }
+  if (k === 'smith') return goSmith();
+  if (k === 'farm') return openHunt(regionIdx(r) > 0 ? REGIONS[regionIdx(r) - 1].id : r);
+  const o = objOf(k === 'bless' ? 'chapel' : 'alchemy');
+  if (o) showObj(o);
 }
 
 /** 대장간 창 열기 (없으면 안내) */

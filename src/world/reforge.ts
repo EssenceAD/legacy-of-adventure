@@ -1,7 +1,7 @@
 // GROWTH §3-4: 옵션 재련 — 랜덤 옵션 하나를 다시 굴림 (그 등급 가루 + 금화) · 옵션 하나 잠그면 비용 ×2 · 고유 옵션은 재련 불가
 import { CONFIG } from '../data/config';
 import { BASE_REGIONS, OPT_INFO, REGIONS, ROLL_KEYS, type Grade } from '../data/items';
-import { markDirty, P, S, type Item, type ItemOpt } from './state';
+import { markDirty, P, S, wfHit, type Item, type ItemOpt } from './state';
 import { gsState } from './goldsink';
 
 const RF = () => CONFIG.growth.reforge;
@@ -41,6 +41,7 @@ export function reforge(it: Item, lock: number | null = null, rng: () => number 
   P.dust[it.grade] -= c.dust;
   S.gold -= c.gold;
   gsState().cnt.smith++;
+  wfHit('reforge');
   const cand = rerollable(it, lock);
   const idx = cand[Math.floor(rng() * cand.length)];
   const before = it.opts[idx];

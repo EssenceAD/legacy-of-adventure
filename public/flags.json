@@ -6,5 +6,9 @@
   "villageFavors": true,
   "storyWaitHint": true,
   "mailDelete": true,
-  "rolesV2": true
+  "rolesV2": true,
+  "wayfindBubbles": true,
+  "huntResolve": true,
+  "stuckCard": true,
+  "todayPicks": true
 }

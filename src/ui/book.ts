@@ -380,7 +380,7 @@ function ago(t: number): string {
 function diaryBlock(): string {
   const ds = diaryList();
   if (!diaryOpen() && !ds.length) return '<p class="note">서재 Lv3부터 단골들의 「손님 일기」를 모을 수 있어요</p>';
-  return `<h4>손님 일기 ${ds.length}권</h4>${ds.length ? ds.map((d) => `<details class="diary"><summary>${esc(d.title)} <small>${d.pages.length}/${d.total}장</small></summary>${d.pages.map((p, i) => `<p><b>${i + 1}.</b> ${esc(p.replace(/\{inn\}/g, S.innName || '여관'))}</p>`).join('')}</details>`).join('') : '<p class="note">단골끼리 케미가 오르면 일기가 한 장씩 나와요</p>'}`;
+  return `<h4>손님 일기 ${ds.length}권</h4>${ds.length ? ds.map((d) => `<details class="diary" data-dk="${esc(d.key)}"><summary>${esc(d.title)} <small>${d.pages.length}/${d.total}장</small></summary>${d.pages.map((p, i) => `<p><b>${i + 1}.</b> ${esc(p.replace(/\{inn\}/g, S.innName || '여관'))}</p>`).join('')}</details>`).join('') : '<p class="note">단골끼리 케미가 오르면 일기가 한 장씩 나와요</p>'}`;
 }
 
 /** PARTY §2: 도감 「파티」 — 켜 본 조합 8칸 (조건은 늘 보이고, 켜 본 칸은 효과까지) */

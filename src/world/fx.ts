@@ -160,7 +160,7 @@ export function clearBubbles() {
 /** 매 프레임: 말풍선을 주인 위치로 */
 export function posBubbles() {
   over()
-    .querySelectorAll<Bubble>('.bub')
+    .querySelectorAll<Bubble>('.bub, .wfbub')
     .forEach((b) => {
       let X: number;
       let Y: number;

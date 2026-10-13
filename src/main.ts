@@ -32,6 +32,7 @@ import { cycleLines } from './world/story';
 import { ripeCount } from './world/craft';
 import { initFacilitiesUI } from './ui/facilities';
 import { initGoldsinkUI } from './ui/goldsink';
+import { initWayfindUI, wayfindHooks } from './ui/wayfind';
 import { CONFIG } from './data/config';
 import { alphaAt, assetMem, AssetError, breakSpriteForTest, drawFails, IMG, isFlipKey, loadAssets, spriteOk, META, pumpTintWarmup, recolored, tintWarmPending, warmTintLevel } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
@@ -805,6 +806,9 @@ async function boot() {
   initFacilitiesUI();
   // GOLDSINK: 연금술 「변환」 탭 · 예배당 「축복 받기」 (시설 줄 다음)
   initGoldsinkUI();
+  initWayfindUI();
+  wayfindHooks.hunt = (r) => openHunt(r);
+  wayfindHooks.manual = () => openManual();
   initFishingUI();
   // DECO_DROP §2: 뽐내기 장식 (영웅 동상 · 불꽃놀이 · 시계탑 종) — 건물 창 덧붙이기는 어울림·시설 뒤에
   initLuxury();

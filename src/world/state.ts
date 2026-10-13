@@ -560,6 +560,8 @@ export function freshProgress() {
     goldLog: { day: '', by: {} as Record<string, number> },
     /** GOLDSINK: 하루(한국 시간) 카운터 · 축복 · 마을 부탁 (world/goldsink.ts gsState가 칸을 바로잡는다) */
     gs: freshGoldsink(),
+    /** WAYFIND: 처음 해 보기 · 결의 (world/wayfind.ts wfState가 칸을 바로잡는다) */
+    wf: freshWayfind(),
     /** TOWN T2: 꾸미기 — 자동 길 켜기 · 칠한 칸 ("x,y" → 길 재질·바닥 종류) */
     /** BUILDUX: store = 보관함 · recent = 최근 놓은 장식 5개 · hintSeen = 첫 진입 안내 봄 */
     /** FEEDBACK23: entX = 옮긴 마을 입구 x (null = 여관 문 줄 · 자동) · dgHome = 던전을 처음 옮기기 전 숲속 자리 (되돌릴 수 있게) */
@@ -661,6 +663,36 @@ export function freshGoldsink() {
   };
 }
 export type GoldsinkState = ReturnType<typeof freshGoldsink>;
+/** WAYFIND §1·§2 */
+export function freshWayfind() {
+  return {
+    /** 처음 써 본 기능 · 기능이 열린 걸 처음 본 시각 · 「나중에」 누른 기능 → 다시 물어볼 시각 */
+    done: [] as string[],
+    avail: {} as Record<string, number>,
+    later: {} as Record<string, number>,
+    /** 오늘 「!」를 띄운 날(한국 시간) · 그 기능 · 옛 기록으로 done을 채웠나 · 반응을 기다리는 기능 */
+    day: '',
+    today: '',
+    seeded: false,
+    pend: [] as string[],
+    /** §2: 첫 돌파 못 한 판의 연속 패배 수 ("지역-판") */
+    lose: {} as Record<string, number>,
+    /** 상태로 알 수 없는 「처음 써 봄」 표시 (재련·숫돌·일기·이웃 구경…) · 첫 변환 값 (돌려줄 금화) · 다 채운 칭호를 줬나 */
+    hit: [] as string[],
+    pay: {} as Record<string, number>,
+    title: false,
+    /** 마지막으로 펼친 일기 (직업_종족) — 「일기 읽기」 보상 대상 */
+    diaryKey: '',
+  };
+}
+export type WayfindState = ReturnType<typeof freshWayfind>;
+/** WAYFIND §1: 처음 써 봤다고 표시 (world 어디서나 — import가 꼬이지 않게 state에 둔다) */
+export function wfHit(id: string, pay?: number) {
+  const w = (P as { wf?: WayfindState }).wf;
+  if (!w || !Array.isArray(w.hit)) return;
+  if (!w.hit.includes(id)) w.hit.push(id);
+  if (pay != null && w.pay && typeof w.pay === 'object' && w.pay[id] == null) w.pay[id] = pay;
+}
 
 /** 하루 마감 정산 한 장 */
 export interface DayLog {

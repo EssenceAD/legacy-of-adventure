@@ -22,6 +22,7 @@ import type { Item } from '../world/state';
 import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
 import { partySpecial, specialSum } from '../world/uniques';
 import { isBalanced, memberSynMult, synergyFx, type SynFx } from '../world/synergy';
+import { resolveDmg, resolveOf, resolveTaken } from '../world/wayfind';
 
 const HC = CONFIG.hunter;
 
@@ -281,6 +282,8 @@ export interface Field {
   roles?: boolean;
   rvLeft?: number;
   comboTele?: number;
+  /** WAYFIND §2: 결의 (첫 돌파 못 한 사냥 판에서 연속 패배 → 주는 피해 + · 받는 피해 −) */
+  resolve?: number;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -372,6 +375,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
     f.comboTele = isBalanced(ms) ? RV.comboTele : 0;
     applyRolesHp(f);
   }
+  f.resolve = mode === 'hunt' && !opts.raid ? resolveOf(region, stage) : 0;
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -509,6 +513,7 @@ export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: bo
   }
   // PARTY §2: 철벽 돌격 — 보스·정예 피해 +
   if ((m.boss || m.elite) && f.syn?.bossDmg) dmg *= 1 + f.syn.bossDmg;
+  if (f.resolve) dmg *= resolveDmg(f.resolve);
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg;
   if (f.mode === 'raid' && m.boss) f.raidDmg += Math.min(dmg, Math.max(0, m.hp + dmg));
@@ -581,7 +586,7 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit, heavy = false) {
     cut = ((u.guard ?? 0) > 0 ? 1 - RV.taunt.cut : 1) * (u.job === 'knight' ? 1 - RV.knightCut : 1) * (u.actor?.kind === 'dwarf' && u.hp < u.max * RV.dwarfLow ? 1 - RV.dwarfCut : 1) * (1 - (u.defCut ?? 0));
   }
   // BUILDINGS_SPEC §3: 돌피부 물약 — 받는 피해 −15%
-  dmg = Math.round(dmg * cut * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1));
+  dmg = Math.round(dmg * cut * (1 - buffOf('stone')) * (1 - (u.dmgCut ?? 0)) * (u.actor ? mythicDef(f.allies.map((x) => x.actor!).filter(Boolean), u.actor) : 1) * resolveTaken(f.resolve ?? 0));
   u.hp -= dmg;
   u.flash = 1 / 30 + 0.001;
   u.hurtT = 0.22;
@@ -971,12 +976,12 @@ function aiAlly(f: Field, u: Unit, dt: number) {
   }
   // 힐러: 체력 50% 아래 아군을 치유
   if (u.role === 'heal' && u.cd![0] <= 0 && f.allies.some((a) => !a.dead && a.hp < a.max * 0.5 && dist(a, u) < (f.roles ? RV.healR : 3.5))) return skill(f, u, 0);
-  if (f.roles && u.role === 'heal') {
+  if (f.roles && u.role === 'heal' && u.cd![0] <= 0) {
     // ROLES §4: 체력이 가장 낮은 동료 곁으로
-    const low = f.allies.filter((a) => a !== u && !a.dead && a.hp < a.max * 0.8).sort((a, b) => a.hp / a.max - b.hp / b.max)[0];
+    const low = f.allies.filter((a) => a !== u && !a.dead && a.hp < a.max * 0.5).sort((a, b) => a.hp / a.max - b.hp / b.max)[0];
     if (low && dist(u, low) > 2) return moveToward(f, u, low.x, low.y, dt);
   }
-  // ROLES §3: 기사는 보스(정예) 쪽으로 먼저 붙는다
+  // ROLES §3: 기사는 보스(정예) 쪽으로 먼저 붙는다 · §4 사제는 치유가 준비되면 체력 50% 아래 동료 곁으로 (늘 따라다니면 딜이 줄어 시간 안에 못 깬다 — 실세이브 이카몰리)
   const big = f.roles && u.role === 'tank' && f.elite && !f.elite.dead && f.elite.st !== 'spawn' ? f.elite : null;
   const t = big ?? aimTarget(f, u, 9);
   if (!t) {
@@ -1005,8 +1010,7 @@ function aiAlly(f: Field, u: Unit, dt: number) {
   else if (d > want) moveToward(f, u, gx, gy, dt);
   else {
     faceTo(u, t);
-    if (big && u.cd![1] <= 0) skill(f, u, 1);
-    else if (u.cd![0] <= 0 && u.role !== 'heal' && Math.random() < 0.02) skill(f, u, 0);
+    if (u.cd![0] <= 0 && u.role !== 'heal' && Math.random() < 0.02) skill(f, u, 0);
     else if (u.cd![1] <= 0 && Math.random() < 0.015) skill(f, u, 1);
     else attack(f, u);
   }

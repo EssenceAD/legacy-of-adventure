@@ -36,7 +36,7 @@ describe('ROLES', () => {
   it('사제가 살아 있으면 쓰러진 동료를 3초 뒤 30%로 한 번 일으킨다', () => {
     const ms = [mk('rogue'), mk('cleric')];
     world.actors = ms;
-    const f = makeField('forest', 1, ms, true);
+    const f = makeField('forest', 1, ms, false);
     f.units = f.units.filter((u) => u.team === 'ally');
     const boss = (spawnBoss(f, REGION_BOSS.forest, 1e9, 14, 14), f.elite!);
     boss.atk = 1e9;
