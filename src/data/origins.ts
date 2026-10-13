@@ -218,7 +218,7 @@ const HAIR: Record<Job, [string, string]> = {
 export function ownerLook(job: Job, g: Gender): ClassDef {
   const hair = HAIR[job][g === 'm' ? 0 : 1];
   const style = g === 'm' ? 'short' : job === 'knight' || job === 'priest' ? 'braid' : 'long';
-  const base = { name: '나', hair, style, pants: '#4a3f5a', boots: '#5b3a26', apron: '#e9dcc0', weapon: null } as const;
+  const base = { name: '나', hair, style, pants: '#4a3f5a', boots: '#5b3a26', apron: '#e9dcc0', weapon: null, dot2: 'hero' } as const;
   switch (job) {
     case 'knight':
       return { ...base, face: { eyes: 'dot', brow: 'up', mouth: 'flat' }, cloth: '#5a6a8a', arm: '#b9c3d6', accent: '#e8b94a' };

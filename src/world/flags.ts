@@ -121,6 +121,8 @@ export const FLAG_DEFAULTS = {
   heroCards: false,
   /** v0.25.5 CHECKIN §J6 파티 후보 한 규칙 (형철 결정 — 켬): 방문 중인 전설(동행)이 토벌에도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · 사냥·심연은 지쳐도 갈 수 있고 「체력 n · 지쳤어요」 · 추천 편성은 원정·사냥·토벌·심연 네 곳 모두 */
   partyRulesV2: true,
+  /** HERODOT 영웅·손님 도트 리마스터 2 (1단계: 기사·사제·도적) — 형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」(실험실)로만 켜 봄 (vis) */
+  heroDotV2: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

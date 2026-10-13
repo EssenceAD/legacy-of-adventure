@@ -14,6 +14,8 @@ import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingM
 import { canvasAlive, Lru } from '../engine/lru';
 import { depthActor, depthBuilding, depthWild, N, sx, sy, TH, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
+import { idleFor, saverOn } from '../engine/fps';
+import { ssOn } from '../ui/screenSaver';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
@@ -954,31 +956,96 @@ function looksOf(a: Actor): CharFrames {
   return f;
 }
 
+/** HERODOT 3: 조용히 할 때 (배터리 절약 · 오래 손 안 댐 = 화면 보호) — 시그니처 동작·별 입자를 쉰다 */
+const calmNow = () => saverOn() || ssOn() || idleFor() >= CONFIG.loop.idleAfterSec;
+/** 전설·영웅 시그니처 동작: 가만히 있을 때 8~12초마다 한 번 (화면에 보일 때만 · 처음 재생 때 프레임을 만든다) */
+function sigAt(s: CharFrames, T: number, ph: number): HTMLCanvasElement | null {
+  if (!s.tier || calmNow()) return null;
+  const period = 8 + ((ph * 0.37) % 4);
+  const t = (T + ph * 3) % period;
+  const dur = 1.1;
+  if (t >= dur) return null;
+  const fr = s.sig;
+  return fr?.length ? fr[Math.min(fr.length - 1, Math.floor((t / dur) * fr.length))] : null;
+}
+
+/** HERODOT 3: 전설 2초마다 1px 반짝 · 신화 발밑 별 입자 2~3개 · 머리 위 이름표 */
+function namedFx(ctx: CanvasRenderingContext2D, a: Actor, s: CharFrames, X: number, Y: number, top: number, dir: number, T: number) {
+  const p = P(ctx);
+  const legend = s.tier === 'legend' || s.tier === 'mythic';
+  if (legend && a.st === 'idle' && (T + a.ph) % 2 < 0.14) {
+    const sx2 = X + (dir < 0 ? -5 : 5);
+    p.px(sx2, top + 5, '#ffffff');
+    p.px(sx2 - 1, top + 5, '#fff3b0');
+    p.px(sx2 + 1, top + 5, '#fff3b0');
+    p.px(sx2, top + 4, '#fff3b0');
+    p.px(sx2, top + 6, '#fff3b0');
+  }
+  if (s.tier === 'mythic' && !calmNow())
+    for (let i = 0; i < 3; i++) {
+      const k = (T * 0.3 + i / 3 + a.ph) % 1;
+      const px2 = X - 5 + i * 5 + Math.round(Math.sin(T * 1.3 + i * 2));
+      const py2 = Y - 1 - Math.round(k * 14);
+      const c = k < 0.5 ? '#fff3b0' : '#ffd36b';
+      p.px(px2, py2, c);
+      if (k < 0.3) {
+        p.px(px2 - 1, py2, '#ffd36b');
+        p.px(px2 + 1, py2, '#ffd36b');
+      }
+    }
+  // 이름표: 작은 글씨 + 어두운 그림자 (머리 위)
+  ctx.font = '8px "Galmuri9"';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const ty = top - 1 + Math.round(Math.sin(T * 2 + a.ph) * 0.6);
+  const col = s.tier === 'mythic' ? '#dfe6f5' : s.tier === 'legend' ? '#ffd36b' : '#ffffff';
+  const name = a.name;
+  ctx.fillStyle = '#1a1220';
+  ctx.fillText(name, X + 1, ty + 1);
+  ctx.fillText(name, X - 1, ty + 1);
+  ctx.fillText(name, X, ty + 2);
+  ctx.fillStyle = col;
+  ctx.fillText(name, X, ty);
+  if (s.tier === 'mythic') {
+    const w = Math.ceil(ctx.measureText(name).width);
+    const sx3 = X + Math.ceil(w / 2) + 3;
+    const sy3 = ty - 4;
+    p.px(sx3, sy3, '#ffffff');
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) p.px(sx3 + dx, sy3 + dy, '#dfe6f5');
+  }
+}
+
 function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
   const s = looksOf(a);
   const T = S.T;
   let fr: HTMLCanvasElement;
   const dir = pose ? pose.dir : a.dir;
+  const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
+  const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));
+  const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
+  if (offscreen(X - 12, Y - 48, 24, 48)) return;
+  let sg: HTMLCanvasElement | null = null;
   if (pose) fr = (pose.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
   else if (a.st === 'walk') fr = (a.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
   else if (a.st === 'idle' && a.back && !a.role) fr = s.idleB[Math.floor(T * 1.6 + a.ph) % 2];
   else if (a.st === 'atk') fr = s.atk[Math.floor(T * 3 + a.ph) % 2];
   else if (a.st === 'pray') fr = s.pray[Math.floor(T * 1.5 + a.ph) % 2];
   else if (a.st === 'sit') fr = s.sit[Math.floor(T * 2 + a.ph) % 2];
+  // HERODOT 3: 전설·영웅 시그니처 동작
+  else if (a.st === 'idle' && s.tier && (sg = sigAt(s, T, a.ph))) fr = sg;
+  // HERODOT: 새 도트는 2~3초에 한 번 눈 깜빡임 (blink 프레임이 있을 때만)
+  else if (s.blink && (T + a.ph) % (2 + (a.ph % 1)) < 0.13) fr = s.blink;
   else fr = s.idle[Math.floor(T * 1.6 + a.ph) % 2];
-  const X = Math.round(view.OX + (pose ? pose.pos[0] : sx(a.x, a.y)));
-  const Y = Math.round(view.OY + (pose ? pose.pos[1] : sy(a.x, a.y) + TH / 2));
-  const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
-  if (offscreen(X - 12, Y - 48, 24, 48)) return;
   // 리마스터: 발밑 그림자 2톤 도트 타원 (반투명 없이)
   if (fade > 0.5) dotShadow(ctx, X, Y, 6, 2);
   ctx.globalAlpha = (a.pop ? 1 - a.pop / 0.4 : 1) * fade;
   const img = tinted(fr, NL);
-  const x = X - 12;
-  const y = Y - 32 + (a.st === 'sit' ? 3 : 0);
+  // 발 위치는 그림 크기와 상관없이 같은 칸 (전설 26×35도 24×33과 발이 같은 줄)
+  const x = X - (fr.width >> 1);
+  const y = Y - 32 - (fr.height - 33) + (a.st === 'sit' ? 3 : 0);
   if (dir < 0) {
     ctx.save();
-    ctx.translate(x + 24, y);
+    ctx.translate(x + fr.width, y);
     ctx.scale(-1, 1);
     ctx.drawImage(img, 0, 0);
     ctx.restore();
@@ -987,8 +1054,10 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   // 수련: 흰 바람 / 밭일: 물방울
   if (a.st === 'atk' && Math.random() < 0.06) puff(X + a.dir * 12 - view.OX, Y - 16 - view.OY, '#ffffff', a.dir * 10, -4, 0.25, 1);
   if (a.st === 'pray' && Math.random() < 0.05) puff(X + a.dir * 8 - view.OX, Y - 12 - view.OY, '#8fd0ff', 0, 10, 0.5, 1);
+  // HERODOT 3: 전설 반짝 · 신화 별 입자 · 이름표 (전설 금색 · 신화 은색 + 별 · 영웅 흰색)
+  if (s.tier && fade === 1) namedFx(ctx, a, s, X, Y, y, dir, T);
   // 전설 영웅: 머리 위 금빛 마름모 + 반짝 · 방문 때 금빛 발자국
-  if (a.legendId && fade === 1) {
+  if (a.legendId && fade === 1 && !s.tier) {
     const p = P(ctx);
     const b = Math.round(Math.sin(T * 3 + a.ph) * 1);
     const c = a.status === 'hero' ? '#ffd36b' : '#fff3b0';
@@ -999,7 +1068,10 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
     p.px(X + 2, Y - 37 + b, c);
     if (Math.random() < 0.04) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
     if (a.goldSteps && a.st === 'walk' && Math.random() < 0.35) puff(X - view.OX + (Math.random() * 6 - 3), Y - view.OY - 1, '#ffd36b', 0, 0, 1.6, 2);
-  } else if (a.heroId && fade === 1) {
+  } else if (a.legendId && fade === 1) {
+    if (Math.random() < 0.04) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
+    if (a.goldSteps && a.st === 'walk' && Math.random() < 0.35) puff(X - view.OX + (Math.random() * 6 - 3), Y - view.OY - 1, '#ffd36b', 0, 0, 1.6, 2);
+  } else if (a.heroId && fade === 1 && !s.tier) {
     const p = P(ctx);
     const b = Math.round(Math.sin(T * 3 + a.ph) * 1);
     const c = a.status === 'hero' ? '#ffd36b' : '#cfd8ff';

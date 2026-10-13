@@ -57,5 +57,6 @@
   "uiHide": false,
   "bldStatus": false,
   "heroCards": false,
-  "partyRulesV2": true
+  "partyRulesV2": true,
+  "heroDotV2": false
 }

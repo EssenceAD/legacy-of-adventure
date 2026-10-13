@@ -147,6 +147,15 @@ interface Cell {
   tag?: string | null;
 }
 
+/** HERODOT 3: 외곽선 금빛·은빛 섞기 (같은 색 조합은 한 번만 계산) */
+const RIMC = new Map<string, string>();
+function rimMix(oc: string, rim: string): string {
+  const k = oc + rim;
+  let v = RIMC.get(k);
+  if (!v) RIMC.set(k, (v = mix(oc, rim, 0.72)));
+  return v;
+}
+
 /** 캐릭터용 격자: 칠한 뒤 render()가 테두리와 명암을 자동으로 넣는다 */
 export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
   const g: (Cell | null)[][] = Array.from({ length: h }, () => Array(w).fill(null));
@@ -159,6 +168,9 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
     g,
     w,
     h,
+    /** 그리기 좌표 → 격자 칸 (HERODOT: 26×35 격자도 같은 그리기 좌표) */
+    ox,
+    oy,
     set,
     rect(x: number, y: number, W: number, H: number, c: string, tag?: string | null) {
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) set(x + i, y + j, c, tag);
@@ -191,23 +203,25 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
     clear(x: number, y: number) {
       if (x >= 0 && y >= 0 && x < w && y < h) g[y][x] = null;
     },
-    render(opts: { outline?: string } = {}) {
+    /** rim: HERODOT 전설·신화 — 부위색 외곽선에 금빛·은빛을 한 겹 섞는다 (없으면 예전 그대로) */
+    render(opts: { outline?: string; rim?: string } = {}) {
       const cv = canvas(w, h);
       const ctx = cv.getContext('2d')!;
-      const filled = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && !!g[y][x] && g[y][x]!.tag !== 'ol';
+      // HERODOT: 'fx' = 빛·휘두름 궤적 — 명암·외곽선 없이 맨 위에 그대로 (예전 그림엔 없는 태그)
+      const filled = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && !!g[y][x] && g[y][x]!.tag !== 'ol' && g[y][x]!.tag !== 'fx';
       // 리마스터 명암 3단 (빛은 왼쪽 위에서) · 위 부위가 드리우는 그림자 (머리카락 밑 이마, 머리 밑 옷깃)
       const out = g.map((r) => r.map((p) => (p ? { ...p } : null)));
       const at = (x: number, y: number) => (x >= 0 && y >= 0 && x < w && y < h ? g[y][x] : null);
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
           const p = g[y][x];
-          if (!p || p.tag === 'flat' || p.tag === 'eye') continue;
+          if (!p || p.tag === 'flat' || p.tag === 'eye' || p.tag === 'fx') continue;
           const r = !filled(x + 1, y);
           const b = !filled(x, y + 1);
           const l = !filled(x - 1, y);
           const t = !filled(x, y - 1);
           const up = at(x, y - 1);
-          const cast = !!up && up.c !== p.c && up.tag !== 'eye' && up.tag !== 'flat' && up.tag !== 'ol';
+          const cast = !!up && up.c !== p.c && up.tag !== 'eye' && up.tag !== 'flat' && up.tag !== 'ol' && up.tag !== 'fx';
           if (r || b) out[y][x]!.c = ramp(p.c, -1);
           else if (cast) out[y][x]!.c = ramp(p.c, -1);
           else if (t || (l && !filled(x - 1, y - 1))) out[y][x]!.c = ramp(p.c, 1);
@@ -217,7 +231,7 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
           const p = out[y][x];
-          if (p) {
+          if (p && p.tag !== 'fx') {
             ctx.fillStyle = p.c;
             ctx.fillRect(x, y, 1, 1);
           }
@@ -234,9 +248,18 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
             const n = g[y + nb[1]][x + nb[0]]!;
             const lit = nb[0] === 1 || nb[1] === 1;
             const base = n.tag === 'eye' || n.tag === 'flat' ? '#5a4a5a' : n.c;
-            ctx.fillStyle = mix(ramp(base, lit ? -2 : -3), OUTL, lit ? 0.35 : 0.55);
+            const oc = mix(ramp(base, lit ? -2 : -3), OUTL, lit ? 0.35 : 0.55);
+            ctx.fillStyle = opts.rim ? rimMix(oc, opts.rim) : oc;
           }
           ctx.fillRect(x, y, 1, 1);
+        }
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const p = g[y][x];
+          if (p && p.tag === 'fx') {
+            ctx.fillStyle = p.c;
+            ctx.fillRect(x, y, 1, 1);
+          }
         }
       return cv;
     },
