@@ -669,13 +669,17 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   }, 'huntRedraw');
   const hint = res.win && !!out.first && !P.hunt.autoHint;
   if (hint) P.hunt.autoHint = true;
+  // WAYFIND §2: 패배 카드에 대장간이 있으면 위 「대장간에서 쓸 수 있는 것」 줄은 뺀다 (같은 말 두 번)
+  const stuck = res.win ? '' : stuckHtml(r, s, ms, wasNew, resAfter);
+  let loot = lootHtml(r, out);
+  if (stuck.includes('data-stk="smith"')) loot = loot.replace(smithLine(), '');
   const gradeLine = res.win
     ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
     : '';
   return `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
       <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
-      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${lootHtml(r, out)}
-      ${res.win ? '' : stuckHtml(r, s, ms, wasNew, resAfter)}
+      ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${loot}
+      ${stuck}
       <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
       ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">이 스테이지 자동 사냥</button></div>` : ''}
       <div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
