@@ -9,6 +9,7 @@ import { isTalking } from './dialogue';
 import { fmt } from './common';
 import { sfx } from './battle';
 import { isWinOpen } from './windows';
+import { vis } from '../world/visual';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 export const settleOn = () => !getPref<boolean>('settleOff', false);
@@ -37,7 +38,7 @@ export function showSettlement(): boolean {
   c.innerHTML = `<div class="card px">
     <b class="t">${title}</b>${record ? `<p class="rec"><img src="${av('assets/ui/star.png')}" alt=""> 개업 이래 최고! <img src="${av('assets/ui/star.png')}" alt=""></p>` : ''}
     <div class="sts"><span><small>수입</small><b class="g">${fmt(sum.gold)} G</b></span><span><small>손님</small><b>${sum.guests}명</b></span><span><small>평균 기분</small><b>${sum.mood}</b></span><span><small>새 어울림 · 새 손님</small><b>${sum.newHarm} · ${sum.newDex}</b></span></div>
-    <div class="bars">${bars}</div><small class="tap">탭하면 닫혀요</small></div>`;
+    <div class="bars">${bars}</div>${sum.quietBye && vis('propFilter') ? `<small class="qb">평범한 손님 ${sum.quietBye}명은 조용히 배웅했어요</small>` : ''}<small class="tap">탭하면 닫혀요</small></div>`;
   c.hidden = false;
   void c.offsetWidth;
   c.classList.add('on');

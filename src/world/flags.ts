@@ -57,6 +57,10 @@ export const FLAG_DEFAULTS = {
   uiKitV2: false,
   /** VISUAL 실험실 토글을 운영자 말고 모두에게 보이기 (테스터 공개 단계) */
   visualLabOpen: false,
+  /** CHECKIN §A1 단골 제안 거르기 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 평범한 손님은 제안 없이 「다음에 또 올게요!」 · 설정 「단골 제안 받을 손님」 · 정산 카드 한 줄 */
+  propFilter: false,
+  /** CHECKIN §A2 이야기·관계 이벤트 모아 보기 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 곁이야기·단골 제안은 「📖 새 이야기 n」 배지에 (하루 2개까지만 저절로) · 설정 「곁이야기」 */
+  storyInbox: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

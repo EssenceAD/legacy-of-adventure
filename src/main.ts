@@ -28,6 +28,8 @@ import { setNight as setNightHL } from './world/daynight';
 import { openPlace as openPlaceHL } from './ui/nav';
 import { decorView, UNDO_MAX } from './world/decor';
 import { initPropCard } from './ui/propCard';
+import { initStoryInbox } from './world/storyInbox';
+import { chemTalk } from './world/chemNews';
 import { proposeTalk } from './world/actors';
 import { initGoalPill } from './ui/goalPill';
 import { initStoryUI, playStory, tapYuan } from './ui/story';
@@ -49,10 +51,10 @@ import { clampCam, N, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin
 import * as game from './game';
 import { settleOfflineCons } from './game';
 import { getPref, readSave, savesHalted, setPref, writeSave } from './save/save';
-import { arrive, enter, fastHooks, queueChemTalk, updActors } from './world/actors';
+import { arrive, enter, fastHooks, queueChemTalk, queueProposal, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
-import { pendingEvents, pendingWith, pumpEvents } from './world/events';
+import { pendingEvents, pendingSide, pendingWith, pumpEvents, runFirstSide } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
@@ -856,6 +858,9 @@ async function boot() {
   Object.assign(highlightGo, { decor: enterDecor, photo: enterPhoto, night: () => setNightHL(true), build: openBuild, village: () => openPlaceHL('village'), hunt: () => openHunt() });
   // HOTFIX16: 단골 제안 손님 카드 · 오늘의 목표 알약
   initPropCard();
+  // CHECKIN §A2: 이벤트 줄에 「모아 보기」 정책 (플래그·설정은 그때그때 읽는다)
+  initStoryInbox();
+  if (import.meta.env.DEV) Object.assign(window, { __inbox: { propose: queueProposal, chem: chemTalk, pending: pendingSide, run: runFirstSide, events: pendingEvents } });
   initGoalPill();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)

@@ -482,7 +482,7 @@ export function meetLinked(id: string) {
   if (o && og && o.linked.includes(id) && !o.met.includes(id) && og.reunion[id]) {
     o.met.push(id);
     const d = bondById(id)!;
-    queueEvent(() => ownerHooks.duo([['narr', `${d.name} — 옛 인연과의 재회`], ...og.reunion[id].map((s) => evLine(d, s))], d.port));
+    queueEvent(() => ownerHooks.duo([['narr', `${d.name} — 옛 인연과의 재회`], ...og.reunion[id].map((s) => evLine(d, s))], d.port), 'reunion:' + id);
   }
 }
 
@@ -693,7 +693,7 @@ function prevLetter() {
   markDirty();
   if (Math.random() >= E.letterChance) return;
   const t = LETTERS[(Math.random() * LETTERS.length) | 0];
-  queueEvent(() => uiHooks.talk([['post', `편지 왔어요! 앞 주인 ${p.name}님이 보냈어요!`], ['narr', fillT(t)]]));
+  queueEvent(() => uiHooks.talk([['post', `편지 왔어요! 앞 주인 ${p.name}님이 보냈어요!`], ['narr', fillT(t)]]), 'letter' + today());
   // 우편함에도 남긴다 (작은 용돈과 함께)
   ownerHooks.mail(`앞 주인 ${p.name}의 편지`, fillT(t), { gold: 300 });
 }
