@@ -1,5 +1,6 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { bindPersonActions, personActionsHtml } from './personActions';
+import { tagTap } from '../world/render';
 import { vis as visOn } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
@@ -188,6 +189,8 @@ export function talkGuest(a: Actor) {
 
 /** 손님 상세 */
 export function showActor(a: Actor) {
+  // HERODOT 이름표: 눌러 본 영웅은 몇 초 동안 이름표
+  tagTap(a);
   if (a.cameo) {
     openWin(
       `★ ${a.name}`,
