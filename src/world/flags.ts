@@ -74,6 +74,8 @@ export const FLAG_DEFAULTS = {
   legendCompanion: true,
   /** v0.25.2 CHECKIN §B 첫 30분 동선 — 실험실(기본 꺼짐 · 「새 화면 미리 보기」로 켬 · 형철 OK 뒤 true): 임무 건설 대상 맨 위+반짝 · 원정 파티 맨 위 추천·성공률·출발(5번째 자리 설명은 잠긴 칸 눌러야) · 장비 임무는 늘 단골 탭+반짝 · 보고서 버튼 「확인」 */
   firstFlowFix: false,
+  /** v0.25.2b 구역 어울림 이름표(숲 속 오두막·별빛 숙소…)는 어울림 버튼을 눌렀을 때만 (형철 결정 · 끄면 예전처럼 늘 보임) */
+  harmonyLabels: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

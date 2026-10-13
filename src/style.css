@@ -1026,7 +1026,8 @@ html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px
 .cbsyn[hidden]{display:none}
 html:not([data-size="phone"]) .cbsyn{bottom:calc(env(safe-area-inset-bottom,0px) + 130px)}
 .cbparty .ai4{opacity:.85;outline:1px dashed rgba(255,211,107,.6)}
-.cbgoal{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 30px);text-align:center;z-index:3;font-size:13px;color:#efe2c6;text-shadow:1px 1px 0 #140c18;pointer-events:none}
+/* v0.25.2b: 접기 버튼(두 줄) 아래로 — 「처치 n/24」가 「접으면 평가 보너스 없음」과 겹치던 것 */
+.cbgoal{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 52px);text-align:center;z-index:3;font-size:13px;color:#efe2c6;text-shadow:1px 1px 0 #140c18;pointer-events:none}
 .cbloot{position:absolute;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 214px);z-index:4;display:flex;flex-direction:column;gap:2px;pointer-events:none}
 .cbloot p{margin:0;font-size:14px;font-weight:700;background:rgba(10,8,20,.7);padding:2px 8px;text-shadow:1px 1px 0 #140c18;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html:not([data-size="phone"]) .cbloot{bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}
@@ -1101,7 +1102,7 @@ html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translate
 #runbar .hline.fold{background:rgba(48,24,24,.9)}#runbar .hline.fold b{color:#ffd0b0}
 #runbar .hline.fold.done{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:rdy 1s steps(2) infinite}#runbar .hline.fold.done b{color:var(--gold)}
 /* 사냥 전투: 접기 (보너스 없음 안내) */
-.cbtop .cbfold{display:flex;flex-direction:column;align-items:center;line-height:1.1}.cbtop .cbfold small{font-size:calc(var(--f-small) * .8);color:#ffb0a8}
+.cbtop .cbfold{display:flex;flex-direction:column;align-items:center;line-height:1.1;padding-right:14px}.cbtop .cbfold small{font-size:calc(var(--f-small) * .8);color:#ffb0a8}
 .claimall{width:100%;margin:0 0 8px}
 /* 손님 창: 단골 진행 (§15) */
 .regsum{margin:0 0 6px}.regsum b{color:var(--gold)}

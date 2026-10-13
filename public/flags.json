@@ -34,5 +34,6 @@
   "boardLevelUp": false,
   "mythicGuide": false,
   "legendCompanion": true,
-  "firstFlowFix": false
+  "firstFlowFix": false,
+  "harmonyLabels": true
 }
