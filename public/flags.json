@@ -54,5 +54,6 @@
   "settingsTabs": false,
   "sound70": false,
   "screenSaver": false,
-  "uiHide": false
+  "uiHide": false,
+  "bldStatus": false
 }

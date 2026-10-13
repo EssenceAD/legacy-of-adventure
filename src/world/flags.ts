@@ -115,6 +115,8 @@ export const FLAG_DEFAULTS = {
   screenSaver: false,
   /** v0.25.4 CHECKIN §L2 UI 끄기 구경 모드 (형철 확인 전엔 꺼짐 · vis()) — 👁 버튼 → UI가 숨고 마을만 · 두 번 누르기·뒤로가기로 복귀 · [📷] 사진 모드로 · 숨긴 동안 대기 이벤트는 안 띄움 */
   uiHide: false,
+  /** CHECKIN §J8 건물 머리 위 「상태 말풍선」 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 텃밭·예배당·대장간·게시판·연못 위 작은 아이콘 하나 · 최대 3개 · 누르면 그 건물 창 · 설정 「건물 알림 말풍선」 */
+  bldStatus: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

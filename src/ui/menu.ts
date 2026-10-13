@@ -8,6 +8,7 @@ import { INBOX_NAME, inboxMode, PROP_FILTER_NAME, propFilterMode, setInboxMode, 
 import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { openFirstsList, setWfBubbles, wfBubblesOn } from './wayfind';
+import { bldBubblesOn, setBldBubbles } from '../world/bldStatus';
 import { PROP_CARD_NAME, propCardMode, setPropCardMode, type PropCardMode } from './propCard';
 import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
 import { enterPhoto } from './photo';
@@ -361,8 +362,12 @@ function labRowHtml(): string {
 function checkinRowsHtml(): string {
   const a1 = vis('propFilter') ? `<label class="tog">단골 제안 받을 손님 <select id="mPropF">${(['useful', 'all', 'none'] as const).map((k) => `<option value="${k}" ${propFilterMode() === k ? 'selected' : ''}>${PROP_FILTER_NAME[k]}</option>`).join('')}</select></label>` : '';
   const a2 = vis('storyInbox') ? `<label class="tog">곁이야기 <select id="mInbox">${(['collect', 'now'] as const).map((k) => `<option value="${k}" ${inboxMode() === k ? 'selected' : ''}>${INBOX_NAME[k]}</option>`).join('')}</select></label>` : '';
-  return a1 + a2;
+  // §J8 「건물 알림 말풍선」 (합칠 때 알림 탭으로)
+  const j8 = vis('bldStatus') ? `<label class="tog"><input type="checkbox" id="mBldBub" ${bldBubblesOn() ? 'checked' : ''}> 건물 알림 말풍선 <small>(텃밭·예배당·대장간·게시판·연못 위 작은 아이콘)</small></label>` : '';
+  return a1 + a2 + j8;
 }
+// 개발용 (e2e-j8: 설정 줄 확인)
+if (import.meta.env.DEV) Object.assign(window, { __openSettings: () => openSettings() });
 
 // ───────── CHECKIN §L1 화면 보호 줄 · §C2 진동 줄 ─────────
 /** 화면 보호: 자동 n분 · 화면 켜 두기 · [지금 켜기] (screenSaver 끔이면 빈 문자열) */
@@ -487,6 +492,8 @@ function bindSettings() {
   (el('mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
   (el('mGoalPill') as HTMLInputElement).onchange = (e) => setGoalPill((e.target as HTMLInputElement).checked);
   (el('mWfBub') as HTMLInputElement).onchange = (e) => setWfBubbles((e.target as HTMLInputElement).checked);
+  const bb = document.getElementById('mBldBub') as HTMLInputElement | null;
+  if (bb) bb.onchange = () => setBldBubbles(bb.checked);
   (el('mPropCard') as HTMLSelectElement).onchange = (e) => setPropCardMode((e.target as HTMLSelectElement).value as PropCardMode);
   (el('mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
   el('mHints').onclick = () => {
