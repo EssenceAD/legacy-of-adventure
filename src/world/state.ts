@@ -677,9 +677,22 @@ export function freshWayfind() {
     pend: [] as string[],
     /** §2: 첫 돌파 못 한 판의 연속 패배 수 ("지역-판") */
     lose: {} as Record<string, number>,
+    /** 상태로 알 수 없는 「처음 써 봄」 표시 (재련·숫돌·일기·이웃 구경…) · 첫 변환 값 (돌려줄 금화) · 다 채운 칭호를 줬나 */
+    hit: [] as string[],
+    pay: {} as Record<string, number>,
+    title: false,
+    /** 마지막으로 펼친 일기 (직업_종족) — 「일기 읽기」 보상 대상 */
+    diaryKey: '',
   };
 }
 export type WayfindState = ReturnType<typeof freshWayfind>;
+/** WAYFIND §1: 처음 써 봤다고 표시 (world 어디서나 — import가 꼬이지 않게 state에 둔다) */
+export function wfHit(id: string, pay?: number) {
+  const w = (P as { wf?: WayfindState }).wf;
+  if (!w || !Array.isArray(w.hit)) return;
+  if (!w.hit.includes(id)) w.hit.push(id);
+  if (pay != null && w.pay && typeof w.pay === 'object' && w.pay[id] == null) w.pay[id] = pay;
+}
 
 /** 하루 마감 정산 한 장 */
 export interface DayLog {

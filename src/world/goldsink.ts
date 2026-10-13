@@ -5,7 +5,7 @@ import { flag } from './flags';
 import { BOSSES } from '../data/bosses';
 import { REGIONS, type RegionId } from '../data/items';
 import { fLv } from './facilities';
-import { freshGoldsink, markDirty, P, S, type GoldsinkState } from './state';
+import { freshGoldsink, markDirty, P, S, wfHit, type GoldsinkState } from './state';
 
 const GS = () => CONFIG.goldsink;
 const DAY = 86400000;
@@ -183,6 +183,8 @@ export function buyConv(key: string, q: number): string | null {
   else if (kind === 'whet') P.growth.whet += n;
   else P.dust[DUST_NAME[kind][1]] += n;
   const g = gsState();
+  // WAYFIND §1: 첫 변환 값은 돌려준다
+  if (!g.cnt.conv) wfHit('convert', cost);
   g.conv[key] = it.bought + q;
   g.cnt.conv++;
   markDirty();

@@ -11,33 +11,11 @@ import { recommendParty } from '../src/world/party';
 import { huntPartyMax } from '../src/world/party4';
 import { sanitizeRegions2 } from '../src/world/regions2';
 import { P, resetProgress, S, world, type Actor, type Building } from '../src/world/state';
-import { readSave } from '../src/save/save';
+import { loadReal } from './wf-real';
 import { noteHuntResult, resolveOf, stuckStage, wfState } from '../src/world/wayfind';
 
 const FIX = { ika: 'tests/fixtures/real_wf_ikamolly.json', gon: 'tests/fixtures/real_wf_gonukki.json' };
 const haveReal = fs.existsSync(FIX.ika) && fs.existsSync(FIX.gon);
-
-export function loadReal(f: string) {
-  localStorage.setItem(CONFIG.save.key, fs.readFileSync(f, 'utf8'));
-  const d = readSave()!;
-  resetProgress(d.progress);
-  sanitizeRegions2();
-  sanitizeGrowth();
-  S.gold = d.gold;
-  S.day = d.day;
-  S.started = true;
-  S.visiting = null as never;
-  world.home = null;
-  world.objs = d.buildings.map((b) => ({ ...b, inside: [] }) as unknown as Building);
-  world.actors = d.adventurers.map((a) => Object.assign(blankActor(a.kind, a.name, a.x, a.y), a));
-  for (const it of P.bag) it.owner = null;
-  for (const a of world.actors)
-    for (const s of ['weapon', 'armor', 'acc'] as const) {
-      const it = P.bag.find((x) => x.id === a.equip[s]);
-      if (it) it.owner = a.id;
-    }
-  return d;
-}
 
 beforeEach(() => {
   resetProgress();
