@@ -1,5 +1,6 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
+import { tileDot } from './redDots';
 import { ACHIEVEMENTS } from '../data/achieve';
 import { flag, type FlagKey } from '../world/flags';
 import { MANUAL_V2 } from '../data/story/manual';
@@ -68,23 +69,23 @@ function groups(): [string, Item[]][] {
       { icon: 'm_heroes', name: '영웅', open: () => openDex(3) },
       { icon: 'm_bond', name: '인연', open: () => openTies(), lock: P.owner ? null : '주인을 만들면' },
       { icon: 'm_bag', name: '가방', open: () => openBag() },
-      { icon: 'm_smith', name: '대장간', open: () => openPlace('smith'), lock: gate('smith') ?? (has('smith') ? null : '대장간을 지으면') },
-      { icon: 'm_garden', name: '텃밭', open: () => openPlace('garden'), lock: gate('garden') ?? (has('garden') ? null : '텃밭을 지으면') },
+      { icon: 'm_smith', name: '대장간', open: () => openPlace('smith'), lock: gate('smith') ?? (has('smith') ? null : '대장간을 지으면'), dot: tileDot('smith') },
+      { icon: 'm_garden', name: '텃밭', open: () => openPlace('garden'), lock: gate('garden') ?? (has('garden') ? null : '텃밭을 지으면'), dot: tileDot('garden') },
       { icon: 'm_dex', name: '수입 장부', open: () => openLedger(chemUnread() ? 2 : undefined), dot: chemUnread() > 0 },
     ]],
     ['모험', [
-      { icon: 'm_quest', name: '임무(장부)', open: () => openGuideList() },
+      { icon: 'm_quest', name: '임무(장부)', open: () => openGuideList(), dot: tileDot('quest') },
       { icon: 'm_hunt', name: '사냥', open: () => openHunt(), lock: gate('hunt') },
-      { icon: 'm_expedition', name: '원정', open: () => openBoard() },
+      { icon: 'm_expedition', name: '원정', open: () => openBoard(), dot: tileDot('exp') },
       { icon: 'm_raid', name: '토벌', open: () => openBoard(), lock: gate('raid') },
       { icon: 'm_rank', name: '랭킹', open: () => void openRank() },
-      { icon: 'm_quest', name: '오늘의 목표', open: () => openGoals() },
+      { icon: 'm_quest', name: '오늘의 목표', open: () => openGoals(), dot: tileDot('goals') },
     ]],
     ['수집', [
       { icon: 'm_dex', name: '도감', open: () => openDex() },
       // DIRECTION §1-1: 여정 (완주가 보이게)
       { icon: 'm_quest', name: '여정', open: () => openJourney() },
-      { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: achReady() > 0 },
+      { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: tileDot('ach') ?? achReady() > 0 },
       { icon: 'm_title', name: '칭호', open: () => openTitles() },
       { icon: 'm_album', name: '엔딩 앨범', open: () => openAlbum() },
       { icon: 'm_album', name: '📷 사진 찍기', open: () => { closeWin(); enterPhoto(); } },
@@ -92,7 +93,7 @@ function groups(): [string, Item[]][] {
     ['교류', [
       { icon: 'm_neighbor', name: '이웃', open: () => void openVillage() },
       { icon: 'm_chat', name: '채팅', open: () => openChat() },
-      { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: mailWaiting() > 0 },
+      { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: tileDot('mail') ?? mailWaiting() > 0 },
       { icon: 'm_notice', name: '공지', open: () => openNotices() },
       // DIRECTION §2-3: 소문 보내기 (서버 준비 · 로그인 때만 보인다)
       ...(rumorSendReady() ? [{ icon: 'm_chat' as IconKey, name: '소문 보내기', open: () => openRumorSend() }] : []),

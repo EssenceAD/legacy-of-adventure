@@ -36,5 +36,12 @@
   "legendCompanion": true,
   "firstFlowFix": false,
   "harmonyLabels": true,
-  "heroDetailGift": true
+  "heroDetailGift": true,
+  "welcomeBack": false,
+  "redDots": false,
+  "bulkTidy": false,
+  "resendRun": false,
+  "gardenLevelUp": false,
+  "personActionsV2": false,
+  "actionsTidy": false
 }

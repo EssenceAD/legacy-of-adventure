@@ -1908,3 +1908,20 @@ body.ui2 #winB #rmB{min-height:44px}
 :where(body.ui2) .pty-dex small{font-size:var(--fs-small)}
 :where(body.ui2) .chreg i{font-size:var(--fs-title)}
 /* ui2-fonts:end */
+
+/* v0.25.4 CHECKIN C (ck-c2) */
+/* §C4 빨간 점 (redDots): 버튼·장부 카드·소식 띠에 점 하나 (::before — 안의 글을 다시 그려도 그대로) */
+.rdot::before{content:'';position:absolute;right:4px;top:4px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%;z-index:1;pointer-events:none}
+body.hud2 .dk button.rdot::before{top:2px;right:calc(50% - 18px)}
+/* §C3 「다녀오셨어요」 카드 (welcomeBack) */
+.wbgift{display:flex;gap:10px;align-items:center;margin:6px 0;padding:8px;background:var(--navy2);box-shadow:0 0 0 2px var(--gold)}
+.wbgift img{width:calc(24px * var(--k));height:calc(24px * var(--k));image-rendering:pixelated;flex:none}
+.wbgift span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wbgift small{font-size:var(--f-small);line-height:1.4}
+.wbnews{margin:6px 0;font-size:var(--f-small);line-height:1.5}.wbnews ul{margin:4px 0 0;padding-left:18px}
+.wbgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.wbt{display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);min-width:0}
+.wbt img{width:calc(24px * var(--k1));height:calc(24px * var(--k1));image-rendering:pixelated;flex:none}
+.wbt span{display:flex;flex-direction:column;min-width:0}
+.wbt small{font-size:var(--f-tiny);color:#9aa6d8}
+.wbt b{font-size:var(--f-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

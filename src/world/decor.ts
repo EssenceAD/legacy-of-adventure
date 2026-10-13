@@ -8,6 +8,7 @@ import { markDirty, P, S, world, type Building } from './state';
 import { blocksDoor, canPlace, entrance, grid, inLand, landBounds, pathT, rebuildPaths, spriteFor } from './town';
 import { track as trackEv } from '../net/telemetry';
 import { flag } from './flags';
+import { vis } from './visual';
 import { outerRoad } from './grade';
 
 export const PATH_MATS = ['stone', 'dirt', 'brick', 'deck', 'step'] as const;
@@ -311,7 +312,7 @@ export function flipGroup(group: Building[]): string | null {
     o.sprite = spriteFor(o.kind, o.lvl, o.flip);
   }
   const setF = (o: Building, f: boolean) => ((o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
-  pushUndo({ label: `장식 ${group.length}개 반전`, undo: () => before.forEach(([o, f]) => setF(o, f)), redo: () => before.forEach(([o, f]) => setF(o, !f)) });
+  pushUndo({ label: `장식 ${group.length}개 ${vis('actionsTidy') ? '좌우 뒤집기' : '반전'}`, undo: () => before.forEach(([o, f]) => setF(o, f)), redo: () => before.forEach(([o, f]) => setF(o, !f)) });
   trackEv('edit_action', { tool: 'flip', n: group.length });
   markDirty();
   return null;

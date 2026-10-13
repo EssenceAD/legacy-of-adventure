@@ -2,7 +2,7 @@
 //  · 등급 체크(기본 일반만) · 등급마다 「개수 · 얻을 가루」 · 끼운 것·잠금은 늘 빠짐 · 강화·세트는 「포함」 체크 때만
 //  · 부위별 최고 장비 1개 남기기(기본 켬) · 전설·유물이 있으면 빨간 버튼 + 경고 · confirm() 대신 두 번 누르기
 import { DUST_NAME, GRADE_INFO, type Grade } from '../data/items';
-import { bulkPreview, salvageBulk } from '../world/craft';
+import { bulkPreview, bulkTargets, salvageBulk } from '../world/craft';
 import { markDirty, P } from '../world/state';
 import { $, $$, fmt } from './common';
 import { openWin, toast } from './windows';
@@ -87,4 +87,37 @@ function totalLine(sel: Grade[], pv: ReturnType<typeof bulkPreview>): string {
     if (pv[g].ash) sum.n = (sum.n ?? 0) + pv[g].ash;
   }
   return GRADES.filter((g) => sum[g]).map((g) => `${DUST_NAME[g]} +${fmt(sum[g]!)}`).join(' · ');
+}
+
+// ───────── v0.25.4 CHECKIN §C5 가방 「일반·희귀 한 번에」 (플래그 bulkTidy · 실험실) ─────────
+//  가방에서 두 번: [일반·희귀 한 번에 분해 (n개)] → 확인 창 [분해하기]
+//  끼운 것 · 🔒 잠금 · 강화·세트는 늘 빠짐 · 「부위별 최고 1개 남기기」는 일괄 분해 창에서 고른 그대로 · 자동 분해 설정은 건드리지 않음
+//  (팔기는 아직 없는 기능이라 분해만)
+const TIDY: Grade[] = ['n', 'r'];
+const tidyOpts = () => ({ upgraded: false, keepBest: P.salvage.keepBest });
+export const tidyCount = () => bulkTargets(TIDY, tidyOpts()).length;
+/** 가방 창 버튼 (0개면 회색) */
+export const tidyBtnHtml = () => {
+  const n = tidyCount();
+  return `<button class="bigbtn sm" id="bagTidy" ${n ? '' : 'disabled'}>일반·희귀 한 번에 분해 (${n}개)</button>`;
+};
+export function openTidyConfirm(back: () => void) {
+  const pv = bulkPreview(TIDY, tidyOpts());
+  const n = TIDY.reduce((s, g) => s + pv[g].n, 0);
+  if (!n) return toast('한 번에 분해할 일반·희귀 장비가 없어요');
+  openWin(
+    '한 번에 분해',
+    `<div class="bulk">${TIDY.filter((g) => pv[g].n)
+      .map((g) => `<div class="tog bulkg"><b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name}</b> <span>${pv[g].n}개 · ${DUST_NAME[g]} +${fmt(pv[g].dust)}${pv[g].ash ? ` · ${DUST_NAME.n} +${fmt(pv[g].ash)}` : ''}</span></div>`)
+      .join('')}</div>
+    <p class="note">끼운 장비 · 🔒 잠근 장비 · 강화·세트 장비는 빠져요${P.salvage.keepBest ? ' · 부위별 최고 장비 1개는 남겨요' : ''}</p>
+    <div class="btnrow"><button class="bigbtn ghost" id="tdBack">돌아가기</button><button class="bigbtn red" id="tdGo">분해하기 (${n}개)</button></div>`,
+  );
+  $('#tdBack').onclick = back;
+  $('#tdGo').onclick = () => {
+    const r = salvageBulk(TIDY, tidyOpts());
+    const parts = GRADES.filter((g) => r.dust[g]).map((g) => `${DUST_NAME[g].replace(' 가루', '')} +${fmt(r.dust[g]!)}`);
+    toast(r.count ? `${r.count}개 분해 · ${parts.join(' · ')}` : '분해할 장비가 없어요');
+    back();
+  };
 }
