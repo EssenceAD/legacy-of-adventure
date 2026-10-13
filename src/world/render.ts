@@ -34,6 +34,7 @@ import { drawHarmonyLines, drawPlacementHarmony } from './harmonyDraw';
 import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
 import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from './spectacle';
+import { drawBldStatus, hasBubble, setBldHooks } from './bldStatusDraw';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
 type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc });
@@ -322,6 +323,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     drawTourEmotes(ctx);
     drawSpectacleEmotes(ctx);
   }
+  // CHECKIN §J8: 건물 머리 위 상태 말풍선 (최대 3 · 꾸미기·배치·이웃·UI 끄기·화면 보호에선 안 그림)
+  if (vis('bldStatus')) drawBldStatus(ctx, nt);
   // TOWN T2: 꾸미기 모드 — 격자·발판 · 붓 칸 · 고른 범위 · 옮기는 무리
   // DECO_DROP §2: 불꽃놀이 (화면 위)
   drawFireworks(ctx, view.LW, view.LH, dt);
@@ -771,7 +774,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   // 땅 개편: 여관·주점 레벨 장식 (그림이 안 바뀌는 레벨마다 눈에 보이는 변화 하나)
   if (o.kind === 'inn' || o.kind === 'tavern') levelDeco(ctx, o, x, y, im.width);
   // BUILDINGS_SPEC §3: 다 자란 텃밭 위 「수확!」
-  if (o.kind === 'garden' && !S.visiting && o.plots?.some((p) => plotLeft(p) === 0)) {
+  //  CHECKIN §J8: 말풍선이 떠 있으면 바구니 말풍선이 대신한다
+  if (o.kind === 'garden' && !S.visiting && o.plots?.some((p) => plotLeft(p) === 0) && !(vis('bldStatus') && hasBubble(o))) {
     const X = Math.round(x + im.width / 2);
     const Y = Math.round(y - 4 + Math.sin(S.T * 4) * 2);
     const pp = P(ctx);
@@ -1348,6 +1352,8 @@ function drawDecoFx(ctx: CanvasRenderingContext2D, o: Building, x: number, y: nu
 }
 
 /** 측정용 (개발 전역 __renderMem): 렌더 쪽 캐시 */
+setBldHooks({ objTL, img: (k) => IMG[k] });
+
 export function renderMem() {
   return { red: { n: RED.size, cap: RED.cap, evicted: RED.evicted }, sil: silMem(), ground: groundMem(), frontTint: frontCv ? { n: 1, px: frontCv.width * frontCv.height } : { n: 0, px: 0 } };
 }

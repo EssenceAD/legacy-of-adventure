@@ -57,6 +57,8 @@ import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pendingSide, pendingWith, pumpEvents, runFirstSide } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
+import { bubbleAt, setBldHover, tapBubble } from './world/bldStatusDraw';
+import { vis } from './world/visual';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
@@ -600,6 +602,8 @@ function bindInput() {
       }
       return;
     }
+    // CHECKIN §J8: PC 마우스를 건물·말풍선에 올리면 글 한 줄
+    if (e.pointerType === 'mouse' && !drag && vis('bldStatus')) bldHoverAt(e.clientX, e.clientY);
     if (decorDrag || (decorInput.wants() && e.pointerType === 'mouse')) {
       const [fx, fy] = toTile(cv, e.clientX, e.clientY);
       decorInput.move(fx, fy, e.clientX, e.clientY);
@@ -685,6 +689,15 @@ function catchStarAt(e: PointerEvent) {
   }
 }
 
+let hoverAt = 0;
+function bldHoverAt(cx: number, cy: number) {
+  const now = performance.now();
+  if (now - hoverAt < 80) return;
+  hoverAt = now;
+  const [mx, my] = toLogical(cv, cx, cy);
+  setBldHover(bubbleAt(mx, my)?.o ?? buildingAt(mx, my, alphaAt));
+}
+
 function tap(e: PointerEvent) {
   if (!S.started || isTalking()) return;
   if (placing.pl) {
@@ -699,6 +712,15 @@ function tap(e: PointerEvent) {
     if (ob && canMoveKind(ob.kind)) return startMove(ob);
   }
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
+  // CHECKIN §J8: 건물 말풍선 → 그 건물 창 (맨 위에 그려지니 팻말보다 먼저 · 닫으면 그 상태가 바뀔 때까지 안 뜸)
+  if (!S.visiting && vis('bldStatus')) {
+    const bc = bubbleAt(mx, my);
+    if (bc) {
+      tapBubble(bc);
+      trackEv('bld_bubble', { kind: bc.o.kind, st: bc.id });
+      return showObj(bc.o);
+    }
+  }
   // 땅 개편: 땅 넓히기 팻말
   if (!S.visiting && signHit(mx, my)) return openLand();
   // 운명의 별 (밤하늘 별똥별) — 보통은 pointerdown 에서 이미 잡는다

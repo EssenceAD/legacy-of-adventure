@@ -80,6 +80,8 @@ export const FLAG_DEFAULTS = {
   heroDetailGift: true,
   /** v0.25.4 K10 어울림 「모아 놨는데 안 생김」: 1칸 장식 개수 제한 없음 · 어울림마다 한 세트 먼저 · 구역은 이어진 덩어리 · 같은 이름 장식(술통 더미·장미 아치) 같은 물건 · 로드 때 재계산 (버그 수정 — 켬) */
   harmonyV2: true,
+  /** CHECKIN §J8 건물 머리 위 「상태 말풍선」 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 텃밭·예배당·대장간·게시판·연못 위 작은 아이콘 하나 · 최대 3개 · 누르면 그 건물 창 · 설정 「건물 알림 말풍선」 */
+  bldStatus: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
