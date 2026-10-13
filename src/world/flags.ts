@@ -61,6 +61,15 @@ export const FLAG_DEFAULTS = {
   propFilter: false,
   /** CHECKIN §A2 이야기·관계 이벤트 모아 보기 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 곁이야기·단골 제안은 「📖 새 이야기 n」 배지에 (하루 2개까지만 저절로) · 설정 「곁이야기」 */
   storyInbox: false,
+  /** v0.25.2 CHECKIN: 아래 넷은 형철 확인 전까지 꺼짐 — 「새 화면 미리 보기」(실험실)로만 켜 본다 (vis) */
+  /** v0.25.2 §I #19 손님 목록 ★ 맨 위 고정 켜기/끄기 · ★ 묶음 구분 줄 · 지금 정렬 기준 한 줄 (끄면 예전: ★가 ★한 순서로 맨 위) */
+  guestSortPin: false,
+  /** v0.25.2 §I #20 자동 길 끔이면 자동 길을 하나도 안 깐다 (던전 길·바깥 길 포함 · 끄면 v0.24.6 autoPathStrict 그대로) */
+  autoPathNone: false,
+  /** v0.25.2 §I 게시판 레벨업 버튼 (의뢰 창 맨 위) · 파티 = 2 + 게시판 Lv (최대 4) · 꽉 찼을 때 안내 */
+  boardLevelUp: false,
+  /** v0.25.2 §H 신화 안내 한 줄 (도감 「신화」 탭 · 여정 지도 맨 위) */
+  mythicGuide: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

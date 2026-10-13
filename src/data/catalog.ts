@@ -1,4 +1,5 @@
 // 건물 목록: 이름·발판·가격·손님 행동·레벨업 그림·열리는 땅 단계
+import { vis } from '../world/visual';
 import { CONFIG } from './config';
 
 export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon' | 'pet' | 'pray' | 'read' | 'brew' | 'mail' | 'stargaze' | 'brag';
@@ -80,7 +81,8 @@ export const CATALOG = {
   tower: { name: '마법사의 탑', sprite: 'tower', size: [2, 2], cost: CONFIG.newBuildings.tower.cost, act: 'stargaze', unlock: 5, stars: 4, levels: CONFIG.newBuildings.tower.levels, levelText: '강화 성공 +3%p → +10%p', desc: '강화 성공률 ↑ · Lv5 운명의 별 하루 2번' },
   guild: { name: '모험가 길드 회관', sprite: 'guild', size: [4, 4], cost: CONFIG.newBuildings.guild.cost, act: 'brag', unlock: 5, stars: 4, levels: CONFIG.newBuildings.guild.levels, levelText: '의뢰 보상 +10% → +40%', desc: '의뢰 보상 +% · Lv3 의뢰 자리 +1 · Lv5 길드 특별 의뢰' },
   well: { name: '우물', sprite: 'well', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '마을 장식 · 주변 기분 +' },
-  board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, levels: [300, 800, 1600], levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
+  // v0.25.2 §I: 파티 = 2 + 게시판 Lv (최대 4) → 게시판은 Lv.2가 끝 (Lv.3 이상 옛 저장은 그대로 · 표시는 「최대」) · 플래그 끄면 예전 표
+  board: { name: '의뢰 게시판', sprite: 'board', size: [1, 1], cost: 120, deco: true, unlock: 3, get levels() { return vis('boardLevelUp') ? [300] : [300, 800, 1600]; }, levelText: '동시에 보낼 파티 +1', desc: '의뢰를 받아 던전에 나가요' },
   tree: { name: '나무', sprite: 'tree', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   pine: { name: '소나무', sprite: 'pine', size: [1, 1], cost: 20, deco: true, unlock: 2, desc: '장식' },
   fire: { name: '모닥불', sprite: null, size: [1, 1], cost: 60, deco: true, act: 'fire', unlock: 1, desc: '밤이면 손님들이 둘러앉아요' },

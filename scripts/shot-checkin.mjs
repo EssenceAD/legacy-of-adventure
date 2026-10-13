@@ -8,6 +8,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const [item, label = 'after', URL = 'http://localhost:4190/', LAB] = process.argv.slice(2);
+//  4번째 인자 `lab` = 「새 화면 미리 보기」(실험실) 켠 채로 찍기 (형철 확인 전 꺼진 기능의 「후」 사진)
 if (!item) throw new Error('항목 이름을 주세요');
 const scene = fs.readFileSync(`scripts/checkin-scenes/${item}.js`, 'utf8');
 const saveFile = /^\/\/\s*save:\s*(\S+)/m.exec(scene)?.[1] ?? (fs.existsSync('tests/fixtures/real_ttabam.json') ? 'tests/fixtures/real_ttabam.json' : 'tests/fixtures/real_lotte.json');

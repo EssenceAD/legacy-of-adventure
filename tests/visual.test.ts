@@ -13,7 +13,7 @@ beforeEach(() => setLab(false));
 describe('실험실 스위치', () => {
   it('플래그 기본 꺼짐 (코드 · flags.json 둘 다)', () => {
     const j = JSON.parse(fs.readFileSync('public/flags.json', 'utf8'));
-    for (const k of ['paletteV2', 'calmWorld', 'hudV2', 'uiKitV2', 'visualLabOpen'] as const) {
+    for (const k of ['paletteV2', 'calmWorld', 'hudV2', 'uiKitV2', 'visualLabOpen', 'guestSortPin', 'autoPathNone', 'boardLevelUp', 'mythicGuide'] as const) {
       expect(FLAG_DEFAULTS[k]).toBe(false);
       expect(j[k]).toBe(false);
       expect(flag(k)).toBe(false);

@@ -1,5 +1,6 @@
 // 5단계 3장: 마을 등급 (오두막 → 쉼터 → 마을 → 고을 → 도시) — 땅 넓히기와 별개로, 장부 장 보상으로 오른다
 // 등급이 오르면 길·울타리·바깥 숲·장식·NPC가 바뀐다. 장식은 울타리 밖 개간지와 입구 길에만 놓아 건물과 겹치지 않는다.
+import { vis } from './visual';
 import { CONFIG } from '../data/config';
 import { GRADE_NAMES } from '../data/guide';
 import { townGrade } from './guide';
@@ -58,6 +59,8 @@ export const MOVABLE_PROPS: Prop['k'][] = ['lamppost', 'bench', 'flowerbed', 'ba
 /** 입구 길: 여관 앞 울타리 밖으로 곧게 (쉼터부터 다져진 길) */
 export function outerRoad(g = gradeNow()): [number, number][] {
   if (g < 1) return [];
+  // v0.25.2 §I #20: 자동 길 끔이면 바깥 길도 안 깐다 (내 마을만 · 이웃 마을은 그대로)
+  if (!S.visiting && vis('autoPathNone') && PG.decor?.autoPath === false) return [];
   const [, b] = landBounds();
   const [ex] = entrance();
   const out: [number, number][] = [];

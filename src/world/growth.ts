@@ -80,6 +80,11 @@ export const favRank = (a: Pick<Actor, 'id'>) => {
   const i = P.growth.favs.indexOf(a.id);
   return i < 0 ? 99 : i;
 };
+/** v0.25.2 §I #19: 손님 목록 순서 — pin이면 ★ 묶음이 먼저(★끼리도 정렬 기준대로), 아니면 ★도 섞어 정렬 · 같으면 ★ 먼저 → 번호 순 */
+export function sortGuests<T extends Pick<Actor, 'id'>>(list: T[], key: (a: T) => number, favs: readonly number[], pin: boolean): T[] {
+  const fr = (a: T) => (favs.includes(a.id) ? 0 : 1);
+  return list.slice().sort((a, b) => (pin ? fr(a) - fr(b) : 0) || key(b) - key(a) || fr(a) - fr(b) || a.id - b.id);
+}
 /** 지금 마을에 있는 ★ 손님 */
 export const favActors = () => P.growth.favs.map((id) => homeActors().find((a) => a.id === id)).filter((a): a is Actor => !!a);
 

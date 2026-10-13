@@ -1,9 +1,10 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
+import { vis } from '../world/visual';
 import { CHEM_PAIRS } from '../data/chem';
 import { visitText } from '../world/legends';
 import { diaryList, diaryOpen } from '../world/diary';
 import { mythicProgress } from '../world/mythic';
-import { MYTHIC, MYTHIC_HINT } from '../data/story/mythic';
+import { MYTHIC, MYTHIC_GUIDE, MYTHIC_HINT } from '../data/story/mythic';
 import { PIONEERS } from '../data/story/easter';
 import { PIONEER_IDS } from '../world/easter';
 import { bookSteps, claimBook, DROP_KINDS, groupOf, ownedDrops, seasonLock } from '../world/decodrop';
@@ -160,7 +161,7 @@ export function openDex(tab = dTab) {
       if (seeds.includes(m.key)) return `<div class="mcell seed"><b>${esc(L?.name ?? m.key)}</b><small>기억의 씨앗 · 다음 여관에서 신화로 찾아와요</small></div>`;
       return `<div class="mcell"><b>${esc(L?.name ?? '???')}</b><small>???</small></div>`;
     }).join('');
-    body = `<p class="sub">신화 ${MYTHIC.filter((m) => P.story.mythic?.[m.key]?.met).length}/${MYTHIC.length} · 열쇠 조각 ${(P.legacy.shards ?? []).length}개</p><p class="note">${esc(MYTHIC_HINT)}</p><div class="mythgrid">${cells}</div>`;
+    body = `${vis('mythicGuide') ? `<p class="mythgd">${esc(MYTHIC_GUIDE)}</p>` : ''}<p class="sub">신화 ${MYTHIC.filter((m) => P.story.mythic?.[m.key]?.met).length}/${MYTHIC.length} · 열쇠 조각 ${(P.legacy.shards ?? []).length}개</p><p class="note">${esc(MYTHIC_HINT)}</p><div class="mythgrid">${cells}</div>`;
   } else if (tab === 5) {
     // 베타 1장: 어울림 24칸 — 발견한 것은 구성·효과, 아직은 ???와 힌트
     const cells = HARMONIES.map((h) => {

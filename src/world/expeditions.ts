@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
-import { bestOf } from './town';
+import { vis } from './visual';
+import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
 import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
@@ -151,6 +152,27 @@ export function refreshQuests(): false | 'free' | 'paid' {
 export const boardLevel = () => bestOf('board', homeObjs(), true)?.lvl ?? 0;
 export const maxParties = () => Math.min(E.maxParties, E.partiesBase + boardLevel());
 export const activeRuns = () => P.runs.filter((r) => !r.result);
+/**
+ * v0.25.2 §I 게시판 레벨업: 의뢰 창 맨 위 줄 · 꽉 찼을 때 안내.
+ *  none = 게시판 없음 · con = 짓는 중/공사 중 · up = 올릴 수 있음 · max = 최대 (Lv.2 · 또는 옛 저장의 Lv.3 이상)
+ */
+export function boardState(): { o: ReturnType<typeof bestOf>; lv: number; state: 'none' | 'con' | 'up' | 'max'; cost: number | null } {
+  const o = bestOf('board', homeObjs());
+  const lv = boardLevel();
+  if (!o) return { o, lv, state: 'none', cost: null };
+  if (o.build !== undefined || o.con) return { o, lv, state: 'con', cost: null };
+  const cost = nextLevelCost(o);
+  if (cost == null || maxParties() >= E.maxParties) return { o, lv, state: 'max', cost: null };
+  return { o, lv, state: 'up', cost };
+}
+/** 파티가 꽉 찼을 때 한 줄 */
+export function fullPartyHint(): string {
+  const b = boardState();
+  if (b.state === 'none') return '게시판을 지으면 1파티 더';
+  if (b.state === 'con') return '게시판 공사가 끝나면 1파티 더';
+  if (b.state === 'up') return `게시판을 Lv.${b.lv + 1}로 올리면 1파티 더`;
+  return `지금은 ${E.maxParties}파티가 최대예요`;
+}
 
 /** 원정에 보낼 수 있나 (단골·영웅, 체력 30 이상, 쉬는 중) */
 export function canSend(a: Actor): string | null {
@@ -194,7 +216,7 @@ export const slot5Ready = () => (P.counters.regionWins.mine ?? 0) >= 3 || (P.hun
 
 /** 출발: 의뢰는 목록에서 빠지고, 실제 걸어가는 연출은 actors.ts가 한다 */
 export function sendParty(q: Quest, members: Actor[]): Run | string {
-  if (activeRuns().length >= maxParties()) return `동시에 ${maxParties()}파티까지 보낼 수 있어요 (게시판 레벨업)`;
+  if (activeRuns().length >= maxParties()) return vis('boardLevelUp') ? `동시에 ${maxParties()}파티까지 · ${fullPartyHint()}` : `동시에 ${maxParties()}파티까지 보낼 수 있어요 (게시판 레벨업)`;
   if (members.length < partyMinFor(q) || members.length > partyMax()) return `파티는 ${partyMinFor(q)}~${partyMax()}명이에요`;
   for (const m of members) {
     const why = canSend(m);

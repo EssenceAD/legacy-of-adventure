@@ -28,5 +28,9 @@
   "uiKitV2": false,
   "visualLabOpen": false,
   "propFilter": false,
-  "storyInbox": false
+  "storyInbox": false,
+  "guestSortPin": false,
+  "autoPathNone": false,
+  "boardLevelUp": false,
+  "mythicGuide": false
 }

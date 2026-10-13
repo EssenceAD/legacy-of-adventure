@@ -1,4 +1,5 @@
 // 건물 배치·점유 격자·길찾기(A*)·땅 단계
+import { vis } from './visual';
 import { CATALOG, def, START_TOWN, type Kind } from '../data/catalog';
 import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
@@ -228,6 +229,8 @@ const PAINT_PATHS = new Set(['stone', 'dirt', 'brick', 'deck', 'step']);
 export let grid: (Building | null)[][] = [];
 /** 흙길 칸 (y*N+x). 땅 밖이어도 던전 가는 길은 여기에 들어간다 */
 export let pathT = new Set<number>();
+/** v0.25.2 §I #20: 자동 길 끔일 때 던전 가는 숲길 — 그리지 않고 걷기에만 쓰는 칸 (울타리 밖은 길 칸이어야 걸을 수 있어서) */
+export let walkT = new Set<number>();
 /** 땅이나 길이 바뀌면 올라간다 → 바닥 다시 그리기 */
 export let groundVersion = 0;
 
@@ -246,7 +249,7 @@ function occ() {
 /** 걸을 수 있는 칸: 땅 안(또는 땅 밖 흙길) + 건물 없음 (훈련장·텃밭은 안으로 들어가 활동) */
 export function walkable(x: number, y: number, free = false): boolean {
   if (!inMap(x, y)) return false;
-  if (!free && !inLand(x, y) && !pathT.has(y * N + x)) return false;
+  if (!free && !inLand(x, y) && !pathT.has(y * N + x) && !walkT.has(y * N + x)) return false;
   if (pondAt(x, y)) return false;
   const o = grid[y][x];
   return !o || o.kind === 'training' || o.kind === 'garden' || o.kind === 'gate';
@@ -309,15 +312,16 @@ let avoidNo: Set<number> | null = null;
 export function rebuildPaths() {
   grid = occ();
   pathT = new Set();
+  walkT = new Set();
   avoidNo = new Set(S.visiting ? [] : Object.keys(P.decor?.noPath ?? {}).map((k) => { const [x, y] = k.split(',').map(Number); return y * N + x; }));
   const inn = findKind('inn');
   groundVersion++;
   if (!inn) return;
   const hub = doorOf(inn);
-  const lay = (o: Building, free: boolean, outsideOnly = false) => {
+  const lay = (o: Building, free: boolean, outsideOnly = false, into = pathT) => {
     const d = doorOf(o);
     const p = astar(d[0], d[1], hub[0], hub[1], free);
-    if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x] && !(outsideOnly && inLand(x, y))) pathT.add(y * N + x);
+    if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x] && !(outsideOnly && inLand(x, y))) into.add(y * N + x);
   };
   // TOWN T2: 자동 길을 끄면 건물↔여관 길은 깔지 않는다 (던전 가는 숲길·칠한 길만)
   const auto = S.visiting || P.decor?.autoPath !== false;
@@ -329,7 +333,9 @@ export function rebuildPaths() {
   }
   const dg = findKind('dungeon');
   // 핫픽스 v0.24.6: 자동 길 끔이면 던전 길은 울타리 밖(숲) 칸만 — 마을 안엔 안 깐다
-  if (dg) lay(dg, true, !auto && flag('autoPathStrict'));
+  // v0.25.2 §I #20: 자동 길 끔이면 던전 길도 안 그린다 (울타리 밖 포함) — 걷기용 숲길(walkT)만 남긴다
+  if (dg && !auto && vis('autoPathNone')) lay(dg, true, true, walkT);
+  else if (dg) lay(dg, true, !auto && flag('autoPathStrict'));
   // 마을 입구 → 여관 문 (손님이 걸어 들어오는 길)
   const [ex, ey] = entrance();
   const pe = auto ? astar(ex, ey, hub[0], hub[1]) : null;
