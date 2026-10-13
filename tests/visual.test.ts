@@ -13,9 +13,11 @@ beforeEach(() => setLab(false));
 describe('실험실 스위치', () => {
   it('플래그 기본 꺼짐 (코드 · flags.json 둘 다)', () => {
     const j = JSON.parse(fs.readFileSync('public/flags.json', 'utf8'));
+    const ON = new Set<string>(['paletteV2', 'calmWorld']);
     for (const k of ['paletteV2', 'calmWorld', 'hudV2', 'uiKitV2', 'visualLabOpen', 'guestSortPin', 'autoPathNone', 'boardLevelUp', 'mythicGuide'] as const) {
       expect(FLAG_DEFAULTS[k]).toBe(false);
-      expect(j[k]).toBe(false);
+      // 형철 OK로 켠 것(T0)은 flags.json만 true · 코드 기본값은 꺼짐 그대로
+      expect(j[k]).toBe(ON.has(k));
       expect(flag(k)).toBe(false);
     }
   });
