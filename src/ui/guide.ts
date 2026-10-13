@@ -20,6 +20,8 @@ import { iconSrc, px, uiSrc } from './kit';
 import { openPlace, PLACE_BTN, type Place } from './nav';
 import { isWinOpen } from './windows';
 import { hudSel } from './hud2sel';
+import { vis } from '../world/visual';
+import { openGuestsEquip } from './guests';
 
 let handTarget: string | null = null;
 let handUntil = 0;
@@ -130,9 +132,16 @@ function onCard() {
     point('#hRepeat', 3200);
     return;
   }
-  // 가기 + 손가락
-  openPlace(m.place);
-  point(PLACE_BTN[m.place] ?? null, 2600);
+  // CHECKIN §B-3: 장비 임무는 늘 「단골」 탭 + 낄 수 있는 사람 반짝 (지난번 탭 기억 무시)
+  if (m.id === 'c1_equip' && vis('firstFlowFix')) {
+    openGuestsEquip();
+    point(document.querySelector('.glist button.ffglow') ? '.glist button.ffglow' : null, 2600);
+    return;
+  }
+  // 가기 + 손가락 (CHECKIN §B-1: 건설 임무면 건설 창 맨 위 대상 칸을 가리킨다)
+  openPlace(m.place, m.build);
+  const tgt = vis('firstFlowFix') && document.querySelector('.cat.mtarget button') ? '.cat.mtarget button' : null;
+  point(tgt ?? PLACE_BTN[m.place] ?? null, 2600);
 }
 
 /** 손가락이 이 버튼을 잠깐(ms) 가리킨다 */

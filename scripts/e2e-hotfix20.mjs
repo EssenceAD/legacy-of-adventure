@@ -1,15 +1,17 @@
 // HOTFIX20 e2e: 단골 제안 카드가 화면 전환(사냥·이웃 방문·사진 모드) 위에 남지 않고, 끊긴 제안은 마을로 돌아오면 다시 뜬다 · 💌 배지
-//  실행: URL=… node scripts/e2e-hotfix20.mjs [phone|pc] → screenshots/hotfix20/*.png
+//  실행: URL=… [LAB=1] node scripts/e2e-hotfix20.mjs [phone|pc] → screenshots/hotfix20/*.png
+//   LAB=1: 「새 화면 미리 보기」(실험실) 켬 — §A2 이야기 모아 보기 등. 끊긴 제안은 모아 두지 않고 바로 다시 뜬다
+const LAB = process.env.LAB === '1';
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const name = process.argv[2] ?? 'phone';
 const save = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
 const DEV = { phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, pc: { viewport: { width: 1440, height: 900 } } };
-const dir = 'screenshots/hotfix20';
+const dir = 'screenshots/hotfix20' + (LAB ? '_lab' : '');
 fs.mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ channel: 'chrome' });
 const ctx = await b.newContext(DEV[name]);
-await ctx.addInitScript((s) => {
+await ctx.addInitScript(([s, lab]) => {
   try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
   localStorage.clear();
   localStorage.setItem('legacy-of-adventure-save', s);
@@ -17,7 +19,8 @@ await ctx.addInitScript((s) => {
   localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
   localStorage.setItem('legacy-of-adventure-settleOff', 'true');
   localStorage.setItem('legacy-of-adventure-sound', JSON.stringify({ bgmOn: false, bgmVol: 0.4, sfxOn: false, sfxVol: 0.7, muted: true }));
-}, JSON.stringify(save));
+  if (lab) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+}, [JSON.stringify(save), LAB]);
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
@@ -26,7 +29,7 @@ let fail = 0;
 const ok = (c, m) => { console.error((c ? '✓ ' : '✗ ') + m); if (!c) fail++; };
 const settle = async () => {
   for (let i = 0, calm = 0; i < 80 && calm < 3; i++) {
-    const busy = await p.evaluate(() => { if (!document.querySelector('#dlg').hidden) return document.querySelector('#dlg').click(), true; if (document.querySelector('#win').classList.contains('on')) return document.querySelector('#winX').click(), true; return false; });
+    const busy = await p.evaluate(() => { if (!document.querySelector('#dlg').hidden) { const cs = document.querySelector('#dChoice'); const bs = cs && !cs.hidden ? [...cs.querySelectorAll('button')] : []; (bs[bs.length - 1] ?? document.querySelector('#dlg')).click(); return true; } if (document.querySelector('#win').classList.contains('on')) return document.querySelector('#winX').click(), true; return false; });
     calm = busy ? 0 : calm + 1;
     await W(busy ? 200 : 600);
   }
@@ -45,12 +48,21 @@ const propose = () =>
     window.__propose(a);
     return a.id;
   });
+/** 제안이 아닌 대화(돌아온 뒤 주민 한마디 「다른 여관 구경 재밌죠?」·「좋은 사진이군」 등)가 먼저 뜨면 넘긴다 — 제안은 그 뒤 대기열에서 */
+const skipOther = () =>
+  p.evaluate(() => {
+    if (document.getElementById('propCard') || document.querySelector('#dlg').hidden) return;
+    const cs = document.querySelector('#dChoice');
+    const bs = cs && !cs.hidden ? [...cs.querySelectorAll('button')] : [];
+    (bs[bs.length - 1] ?? document.querySelector('#dlg')).click();
+  });
 /** 마을로 돌아오면 끊긴 제안이 다시 뜨는가 (대기열에서) */
 async function backAgain(label) {
   let shown = false;
-  for (let i = 0; i < 20 && !shown; i++) {
+  for (let i = 0; i < 40 && !shown; i++) {
     await W(400);
     shown = (await card()) && (await dlgOn());
+    if (!shown) await skipOther();
   }
   ok(shown, `${label}: 마을로 돌아오면 제안이 다시 뜸`);
   await settle();
@@ -91,6 +103,9 @@ ok(!(await card()) && !(await dlgOn()), '전투 중엔 제안이 다시 뜨지 �
 await p.locator('#cbQuit').click({ timeout: 3000 }).catch(() => {});
 await W(300);
 await p.locator('#cbGiveUp').click({ timeout: 3000 }).catch(() => {});
+// v0.25.5: 실험실이면 J4 확인 시트(아래) · C1 「한 번 더」 — 둘 다 넘긴다
+await p.waitForTimeout(550); // J4 시트 [확인]은 열린 뒤 0.35초 동안 안 눌림 (연타 방지)
+await p.locator('#cshOk').click({ timeout: 800 }).catch(() => p.locator('#cbGiveUp').click({ timeout: 800 }).catch(() => {}));
 await W(2500);
 await p.evaluate(() => { const bs = [...document.querySelectorAll('#cbRes button')]; (bs.find((x) => /마을|닫기|돌아/.test(x.textContent)) ?? bs[bs.length - 1])?.click(); });
 await W(800);
@@ -132,13 +147,20 @@ await W(300);
 await p.evaluate(() => document.querySelector('.cat button[data-k="tree"]')?.click());
 await W(1200);
 const badge = await p.evaluate(() => { const e = document.getElementById('propBadge'); return e && !e.hidden ? e.textContent : null; });
-ok(/단골 제안 1/.test(badge ?? ''), `💌 배지: ${badge} (배치 중이라 대기)`);
+ok((await pending()) >= 1 && !(await card()), `배치 중엔 제안이 대기 (${await pending()})`);
+// 기본: 💌 배지에 단골 제안 1 · LAB(§A2 모아 보기): 끊긴 제안은 「바로 다시」라 배지(곁이야기 수)에 넣지 않는다
+if (!LAB) ok(/단골 제안 1/.test(badge ?? ''), `💌 배지: ${badge} (배치 중이라 대기)`);
 await p.screenshot({ path: `${dir}/${name}_04_badge.png` });
 await p.evaluate(() => document.querySelector('#placeNo').click());
 await W(200);
-await p.evaluate(() => document.getElementById('propBadge')?.click());
-await W(600);
-ok((await card()) && (await dlgOn()), '배지 누르면 바로 제안 대화');
+if (LAB) await backAgain('배치 취소(모아 보기)');
+else {
+  // 사진 모드 한마디 같은 다른 대화가 떠 있으면 먼저 넘긴다 (대화 중엔 배지가 안 눌림)
+  for (let i = 0; i < 10 && (await dlgOn()) && !(await card()); i++) await skipOther(), await W(300);
+  if (!(await card())) await p.evaluate(() => document.getElementById('propBadge')?.click());
+  await W(600);
+  ok((await card()) && (await dlgOn()), '배지 누르면 바로 제안 대화');
+}
 // 고르면 끝 (대기열에서 사라짐)
 await p.evaluate(() => [...document.querySelectorAll('#dChoice button')].find((b) => /보내 주기/.test(b.textContent))?.click());
 await W(400);

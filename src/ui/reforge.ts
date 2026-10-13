@@ -4,6 +4,8 @@ import { reforge, reforgeCost, reforgeWhy, rerollable } from '../world/reforge';
 import { P, S, world, type Item, type ItemOpt } from '../world/state';
 import { $, $$, esc, fmt, itemCell } from './common';
 import { openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { vis } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 
 const optText = (o: ItemOpt) => OPT_INFO[o.k].label(o.v, o.region ? regionById(o.region).name : undefined);
@@ -53,7 +55,9 @@ export function openReforge(it: Item, back: () => void, changed = -1) {
         openReforge(it, back);
       }),
   );
-  $('#rfGo').onclick = () => {
+  $('#rfGo').onclick = async () => {
+    // J4 confirmSheet: 재련은 되돌릴 수 없다 → 아래 확인 시트 (끄면 예전처럼 바로)
+    if (vis('confirmSheet') && !(await confirmSheet({ title: '재련할까요?', body: `🎲 옵션 하나가 무작위로 바뀌어요 (되돌릴 수 없어요)\n비용: ${DUST_NAME[c.grade]} ${fmt(c.dust)} · 금화 ${fmt(c.gold)}`, ok: '재련하기', danger: true }))) return;
     const r = reforge(it, lockIdx);
     if ('err' in r) return toast(r.err);
     trackEv('reforge', { grade: it.grade, lock: lockIdx != null, k: r.after.k });

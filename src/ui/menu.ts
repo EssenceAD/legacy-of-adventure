@@ -1,5 +1,6 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
+import { tileDot } from './redDots';
 import { ACHIEVEMENTS } from '../data/achieve';
 import { flag, type FlagKey } from '../world/flags';
 import { MANUAL_V2 } from '../data/story/manual';
@@ -7,6 +8,7 @@ import { INBOX_NAME, inboxMode, PROP_FILTER_NAME, propFilterMode, setInboxMode, 
 import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { openFirstsList, setWfBubbles, wfBubblesOn } from './wayfind';
+import { bldBubblesOn, setBldBubbles } from '../world/bldStatus';
 import { PROP_CARD_NAME, propCardMode, setPropCardMode, type PropCardMode } from './propCard';
 import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
 import { enterPhoto } from './photo';
@@ -43,7 +45,10 @@ import { screen, setFontStep } from './screen';
 import { closeWin, helpHook, openReport, openWin, toast } from './windows';
 import { setTelemetry, telemetryOn, track as trackEv } from '../net/telemetry';
 import { saverOn, setSaver } from '../engine/fps';
-import { setPref, writeSave } from '../save/save';
+import { getPref, setPref, writeSave } from '../save/save';
+import { enterSaver, setSsAutoMin, setSsWake, SS_AUTO_OPTS, ssAutoMin, ssWakeOn } from './screenSaver';
+import { bindDeleteRow, deleteRowHtml } from './accountDelete';
+import { APP_VERSION, openPatchNotes } from './update';
 import { labOn, setLab, vis } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
@@ -68,23 +73,23 @@ function groups(): [string, Item[]][] {
       { icon: 'm_heroes', name: '영웅', open: () => openDex(3) },
       { icon: 'm_bond', name: '인연', open: () => openTies(), lock: P.owner ? null : '주인을 만들면' },
       { icon: 'm_bag', name: '가방', open: () => openBag() },
-      { icon: 'm_smith', name: '대장간', open: () => openPlace('smith'), lock: gate('smith') ?? (has('smith') ? null : '대장간을 지으면') },
-      { icon: 'm_garden', name: '텃밭', open: () => openPlace('garden'), lock: gate('garden') ?? (has('garden') ? null : '텃밭을 지으면') },
+      { icon: 'm_smith', name: '대장간', open: () => openPlace('smith'), lock: gate('smith') ?? (has('smith') ? null : '대장간을 지으면'), dot: tileDot('smith') },
+      { icon: 'm_garden', name: '텃밭', open: () => openPlace('garden'), lock: gate('garden') ?? (has('garden') ? null : '텃밭을 지으면'), dot: tileDot('garden') },
       { icon: 'm_dex', name: '수입 장부', open: () => openLedger(chemUnread() ? 2 : undefined), dot: chemUnread() > 0 },
     ]],
     ['모험', [
-      { icon: 'm_quest', name: '임무(장부)', open: () => openGuideList() },
+      { icon: 'm_quest', name: '임무(장부)', open: () => openGuideList(), dot: tileDot('quest') },
       { icon: 'm_hunt', name: '사냥', open: () => openHunt(), lock: gate('hunt') },
-      { icon: 'm_expedition', name: '원정', open: () => openBoard() },
+      { icon: 'm_expedition', name: '원정', open: () => openBoard(), dot: tileDot('exp') },
       { icon: 'm_raid', name: '토벌', open: () => openBoard(), lock: gate('raid') },
       { icon: 'm_rank', name: '랭킹', open: () => void openRank() },
-      { icon: 'm_quest', name: '오늘의 목표', open: () => openGoals() },
+      { icon: 'm_quest', name: '오늘의 목표', open: () => openGoals(), dot: tileDot('goals') },
     ]],
     ['수집', [
       { icon: 'm_dex', name: '도감', open: () => openDex() },
       // DIRECTION §1-1: 여정 (완주가 보이게)
       { icon: 'm_quest', name: '여정', open: () => openJourney() },
-      { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: achReady() > 0 },
+      { icon: 'm_achieve', name: '업적', open: () => openAchieve(), dot: tileDot('ach') ?? achReady() > 0 },
       { icon: 'm_title', name: '칭호', open: () => openTitles() },
       { icon: 'm_album', name: '엔딩 앨범', open: () => openAlbum() },
       { icon: 'm_album', name: '📷 사진 찍기', open: () => { closeWin(); enterPhoto(); } },
@@ -92,7 +97,7 @@ function groups(): [string, Item[]][] {
     ['교류', [
       { icon: 'm_neighbor', name: '이웃', open: () => void openVillage() },
       { icon: 'm_chat', name: '채팅', open: () => openChat() },
-      { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: mailWaiting() > 0 },
+      { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: tileDot('mail') ?? mailWaiting() > 0 },
       { icon: 'm_notice', name: '공지', open: () => openNotices() },
       // DIRECTION §2-3: 소문 보내기 (서버 준비 · 로그인 때만 보인다)
       ...(rumorSendReady() ? [{ icon: 'm_chat' as IconKey, name: '소문 보내기', open: () => openRumorSend() }] : []),
@@ -104,6 +109,8 @@ function groups(): [string, Item[]][] {
     ['시스템', [
       { icon: 'm_account', name: online() ? '계정' : '로그인', open: () => openAccount() },
       { icon: 'm_settings', name: '설정', open: () => openSettings() },
+      // CHECKIN §L1: 화면 보호 (플래그·실험실 끔이면 칸 없음)
+      ...(vis('screenSaver') ? [{ icon: 'm_settings' as IconKey, name: '화면 보호', open: () => enterSaver() }] : []),
       { icon: 'm_guide', name: '안내서', open: () => openManual() },
       { icon: 'm_letter', name: '모모에게 편지', open: () => openReport() },
       // DIRECTION §2-1: 운영자 계정만 「제보함」
@@ -355,17 +362,78 @@ function labRowHtml(): string {
 function checkinRowsHtml(): string {
   const a1 = vis('propFilter') ? `<label class="tog">단골 제안 받을 손님 <select id="mPropF">${(['useful', 'all', 'none'] as const).map((k) => `<option value="${k}" ${propFilterMode() === k ? 'selected' : ''}>${PROP_FILTER_NAME[k]}</option>`).join('')}</select></label>` : '';
   const a2 = vis('storyInbox') ? `<label class="tog">곁이야기 <select id="mInbox">${(['collect', 'now'] as const).map((k) => `<option value="${k}" ${inboxMode() === k ? 'selected' : ''}>${INBOX_NAME[k]}</option>`).join('')}</select></label>` : '';
-  return a1 + a2;
+  // §J8 「건물 알림 말풍선」 (합칠 때 알림 탭으로)
+  const j8 = vis('bldStatus') ? `<label class="tog"><input type="checkbox" id="mBldBub" ${bldBubblesOn() ? 'checked' : ''}> 건물 알림 말풍선 <small>(텃밭·예배당·대장간·게시판·연못 위 작은 아이콘)</small></label>` : '';
+  return a1 + a2 + j8;
+}
+// 개발용 (e2e-j8: 설정 줄 확인)
+if (import.meta.env.DEV) Object.assign(window, { __openSettings: () => openSettings() });
+
+// ───────── CHECKIN §L1 화면 보호 줄 · §C2 진동 줄 ─────────
+/** 화면 보호: 자동 n분 · 화면 켜 두기 · [지금 켜기] (screenSaver 끔이면 빈 문자열) */
+function saverRowsHtml(): string {
+  if (!vis('screenSaver')) return '';
+  return `<label class="tog">화면 보호 자동으로 <select id="mSsAuto">${SS_AUTO_OPTS.map((m) => `<option value="${m}" ${ssAutoMin() === m ? 'selected' : ''}>${m ? `${m}분 뒤` : '끔'}</option>`).join('')}</select></label>
+    <label class="tog"><input type="checkbox" id="mSsWake" ${ssWakeOn() ? 'checked' : ''}> 화면 보호 중 화면 켜 두기 <small>(폰이 꺼지지 않게)</small></label>
+    <button id="mSsGo">화면 보호 지금 켜기</button>`;
+}
+function bindSaverRows() {
+  const a = document.getElementById('mSsAuto') as HTMLSelectElement | null;
+  if (a) a.onchange = () => setSsAutoMin(+a.value);
+  const w = document.getElementById('mSsWake') as HTMLInputElement | null;
+  if (w) w.onchange = () => setSsWake(w.checked);
+  const g = document.getElementById('mSsGo');
+  if (g) g.onclick = () => enterSaver();
+}
+/** 진동 (J4 누르는 느낌이 읽는다: getPref('haptics', true)) */
+export const hapticsOn = () => getPref<boolean>('haptics', true);
+
+// ───────── CHECKIN §C2 설정 3탭 (settingsTabs) — 기본 / 알림 / 계정 ─────────
+export type SettingsTab = 'base' | 'noti' | 'acct';
+const STAB_NAME: Record<SettingsTab, string> = { base: '기본', noti: '알림', acct: '계정' };
+let sTab: SettingsTab = 'base';
+export function openSettings(tab?: SettingsTab) {
+  if (!vis('settingsTabs')) return openSettingsClassic();
+  if (tab && tab in STAB_NAME) sTab = tab;
+  const tabs = `<div class="tabs stabs">${(Object.keys(STAB_NAME) as SettingsTab[]).map((k) => `<button class="tab ${k === sTab ? 'on' : ''}" data-stab="${k}">${STAB_NAME[k]}</button>`).join('')}</div>`;
+  let body = '';
+  if (sTab === 'base')
+    body = `${soundSettingsHtml()}<div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
+    <div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약 <small>(화면을 조금 덜 자주 그려서 덜 뜨거워져요)</small></label>
+    <label class="tog"><input type="checkbox" id="mHaptic" ${hapticsOn() ? 'checked' : ''}> 진동 <small>(버튼을 누를 때 짧게 · 안드로이드)</small></label>${saverRowsHtml()}${labRowHtml()}</div>
+    <div class="menu">${autoSalvageHtml('mAuto')}<button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button></div>`;
+  else if (sTab === 'noti')
+    body = `<div class="menu">${checkinRowsHtml()}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label></div>`;
+  else
+    body = `<div class="menu"><p class="note">${online() ? `로그인: ${esc(me.profile!.nickname)} · 폰·PC 어디서든 이어서 해요` : '로그인하지 않았어요 · 이 기기에만 저장돼요'}</p><button id="mAcct">${online() ? '계정 · 클라우드 저장' : '로그인 · 가입'}</button><button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label><button id="mLetter">모모에게 편지 (버그 제보)</button><p class="note">버전 v${esc(APP_VERSION)}</p><button id="mNotes">패치노트</button><button id="mTitle">타이틀로</button></div>${deleteRowHtml()}`;
+  openWin('설정', tabs + body);
+  $$('[data-stab]').forEach((b) => (b.onclick = () => openSettings(b.dataset.stab as SettingsTab)));
+  bindSettings();
+  bindSaverRows();
+  const hp = document.getElementById('mHaptic') as HTMLInputElement | null;
+  if (hp) hp.onchange = () => setPref('haptics', hp.checked);
+  const ac = document.getElementById('mAcct');
+  if (ac) ac.onclick = () => openAccount();
+  const pn = document.getElementById('mNotes');
+  if (pn) pn.onclick = () => void openPatchNotes();
+  if (sTab === 'acct') bindDeleteRow(!online());
 }
 
-export function openSettings() {
+function openSettingsClassic() {
   openWin(
     '설정',
-    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
+    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${saverRowsHtml()}${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label>${checkinRowsHtml()}<label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
   );
+  bindSettings();
+  bindSaverRows();
+}
+/** 설정 창 줄 연결 — 예전 창·3탭 같이 (지금 창에 있는 줄만) */
+function bindSettings() {
+  // 탭에선 그 탭의 줄만 있다 — 없는 줄은 버리는 빈 요소에 연결
+  const el = (id: string): HTMLElement => document.getElementById(id) ?? document.createElement('input');
   $$('[data-fs]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -374,20 +442,20 @@ export function openSettings() {
       }),
   );
   bindAutoSalvage('mAuto');
-  ($('#mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
-  ($('#mBrag') as HTMLInputElement).onchange = (e) => {
+  (el('mRumor') as HTMLInputElement).onchange = (e) => setRumor((e.target as HTMLInputElement).checked);
+  (el('mBrag') as HTMLInputElement).onchange = (e) => {
     P.growth.bragOff = (e.target as HTMLInputElement).checked;
     markDirty();
   };
-  ($('#mSaver') as HTMLInputElement).onchange = (e) => {
+  (el('mSaver') as HTMLInputElement).onchange = (e) => {
     setSaver((e.target as HTMLInputElement).checked);
     trackEv('saver', { on: saverOn() });
     // 마을 캔버스 배율 상한이 바뀐다 (절약 1.5배) — 화면 크기 다시 맞추기
     dispatchEvent(new Event('resize'));
   };
-  $('#mLetter').onclick = () => openReport();
-  $('#mKeys').onclick = () => openKeys();
-  const lab = $('#mLab') as HTMLInputElement | null;
+  el('mLetter').onclick = () => openReport();
+  el('mKeys').onclick = () => openKeys();
+  const lab = el('mLab') as HTMLInputElement | null;
   if (lab)
     lab.onchange = () => {
       setLab(lab.checked);
@@ -397,44 +465,46 @@ export function openSettings() {
       setTimeout(() => location.reload(), 600);
     };
   bindSoundSettings();
-  ($('#mChem') as HTMLSelectElement).onchange = (e) => {
+  (el('mChem') as HTMLSelectElement).onchange = (e) => {
     const v = (e.target as HTMLSelectElement).value;
     setPref('chemNotice', v);
     trackEv('chem_notice', { mode: v });
     toast(`케미 알림: ${CHEM_NOTICE_NAME[v as ChemNotice]}`);
   };
-  const pf = $('#mPropF') as HTMLSelectElement | null;
+  const pf = el('mPropF') as HTMLSelectElement | null;
   if (pf)
     pf.onchange = () => {
       setPropFilterMode(pf.value as PropFilterMode);
       trackEv('prop_filter', { mode: pf.value });
       toast(`단골 제안 받을 손님: ${PROP_FILTER_NAME[pf.value as PropFilterMode]}`);
     };
-  const ib = $('#mInbox') as HTMLSelectElement | null;
+  const ib = el('mInbox') as HTMLSelectElement | null;
   if (ib)
     ib.onchange = () => {
       setInboxMode(ib.value as InboxMode);
       trackEv('story_inbox', { mode: ib.value });
       toast(`곁이야기: ${INBOX_NAME[ib.value as InboxMode]}`);
     };
-  ($('#mShake') as HTMLSelectElement).onchange = (e) => {
+  (el('mShake') as HTMLSelectElement).onchange = (e) => {
     setShakeLv((e.target as HTMLSelectElement).value as ShakeLv);
     toast(`화면 흔들림: ${SHAKE_NAME[(e.target as HTMLSelectElement).value as ShakeLv]}`);
   };
-  ($('#mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
-  ($('#mGoalPill') as HTMLInputElement).onchange = (e) => setGoalPill((e.target as HTMLInputElement).checked);
-  ($('#mWfBub') as HTMLInputElement).onchange = (e) => setWfBubbles((e.target as HTMLInputElement).checked);
-  ($('#mPropCard') as HTMLSelectElement).onchange = (e) => setPropCardMode((e.target as HTMLSelectElement).value as PropCardMode);
-  ($('#mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
-  $('#mHints').onclick = () => {
+  (el('mSettle') as HTMLInputElement).onchange = (e) => setSettle((e.target as HTMLInputElement).checked);
+  (el('mGoalPill') as HTMLInputElement).onchange = (e) => setGoalPill((e.target as HTMLInputElement).checked);
+  (el('mWfBub') as HTMLInputElement).onchange = (e) => setWfBubbles((e.target as HTMLInputElement).checked);
+  const bb = document.getElementById('mBldBub') as HTMLInputElement | null;
+  if (bb) bb.onchange = () => setBldBubbles(bb.checked);
+  (el('mPropCard') as HTMLSelectElement).onchange = (e) => setPropCardMode((e.target as HTMLSelectElement).value as PropCardMode);
+  (el('mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
+  el('mHints').onclick = () => {
     resetBattleHints();
     toast('다음 토벌·사냥 첫 판에 안내가 다시 나와요');
   };
-  $('#mIntro').onclick = () => {
+  el('mIntro').onclick = () => {
     closeWin();
     game.replayOpening();
   };
-  $('#mTitle').onclick = () => {
+  el('mTitle').onclick = () => {
     closeWin();
     game.toTitle();
   };

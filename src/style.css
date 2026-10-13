@@ -1026,7 +1026,8 @@ html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px
 .cbsyn[hidden]{display:none}
 html:not([data-size="phone"]) .cbsyn{bottom:calc(env(safe-area-inset-bottom,0px) + 130px)}
 .cbparty .ai4{opacity:.85;outline:1px dashed rgba(255,211,107,.6)}
-.cbgoal{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 30px);text-align:center;z-index:3;font-size:13px;color:#efe2c6;text-shadow:1px 1px 0 #140c18;pointer-events:none}
+/* v0.25.2b: 접기 버튼(두 줄) 아래로 — 「처치 n/24」가 「접으면 평가 보너스 없음」과 겹치던 것 */
+.cbgoal{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 52px);text-align:center;z-index:3;font-size:13px;color:#efe2c6;text-shadow:1px 1px 0 #140c18;pointer-events:none}
 .cbloot{position:absolute;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 214px);z-index:4;display:flex;flex-direction:column;gap:2px;pointer-events:none}
 .cbloot p{margin:0;font-size:14px;font-weight:700;background:rgba(10,8,20,.7);padding:2px 8px;text-shadow:1px 1px 0 #140c18;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html:not([data-size="phone"]) .cbloot{bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}
@@ -1101,7 +1102,7 @@ html:not([data-size="phone"]) #visitfoot{left:50%;right:auto;transform:translate
 #runbar .hline.fold{background:rgba(48,24,24,.9)}#runbar .hline.fold b{color:#ffd0b0}
 #runbar .hline.fold.done{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:rdy 1s steps(2) infinite}#runbar .hline.fold.done b{color:var(--gold)}
 /* 사냥 전투: 접기 (보너스 없음 안내) */
-.cbtop .cbfold{display:flex;flex-direction:column;align-items:center;line-height:1.1}.cbtop .cbfold small{font-size:calc(var(--f-small) * .8);color:#ffb0a8}
+.cbtop .cbfold{display:flex;flex-direction:column;align-items:center;line-height:1.1;padding-right:14px}.cbtop .cbfold small{font-size:calc(var(--f-small) * .8);color:#ffb0a8}
 .claimall{width:100%;margin:0 0 8px}
 /* 손님 창: 단골 진행 (§15) */
 .regsum{margin:0 0 6px}.regsum b{color:var(--gold)}
@@ -1575,6 +1576,10 @@ body.cbtalk #storyFx{z-index:45}
 .pty-slot.lock small{font-size:9px;color:#cfd8ff}
 .pty-slot.spark{box-shadow:0 0 0 2px #ffd36b;animation:ptySpark 1s steps(2) infinite}
 @keyframes ptySpark{50%{box-shadow:0 0 0 2px #fff6c8,0 0 8px #ffd36b}}
+/* CHECKIN §B 첫 30분 동선: 임무 대상 반짝 테두리 (1초 반짝 × --ffn번 · 탭하면 끝) · .calm = 절전·흔들림 끔 → 움직임 없이 테두리만 */
+:is(.cat,.glist,.plist,.pty-slots) :is(button,span).ffglow{box-shadow:0 0 0 2px #ffd36b;animation:ffGlow 1s steps(2) var(--ffn,3)}:is(.cat,.glist,.plist,.pty-slots) :is(button,span).ffglow.calm{animation:none}
+@keyframes ffGlow{50%{box-shadow:0 0 0 2px #fff6c8,0 0 8px #ffd36b}}
+#pSlot5{cursor:pointer}#pSlot5::after{content:'';position:absolute;inset:-5px}
 .pty-kf{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0}
 .pty-kf button{font:inherit;font-size:11px;padding:2px 6px;background:#1e1a2a;color:#cfd8ff;border:0;box-shadow:0 0 0 1px #4a4e68;cursor:pointer}
 .pty-kf button.on{color:#ffd36b;box-shadow:0 0 0 1px #ffd36b}
@@ -1728,8 +1733,9 @@ body.decor .wfbub,body.photo .wfbub{display:none}
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 
 /* ───────── §4 hudV2: 위 상태줄 1줄 · 소식 띠 1줄 · 오른쪽 가장자리 작은 버튼 · 아래 5칸 ───────── */
-body.hud2{--h2-bar:30px;--h2-band:22px;--h2-nav:44px;--h2-side:28px;--h2-top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + var(--h2-band) + 10px)}
-html:not([data-size="phone"]) body.hud2{--h2-bar:36px;--h2-band:26px;--h2-nav:52px;--h2-side:34px}
+/* 손가락 자리 44px: 상태줄·메뉴줄은 44px 그대로 그리고, 작게 그려야 하는 것(소식 띠·오른쪽 버튼·채팅 줄)은 ::after 덮개로 누르는 자리만 44px (scripts/e2e-touch44.mjs) */
+body.hud2{--h2-bar:44px;--h2-band:22px;--h2-nav:44px;--h2-side:26px;--h2-hit:44px;--h2-pad:calc((var(--h2-hit) - var(--h2-side)) / 2);--h2-under:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + var(--h2-hit) + 4px);--h2-top:calc(var(--h2-under) + var(--h2-pad))}
+html:not([data-size="phone"]) body.hud2{--h2-band:26px;--h2-nav:52px;--h2-side:34px}
 
 /* 위 상태줄: 여관 이름(줄임) · 금화 · 일차/시각 · ★ · 전투력 — 가장자리에 붙인 한 줄 (누르면 여관 정보 카드) */
 body.hud2 .top{left:0;right:0;top:0;gap:0;padding-top:env(safe-area-inset-top,0px)}
@@ -1741,38 +1747,44 @@ body.hud2 .stat .r1>span:first-child{order:1;flex:none;gap:3px}
 body.hud2 .stat .r1 #goldv{font-size:var(--f-small)}
 body.hud2 .stat #dayv{order:2;flex:0 1 auto;min-width:0;font-size:var(--f-small);padding:0}
 body.hud2 .stat #starv{order:3;flex:none}
-body.hud2 .stat #pwr{order:4;flex:none;font-size:var(--f-small)}
+/* 전투력(누르면 「왜 이 숫자?」): 상태줄 높이 그대로 누르는 자리 */
+body.hud2 .stat #pwr{order:4;flex:none;align-self:stretch;min-width:44px;justify-content:flex-end;font-size:var(--f-small)}
 body.hud2 #blessIco{display:none!important}
 
-/* 소식 띠: 장부 카드 · 평가 · 오늘 목표 · 다음 이야기 · 축복을 4초마다 번갈아 (원래 카드는 숨기기만) */
+/* 소식 띠: 장부 카드 · 평가 · 오늘 목표 · 다음 이야기 · 축복을 4초마다 번갈아 (원래 카드·「오늘 n/3」 알약은 숨기기만)
+   따로 떠 있는 알약처럼 보이지 않게 상태줄 바로 아래에 붙인 가로 한 줄 — 받을 게 있으면 테두리 대신 글자·왼쪽 금줄만 */
 body.hud2 :is(#mission,#evalbar,#goalPill,#storyWait){display:none!important}
-body.hud2 #newsBand{position:absolute;left:6px;top:calc(env(safe-area-inset-top,0px) + var(--h2-bar) + 3px);max-width:calc(100% - 12px);height:var(--h2-band);display:flex;align-items:center;gap:6px;padding:0 10px 0 6px;border:0;background:rgba(14,16,34,.86);box-shadow:0 0 0 2px var(--ink);color:var(--cream);font-size:var(--f-small);line-height:1;cursor:pointer;z-index:var(--z-hud);white-space:nowrap;overflow:hidden;text-align:left}
+body.hud2 #newsBand{position:absolute;left:0;right:auto;max-width:62%;top:calc(env(safe-area-inset-top,0px) + var(--h2-bar));height:var(--h2-band);display:flex;align-items:center;gap:6px;padding:0 10px;border:0;border-bottom:2px solid var(--ink);background:rgba(14,16,34,.82);box-shadow:none;color:var(--cream);font-size:var(--f-small);line-height:1;cursor:pointer;z-index:var(--z-hud);white-space:nowrap;text-align:left}
+body.hud2 #newsBand::after{content:'';display:block;position:absolute;left:0;right:0;top:0;height:var(--h2-hit)}
 body.hud2 #newsBand img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));flex:none}
-body.hud2 #newsBand span{overflow:hidden;text-overflow:ellipsis;min-width:0}
-body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none}
-body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--gold);animation:mglow 1s steps(2) infinite}
-body.hud2 #newsBand:active{transform:translateY(1px)}
+body.hud2 #newsBand span{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;min-width:0}
+body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none;margin-left:auto}
+body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:inset 3px 0 0 var(--gold);animation:none}
+body.hud2 #newsBand.hot span{animation:mglow 1s steps(2) infinite}
+body.hud2 #newsBand:active{background:rgba(30,34,64,.9)}
 body.hud2.winopen #newsBand,body.hud2 .talking #newsBand,body.hud2 .placing #newsBand{visibility:hidden}
 body.hud2.visiting #newsBand{display:none!important}
-/* 여관 정보 카드(상태줄을 누르면) · 단골 제안: 띠 아래 */
-body.hud2 #goalPanel{top:var(--h2-top)}
-body.hud2 #propBadge{left:6px;right:auto;top:var(--h2-top);bottom:auto;padding:4px 8px}
+/* 여관 정보 카드(상태줄을 누르면) · 단골 제안: 띠(누르는 자리까지) 아래 */
+body.hud2 #goalPanel{top:var(--h2-under)}
+body.hud2 #propBadge{left:6px;right:auto;top:calc(var(--h2-under) + 6px);bottom:auto;padding:4px 8px}
+body.hud2 #propBadge::after{content:'';display:block;position:absolute;left:0;right:0;top:calc(50% - var(--h2-hit) / 2);height:var(--h2-hit)}
 
-/* 오른쪽 가장자리: 낮밤 · 어울림 · 소리 · 배율 — 작은 아이콘 버튼 한 줄 */
-body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom){position:absolute;right:6px;bottom:auto;width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;z-index:var(--z-hud);font-size:var(--f-tiny)}
+/* 오른쪽 가장자리: 낮밤 · 어울림 · 소리 · 배율 — 작은 아이콘 버튼 한 줄 (그림은 작게, 누르는 자리는 44px 칸) */
+body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom){position:absolute;right:calc(var(--h2-pad) + 2px);bottom:auto;width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;z-index:var(--z-hud);font-size:var(--f-tiny)}
+body.hud2 :is(#bDN,#bHarm,#hSpk,#bZoom)::after{content:'';display:block;position:absolute;inset:calc(-1 * var(--h2-pad))}
 body.hud2 :is(#bDN,#bHarm,#hSpk) small{display:none}
 body.hud2 #bDN b{font-size:var(--f-small);line-height:1}
 body.hud2 #bDN{top:var(--h2-top)}
-body.hud2 #bHarm{top:calc(var(--h2-top) + var(--h2-side) + 4px)}
-body.hud2 #hSpk{top:calc(var(--h2-top) + 2 * (var(--h2-side) + 4px))}
-body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * (var(--h2-side) + 4px))}
+body.hud2 #bHarm{top:calc(var(--h2-top) + var(--h2-hit))}
+body.hud2 #hSpk{top:calc(var(--h2-top) + 2 * var(--h2-hit))}
+body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * var(--h2-hit))}
 
-/* 아래 메뉴줄 5칸: 건설 · 손님 · 모험 · 소식 · 메뉴 (주인·마을은 메뉴 격자 안) */
+/* 아래 메뉴줄 5칸: 건설 · 손님 · 모험 · 소식 · 메뉴 (주인·마을은 메뉴 격자 안) — 칸 높이 44px 이상 */
 body.hud2 :is(#bOwner,#bExp,#bVillage){display:none!important}
 /* 넓은 화면에서 창이 열리면 메뉴줄은 원래처럼 창 왼쪽 빈자리 가운데로 */
 html[data-size="wide"] body.hud2 #view:has(#win.on) nav.dk{transform:translateX(-50%)}
-body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:3px 2px calc(env(safe-area-inset-bottom,0px) + 3px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
-body.hud2 .dk button{gap:2px;justify-content:center;font-size:var(--f-tiny);line-height:1.05}
+body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:0 2px env(safe-area-inset-bottom,0px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+body.hud2 .dk button{gap:2px;justify-content:center;min-height:44px;font-size:var(--f-tiny);line-height:1.05}
 body.hud2 .dk .kic{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
 body.hud2 #bBuild{order:1}body.hud2 #bGuest{order:2}body.hud2 #bAdv{order:3}body.hud2 #bNews{order:4}body.hud2 #bMenu2{order:5}
 body.hud2 #bNews .dot{position:absolute;left:calc(50% + 8px);top:2px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
@@ -1780,13 +1792,32 @@ body.hud2 .dk button.ready .kic{animation:rdy 1s steps(2) infinite}
 body.hud2 .dk .ndot{top:2px;right:calc(50% - 18px)}
 body.hud2 #bBuild .nbadge{right:calc(50% - 26px)}
 
-/* 채팅 한 줄 · 진행 중 줄: 메뉴줄 바로 위 (가장자리) */
-body.hud2 #chatlog{left:4px;right:4px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 4px);min-height:0;height:calc(1.25 * var(--f-small) + 4px);padding:2px 8px;font-size:var(--f-small);line-height:1.25}
-body.hud2 #runbar{left:4px;right:calc(var(--h2-side) + 12px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 1.25 * var(--f-small) + 12px)}
+/* 채팅 한 줄 · 진행 중 줄: 메뉴줄 바로 위 (가장자리) — 채팅은 한 줄로 그리고 누르는 자리만 위로 44px */
+body.hud2 #chatlog{left:4px;right:calc(var(--h2-hit) + 8px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + 4px);min-height:0;height:calc(1.25 * var(--f-small) + 4px);padding:2px 8px;font-size:var(--f-small);line-height:1.25;overflow:visible}
+body.hud2 #chatlog>div{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+body.hud2 #chatlog::after{content:'';display:block;position:absolute;left:0;right:0;bottom:0;height:var(--h2-hit)}
+body.hud2 #runbar{left:4px;right:calc(var(--h2-hit) + 8px);width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--h2-nav) + var(--h2-hit) + 8px)}
 body.hud2 #runbar button{min-height:0}
-body.hud2 #runbar .hline{position:relative;flex-direction:row;padding:3px 8px 5px;margin-bottom:3px}
+/* 진행 줄은 얇게 그리고 누르는 자리만 위로 44px (줄이 여럿이면 그만큼 띄운다) */
+body.hud2 #runbar .hline{position:relative;flex-direction:row;height:24px;padding:3px 8px 5px;margin-bottom:calc(var(--h2-hit) - 24px)}
+body.hud2 #runbar>:last-child{margin-bottom:0}
+body.hud2 #runbar :is(.hline,.rbstrip)::after{content:'';display:block;position:absolute;left:0;right:0;bottom:0;height:var(--h2-hit)}
 body.hud2 #runbar .hline i{position:absolute;left:0;right:0;bottom:0;height:3px;padding:0;border-image:none;background:#161420}
-body.hud2 #runbar .rbstrip{min-height:0;padding:3px 8px}
+body.hud2 #runbar .rbstrip{position:relative;min-height:0;height:24px;padding:3px 8px;overflow:visible}
+/* 펼친 원정 줄: 맨 위 진행 줄의 누르는 자리(위로 20px) 위에 · 한 줄 44px */
+body.hud2 #runbar .rblist{bottom:calc(100% + var(--h2-hit) - 24px + 4px)}
+body.hud2 #runbar .rblist button{min-height:44px}
+
+/* PC(폭 900px 이상): 상태줄 · 소식 띠 · 메뉴줄 · 진행 줄 · 채팅은 가운데 한 기둥(최대 560px) · 상태줄 글자는 한 단계 크게 */
+@media (min-width:900px){
+  body.hud2 .top,body.hud2 #newsBand,body.hud2 nav.dk,body.hud2 #chatlog{left:max(0px,calc(50% - 280px));right:max(0px,calc(50% - 280px));max-width:none}
+  body.hud2 #runbar{left:max(4px,calc(50% - 280px));right:max(4px,calc(50% - 280px))}
+  body.hud2 .top .stat{gap:14px;padding:0 14px}
+  body.hud2 .top .stat :is(.nm,#goldv,#dayv,#pwr),body.hud2 .top .stat .r1 #goldv,body.hud2 .top .stat{font-size:var(--f-ui)}
+  body.hud2 #newsBand{font-size:var(--f-ui)}
+  /* 낮밤 버튼만 상태줄(.top) 안에 있어서 기둥 기준이 된다 → 다른 오른쪽 버튼처럼 화면 오른쪽 끝으로 */
+  body.hud2 #bDN{right:calc(var(--h2-pad) + 2px - max(0px,50vw - 280px))}
+}
 
 /* 모험 창: 네 칸 (사냥 · 원정 · 토벌 · 심연) */
 body.hud2 .advgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
@@ -1812,6 +1843,16 @@ body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd bu
 body.ui2 #view :where(.bigbtn,.menu button,.chatin button,.report button,.qhd button,.irow button,.gifts button,.seg button,#placebar button,#visitbar button,#dChoice button,#rlBack,#goalPanel button,.mail button,.wfrow button,.acdel button,.bagb,#winF button):not([disabled]):not(.tab):active{background:#5e3820!important;box-shadow:inset 0 3px 0 #4a2c18,0 0 0 2px var(--ink)}
 body.ui2.ui2 #view :where(.bigbtn:not(.ghost):not(.red):not(.sm),#placeOk,.goal button,#nameOk,.seg button.on,#dChoice button:first-child,#goalPanel button.rd):not([disabled]){border:0 solid transparent;border-image:var(--ui-btn-primary) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--ink);text-shadow:none;font-weight:700}
 body.ui2.ui2.ui2 #view :where(.bigbtn.red,.bagb.red,[data-sell].red,#rmOk,#rmB,.acdel button,#acDel,.mldel,#placeNo):not([disabled]){border:0;border-image:none;background:#a8323a!important;box-shadow:inset 0 2px 0 #d0545a,inset 0 -3px 0 #6e1c22,0 0 0 2px var(--ink);color:#fff;text-shadow:1px 1px 0 var(--ink)}
+/* 손가락 자리 44px (창 안): 버튼·탭·접기 줄·고르기·체크 줄은 가로·세로 44px 이상 (scripts/e2e-touch44.mjs) */
+body.ui2 #win .hd :is(#winX,#winBack,#winHelp){width:44px;height:44px}
+body.ui2 #win :is(button,.tab,select,[role=button]):not(.mtile){min-height:44px}
+body.ui2 #win :is(button,.tab,select){min-width:44px}
+body.ui2 #win .tab{flex-shrink:0}
+body.ui2 #win .tabs:has(> .tab:nth-child(7)){flex-wrap:wrap;overflow-x:visible;row-gap:2px}
+body.ui2 #win label.tog{min-height:44px;margin-top:0}
+body.ui2 #win summary{min-height:44px;padding-block:12px;box-sizing:border-box}
+body.ui2 #win a.kbtn{display:inline-flex;align-items:center;min-height:44px}
+body.ui2 #winB #rmB{min-height:44px}
 /* ui2-fonts:begin — scripts/ui2-fonts.mjs 가 만듦 (손으로 고치지 말 것) */
 :where(body.ui2) .ibtn{font-size:var(--fs-body)}
 :where(body.ui2) .quest em{font-size:var(--fs-body)}
@@ -1867,3 +1908,101 @@ body.ui2.ui2.ui2 #view :where(.bigbtn.red,.bagb.red,[data-sell].red,#rmOk,#rmB,.
 :where(body.ui2) .pty-dex small{font-size:var(--fs-small)}
 :where(body.ui2) .chreg i{font-size:var(--fs-title)}
 /* ui2-fonts:end */
+
+/* ───────── CHECKIN §J4 (v0.25.4 · 전부 플래그 — 끄면 이 블록은 쓰이지 않는다) ───────── */
+/* confirmSheet: 아래에서 올라오는 확인 시트 (남색 기준판 .px · 버튼 기존 3종) — 0.22초 · 절전/흔들림 끔이면 바로(.quick) */
+.cshScrim{position:absolute;inset:0;z-index:200;background:rgba(5,6,20,.55);opacity:0;transition:opacity .2s ease}
+.cshScrim.on{opacity:1}
+.csheet{position:absolute;z-index:201;left:0;right:0;bottom:0;margin:0 auto;max-width:480px;padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateY(105%);transition:transform .22s ease-out;color:var(--cream);font-size:var(--f-ui)}
+.csheet.on{transform:none}
+.csheet.quick{transition:none}
+.csheet .csht{display:block;color:var(--gold);margin:2px 0 6px;text-shadow:1px 1px 0 var(--ink)}
+.csheet .sub{white-space:pre-line;margin:0}
+.cshrow{display:flex;gap:8px}.cshrow .bigbtn{flex:1 1 0;min-height:44px;margin-top:12px}
+.csheet #cshOk.red{color:#fff;background:#a8323a!important;border-image-source:none!important;border:0;box-shadow:0 0 0 2px var(--ink),inset 0 -3px 0 #6e1c22}
+/* thumbZone: 폰에서 전투·토벌 결과 카드를 화면 아래쪽으로 ([다시 하기]가 엄지 자리에) */
+html[data-size="phone"] body.j4thumb :is(.cbres,.rov){align-items:flex-end;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 28px)}
+#winF > .claimall{margin:0}
+#winF > .recb.ffTop{margin:0}
+#winF > .go{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* pressFeel: 누른 버튼 0.08초 이상 살짝 어둡게 · 9-slice 버튼은 1px 아래로 */
+body.j4press .prs:not([disabled]){filter:brightness(.82)}
+body.j4press :is(.bigbtn,.menu button,.irow button,#winF button,.tab,.mtile,.go button,.cshrow button).prs:not([disabled]){transform:translateY(1px)}
+/* timeBars: 공사 칸 막대 = 다른 진행 막대와 같은 bar_frame + 초록 채움 그림 · 남은 시간은 옆에 작은 글자 */
+.conp .conbar i b{background:var(--ui-bar-fill-grn) 0 0 / 100% 100%}
+.conp .conbar .ct{font-size:var(--f-small);color:#cfd8ff;text-align:right}
+#winF > .go button{border:0 solid transparent;border-image:var(--ui-btn) 6 fill / calc(6px * var(--k)) / 0 stretch;background:none!important;box-shadow:none;color:var(--cream);min-height:44px;padding:6px 10px;cursor:pointer;font-weight:700}
+#winF > .go button.a:not([disabled]){border-image-source:var(--ui-btn-primary);color:var(--ink)}
+#winF > .go button[disabled]{border-image-source:var(--ui-btn-disabled);color:#8a8fa8}
+/* v0.25.4 CHECKIN C (ck-c2) */
+/* §C4 빨간 점 (redDots): 버튼·장부 카드·소식 띠에 점 하나 (::before — 안의 글을 다시 그려도 그대로) */
+.rdot::before{content:'';position:absolute;right:4px;top:4px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%;z-index:1;pointer-events:none}
+body.hud2 .dk button.rdot::before{top:2px;right:calc(50% - 18px)}
+/* §C3 「다녀오셨어요」 카드 (welcomeBack) */
+.wbgift{display:flex;gap:10px;align-items:center;margin:6px 0;padding:8px;background:var(--navy2);box-shadow:0 0 0 2px var(--gold)}
+.wbgift img{width:calc(24px * var(--k));height:calc(24px * var(--k));image-rendering:pixelated;flex:none}
+.wbgift span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wbgift small{font-size:var(--f-small);line-height:1.4}
+.wbnews{margin:6px 0;font-size:var(--f-small);line-height:1.5}.wbnews ul{margin:4px 0 0;padding-left:18px}
+.wbgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.wbt{display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);min-width:0}
+.wbt img{width:calc(24px * var(--k1));height:calc(24px * var(--k1));image-rendering:pixelated;flex:none}
+.wbt span{display:flex;flex-direction:column;min-width:0}
+.wbt small{font-size:var(--f-tiny);color:#9aa6d8}
+.wbt b{font-size:var(--f-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   CHECKIN v0.25.4 §C1 ⚙ · §C2 설정 3탭 · §L1 화면 보호 · §L2 구경 모드
+   플래그·실험실이 꺼져 있으면 클래스(body.gear·ssaver·uihide)와 요소(#bGear·#bEye·#ssOv·#uiHideBar·.cbsheet)가 없어서 하나도 안 걸린다
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+/* C1 ⚙ — 예전 HUD: 맨 위 줄 「메뉴」 자리(메뉴는 아래 줄에 그대로) · 창이 열려도 어두운 바깥(scrim)보다 위라 눌린다 */
+body.gear #bMenu{display:none!important}
+#bGear{position:relative;z-index:calc(var(--z-win) + 1)}
+/* 새 HUD: 상태줄 오른쪽 끝 한 칸 (상태줄과 같은 판) */
+body.hud2 #bGear{flex:none;align-self:stretch;width:var(--h2-hit);min-width:0;height:var(--h2-bar);padding:0;border-image:var(--ui-titlebar) 6 fill / calc(6px * var(--k1)) / 0 stretch}
+body.hud2 #bGear small{display:none}
+/* 전투: 오른쪽 위 ✕ 자리의 ⚙ → 일시정지 시트 */
+.cbtop .cbgear{display:grid;place-items:center;min-width:36px;min-height:32px}
+.cbtop .cbgear img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+.cbpause .cbsheet{width:min(420px,92vw);text-align:left}
+.cbpause .cbsheet>b{text-align:center}
+.cbsheetb{max-height:min(58vh,440px);overflow:auto;overscroll-behavior:contain}
+.cbsheetb .snd .sub{margin:0}
+.cbopts{display:flex;flex-direction:column;margin-top:4px}
+.cbopts .tog{min-height:36px;margin-top:2px}
+.cbquitnote{margin:8px 0 0;text-align:center;color:#9aa6d8;font-size:var(--f-small)}
+.cbgo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.cbgo .bigbtn{margin:0;min-height:44px}
+
+/* C2 설정 3탭: 탭 줄은 창 맨 위 */
+.stabs{display:flex;gap:6px;margin-bottom:6px}
+.stabs .tab{flex:1 1 0;min-height:40px}
+
+/* L1 화면 보호: 마을을 밤보다 더 어둡게 + 가운데 작은 판 (판은 1분마다 순간 이동 — 번인 방지 · 애니메이션 없음) */
+#ssOv{position:absolute;inset:0;z-index:calc(var(--z-dialog) + 3);display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.9);cursor:pointer;touch-action:none}
+body.ssaver #hud,body.ssaver .wfbub{visibility:hidden}
+#ssOv .sspanel{min-width:190px;padding:12px 16px;color:var(--cream);font-size:var(--f-ui);text-align:center;opacity:.8}
+#ssOv .ssinn{display:block;margin-bottom:6px;color:var(--gold)}
+#ssOv dl{display:grid;grid-template-columns:auto auto;gap:3px 16px;margin:0;text-align:left}
+#ssOv dt{color:#9aa6d8;font-size:var(--f-small)}
+#ssOv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+#ssOv small{display:block;margin-top:8px;color:#6f7aa8;font-size:var(--f-tiny)}
+.sssum{display:grid;gap:2px;margin:6px 0}
+.ssrow{display:flex;justify-content:space-between;gap:10px;padding:5px 2px;border-bottom:1px dashed #fff2}
+.ssrow b{color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* L2 👁 구경 모드 버튼: 예전 HUD 오른쪽 줄(어울림·소리 아래) · 새 HUD 오른쪽 작은 버튼 줄 맨 아래 */
+#bEye{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 172px);z-index:var(--z-hud)}
+html:not([data-size="phone"]) #bEye{top:calc(env(safe-area-inset-top,0px) + 200px)}
+#bEye b{font-size:var(--f-ui);line-height:1}
+.talking #bEye,.placing #bEye,body.winopen #bEye{visibility:hidden}
+body.visiting #bEye{display:none!important}
+body.hud2 #bEye{right:calc(var(--h2-pad) + 2px);top:calc(var(--h2-top) + 4 * var(--h2-hit));width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0}
+body.hud2 #bEye::after{content:'';display:block;position:absolute;inset:calc(-1 * var(--h2-pad))}
+body.hud2 #bEye small{display:none}
+body.hud2 #bEye b{font-size:var(--f-small)}
+/* 숨긴 동안: HUD 전부 · 길잡이 「!」 · 배너 · 되돌리기 띠 (손님 말풍선·마을은 그대로) */
+body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidden!important}
+#uiHideBar{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:calc(var(--z-hud) + 2);display:flex;flex-direction:row-reverse;align-items:center;gap:8px;pointer-events:none}
+#uiHideBar button{pointer-events:auto;font-size:var(--f-ui)}
+#uiHideBar small{color:var(--cream);font-size:var(--f-small);text-shadow:1px 1px 0 var(--ink);opacity:.8}

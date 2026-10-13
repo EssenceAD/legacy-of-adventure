@@ -8,6 +8,8 @@ export function setSaver(v: boolean) {
   saver = v;
   setPref('saver', v);
 }
+/** CHECKIN §C2: 세이브의 설정값을 받은 뒤 다시 읽기 */
+export const reloadSaver = () => void (saver = getPref<boolean>('saver', false));
 
 /** 전투·토벌·티저 rAF: 이번 프레임을 건너뛸까 (120Hz 기기에서 120번 그리지 않게 · 절약이면 30) */
 export function skipFrame(last: number, now: number): boolean {

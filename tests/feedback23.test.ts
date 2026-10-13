@@ -228,5 +228,5 @@ describe('§5 마을 입구 옮기기', () => {
     expect(v.ent).toBe(18);
     const w = toNeighbor({ user_id: 'u', likes: 0, updated_at: '', snapshot: { v: 3, land: 3, innName: 'x', owner: 'o', layout } } as never)!;
     expect(w.ent).toBeUndefined();
-  });
+  }, 30000); // 동적 import(ui/neighbors) — 전체 테스트가 몰리면 5초를 넘겨 배포를 막던 것
 });

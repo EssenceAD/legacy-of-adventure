@@ -1,4 +1,5 @@
 // 베타 1장: 어울림 그리기 — 금빛 점선(발견·「어울림 보기」) · 배치 중 범위 타일·짝 건물 초록·미리보기 말풍선
+import { flag } from './flags';
 import { av } from '../engine/ver';
 import { CONFIG } from '../data/config';
 import { harmonyById } from '../data/harmony';
@@ -66,8 +67,8 @@ function drawSet(ctx: CanvasRenderingContext2D, s: HSet, f: number, withName: bo
 /** 마을 위: 「어울림 보기」를 켰으면 모든 어울림, 아니면 발견 연출 중인 것만 */
 export function drawHarmonyLines(ctx: CanvasRenderingContext2D) {
   if (!S.visiting && P.harmony.show) for (const s of harmonySets()) drawSet(ctx, s, 1, true);
-  // TOWN T4: 구역 어울림은 땅에 이름표 (늘 · 구역 가운데)
-  else
+  // TOWN T4: 구역 어울림은 땅에 이름표 (늘 · 구역 가운데) — v0.25.2b harmonyLabels: 어울림 버튼을 눌렀을 때만
+  else if (!flag('harmonyLabels'))
     for (const s of harmonySets()) {
       const h = harmonyById(s.id);
       if (!h.zone) continue;

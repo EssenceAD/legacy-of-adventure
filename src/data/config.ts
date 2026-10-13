@@ -1214,6 +1214,10 @@ export const CONFIG = {
   dice: { goal: 3000, aiStop: 500, base: 1000, mults: [1, 2, 5, 10], cut: 0.1, tieWin: 2, streakGoal: 10, winLineEvery: 10, aiStepMs: 650 },
   /** CHECKIN §A2 「모아 보기」(플래그 storyInbox): 곁이야기가 하루(현실 날짜)에 저절로 뜨는 최대 수 · 모아 둔 단골 제안이 유효한 게임 시간(지나면 손님이 조용히 떠남) */
   storyInbox: { autoPerDay: 2, propHoldHours: 24 },
+  /** CHECKIN §B 첫 30분 동선: 임무로 연 건설 창의 대상 건물 반짝 테두리(ms) · 장비 임무 바로가기의 장착 가능한 사람 반짝(ms) */
+  firstFlow: { glowMs: 3000, equipGlowMs: 3000 },
+  /** CHECKIN §J8 건물 말풍선(플래그 bldStatus): 한 번에 최대 수 · 상태 다시 보기 간격(ms) · 위아래 1px 살랑 주기(초) · 글 한 줄이 붙는 화면 배율(CSS px / 도트) · 누르는 칸 최소(CSS px) */
+  bldStatus: { max: 3, everyMs: 500, bobSec: 2.5, textZoom: 2, hitCss: 44 },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

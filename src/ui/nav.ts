@@ -31,14 +31,15 @@ export const navHooks = {
   eval: () => {},
 };
 
-export function openPlace(p: Place) {
+/** target = CHECKIN §B-1 장부 임무의 건설 대상 (건설 창 맨 위 + 반짝 · 플래그 firstFlowFix는 openBuild가 본다) */
+export function openPlace(p: Place, target?: Kind) {
   if (S.visiting) return toast('이웃 마을에서 돌아온 뒤에 해요');
   closeWin();
   const building = (k: Kind, then: (o: Building) => void) => {
     const o = obj(k);
     if (!o) {
       toast(`${def(k).name}을(를) 먼저 지어요 (건설)`);
-      return openBuild();
+      return openBuild(k);
     }
     focusTile(o.tx + o.fw / 2, o.ty + o.fh / 2);
     then(o);
@@ -53,7 +54,7 @@ export function openPlace(p: Place) {
     case 'well':
     case 'fire':
     case 'boardObj':
-      return openBuild();
+      return openBuild(target);
     case 'land':
       return openLand();
     case 'guests':

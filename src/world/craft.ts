@@ -1,5 +1,5 @@
 // 대장간(분해 → 가루 · 강화 +1~+10 · 지역 세트 제작 · 레벨) · 텃밭(심기 → 수확 → 주점 식사 품질)
-import { bestOf } from './town';
+import { bestOf, landNeedFor, nextLevelCost } from './town';
 import { towerEnhance } from './facilities';
 import { gsState } from './goldsink';
 import { addCrop } from './facilities';
@@ -319,7 +319,7 @@ const scale = () => (TEST ? CONFIG.test.timeScale : 1);
 export function plotsOf(o: Building) {
   o.plots ??= [];
   // 텃밭 2레벨마다 밭 +1칸
-  const n = GD.plots + Math.floor((o.lvl - 1) / 2);
+  const n = gardenPlots(o.lvl);
   while (o.plots.length < n) o.plots.push({ crop: null, at: 0 });
   return o.plots;
 }
@@ -368,4 +368,18 @@ export function ripeCount(): number {
   let n = 0;
   for (const o of homeObjs()) if (o.kind === 'garden') for (const p of plotsOf(o)) if (plotLeft(p) === 0) n++;
   return n;
+}
+
+// ───────── v0.25.4 텃밭 레벨업 (gardenLevelUp) ─────────
+/** 레벨 → 밭 칸 수 (2레벨마다 +1: Lv.1~2 = 3칸 · Lv.3~4 = 4칸 · Lv.5~6 = 5칸) */
+export const gardenPlots = (lvl: number) => GD.plots + Math.floor((lvl - 1) / 2);
+/** 텃밭 창 맨 위 줄: up = 올릴 수 있음 · land = 땅 단계 모자람 · con = 공사 중 · max = 끝 */
+export function gardenLevelState(o: Building): { lv: number; plots: number; next: number | null; cost: number | null; state: 'up' | 'land' | 'con' | 'max'; needLand: number } {
+  const lv = o.lvl;
+  const cost = nextLevelCost(o);
+  const needLand = landNeedFor(o);
+  const base = { lv, plots: gardenPlots(lv), needLand };
+  if (o.build !== undefined || o.con) return { ...base, next: null, cost: null, state: 'con' };
+  if (cost == null) return { ...base, next: null, cost: null, state: 'max' };
+  return { ...base, next: gardenPlots(lv + 1), cost, state: needLand > (world.home?.land ?? S.land) ? 'land' : 'up' };
 }

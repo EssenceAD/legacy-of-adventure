@@ -7,7 +7,9 @@ import type { RegionId } from '../data/items';
 import { PORTRAITS } from '../engine/assets';
 import { pic } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
-import { battleMusic } from '../ui/sound';
+import { battleMusic, bindSoundSettings, soundSettingsHtml } from '../ui/sound';
+import { vis } from '../world/visual';
+import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
 import { uiHooks, type Actor, type Item } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { ACTION_NAME, actionOf, capKey, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, keysShown, type Action } from '../engine/keys';
@@ -184,6 +186,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   if ([...ids].some((id) => !sheets[id])) await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
+  dmgNums = getPref<boolean>('dmgNums', true);
   // REGIONS2: 50% 컷 — 전투를 멈추고 (일시정지 창 없이) 대화창을 전투 위에 · 끝나면 이어서
   const userHalf = opts.talkHalf;
   F = makeField(region, stage, members, auto, userHalf ? { ...opts, half: () => {
@@ -207,7 +210,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   root.className = 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
-    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' || opts.noFold ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button><button id="cbQuit" aria-label="포기">✕</button></div>
+    <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' || opts.noFold ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button>${vis('gearAlways') ? `<button id="cbQuit" class="cbgear" aria-label="일시정지 · 설정"><img draggable="false" src="${iconSrc('m_settings', true)}" alt=""></button>` : '<button id="cbQuit" aria-label="포기">✕</button>'}</div>
     <div class="cbparty" id="cbParty"></div>
     <div class="cbchain" id="cbChain"></div>
     <div class="cbhit" id="cbHit"><b id="cbHitN"></b><small id="cbHitB"></small><strong id="cbKills"></strong></div>
@@ -227,7 +230,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbcast" id="cbCast" hidden></div>
     <div class="cbcut" id="cbCut" hidden></div>
     <div class="cbres" id="cbRes" hidden></div>
-    <div class="cbpause" id="cbPause" hidden><div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div></div>
+    <div class="cbpause" id="cbPause" hidden>${vis('gearAlways') ? pauseSheetHtml(opts.mode === 'raid' ? '토벌' : '사냥') : `<div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div>`}</div>
     <div class="cbkeycard" id="cbKeyCard" hidden></div>
     <div class="cbsyn" id="cbSyn" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
@@ -373,7 +376,7 @@ function render() {
   // 피해 숫자: 기기 픽셀로 (도트 크기의 절반 · 치명타는 조금 크게)
   const pn = Math.max(2, Math.round(K / 2));
   const pc = Math.max(3, Math.round(K * 0.75));
-  for (const n of numsOut) digits(x, n.text, n.x * K, n.y * K, n.col, n.crit ? pc : pn);
+  if (dmgNums) for (const n of numsOut) digits(x, n.text, n.x * K, n.y * K, n.col, n.crit ? pc : pn);
   // 장비 이름표 (등급 색 · 어두운 테두리)
   if (labelsOut.length) {
     const fs = Math.round(11 * dpr());
@@ -657,7 +660,7 @@ function bindInput() {
     openPause();
   };
   $('#cbResume').onclick = resume;
-  $('#cbGiveUp').onclick = giveUp;
+  $('#cbGiveUp').onclick = giveUpAsk;
   $('#cbKeysBtn').onclick = () => (keyCardOpen() ? hideKeyCard() : showKeyCard(false));
   $('#cbKeyCard').onclick = hideKeyCard;
   syncKeycaps();
@@ -739,11 +742,71 @@ function openPause() {
   holding = false;
   keys.clear();
   (root.querySelector('#cbPause') as HTMLElement).hidden = false;
+  if (vis('gearAlways')) syncPauseSheet();
 }
 function resume() {
   paused = false;
+  quitArmed = false;
   if (root) (root.querySelector('#cbPause') as HTMLElement).hidden = true;
 }
+/** J4 confirmSheet: 포기는 아래 확인 시트로 한 번 더 (끄면 예전처럼 바로) — 시트가 떠 있는 동안 일시정지 그대로 */
+function askGiveUp() {
+  if (!vis('confirmSheet')) return giveUp();
+  const what = F?.mode === 'raid' ? '토벌' : '사냥';
+  void import('../ui/confirmSheet').then(({ confirmSheet }) => confirmSheet({ title: `${what}을 포기할까요?`, body: '패배로 기록돼요', ok: '포기하기', danger: true }).then((ok) => ok && giveUp()));
+}
+// ───────── CHECKIN §C1 (gearAlways): 일시정지 시트 — 소리 · AUTO · 화면 흔들림 · 피해 숫자 · [계속] [포기(한 번 더)] ─────────
+/** 피해 숫자 보기 (설정 · 기본 켬 — 판마다 시작할 때 읽는다) */
+let dmgNums = true;
+/** 포기를 한 번 눌렀나 (한 번 더 누르면 포기) */
+let quitArmed = false;
+function pauseSheetHtml(what: string): string {
+  return `<div class="card px res cbsheet"><b>일시정지</b><div class="cbsheetb">${soundSettingsHtml()}<div class="cbopts">
+    <label class="tog"><input type="checkbox" id="cpAuto"> AUTO (알아서 싸우기)</label>
+    <label class="tog">화면 흔들림 <select id="cpShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}">${SHAKE_NAME[k]}</option>`).join('')}</select></label>
+    <label class="tog"><input type="checkbox" id="cpNums"> 피해 숫자 보기</label></div>
+    <p class="cbquitnote">${what}을 포기하면 패배로 기록돼요</p></div>
+    <div class="cbgo"><button class="bigbtn" id="cbResume">계속하기</button><button class="bigbtn red" id="cbGiveUp">포기하기</button></div></div>`;
+}
+/** 시트를 열 때마다 지금 값으로 · 처음 한 번 연결 */
+function syncPauseSheet() {
+  if (!root || !F) return;
+  const q = <T extends HTMLElement>(s: string) => root!.querySelector(s) as T;
+  quitArmed = false;
+  q<HTMLButtonElement>('#cbGiveUp').textContent = '포기하기';
+  q<HTMLInputElement>('#cpAuto').checked = F.auto;
+  q<HTMLSelectElement>('#cpShake').value = shakeLv();
+  q<HTMLInputElement>('#cpNums').checked = dmgNums;
+  const sheet = q<HTMLElement>('.cbsheet');
+  if (sheet.dataset.bound) return;
+  sheet.dataset.bound = '1';
+  bindSoundSettings();
+  q<HTMLInputElement>('#cpAuto').onchange = (e) => {
+    if (!F) return;
+    F.auto = (e.target as HTMLInputElement).checked;
+    if (F.auto) F.autoUsed = true;
+  };
+  q<HTMLSelectElement>('#cpShake').onchange = (e) => setShakeLv((e.target as HTMLSelectElement).value as ShakeLv);
+  q<HTMLInputElement>('#cpNums').onchange = (e) => {
+    dmgNums = (e.target as HTMLInputElement).checked;
+    setPref('dmgNums', dmgNums);
+  };
+}
+/** 일시정지 시트의 [포기]: 처음엔 「한 번 더」 (실수 방지 · confirm() 안 씀) */
+function giveUpAsk() {
+  // J4 확인 시트가 켜져 있으면 그쪽(한 번 더 묻기) · 아니면 C1 「한 번 더 누르면」 · 둘 다 꺼짐 = 예전처럼 바로
+  if (vis('confirmSheet')) return askGiveUp();
+  if (!vis('gearAlways')) return giveUp();
+  if (!quitArmed) {
+    quitArmed = true;
+    const b = root?.querySelector('#cbGiveUp');
+    if (b) b.textContent = '한 번 더 누르면 포기해요';
+    return;
+  }
+  giveUp();
+}
+/** 시험용: 일시정지 중인가 */
+export const combatPaused = () => paused;
 function giveUp() {
   resume();
   if (!F || F.done) return;

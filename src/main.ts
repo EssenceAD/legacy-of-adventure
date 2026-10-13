@@ -3,7 +3,13 @@ import { openNotices } from './ui/notice';
 import { kstDay } from './world/goldsink';
 import { flag } from './world/flags';
 import { loadFlags } from './world/flags';
+import { vis } from './world/visual';
+import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
+import { gearHooks, initGear } from './ui/gear';
+import { initPrefsSync } from './ui/prefsSync';
+import { enterSaver, exitSaver, initScreenSaver, ssOn, ssStats } from './ui/screenSaver';
+import { enterUiHide, exitUiHide, initUiHide, uiHidden, uiHideTap } from './ui/uiHide';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
@@ -57,6 +63,7 @@ import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pendingSide, pendingWith, pumpEvents, runFirstSide } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
+import { bubbleAt, setBldHover, tapBubble } from './world/bldStatusDraw';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
@@ -67,7 +74,7 @@ import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startMoveEntrance, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
 import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomIdx, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
-import { initMenu, openAttend, openGridMenu, openManual } from './ui/menu';
+import { initMenu, openAttend, openGridMenu, openManual, openSettings } from './ui/menu';
 import { _abyss } from './ui/abyss';
 import { _dice } from './ui/dice';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
@@ -90,7 +97,7 @@ import * as audioSfx from './audio/sfx';
 const sfx = audioSfx.sfx;
 import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
-import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
+import { checkDiscover, computeSets, harmonySets, partProgress, recountHarmony, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
 import { checkParty4, checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
@@ -155,7 +162,8 @@ function loadFonts() {
 
 function resize() {
   // 렌더 메모리: 마을 캔버스는 CSS 1px당 기기 픽셀 2배까지 (배터리 절약 1.5배) — 도트라 눈에 차이가 없다
-  resizeCanvas(cv, host, S.zoom, screen.devicePx, saverOn() ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
+  // CHECKIN §L1: 화면 보호 중엔 기기 픽셀 1배
+  resizeCanvas(cv, host, S.zoom, screen.devicePx, ssOn() ? 1 : saverOn() ? CONFIG.render.dprCapSaver : CONFIG.render.dprCap);
 }
 
 // ───────── 루프 ─────────
@@ -177,7 +185,7 @@ function update(dt: number) {
   if (!photoFrozen()) updActors(dt);
   t = mark('actors', t);
   // HOTFIX20 §2: 마을 화면에서 창·전투·대화·사진·이웃 방문·꾸미기가 없을 때만 대기 이벤트(단골 제안 등)를 꺼낸다
-  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid') || combatOn() || teaserOn() || photoOn() || !!S.visiting || decorView.on || overlayHold();
+  const busy = isWinOpen() || !!placing.pl || isTalking() || !!document.getElementById('raid') || combatOn() || teaserOn() || photoOn() || !!S.visiting || decorView.on || overlayHold() || uiHidden() || ssOn();
   tickDayNight(dt);
   t = mark('daynight', t);
   if (!S.started) wasStarted = false;
@@ -195,6 +203,8 @@ function update(dt: number) {
       if (S.night) nightOwner(true);
       // 베타: v6 마이그레이션 (어울림 발견 보상 우편 · 장부 번호) → 장부 — 이미 해 둔 일은 바로 완료
       betaMigrate();
+      // K10: 이미 모아 둔 어울림은 들어오자마자 발견 (보상은 우편)
+      recountHarmony((title, body, gold) => addMail({ from: 'system', title, body, reward: { gold } }));
       syncGuideIdx();
       skipDone();
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
@@ -258,6 +268,8 @@ let hudAcc = 0;
 const visualBusy = () => isTyping() || tour.on || spectacles.length > 0 || burstOn() || !!placing.pl || gradeAnim.on;
 function drawStep(winOpen: boolean): number {
   const L = CONFIG.loop;
+  // CHECKIN §L1: 화면 보호 = 초당 2번
+  if (ssOn()) return 0.5 - 0.002;
   let fps: number;
   if (teaserOn()) fps = saverOn() ? L.drawFpsBattleSaver : L.drawFpsBattle;
   else {
@@ -598,6 +610,8 @@ function bindInput() {
       }
       return;
     }
+    // CHECKIN §J8: PC 마우스를 건물·말풍선에 올리면 글 한 줄
+    if (e.pointerType === 'mouse' && !drag && vis('bldStatus')) bldHoverAt(e.clientX, e.clientY);
     if (decorDrag || (decorInput.wants() && e.pointerType === 'mouse')) {
       const [fx, fy] = toTile(cv, e.clientX, e.clientY);
       decorInput.move(fx, fy, e.clientX, e.clientY);
@@ -683,8 +697,19 @@ function catchStarAt(e: PointerEvent) {
   }
 }
 
+let hoverAt = 0;
+function bldHoverAt(cx: number, cy: number) {
+  const now = performance.now();
+  if (now - hoverAt < 80) return;
+  hoverAt = now;
+  const [mx, my] = toLogical(cv, cx, cy);
+  setBldHover(bubbleAt(mx, my)?.o ?? buildingAt(mx, my, alphaAt));
+}
+
 function tap(e: PointerEvent) {
   if (!S.started || isTalking()) return;
+  // CHECKIN §L2 구경 모드: 짧게 누르기는 아무것도 열지 않는다 (두 번 = 복귀)
+  if (uiHidden()) return uiHideTap();
   if (placing.pl) {
     const [fx, fy] = toTile(cv, e.clientX, e.clientY);
     movePlacement(fx, fy);
@@ -697,6 +722,15 @@ function tap(e: PointerEvent) {
     if (ob && canMoveKind(ob.kind)) return startMove(ob);
   }
   const [mx, my] = toLogical(cv, e.clientX, e.clientY);
+  // CHECKIN §J8: 건물 말풍선 → 그 건물 창 (맨 위에 그려지니 팻말보다 먼저 · 닫으면 그 상태가 바뀔 때까지 안 뜸)
+  if (!S.visiting && vis('bldStatus')) {
+    const bc = bubbleAt(mx, my);
+    if (bc) {
+      tapBubble(bc);
+      trackEv('bld_bubble', { kind: bc.o.kind, st: bc.id });
+      return showObj(bc.o);
+    }
+  }
   // 땅 개편: 땅 넓히기 팻말
   if (!S.visiting && signHit(mx, my)) return openLand();
   // 운명의 별 (밤하늘 별똥별) — 보통은 pointerdown 에서 이미 잡는다
@@ -745,6 +779,11 @@ function tap(e: PointerEvent) {
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50 + Math.random() * 20, '뚝딱! −1초');
     puffAt(o, '#efe2c6', 3);
     return;
+  }
+  // K10: 어울림 보기 중에 부품을 누르면 이 물건이 낄 어울림과 진행 한 줄 (창은 열지 않음)
+  if (o && P.harmony.show && flag('harmonyV2') && !S.visiting) {
+    const ls = partProgress(o);
+    if (ls.length) return toast(ls.join(' · '));
   }
   if (o) return showObj(o);
   // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
@@ -884,6 +923,12 @@ async function boot() {
   initPowerUI();
   // VISUAL §4 새 HUD (실험실 · 끄면 아무것도 안 함)
   initHud2();
+  // CHECKIN §C1·§C2·§L1·§L2 (플래그·실험실 끔이면 아무것도 안 만든다)
+  gearHooks.open = () => openSettings();
+  initGear();
+  initPrefsSync();
+  initUiHide();
+  initScreenSaver(() => !!S.started && !S.visiting && !isWinOpen() && !isTalking() && !combatOn() && !document.getElementById('raid') && !teaserOn() && !photoOn() && !decorView.on && !placing.pl && !uiHidden() && document.getElementById('title')!.hidden === true);
   initSound();
   void initChat();
   // DIRECTION §2: 함께 만든 사람들 · 승인된 소문 · 로그인하면 답장 배달 (서버 함수가 없으면 조용히 없음)
@@ -965,9 +1010,11 @@ async function boot() {
     ver.textContent = `v${APP_VERSION} · 패치노트`;
     ver.onclick = () => void openPatchNotes();
   }
-  document.getElementById('tStart')!.onclick = () => {
+  document.getElementById('tStart')!.onclick = async () => {
     funnel('title_tap');
-    if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?')) return;
+    // J4 confirmSheet: 마을을 지우는 확인은 아래 확인 시트 (끄면 예전 confirm 그대로)
+    const ask = () => (vis('confirmSheet') ? confirmSheet({ title: '새 여관을 열까요?', body: '지금까지의 마을이 지워져요 (되돌릴 수 없어요)', ok: '새로 시작', danger: true }) : confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?'));
+    if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !(await ask())) return;
     game.newGame();
   };
   document.getElementById('tCont')!.onclick = () => game.continueGame();
@@ -1077,6 +1124,10 @@ async function boot() {
         return s;
       },
       __openHunt: openHunt,
+      // CHECKIN C1·C2·L1·L2 시험용
+      __openSettings: (tab?: string) => openSettings(tab as never),
+      __ss: { enter: () => enterSaver(), exit: () => exitSaver(), on: ssOn, stats: ssStats },
+      __uiHide: { enter: enterUiHide, exit: exitUiHide, on: uiHidden },
       // REGIONS2 시험용: 다음 컷 · 새 지역 열림 · 지역 10 보스 처치 컷
       __reg2: { next: nextRegionCut, open: openNewRegions, defeat: deepDefeat },
       // 전투 2차 시험: 사람처럼 조작하는 봇으로 n판 (평가 비율·시간)

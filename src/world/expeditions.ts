@@ -524,3 +524,36 @@ export function migrateTiers() {
   for (const r of P.runs) if (!r.quest.tutorial) r.quest.tier = map[r.quest.tier] ?? r.quest.tier;
   P.quests.t7 = true;
 }
+
+// ───────── v0.25.4 K6 [다시 보내기] (resendRun) ─────────
+/**
+ * 끝난 원정을 같은 파티로 한 번 더: 의뢰는 게시판에서 고른다 (보낸 의뢰는 목록에서 빠졌으니)
+ *  1) 같은 지역 · 같은 길이 → 2) 같은 길이 · 가까운 지역 → 3) 같은 지역 · 가까운 길이 — 튜토리얼·길드 특별 의뢰는 안 고름
+ *  못 보내면 이유 한 줄 (의뢰 없음 · 파티 꽉 참 · 파티원 체력/떠남 …)
+ */
+export function pickResendQuest(prev: Pick<Quest, 'region' | 'tier'>, list: Quest[]): Quest | null {
+  const ok = list.filter((q) => !q.tutorial && !q.guild);
+  const rd = (q: Quest) => Math.abs(ri(q.region) - ri(prev.region));
+  const score = (q: Quest) => (q.region === prev.region && q.tier === prev.tier ? 0 : q.tier === prev.tier ? 1 + rd(q) / 100 : q.region === prev.region ? 2 + Math.abs(q.tier - prev.tier) / 100 : Infinity);
+  let best: Quest | null = null;
+  for (const q of ok) if (Number.isFinite(score(q)) && (!best || score(q) < score(best))) best = q;
+  return best;
+}
+export type ResendPlan = { q: Quest; members: Actor[]; same: boolean } | { why: string };
+export function resendPlan(run: Run): ResendPlan {
+  if (run.quest.tutorial) return { why: '첫 원정은 한 번뿐이에요' };
+  const members = run.members.map((id) => homeActors().find((a) => a.id === id));
+  if (members.some((m) => !m)) return { why: '함께 갔던 사람 중 마을에 없는 사람이 있어요' };
+  const ms = members as Actor[];
+  // 지금 이 원정은 아직 「끝남」(result) — 자리 수에는 안 들어간다
+  if (activeRuns().length >= maxParties()) return { why: `파티가 꽉 찼어요 · ${fullPartyHint()}` };
+  for (const m of ms) {
+    const why = canSend(m);
+    if (why) return { why: `${m.name}: ${why}` };
+  }
+  ensureQuests();
+  const q = pickResendQuest(run.quest, P.quests.list);
+  if (!q) return { why: '게시판에 같은 지역·같은 길이 의뢰가 없어요 · 새로고침하거나 내일 새 의뢰를 기다려요' };
+  if (ms.length < partyMinFor(q) || ms.length > partyMax()) return { why: `이 의뢰는 파티 ${partyMinFor(q)}~${partyMax()}명이에요` };
+  return { q, members: ms, same: q.region === run.quest.region && q.tier === run.quest.tier };
+}

@@ -1,4 +1,5 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
+import { bindPersonActions, personActionsHtml } from './personActions';
 import { vis as visOn } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
@@ -16,7 +17,7 @@ import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
-import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage } from './bulkSalvage';
+import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage, openTidyConfirm, tidyBtnHtml } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
@@ -30,7 +31,9 @@ import { favRank, guestHint, isFav, sortGuests, toggleFav } from '../world/growt
 import { getPref, setPref } from '../save/save';
 import { uniqueById } from '../world/uniques';
 import { enhMsg, enhUse, openEnhance } from './enhance';
-import { closeWin, openWin, toast } from './windows';
+import { closeWin, glowOnce, openWin, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
+import { equipCandidates } from '../world/firstFlow';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -48,6 +51,21 @@ function regLine(a: Actor): string {
 }
 let gTab = 0;
 let gSort = 0;
+/** CHECKIN §B-3: 이번 한 번 그릴 때 반짝일 사람 (장비 임무 바로가기) */
+let sparkIds: number[] = [];
+/** CHECKIN §B-3 장비 임무 바로가기: 늘 「단골」 탭 · 가방의 희귀 이상 장비를 낄 수 있는 사람에 반짝 3초 */
+export function openGuestsEquip() {
+  gTab = 0;
+  const can = equipCandidates(homeActors(), P.bag, fitsClass);
+  // 전투력이 오르는 사람(장비마다 상위 3명)이 있으면 그 사람만 · 없으면 낄 수 있는 사람 모두
+  const best = new Set(P.bag.filter((it) => it.owner == null && it.grade !== 'n').flatMap((it) => whoWears(it, 3).map((w) => w.a.id)));
+  sparkIds = can.some((id) => best.has(id)) ? can.filter((id) => best.has(id)) : can;
+  try {
+    openGuests();
+  } finally {
+    sparkIds = [];
+  }
+}
 const SORTS = ['레벨', '전투력', '희귀도'];
 
 export function openGuests() {
@@ -101,6 +119,7 @@ export function openGuests() {
       keepScroll(openGuests);
     };
   $$('.glist button').forEach((b) => (b.onclick = () => showActor(all.find((a) => a.id === +b.dataset.id!)!)));
+  for (const id of sparkIds) glowOnce(document.querySelector<HTMLElement>(`.glist button[data-id="${id}"]`), CONFIG.firstFlow.equipGlowMs);
   $$('[data-pick]').forEach(
     (b) =>
       ((b as HTMLInputElement).onchange = () => {
@@ -206,10 +225,9 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    <div class="btnrow">${a.runId == null && !S.visiting ? '<button class="bigbtn sm" id="aTalk">말 걸기</button>' : ''}${byeBtn(a)}</div>`,
+    <div class="btnrow">${personActionsHtml(a, { talk: true })}${byeBtn(a)}</div>`,
   );
-  const tk = document.getElementById('aTalk');
-  if (tk) tk.onclick = () => talkGuest(a);
+  bindPersonActions(a, talkGuest);
   // GROWTH §3-1: 장비 칸 → 그 장비 강화 창 바로 (빈 칸이면 고르기)
   $$('.slot').forEach(
     (b) =>
@@ -245,6 +263,25 @@ export function showActor(a: Actor) {
   const bye = document.getElementById('aBye');
   if (bye)
     bye.onclick = () => {
+      const doBye = () => {
+        byeArmed = 0;
+        if (a.status === 'regular') {
+          const line = farewell(a);
+          if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
+        } else if (checkout(a)) toast(`${a.name} 체크아웃`);
+        closeWin();
+      };
+      // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 하나 (작별 = 빨강)
+      if (visOn('confirmSheet')) {
+        const reg = a.status === 'regular';
+        void confirmSheet({
+          title: reg ? `${a.name}${josa(a.name, '와')} 작별할까요?` : `${a.name}${josa(a.name, '을')} 내보낼까요?`,
+          body: reg ? `끼고 있던 장비는 가방으로 돌아와요 · ${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : '오늘 밤 체크아웃해요',
+          ok: reg ? '작별하기' : '내보내기',
+          danger: reg,
+        }).then((ok) => ok && doBye());
+        return;
+      }
       // 실수 방지: 창 안에서 한 번 더 누르기
       if (byeArmed !== a.id) {
         byeArmed = a.id;
@@ -252,12 +289,7 @@ export function showActor(a: Actor) {
         bye.classList.add('red');
         return;
       }
-      byeArmed = 0;
-      if (a.status === 'regular') {
-        const line = farewell(a);
-        if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
-      } else if (checkout(a)) toast(`${a.name} 체크아웃`);
-      closeWin();
+      doBye();
     };
 }
 
@@ -389,11 +421,13 @@ export function openBag() {
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>
     ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
-    <button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>
+    ${visOn('bulkTidy') ? `<div class="btnrow"><button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>${tidyBtnHtml()}</div>` : '<button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>'}
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
     ${autoSalvageHtml('autoS')}
-    <button class="bigbtn sm" id="salAll">일괄 분해…</button>`,
+    <button class="bigbtn sm ${visOn('bulkTidy') ? 'ghost' : ''}" id="salAll">일괄 분해…</button>`,
   );
+  const td = document.getElementById('bagTidy');
+  if (td) td.onclick = () => openTidyConfirm(openBag);
   $$('.bag .ic').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!)));
   bindAutoSalvage('autoS');
   $('#salAll').onclick = () => openBulkSalvage(openBag);
@@ -486,8 +520,10 @@ export function showItem(it: Item, back: () => void = openBag) {
     toast(enhMsg(it, r, before));
     showItem(it, back);
   };
-  $('#iSal').onclick = () => {
-    if (it.grade !== 'n' && !confirm(`${g.name} 장비를 분해할까요?`)) return;
+  $('#iSal').onclick = async () => {
+    // J4 confirmSheet: 희귀 이상은 아래 확인 시트 (끄면 예전 confirm 그대로)
+    if (it.grade !== 'n' && !(visOn('confirmSheet') ? await confirmSheet({ title: `${g.name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${g.name} 장비를 분해할까요?`))) return;
+    if (!P.bag.includes(it)) return;
     salvage(it);
     toast(`분해 · ${salvageText(it.grade)}`);
     back();

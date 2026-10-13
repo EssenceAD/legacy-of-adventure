@@ -1,6 +1,7 @@
 // TOWN T2 → BUILDUX: 꾸미기 모드 — 손님·위 HUD를 숨기고 위 도구 탭 + 아래 버튼 줄
 //  탭: ✋ 옮기기(꾹 눌러 들기 · 누르면 정보) · ＋ 놓기 · 길(붓·직선 · 지우개) · 바닥(붓·채우기 · 지우개) · 범위(끌어서 네모 → 옮기기·반전·넣어 두기·같은 것 놓기)
 //  아래: ↶ 되돌리기 · ↷ 다시 하기 (20단계) · 건물 흐리게 · 격자 · 자동 길 · 📦 보관함 · ✓ 다 했어요
+import { vis } from '../world/visual';
 import {
   autoPathOn, beginStroke, isAutoPath, canRedo, canUndo, decorView, decosIn, elbowTiles, endStroke, fillTiles, FILL_MAX, GROUND_KINDS, groupWhy, moveGroup, PAINT_NAME, paintMany, paintTile, paintWhy, PATH_MATS,
   redo, redoLabel, setAutoPath, tapCycle, undo, undoLabel, flipGroup, type PaintCode,
@@ -11,6 +12,7 @@ import { markDirty, P, S } from '../world/state';
 import { placing } from '../world/town';
 import { track as trackEv } from '../net/telemetry';
 import { buildHooks, closeWin, isWinOpen, openBuild, openWin, thumbOf, toast } from './windows';
+import { confirmSheet } from './confirmSheet';
 import { cancelPlace, rotatePlacement, startMoveEntrance, startPlace, startTakeOut } from './hud';
 import { esc } from './common';
 import { syncHud } from '../game';
@@ -104,9 +106,11 @@ function draw() {
     const pk = decorView.picked;
     const same = pk.length && pk.every((o) => o.kind === pk[0].kind) ? pk[0].kind : null;
     sub = pk.length
-      ? `<span class="hint">장식 ${pk.length}개 · 끌어서 옮겨요</span><button data-act="flip">↔ 반전</button><button data-act="stash">📦 넣어 두기</button>${same ? `<button data-act="dup">＋ 같은 것 놓기</button>` : ''}<button data-act="unpick">해제</button>`
+      ? `<span class="hint">장식 ${pk.length}개 · 끌어서 옮겨요</span><button data-act="flip">${vis('actionsTidy') ? '↔ 좌우 뒤집기' : '↔ 반전'}</button><button data-act="stash">📦 넣어 두기</button>${same ? `<button data-act="dup">＋ 같은 것 놓기</button>` : ''}<button data-act="unpick">해제</button>`
       : '<span class="hint">손가락으로 네모를 그려 장식을 골라요 (PC: Shift+끌기)</span>';
-  } else sub = '<span class="hint">꾹 눌러 들어서 옮겨요 · 그냥 누르면 정보 · 끌면 둘러보기</span><button data-act="ent" title="손님이 드나드는 울타리 앞 입구를 좌우로 옮겨요">🚪 입구 옮기기</button>';
+  } else
+    // v0.25.4 actionsTidy: 실제 동작(짧게 눌러도 건물·장식을 바로 든다)에 맞춘 안내 — 정보는 꾸미기 밖에서 누르면
+    sub = `<span class="hint">${vis('actionsTidy') ? '누르면 들어서 옮겨요 · 끌면 둘러보기 · 정보는 꾸미기 밖에서' : '꾹 눌러 들어서 옮겨요 · 그냥 누르면 정보 · 끌면 둘러보기'}</span><button data-act="ent" title="손님이 드나드는 울타리 앞 입구를 좌우로 옮겨요">🚪 입구 옮기기</button>`;
   const n = storeList().length;
   bar.innerHTML = `<div class="dt">${TABS.map(([t, nm]) => `<button class="tl ${tab === t ? 'on' : ''}" data-tab="${t}">${nm}</button>`).join('')}</div>
     <div class="ds">${sub}</div>
@@ -222,9 +226,12 @@ export function openStore() {
   );
   document.querySelectorAll<HTMLElement>('#winB [data-sell]').forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = async () => {
         const s = list[+b.dataset.sell!];
-        if (b.dataset.sure !== '1') {
+        // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 (판매 = 빨강)
+        if (vis('confirmSheet')) {
+          if (!(await confirmSheet({ title: `${def(s.kind).name}${s.lvl > 1 ? ` Lv.${s.lvl}` : ''}을(를) 팔까요?`, body: `받는 금화 💰${refundOfStored(s).toLocaleString('ko-KR')} · 판 건물은 돌아오지 않아요`, ok: '팔기', danger: true }))) return;
+        } else if (b.dataset.sure !== '1') {
           // 실수 방지: 한 번 더 눌러야 판다
           b.dataset.sure = '1';
           b.textContent = `정말 팔기 💰${refundOfStored(s).toLocaleString('ko-KR')}`;

@@ -286,12 +286,19 @@ export const S = {
   clock: 0,
 };
 
+/** CHECKIN §C2 세이브에 든 설정값: at = 마지막으로 바뀐 현실 시각(ms) · v = 설정 키 → localStorage 원문(JSON 문자열) */
+export interface PrefsBlob {
+  at: number;
+  v: Record<string, string>;
+}
 /** 2단계 진행 데이터 (전부 저장된다) */
 export function freshProgress() {
   return {
     nextAdvId: 1,
     nextItemId: 1,
     rep: 0,
+    /** CHECKIN §C2 설정값을 세이브에도 (폰·PC 같게 · ui/prefsSync) — 없으면(옛 저장·플래그 끔) 저장 JSON에 안 나온다 */
+    prefs: undefined as undefined | PrefsBlob,
     bag: [] as Item[],
     dust: { n: 0, r: 0, e: 0, l: 0, a: 0 } as Record<Grade, number>,
     mats: perRegion(),
