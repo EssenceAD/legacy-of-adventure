@@ -1667,6 +1667,7 @@ body.in-combat a{pointer-events:none}
 /* GOLDSINK §7 끝없는 심연 · §8 주사위 술내기 */
 .huntw .tab.abtab{position:relative;color:#d9c8ff}
 .huntw .tab.abtab::after{content:'';position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:var(--rc);pointer-events:none}
+.abcps{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;margin-top:6px}.abcp{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;min-height:44px;border-radius:8px;border:1px solid #4a5590;background:#1f2547;color:#e6ebff;font:inherit}.abcp small{color:#ffd76a}.abcp:disabled{opacity:.5}
 .abauto{display:flex;align-items:center;gap:6px;margin:6px 0;font-size:var(--f-small);color:#cdd5f5}
 .abcount{color:#ffd76a}
 .dtable{background:linear-gradient(#6b4423,#5a381c);border:3px solid #3a2410;box-shadow:inset 0 0 0 2px #8a5a30;padding:10px;border-radius:4px}

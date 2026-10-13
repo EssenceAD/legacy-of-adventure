@@ -41,6 +41,8 @@ export interface CombatResult {
   bossDown: boolean;
   /** 남은 시간(초) — 토벌 처치 등급 보정 */
   timeLeft?: number;
+  /** v0.24.5 ✕ → 포기로 끝났나 (끝없는 심연: 진 게 아니라 나간 것) */
+  quit?: boolean;
 }
 
 let F: Field | null = null;
@@ -747,6 +749,7 @@ function giveUp() {
   if (!F || F.done) return;
   F.done = 'lose';
   F.doneT = 2;
+  F.quit = true;
 }
 /** 버튼 모서리 키캡 글자 (PC에서만 보인다 — CSS) */
 function syncKeycaps() {
@@ -778,7 +781,7 @@ function finish() {
   finishedField = f;
   const res: CombatResult = {
     win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
-    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time),
+    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time), quit: !!f.quit,
   };
   onEnd?.(res);
 }

@@ -229,6 +229,8 @@ export interface Field {
   /** 핫픽스 12 §6: 5단계 짝 전용 합동 오의인가 */
   ult5?: boolean;
   hitsTaken: number;
+  /** v0.24.5 ✕ 포기 */
+  quit?: boolean;
   autoUsed: boolean;
   auto: boolean;
   kills: number;

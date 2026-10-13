@@ -19,5 +19,6 @@
   "innDecoObj": true,
   "aiBossTarget": true,
   "keycapLabels": true,
-  "zoomDedupe": true
+  "zoomDedupe": true,
+  "abyssResume": true
 }

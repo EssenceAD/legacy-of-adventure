@@ -43,6 +43,8 @@ export const FLAG_DEFAULTS = {
   keycapLabels: true,
   /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
   zoomDedupe: true,
+  /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */
+  abyssResume: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
