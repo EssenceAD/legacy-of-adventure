@@ -699,7 +699,7 @@ export function openReport() {
           if (ok) {
             addReport({ kind, text, at: Date.now() });
             closeWin();
-            talk([['post', '편지 잘 받았어요! 답장은 공지에서 확인해 주세요~']]);
+            talk([['post', '편지 잘 받았어요! 운영자님이 읽고 답장하면 우편함으로 보내 드릴게요~']]);
           } else {
             btn.disabled = false;
             btn.textContent = '편지 보내기';

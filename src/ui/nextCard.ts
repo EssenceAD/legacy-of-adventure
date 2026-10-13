@@ -42,7 +42,7 @@ export function nextCardHtml(n: unknown, base = '', now = new Date()): string {
   const more = items.length > (n.title?.trim() ? 0 : 1) ? ' 외' : '';
   const date = nextDate(n.date);
   const img = safeImg(n.image);
-  return `<div class="nextcard"><p class="nxh"><b>다음 업데이트</b>${date ? ` · ${esc(date)}` : ''} · ${esc(head)}${more}</p>${img ? `<img class="nximg" src="${esc(base + img)}" alt="" loading="lazy">` : ''}${items.length ? `<ul>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<small>업데이트는 매주 목요일 밤에 한 번 — 그 사이엔 급한 수정만 해요</small></div>`;
+  return `<div class="nextcard"><p class="nxh"><b>다음 업데이트</b>${date ? ` · ${esc(date)}` : ''} · ${esc(head)}${more}</p>${img ? `<img class="nximg" src="${esc(base + img)}" alt="" loading="lazy">` : ''}${items.length ? `<ul>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<small>업데이트는 보통 목요일 밤에 — 그 사이엔 급한 수정만 해요</small></div>`;
 }
 
 /** next.json 받기 (캐시 없이 · 실패하면 null) */
