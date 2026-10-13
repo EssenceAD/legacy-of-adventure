@@ -49,7 +49,23 @@ const KEEP: (keyof SavedAdventurer)[] = ['id', 'kind', 'name', 'lvl', 'xp', 'rac
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /** 지금 상태 → 저장 모양 (이웃 방문 중이면 보관해 둔 내 마을로) */
+/** CHECKIN §C2: 저장 모양을 만들기 직전 (ui/prefsSync가 설정값을 P.prefs에 넣는다 · save가 ui를 부르지 않게 고리로) */
+export const saveHooks = { beforeSnapshot: () => {} };
+/** CHECKIN §C2: 세이브에 실어 나르는 설정 키 (이것 말고는 세이브가 localStorage를 건드리지 못한다) */
+export const SYNC_PREF_KEYS = [
+  'sound', 'saver', 'shake', 'fontStep', 'rumorOff', 'settleOff', 'goalPillOff', 'wfBubOff', 'propCard', 'chemNotice', 'propFilter', 'storyInbox',
+  'telemetry', 'keys', 'guestFavPin', 'haptics', 'dmgNums', 'ssAuto', 'ssWake',
+] as const;
+/** 세이브에 든 설정값 검사 (모양이 이상하면 없는 것으로 · 아는 키 · 문자열만) */
+export function validPrefs(p: any): import('../world/state').PrefsBlob | undefined {
+  if (!p || typeof p !== 'object' || !Number.isFinite(p.at) || !p.v || typeof p.v !== 'object' || Array.isArray(p.v)) return undefined;
+  const v: Record<string, string> = {};
+  for (const k of SYNC_PREF_KEYS) if (typeof p.v[k] === 'string' && p.v[k].length < 4000) v[k] = p.v[k];
+  return { at: p.at, v };
+}
+
 export function snapshot(): SaveData {
+  saveHooks.beforeSnapshot();
   const objs: Building[] = S.visiting && world.home ? world.home.objs : world.objs;
   const actors: Actor[] = S.visiting && world.home ? world.home.actors : world.actors;
   P.lastSeen = Date.now();
@@ -243,6 +259,9 @@ function validate(d: any): SaveData | null {
     }));
   if (!buildings.some((b) => b.kind === 'inn')) return null;
   const progress = mergeProgress(d.progress);
+  // CHECKIN §C2: 설정값 (옵션 칸 · 없으면 그대로 없음)
+  const pf = validPrefs(d.progress?.prefs);
+  if (pf) progress.prefs = pf;
   const ids = new Set<number>();
   const adventurers: SavedAdventurer[] = (Array.isArray(d.adventurers) ? d.adventurers : [])
     .filter((a: any) => a && (GUEST_KINDS as readonly string[]).includes(a.kind))

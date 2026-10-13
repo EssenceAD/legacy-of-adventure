@@ -36,5 +36,10 @@
   "legendCompanion": true,
   "firstFlowFix": false,
   "harmonyLabels": true,
-  "heroDetailGift": true
+  "heroDetailGift": true,
+  "gearAlways": false,
+  "settingsTabs": false,
+  "sound70": false,
+  "screenSaver": false,
+  "uiHide": false
 }

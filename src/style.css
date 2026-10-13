@@ -1908,3 +1908,60 @@ body.ui2 #winB #rmB{min-height:44px}
 :where(body.ui2) .pty-dex small{font-size:var(--fs-small)}
 :where(body.ui2) .chreg i{font-size:var(--fs-title)}
 /* ui2-fonts:end */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   CHECKIN v0.25.4 §C1 ⚙ · §C2 설정 3탭 · §L1 화면 보호 · §L2 구경 모드
+   플래그·실험실이 꺼져 있으면 클래스(body.gear·ssaver·uihide)와 요소(#bGear·#bEye·#ssOv·#uiHideBar·.cbsheet)가 없어서 하나도 안 걸린다
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+/* C1 ⚙ — 예전 HUD: 맨 위 줄 「메뉴」 자리(메뉴는 아래 줄에 그대로) · 창이 열려도 어두운 바깥(scrim)보다 위라 눌린다 */
+body.gear #bMenu{display:none!important}
+#bGear{position:relative;z-index:calc(var(--z-win) + 1)}
+/* 새 HUD: 상태줄 오른쪽 끝 한 칸 (상태줄과 같은 판) */
+body.hud2 #bGear{flex:none;align-self:stretch;width:var(--h2-hit);min-width:0;height:var(--h2-bar);padding:0;border-image:var(--ui-titlebar) 6 fill / calc(6px * var(--k1)) / 0 stretch}
+body.hud2 #bGear small{display:none}
+/* 전투: 오른쪽 위 ✕ 자리의 ⚙ → 일시정지 시트 */
+.cbtop .cbgear{display:grid;place-items:center;min-width:36px;min-height:32px}
+.cbtop .cbgear img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+.cbpause .cbsheet{width:min(420px,92vw);text-align:left}
+.cbpause .cbsheet>b{text-align:center}
+.cbsheetb{max-height:min(58vh,440px);overflow:auto;overscroll-behavior:contain}
+.cbsheetb .snd .sub{margin:0}
+.cbopts{display:flex;flex-direction:column;margin-top:4px}
+.cbopts .tog{min-height:36px;margin-top:2px}
+.cbquitnote{margin:8px 0 0;text-align:center;color:#9aa6d8;font-size:var(--f-small)}
+.cbgo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.cbgo .bigbtn{margin:0;min-height:44px}
+
+/* C2 설정 3탭: 탭 줄은 창 맨 위 */
+.stabs{display:flex;gap:6px;margin-bottom:6px}
+.stabs .tab{flex:1 1 0;min-height:40px}
+
+/* L1 화면 보호: 마을을 밤보다 더 어둡게 + 가운데 작은 판 (판은 1분마다 순간 이동 — 번인 방지 · 애니메이션 없음) */
+#ssOv{position:absolute;inset:0;z-index:calc(var(--z-dialog) + 3);display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.9);cursor:pointer;touch-action:none}
+body.ssaver #hud,body.ssaver .wfbub{visibility:hidden}
+#ssOv .sspanel{min-width:190px;padding:12px 16px;color:var(--cream);font-size:var(--f-ui);text-align:center;opacity:.8}
+#ssOv .ssinn{display:block;margin-bottom:6px;color:var(--gold)}
+#ssOv dl{display:grid;grid-template-columns:auto auto;gap:3px 16px;margin:0;text-align:left}
+#ssOv dt{color:#9aa6d8;font-size:var(--f-small)}
+#ssOv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+#ssOv small{display:block;margin-top:8px;color:#6f7aa8;font-size:var(--f-tiny)}
+.sssum{display:grid;gap:2px;margin:6px 0}
+.ssrow{display:flex;justify-content:space-between;gap:10px;padding:5px 2px;border-bottom:1px dashed #fff2}
+.ssrow b{color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* L2 👁 구경 모드 버튼: 예전 HUD 오른쪽 줄(어울림·소리 아래) · 새 HUD 오른쪽 작은 버튼 줄 맨 아래 */
+#bEye{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 172px);z-index:var(--z-hud)}
+html:not([data-size="phone"]) #bEye{top:calc(env(safe-area-inset-top,0px) + 200px)}
+#bEye b{font-size:var(--f-ui);line-height:1}
+.talking #bEye,.placing #bEye,body.winopen #bEye{visibility:hidden}
+body.visiting #bEye{display:none!important}
+body.hud2 #bEye{right:calc(var(--h2-pad) + 2px);top:calc(var(--h2-top) + 4 * var(--h2-hit));width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0}
+body.hud2 #bEye::after{content:'';display:block;position:absolute;inset:calc(-1 * var(--h2-pad))}
+body.hud2 #bEye small{display:none}
+body.hud2 #bEye b{font-size:var(--f-small)}
+/* 숨긴 동안: HUD 전부 · 길잡이 「!」 · 배너 · 되돌리기 띠 (손님 말풍선·마을은 그대로) */
+body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidden!important}
+#uiHideBar{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:calc(var(--z-hud) + 2);display:flex;flex-direction:row-reverse;align-items:center;gap:8px;pointer-events:none}
+#uiHideBar button{pointer-events:auto;font-size:var(--f-ui)}
+#uiHideBar small{color:var(--cream);font-size:var(--f-small);text-shadow:1px 1px 0 var(--ink);opacity:.8}

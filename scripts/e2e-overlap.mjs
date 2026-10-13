@@ -23,7 +23,7 @@ const DEVS = {
   '412x915': { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, userAgent: AND },
   '390x844': { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: IOS },
 };
-const SKIP = /사진 찍기|유저 톡방/;
+const SKIP = /사진 찍기|유저 톡방|화면 보호/;
 const LAB = process.env.LAB === '1';
 const AREA_MIN = 80;
 const areas = [];

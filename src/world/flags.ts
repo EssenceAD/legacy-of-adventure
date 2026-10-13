@@ -78,6 +78,16 @@ export const FLAG_DEFAULTS = {
   harmonyLabels: true,
   /** v0.25.3 K9 (고느끼 건의) 손님·영웅 상세 창에 [선물하기] — 마을 작은 메뉴와 같은 선물 고르기 */
   heroDetailGift: true,
+  /** v0.25.4 CHECKIN §C1 톱니바퀴 항상 (형철 확인 전엔 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 오른쪽 위 ⚙ 하나(마을·창 위: 설정 창 · 전투: 일시정지 시트 = 소리·AUTO·흔들림·피해 숫자·[계속][포기]) */
+  gearAlways: false,
+  /** v0.25.4 CHECKIN §C2 설정 3탭 기본 / 알림 / 계정 (형철 확인 전엔 꺼짐 · vis()) — 진동 줄 · 설정값을 세이브(P.prefs)에도 넣어 폰·PC 같게 (불러올 때 둘 중 최근 것) */
+  settingsTabs: false,
+  /** v0.25.4 CHECKIN §K1 처음 켤 때 배경음악 70% (효과음은 원래 70%) — 소리 설정을 한 번도 안 바꾼 기기만 (형철 확인 전엔 꺼짐 · vis()) */
+  sound70: false,
+  /** v0.25.4 CHECKIN §L1 화면 보호 모드 (형철 확인 전엔 꺼짐 · vis()) — 아주 어두운 마을 · 초당 2번만 그림(dpr 1) · 가운데 작은 판(1분마다 자리 이동) · n분 손 안 대면 자동 · 누르면 「다녀오셨어요」 요약 */
+  screenSaver: false,
+  /** v0.25.4 CHECKIN §L2 UI 끄기 구경 모드 (형철 확인 전엔 꺼짐 · vis()) — 👁 버튼 → UI가 숨고 마을만 · 두 번 누르기·뒤로가기로 복귀 · [📷] 사진 모드로 · 숨긴 동안 대기 이벤트는 안 띄움 */
+  uiHide: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

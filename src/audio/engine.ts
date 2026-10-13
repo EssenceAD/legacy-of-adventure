@@ -1,6 +1,7 @@
 // 소리 엔진: AudioContext · 마스터/배경음악/효과음 볼륨 · 첫 터치 잠금 해제 · 앱을 내리면 멈춤 · 덕킹
 //  설정은 기기별 localStorage (세이브 데이터가 아니다). 터치 전에는 아무것도 만들지도 틀지도 않는다.
 import { getPref, setPref } from '../save/save';
+import { vis } from '../world/visual';
 
 export interface SoundPrefs {
   bgmOn: boolean;
@@ -12,6 +13,19 @@ export interface SoundPrefs {
 const DEF: SoundPrefs = { bgmOn: true, bgmVol: 0.4, sfxOn: true, sfxVol: 0.7, muted: false };
 export const prefs: SoundPrefs = { ...DEF, ...getPref<Partial<SoundPrefs>>('sound', {}) };
 export const savePrefs = () => setPref('sound', prefs);
+/** CHECKIN §K1: 이 기기에서 소리 설정을 한 번도 저장한 적 없나 (처음 켬) */
+let freshSound = getPref<unknown>('sound', null) === null;
+/** CHECKIN §K1 (sound70): 처음 켤 때 배경음악 70% — 소리를 처음 여는 터치에서 (설정을 바꿀 때 저장된다) */
+function firstRunVolume() {
+  if (freshSound && vis('sound70') && prefs.bgmVol === DEF.bgmVol) prefs.bgmVol = 0.7;
+  freshSound = false;
+}
+/** CHECKIN §C2: 세이브의 설정값을 받은 뒤 다시 읽기 */
+export function reloadSoundPrefs() {
+  freshSound = false;
+  Object.assign(prefs, DEF, getPref<Partial<SoundPrefs>>('sound', {}));
+  applyPrefs(false);
+}
 
 export let ctx: AudioContext | null = null;
 let master: GainNode;
@@ -76,6 +90,7 @@ function fadeMaster(to: number, sec: number) {
 /** 터치마다: 처음이면 만들고, 멈춰 있으면(전화·다른 앱) 다시 */
 function onGesture() {
   if (!ctx) {
+    firstRunVolume();
     build();
     const c = ctx as AudioContext | null;
     if (!c) return;
