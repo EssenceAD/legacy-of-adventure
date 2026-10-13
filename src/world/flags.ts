@@ -78,6 +78,8 @@ export const FLAG_DEFAULTS = {
   harmonyLabels: true,
   /** v0.25.3 K9 (고느끼 건의) 손님·영웅 상세 창에 [선물하기] — 마을 작은 메뉴와 같은 선물 고르기 */
   heroDetailGift: true,
+  /** v0.25.4 K10 어울림 「모아 놨는데 안 생김」: 1칸 장식 개수 제한 없음 · 어울림마다 한 세트 먼저 · 구역은 이어진 덩어리 · 같은 이름 장식(술통 더미·장미 아치) 같은 물건 · 로드 때 재계산 (버그 수정 — 켬) */
+  harmonyV2: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

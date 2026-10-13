@@ -90,7 +90,7 @@ import * as audioSfx from './audio/sfx';
 const sfx = audioSfx.sfx;
 import { forceSpectacle, resolve as resolveSpectacle, spectacles, tapSpectacle, tickSpectacles } from './ui/spectacle';
 import * as evalW from './world/evaluation';
-import { checkDiscover, computeSets, harmonySets, tickHarmony } from './world/harmony';
+import { checkDiscover, computeSets, harmonySets, partProgress, recountHarmony, tickHarmony } from './world/harmony';
 import { propsNow } from './world/gradeDraw';
 import { queueEvent } from './world/events';
 import { checkParty4, checkSlot5, dailyAttend, updateGift, welcomeMail } from './world/meta';
@@ -195,6 +195,8 @@ function update(dt: number) {
       if (S.night) nightOwner(true);
       // 베타: v6 마이그레이션 (어울림 발견 보상 우편 · 장부 번호) → 장부 — 이미 해 둔 일은 바로 완료
       betaMigrate();
+      // K10: 이미 모아 둔 어울림은 들어오자마자 발견 (보상은 우편)
+      recountHarmony((title, body, gold) => addMail({ from: 'system', title, body, reward: { gold } }));
       syncGuideIdx();
       skipDone();
       // 5단계 2차: 운영자 선물(처음 한 번) · 출석 도장
@@ -745,6 +747,11 @@ function tap(e: PointerEvent) {
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 50 + Math.random() * 20, '뚝딱! −1초');
     puffAt(o, '#efe2c6', 3);
     return;
+  }
+  // K10: 어울림 보기 중에 부품을 누르면 이 물건이 낄 어울림과 진행 한 줄 (창은 열지 않음)
+  if (o && P.harmony.show && flag('harmonyV2') && !S.visiting) {
+    const ls = partProgress(o);
+    if (ls.length) return toast(ls.join(' · '));
   }
   if (o) return showObj(o);
   // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
