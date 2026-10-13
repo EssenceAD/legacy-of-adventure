@@ -91,6 +91,8 @@ export function refundStored(s: StoredObj): number {
   const list = storeList();
   const i = list.indexOf(s);
   if (i < 0) return 0;
+  // v0.24.2: 레벨 기념 장식은 팔 수 없다
+  if (def(s.kind).levelDeco) return 0;
   const gold = refundOf({ ...s, tx: 0, ty: 0, fw: 1, fh: 1, inside: [], sprite: '' } as unknown as Building).gold;
   list.splice(i, 1);
   P.decor.store = list;

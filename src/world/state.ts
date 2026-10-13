@@ -485,6 +485,8 @@ export function freshProgress() {
       /** HOTFIX14 §5: 같은 건물 2채 저장 사과 편지를 보냈나 */
       sorryDupe: false,
       giftDeco: {} as Record<string, number>,
+      /** v0.24.2: 준 레벨 장식 (inn6 · inn9 · tavern5 → 준 시각) — 두 번 안 준다 */
+      lvlDeco: {} as Record<string, number>,
       /** GUEST_SPEC: 게스트에게 「계정 연결」 편지를 보냈나 */
       linkMail: false,
       /** DIRECTION §2-1: 우편함에 넣은 운영자 답장 (편지 번호@답장 시각 — 답장을 고치면 다시 온다) */

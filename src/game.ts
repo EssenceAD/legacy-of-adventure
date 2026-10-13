@@ -43,6 +43,7 @@ import { sanitizeRegions2 } from './world/regions2';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
+import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
 import { closeWin, isWinOpen, toast } from './ui/windows';
 import { maybeShowPatchCard } from './ui/update';
 import { track as trackEv } from './net/telemetry';
@@ -271,6 +272,11 @@ function applySave(d: SaveData) {
   migrateGradeKeys();
   // 핫픽스 v0.23.1: 아리아 부탁 남은 시간 다시 3일 (한 번)
   extendAriaOnce();
+  // v0.24.2 innDecoObj: 옛 저장 — 지금 레벨만큼 레벨 장식을 한 번 (제자리가 막혔으면 보관함)
+  rebuildPaths();
+  loadingDeco = true;
+  grantLevelDeco(true);
+  loadingDeco = false;
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
   const movedKinds = P.harmony.moved.map((k) => k.split('@')[0]);
   for (const k of new Set(movedKinds)) {
@@ -478,12 +484,22 @@ export function thud(o: Building) {
   afterLayoutChange();
 }
 
+// ───────── v0.24.2 레벨 장식 ─────────
+let loadingDeco = false;
+lvlDecoHooks.stored = (msg) => (loadingDeco ? setTimeout(() => toast(msg), 4000) : toast(msg));
+lvlDecoHooks.placed = (o) => {
+  if (loadingDeco) return;
+  o.pop = 1;
+  puffAt(o, '#fff3b0', 10);
+};
+
 // ───────── CONSTRUCTION_SPEC: 공사 완성 연출 ─────────
 const offlineDone: string[] = [];
 conHooks.done = (o, offline) => {
   const d = def(o.kind);
   const name = o.lvl > 1 ? `${d.name} Lv.${o.lvl}` : d.name;
   rebuildPaths();
+  if (o.kind === 'inn' || o.kind === 'tavern') grantLevelDeco(false);
   if (offline) {
     offlineDone.push(name);
     return;

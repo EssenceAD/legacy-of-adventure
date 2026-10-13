@@ -3,6 +3,7 @@
 // 2) 깊이 순서대로 건물·나무·캐릭터를 "밤 색으로 미리 물든 그림"으로
 // 3) 건물 하나를 그린 직후 그 건물의 창문 불빛 → 앞 건물이 나중에 그려지며 가린다
 // 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
+import { decoAsObjects } from './levelDeco';
 import { def, SMOKE } from '../data/catalog';
 import { drawFireworks, statueName } from './luxury';
 import { decorView } from './decor';
@@ -590,6 +591,8 @@ function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: num
   const door = at(o.tx + o.fw / 2, o.ty + o.fh);
   const p = P(ctx);
   const night = NL > 3;
+  // v0.24.2 innDecoObj: 화분·석등·술통은 진짜 장식(world/levelDeco.ts)이 된다
+  const asObj = decoAsObjects();
   const sprite = (k: string, X: number, Y: number) => {
     const im0 = IMG[k];
     if (!im0) return;
@@ -603,7 +606,8 @@ function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: num
   };
   // 문 옆 등불 (여관·주점 Lv.3)
   if (L >= 3 && (inn ? !o.sprite?.startsWith('inn8') : true)) {
-    lantern(Math.round(door[0] - 14), Math.round(door[1] + 4));
+    // v0.24.2: 왼쪽 등불 밑동을 앞 테두리 안쪽으로 (예전 +4는 문 앞 칸에 걸쳐 유저 장식과 겹쳤다)
+    lantern(Math.round(door[0] - 14), Math.round(door[1] + (asObj ? -9 : 4)));
     lantern(Math.round(door[0] + 10), Math.round(door[1] - 2));
   }
   // 처마 등불 줄 (여관 Lv.4): 왼쪽 모서리 → 앞 모서리, 살짝 처진 줄
@@ -620,14 +624,14 @@ function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: num
     }
   }
   // 화분 (여관 Lv.6): 앞쪽 두 모서리
-  if (inn && L >= 6) {
+  if (inn && L >= 6 && !asObj) {
     sprite('flower_pot', left[0] + 10, left[1] - 2);
     sprite('flower_pot', front[0] - 4, front[1] - 6);
   }
   // 굴뚝 연기 하나 더 (여관 Lv.7)
   if (inn && L >= 7 && Math.random() < 0.06) puff(x + w * 0.7 - view.OX, y + 30 - view.OY, '#d8d2c8', (Math.random() - 0.5) * 4, -8, 2.2, 3);
   // 석등 (여관 Lv.9): 문 양옆
-  if (inn && L >= 9) {
+  if (inn && L >= 9 && !asObj) {
     sprite('stone_lantern', door[0] - 22, door[1] + 8);
     sprite('stone_lantern', door[0] + 18, door[1]);
     if (night) {
@@ -636,13 +640,15 @@ function levelDeco(ctx: CanvasRenderingContext2D, o: Building, x: number, y: num
     }
   }
   // 술통 (주점 Lv.5): 오른쪽 앞 면
-  if (!inn && L >= 5) sprite('barrels', (front[0] + right[0]) / 2 + 6, (front[1] + right[1]) / 2 + 4);
+  if (!inn && L >= 5 && !asObj) sprite('barrels', (front[0] + right[0]) / 2 + 6, (front[1] + right[1]) / 2 + 4);
   // DIRECTION §1-2 축제의 해: 아직 깃발이 없는 여관·주점에도 깃발
   const festFlag = windIs('festival') && !S.visiting && !((inn && L >= 10) || (!inn && L >= 6));
-  if (festFlag) sprite('flagpole', right[0] - 6, right[1] + 2);
+  // v0.24.2: 깃대 밑동을 발판 안쪽으로 (오른쪽 꼭짓점에서 조금 안)
+  const flagAt = (): [number, number] => (asObj ? [right[0] - 10, right[1] - 1] : [right[0] - 6, right[1] + 2]);
+  if (festFlag) sprite('flagpole', ...flagAt());
   // 깃발 · 금빛 간판 (여관 Lv.10 · 주점 Lv.6)
   if ((inn && L >= 10) || (!inn && L >= 6)) {
-    sprite('flagpole', right[0] - 6, right[1] + 2);
+    sprite('flagpole', ...flagAt());
     // 금빛 반짝임 (간판 자리 = 문 위)
     for (let i = 0; i < 4; i++) {
       const ph = (S.T * 1.5 + i * 0.37) % 1;
@@ -1066,11 +1072,18 @@ export function buildingAt(mx: number, my: number, alphaAt: (k: string, x: numbe
   const hits = world.objs
     .filter((o) => o.sprite && IMG[o.sprite])
     .sort((p, q) => q.tx + q.ty + q.fw + q.fh - (p.tx + p.ty + p.fw + p.fh));
-  for (const o of hits) {
+  const hitAt = (o: Building) => {
     const [x, y] = objTL(o);
     const im = IMG[o.sprite!];
-    if (mx >= x && my >= y && mx < x + im.width && my < y + im.height && alphaAt(o.sprite!, mx - x, my - y)) return o;
-  }
+    return mx >= x && my >= y && mx < x + im.width && my < y + im.height && !!alphaAt(o.sprite!, mx - x, my - y);
+  };
+  if (decoAsObjects()) {
+    // v0.24.2: 그리는 순서(발판 겹침 기준 · orderThings)와 같게 — 큰 건물 옆면에 붙은 장식이 그림으론 앞인데 탭은 건물로 가던 문제
+    const all = hits.filter(hitAt);
+    const front = all.find((c) => !all.some((d) => d !== c && behindOf(c, d) === -1));
+    if (front ?? all[0]) return front ?? all[0];
+  } else
+    for (const o of hits) if (hitAt(o)) return o;
   // 모닥불 (건물 그림이 아니라 칸으로)
   for (const o of world.objs) {
     if (o.kind !== 'fire') continue;
@@ -1266,6 +1279,7 @@ function drawPioneer(ctx: CanvasRenderingContext2D, o: Building, x: number, y: n
 
 /** TOWN T5: 장식 불빛(밤) · 움직임 — 색 · 반지름(그림 너비 배) · 빛 자리(그림 안 비율) · 깜빡임 · 물 반짝 · 바람개비 날개 */
 const DECO_FX: Record<string, { glow?: string; r?: number; gx?: number; gy?: number; flicker?: boolean; water?: boolean; spin?: [number, number] }> = {
+  lvl_stone_lantern: { glow: '255,214,140', r: 1.0, gx: 0.5, gy: 0.3 },
   lamppost: { glow: '255,214,140', r: 1.4, gx: 0.5, gy: 0.18 },
   double_lamp: { glow: '255,214,140', r: 1.4, gx: 0.5, gy: 0.18 },
   string_lights: { glow: '255,200,120', r: 1.2, gx: 0.5, gy: 0.3 },

@@ -42,6 +42,8 @@ export interface BuildingDef {
   luxury?: boolean;
   /** EASTER: 베타 개척자 전용 장식 (그 사람만 · 건설 목록에 없음 · 팔 수 없음) */
   pioneerDeco?: boolean;
+  /** v0.24.2: 여관·주점 레벨 장식 (그 레벨이 되면 저절로 · 건설 목록에 없음 · 팔 수 없음 · 값 0) */
+  levelDeco?: boolean;
   desc: string;
 }
 
@@ -87,6 +89,9 @@ export const CATALOG = {
   bench: { name: '벤치', sprite: 'bench', size: [1, 1], cost: 60, deco: true, unlock: 1, desc: '앉아 쉬는 자리 · 어울림 재료' },
   thanks_basket: { name: '감사 꽃바구니', sprite: 'thanks_basket', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '업데이트 선물 · 보기만 해도 기분 좋아요' },
   flowerbed: { name: '꽃밭', sprite: 'flowerbed', size: [1, 1], cost: 80, deco: true, unlock: 1, desc: '꽃향기 · 어울림 재료' },
+  lvl_pot: { name: '여관 화분', sprite: 'flower_pot', size: [1, 1], cost: 0, deco: true, levelDeco: true, unlock: 1, desc: '여관 Lv.6 기념 화분 · 옮기거나 넣어 둘 수 있어요' },
+  lvl_stone_lantern: { name: '여관 석등', sprite: 'stone_lantern', size: [1, 1], cost: 0, deco: true, levelDeco: true, unlock: 1, desc: '여관 Lv.9 기념 석등 · 밤엔 은은한 불빛' },
+  lvl_barrels: { name: '주점 술통', sprite: 'barrels', size: [1, 1], cost: 0, deco: true, levelDeco: true, unlock: 1, desc: '주점 Lv.5 기념 술통 · 옮기거나 넣어 둘 수 있어요' },
   barrels: { name: '술통 더미', sprite: 'barrels', size: [1, 1], cost: 120, deco: true, unlock: 1, desc: '주점 뒷마당 냄새 · 어울림 재료' },
   target: { name: '과녁', sprite: 'target', size: [1, 1], cost: 150, deco: true, unlock: 1, desc: '활 연습 · 어울림 재료' },
   arbor: { name: '장미 아치', sprite: 'arbor', size: [1, 1], cost: 200, deco: true, unlock: 1, desc: '장미 넝쿨 문 · 어울림 재료' },
