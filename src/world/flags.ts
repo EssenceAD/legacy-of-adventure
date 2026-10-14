@@ -163,6 +163,8 @@ export const FLAG_DEFAULTS = {
   flQuiet: false,
   /** FIRSTLOOK §3 폰에서 키보드 안내 숨기기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 터치 기기(pointer: coarse)면 대화창 「Z NEXT」「X SKIP」 대신 「탭: 다음」 + [건너뛰기] 버튼 · 건너뛰기는 열린 뒤 0.35초 동안 안 먹음(티저 건너뛰기도) · PC는 그대로 (숫자·글자 CONFIG.firstLook.touch) */
   flTouchHints: false,
+  /** FIRSTLOOK §1 첫 화면 카메라 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 새 세이브는 배율 3으로 여관 본관 가운데에서 시작(배율을 고른 적 없는 기기만) · 장부 2장을 마치거나 땅을 처음 넓히면 배율 2로 한 번 부드럽게(0.6초) · 첫 낮에 화면 아래 30%가 숲이면 반 칸 옮겨 마을을 화면 40~60% 높이로 · 「땅 넓히기 ○G」 팻말 글씨는 금화가 그 값의 50% 이상일 때만 — 옛 저장·고른 배율은 그대로 (숫자 CONFIG.firstLook.cam) */
+  flFirstCam: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

@@ -56,6 +56,7 @@ import { mergePrefsOnLoad } from './ui/prefsSync';
 import { track as trackEv } from './net/telemetry';
 import { refundOf, removeBuilding, spentOn } from './world/demolish';
 import { addMail } from './world/meta';
+import { markNewSave } from './world/firstCam';
 declare const __APP_VERSION__: string;
 const APP_VER = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
@@ -69,6 +70,8 @@ function resetCamera() {
 
 /** 땅 개편 §5: 카메라 = 지금 땅 가운데 · 배율은 땅이 화면 짧은 변의 70~80% (넓히면 한 단계 멀어짐, 부드럽게 이동) */
 export const camHooks = { fit: (_expand: boolean) => {} };
+/** FIRSTLOOK §1: 타이틀 뒤 배경 마을을 놓는 중 (새 세이브 가까이 배율을 쓰지 않는다) */
+export const camHold = { title: false };
 export function landCamera(expand = false) {
   const [a, b] = landBounds();
   const m = (a + b) / 2;
@@ -122,7 +125,9 @@ export function titleBackdrop() {
   S.started = false;
   S.night = true;
   S.nightT = 1;
+  camHold.title = true;
   resetCamera();
+  camHold.title = false;
   view.cam.y = 20;
 }
 
@@ -141,6 +146,8 @@ export function newGame() {
   const album = { album: [...P.legacy.album], cards: { ...P.legacy.cards } };
   resetProgress();
   Object.assign(P.legacy, album);
+  // FIRSTLOOK §1 flFirstCam: 새 세이브는 가까이(배율 3 · 여관 가운데)에서 시작
+  markNewSave();
   // 핫픽스 10 §15: 새 여관은 옛 저장 구제 대상이 아니다
   P.fastRescued = true;
   startTown();

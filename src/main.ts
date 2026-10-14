@@ -85,7 +85,8 @@ import { buildingAt, objTL, renderFrame, renderMem, starInfo } from './world/ren
 import { bubbleAt, setBldHover, tapBubble } from './world/bldStatusDraw';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
-import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
+import { firstCamClose, firstCamFx, firstCamZoom, placeFirstCam, pullOnLand, pullZoom, resetPull } from './world/firstCam';
+import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, findKind, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
@@ -1009,11 +1010,40 @@ async function boot() {
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   game.resumeHooks.folded = () => void settleFolded();
   // 땅 개편 §5: 땅에 맞춘 배율 — 넓히면 한 단계 멀어진다 · 처음(고른 배율 없음)엔 땅 크기에 맞춰
+  // FIRSTLOOK §1 flFirstCam: 새 세이브는 배율 3 · 여관 가운데 · 첫 낮 숲 옮기기 · 땅을 처음 넓히면 배율 2로 한 번 부드럽게 (옛 저장·고른 배율은 그대로)
   game.camHooks.fit = (expand) => {
     const z = landZoom();
     if (expand) {
+      if (pullOnLand() && !hasZoomPref()) return firstCamFx.pull(pullZoom(zoomsNow()));
       if (z < S.zoom) setZoom(z);
-    } else if (!hasZoomPref() && z !== S.zoom) tempZoom(z);
+      return;
+    }
+    if (!firstCamClose()) resetPull();
+    const fz = firstCamZoom(zoomsNow(), hasZoomPref(), game.camHold.title);
+    if (!hasZoomPref() && (fz ?? z) !== S.zoom) tempZoom(fz ?? z);
+    if (fz != null) placeFirstCam(findKind('inn'), landBounds(), S.day);
+  };
+  firstCamFx.pull = (to) => {
+    const sc0 = view.SC;
+    tempZoom(to);
+    const k = sc0 / view.SC;
+    if (Math.abs(k - 1) < 1e-6) return;
+    // 캔버스 크기가 바뀌면 비워지니 바로 한 번 그린다 (다음 그리기 차례까지 빈 화면이 보이지 않게)
+    updateOrigin();
+    renderFrame(ctx, 0);
+    // 배율은 정수라 한 번에 바뀐다 → 캔버스를 예전 크기로 키워 둔 채 0.6초 동안 제 크기로 (화면 가운데 기준)
+    const ms = CONFIG.firstLook.cam.pullMs;
+    cv.style.transition = 'none';
+    cv.style.transformOrigin = `${host.clientWidth / 2}px ${host.clientHeight / 2}px`;
+    cv.style.transform = `scale(${k})`;
+    void cv.offsetWidth;
+    cv.style.transition = `transform ${ms}ms cubic-bezier(.4,0,.2,1)`;
+    cv.style.transform = 'scale(1)';
+    setTimeout(() => {
+      cv.style.transition = '';
+      cv.style.transform = '';
+      cv.style.transformOrigin = '';
+    }, ms + 50);
   };
   // 핫픽스 11 §5: 1분마다 성능 기록 한 줄 · §4: 폰에서 20분 넘게 하면 배터리 절약 안내 (계정당 1번)
   let perfPrev = { f: stats.frames, w: stats.work };

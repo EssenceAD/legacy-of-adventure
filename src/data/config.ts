@@ -1312,8 +1312,13 @@ export const CONFIG = {
    *   bldMax = 건물 상태 말풍선 최대(원래 bldStatus.max) · goalBlinkMs = 목표 알약 깜빡 · goalTagMs = 「받기!」 꼬리표 최대 ·
    *   tagTapSec = 사람을 누르면 이름표 · tagZoom = 단골 이상 이름표가 연하게 보이는 배율 · tagAlpha = 그 투명도 ·
    *   floatMs = 떠다니는 글씨 시간 · floatMergeMs = 이 시간 안에 같은 자리면 합침 · bandHideMs = 마을을 연 뒤 아래 소문·채팅 띠 숨김
+   *  §1 첫 화면 카메라 (플래그 flFirstCam · world/firstCam.ts):
+   *   startZoom = 새 세이브 시작 배율(가장 가까이) · pullZoom = 장부 2장·첫 땅 넓히기 때 물러나는 배율 · pullMs = 그 시간 ·
+   *   innLift = 여관 본관 바닥 가운데에서 그림 가운데까지(논리 px, 위로) · forestBottom = 화면 아래 이만큼이 숲이면 ·
+   *   band = 마을 가운데가 와야 할 화면 높이(위에서) · shiftTiles = 그때 옮기는 칸(반 칸) · signGold = 「땅 넓히기 ○G」 글씨가 보이는 금화 비율
    */
   firstLook: {
+    cam: { startZoom: 3, pullZoom: 2, pullMs: 600, innLift: 20, forestBottom: 0.3, band: [0.4, 0.6] as [number, number], shiftTiles: 0.5, signGold: 0.5 },
     /** §3 flTouchHints: 터치 기기 대화창 안내 글자 · 건너뛰기가 열린 뒤 안 먹는 시간(ms · 확인 시트와 같은 350) */
     touch: { nextLabel: '탭: 다음', skipLabel: '건너뛰기', guardMs: 350 },
     quiet: {

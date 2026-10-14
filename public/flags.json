@@ -78,5 +78,6 @@
   "bundles": false,
   "guestbook": false,
   "flQuiet": false,
-  "flTouchHints": false
+  "flTouchHints": false,
+  "flFirstCam": false
 }

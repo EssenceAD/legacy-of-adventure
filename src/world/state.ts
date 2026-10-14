@@ -484,6 +484,8 @@ export function freshProgress() {
      * legacy = 5단계 전 저장 (기능을 잠그지 않는다 — 이미 쓰던 걸 막으면 안 된다)
      */
     guide: { idx: 0, claimed: [] as string[], cut: 0, legacy: false, unlocked: [] as string[] },
+    /** FIRSTLOOK §1 flFirstCam: 0 = 옛 저장·플래그 끔(아무것도 안 함) · 1 = 새 세이브 가까이(배율 3) · 2 = 한 번 물러남(그 뒤 지금처럼) */
+    firstCam: 0,
     /**
      * 5단계 2차: 업적(받은 것) · 칭호(달고 있는 것) · 출석 · 상점(오늘 진열·산 것) · 우편함 · 안내서(본 쪽)
      */

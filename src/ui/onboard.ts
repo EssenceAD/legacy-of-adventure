@@ -18,6 +18,7 @@ import { isTalking, talk } from './dialogue';
 import { uiSrc } from './kit';
 import { openCreate, ownerLaterLines } from './owner';
 import { isWinOpen, toast } from './windows';
+import { keepFirstCam } from '../world/firstCam';
 import { fsay } from '../world/visual';
 
 const OB = () => CONFIG.onboard;
@@ -48,7 +49,8 @@ export function startFirstGuest() {
       say(a, '방 있나요?', 99, '', PRI.guide);
     });
     // 대상이 화면 밖이면 카메라를 옮겨 준다
-    game.focusTile(dx + 0.5, dy + 1);
+    // FIRSTLOOK §1 flFirstCam: 새 세이브 가까이(여관 가운데)면 문이 이미 화면 안일 때 그대로
+    if (!keepFirstCam(dx + 0.5, dy + 1)) game.focusTile(dx + 0.5, dy + 1);
   }, OB().guestDelayMs);
 }
 

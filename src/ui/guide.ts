@@ -23,6 +23,8 @@ import { hudSel } from './hud2sel';
 import { vis } from '../world/visual';
 import { openGuestsEquip } from './guests';
 import { cardsOn } from './checkin';
+import { firstCamFx, pullOnChapter, takePull } from '../world/firstCam';
+import { zoomsNow } from './screen';
 
 let handTarget: string | null = null;
 let handUntil = 0;
@@ -33,6 +35,8 @@ export function initGuide() {
     sfx('chapter');
     uiHooks.announce(`★ ${S.innName || '여관'}${josa(S.innName || '여관', '가')} 장부 ${no}장 「${c.name}」${josa(c.name, '을')} 마쳤습니다!`);
     queueChapter(no);
+    // FIRSTLOOK §1 flFirstCam: 장부 2장을 마치면 등급 연출 끝에 배율 2로 한 번 물러남
+    pullOnChapter(no);
   };
   guideHooks.gradeUp = (g) => (pendingGrade = g);
   $('#mission').onclick = onCard;
@@ -70,7 +74,10 @@ export function playGradeUp(to: number, then: () => void) {
     setTimeout(() => b.remove(), 2600);
   }, 1500);
   setTimeout(() => {
-    tempZoom(z0);
+    // FIRSTLOOK §1: 새 세이브 가까이(배율 3)였으면 되돌릴 때 배율 2로 부드럽게 (한 번)
+    const pz = takePull(zoomsNow());
+    if (pz != null) firstCamFx.pull(pz);
+    else tempZoom(z0);
     then();
   }, 3200);
 }
