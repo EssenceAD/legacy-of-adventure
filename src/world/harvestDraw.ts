@@ -120,15 +120,14 @@ export function drawFestProp(ctx: CanvasRenderingContext2D, fp: FestProp) {
   ctx.drawImage(tinted(im0, NL), Math.round(view.OX + x), Math.round(view.OY + y));
 }
 /** 밤·노을 등불 빛 (더하기 · 가로등과 같은 glow) — lt = 밤 정도(노을 등불 포함) */
-export function drawFestLights(ctx: CanvasRenderingContext2D, lt: number) {
+//  v0.25.23: 맨 위 한 번이 아니라 장식 하나를 그린 직후에 (앞 건물·나무가 나중에 그려지며 가린다)
+export function drawFestLight(ctx: CanvasRenderingContext2D, fp: FestProp, lt: number) {
   if (lt <= 0.01) return;
-  for (const fp of festivalProps()) {
-    const L = LIT[fp.k];
-    const m = META[fp.k];
-    if (!L || !m) continue;
-    const [x, y] = spriteOrigin({ sprite: fp.k, tx: fp.x, ty: fp.y, fw: fp.fw, fh: fp.fh });
-    glow(ctx, view.OX + x + m.w / 2, view.OY + y + m.h * L.gy, L.r, lt * (0.5 + Math.sin(S.T * 5 + fp.x) * 0.04));
-  }
+  const L = LIT[fp.k];
+  const m = META[fp.k];
+  if (!L || !m) return;
+  const [x, y] = spriteOrigin({ sprite: fp.k, tx: fp.x, ty: fp.y, fw: fp.fw, fh: fp.fh });
+  glow(ctx, view.OX + x + m.w / 2, view.OY + y + m.h * L.gy, L.r, lt * (0.5 + Math.sin(S.T * 5 + fp.x) * 0.04));
 }
 
 // ───────── 단풍잎 ─────────
