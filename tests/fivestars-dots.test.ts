@@ -97,3 +97,17 @@ describe('FIVESTARS ④ 다섯 별 도트', () => {
     }
   });
 });
+
+describe('FIVESTARS ④ R21 (형철 판정)', () => {
+  it('고느끼 머리 +1 · 왈왈 로브 아랫단 양쪽 −1 · 이카몰리 금테 안경 · 웅스 긴 수건', () => {
+    expect(NAMED.star_gonu.patch.headPlus).toBe(1);
+    expect(NAMED.star_walwal.patch.robeTrim).toBe(1);
+    expect(NAMED.star_ikamolly.patch.glassesColor).toBe('#c9a46a');
+    expect(STARS.ikamolly.face.glasses).toBe(true);
+    expect(NAMED.star_woongs.extras).toContain('longTowel');
+  });
+  it('따뜻한밤 등불 빛 가운데 밝기 = 예전 × 1.4', async () => {
+    const { LANTERN_A } = await import('../src/world/render');
+    expect(LANTERN_A).toBeCloseTo(0.32 * 1.4);
+  });
+});

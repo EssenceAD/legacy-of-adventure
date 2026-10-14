@@ -43,8 +43,42 @@ function fxBox(): HTMLDivElement {
   return fxEl;
 }
 function fxClear() {
+  skyPanOff();
   fxEl?.remove();
   fxEl = null;
+}
+
+// ───────── FIVESTARS ④ R21: 별자리 줄 — 카메라가 하늘로 천천히 올라간다 (1.5초 · 탭하면 바로 끝 모습) ─────────
+export const SKY_PAN_MS = 1500;
+let panStop: (() => void) | null = null;
+function skyPanOff() {
+  panStop?.();
+  document.getElementById('scene')?.classList.remove('skypan', 'skypan-now');
+}
+function skyPan(b: HTMLDivElement) {
+  skyPanOff();
+  const sc = document.getElementById('scene');
+  sc?.classList.add('skypan');
+  // 탭 = 남은 움직임 건너뛰기 (그 탭은 대사를 넘기지 않는다)
+  const swallow = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  const tap = (e: Event) => {
+    swallow(e);
+    sc?.classList.add('skypan-now');
+    b.classList.add('now');
+    document.addEventListener('click', swallow, { capture: true, once: true });
+    stop();
+  };
+  const stop = () => {
+    document.removeEventListener('pointerdown', tap, true);
+    clearTimeout(t);
+    panStop = null;
+  };
+  const t = setTimeout(stop, SKY_PAN_MS);
+  document.addEventListener('pointerdown', tap, true);
+  panStop = stop;
 }
 /** 연출 키: dawn · night · seasons · ledger · photo */
 /** EASTER: 컷신 연출을 바깥에서 (drop = 개척자 장식이 「쿵」) */
@@ -68,8 +102,9 @@ function fx(k: string) {
     b.className = 'sfx-fivestar';
     b.innerHTML = '<i class="st1"></i><i class="st2"></i><i class="st3"></i>';
   } else if (k === 'constellation') {
-    b.className = 'sfx-constellation';
-    b.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
+    b.className = 'sfx-constellation pan';
+    b.innerHTML = '<div class="skyp"><i></i><i></i><i></i><i></i><i></i></div>';
+    skyPan(b);
   }
   // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
   else if (k === 'lanterns') startLanterns();

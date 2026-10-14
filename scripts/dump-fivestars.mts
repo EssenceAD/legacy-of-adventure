@@ -7,7 +7,7 @@
 import { chromium, type Page } from 'playwright-core';
 import fs from 'node:fs';
 
-const OUT = 'reports/fivestars/step4';
+const OUT = process.env.OUT ?? 'reports/fivestars/step4';
 fs.mkdirSync(OUT, { recursive: true });
 const mode = process.argv[2] ?? 'sheets';
 const savePng = (file: string, dataUrl: string) => {
@@ -382,7 +382,10 @@ async function constellation(p: Page, width: number) {
     await p.evaluate(() => (document.querySelector('#dlg') as HTMLElement | null)?.click());
     await p.waitForTimeout(260);
   }
-  await p.waitForTimeout(1200);
+  // R21: 별자리 줄에서 카메라가 하늘로 1.5초 — 중간 한 장 · 다 올라간 하늘 한 장
+  await p.waitForTimeout(650);
+  await p.screenshot({ path: `${OUT}/constellation_pan_mid_${width}.png` });
+  await p.waitForTimeout(1300);
   await p.screenshot({ path: `${OUT}/constellation_${width}.png` });
   console.error(`✓ constellation_${width} (${seen ? '별자리 줄 확인' : '별자리 줄 못 찾음'})`);
 }

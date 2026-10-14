@@ -772,6 +772,18 @@ function drawFire(ctx: CanvasRenderingContext2D, o: { tx: number; ty: number }, 
   ctx.drawImage(im, X - FIRE_W / 2, Y - (im.height - CONFIG.fire.baseFromBottom) + dy);
 }
 
+/** FIVESTARS ④ 따뜻한밤 등불 빛 (R21: 가운데 밝기 = 예전 0.32 × 1.4 · #ffb347 계열) */
+export const LANTERN_A = 0.32 * 1.4;
+function lanternGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(255,179,71,${Math.min(1, a)})`);
+  g.addColorStop(0.45, `rgba(255,160,64,${Math.min(1, a) * 0.45})`);
+  g.addColorStop(1, 'rgba(255,140,50,0)');
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
 /** 이번 프레임 불빛 정도 (밤 · 노을 등불) */
 let frameLight = 0;
 /** 더하기(lighter)로 불빛 하나 — 합성·투명도는 원래대로 되돌린다 */
@@ -1211,8 +1223,9 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   ctx.globalAlpha = 1;
   // FIVESTARS ④ 따뜻한밤 허리 등불: 밤에 2칸 빛 — 그린 직후 깊이 순서 안에서 (앞 건물이 나중에 그려지며 가린다 · v0.25.24 불빛 규칙)
   if (s.star === 'warmnight' && fade === 1 && frameLight > 0.01 && a.st !== 'sit') {
-    const lx = X + (dir < 0 ? 5 : -5);
-    lit(ctx, () => glow(ctx, lx, Y - 12, TH * 2, 0.32 * frameLight));
+    // R21: 3칸 · 가운데 +40% · 따뜻한 주황(#ffb347) · 대기 동작에서 등불을 들어 올린 프레임(2·3)이면 빛도 같이 위로
+    const up = !!sg && !!s.sig && (s.sig.indexOf(sg) === 1 || s.sig.indexOf(sg) === 2);
+    lit(ctx, () => lanternGlow(ctx, up ? X + (dir < 0 ? -6 : 6) : X + (dir < 0 ? 5 : -5), up ? Y - 27 : Y - 12, TH * 3, LANTERN_A * frameLight));
   }
   // 수련: 흰 바람 / 밭일: 물방울
   if (a.st === 'atk' && Math.random() < 0.06) puff(X + a.dir * 12 - view.OX, Y - 16 - view.OY, '#ffffff', a.dir * 10, -4, 0.25, 1);

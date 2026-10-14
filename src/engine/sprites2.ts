@@ -140,7 +140,8 @@ export function drawChar2(def0: ClassDef, kind: Dot2, pose: Pose2, oldWeapon: We
   if (kind === 'knight' && def.shield !== false && !sit) shield(G, 4.5 + (pose.hurt ? -1 : 0), by + 6 + (pose.atk === 1 ? -1 : 0), back);
 
   // ── 머리 ──
-  G.ell(hx + 0.2, hy, 6.1, 5.6, SKN);
+  const hp = def.headPlus ?? 0;
+  G.ell(hx + 0.2, hy - hp / 2, 6.1 + hp / 2, 5.6 + hp / 2, SKN);
   if (def.beard) G.ell(hx + 0.6, hy + 4.4, 4.6, 3.4, def.beard, null, (_x, y) => y >= hy + 2.4);
   // 미미 시그니처 1: 모자가 눈까지 흘러내림
   const drop = L?.sig === 'hat' && pose.sig === 1 ? 2 : 0;
@@ -249,7 +250,10 @@ function tunic(G: GridT, def: ClassDef, kind: Dot2, hx: number, by: number, legT
 function robeBody(G: GridT, def: ClassDef, hx: number, by: number, sit: number, back: boolean, flare = false) {
   const c = def.cloth;
   const end = sit ? by + 9 : 26;
-  const wOf = (j: number) => (j === 0 ? 8 : flare ? 10 + Math.floor(j / 2.2) : 10 + Math.floor(j / 4));
+  const tr = def.robeTrim ?? 0;
+  const wOf0 = (j: number) => (j === 0 ? 8 : flare ? 10 + Math.floor(j / 2.2) : 10 + Math.floor(j / 4));
+  // FIVESTARS ④ R21: 아랫단 퍼짐을 양쪽 tr px 줄임 (몸통 10px 아래로는 안 줄인다)
+  const wOf = (j: number) => (tr ? Math.max(Math.min(10, wOf0(j)), wOf0(j) - 2 * tr) : wOf0(j));
   for (let y = by; y < end; y++) G.rect(Math.round(hx - wOf(y - by) / 2), y, wOf(y - by), 1, c);
   const g = def.accent;
   if (flare) {
@@ -267,7 +271,7 @@ function robeBody(G: GridT, def: ClassDef, hx: number, by: number, sit: number, 
     G.set(Math.round(hx), by + 1, lt(g, 0.4), 'flat');
   }
   // 아랫단 금 테
-  const ww = 10 + Math.floor((end - 1 - by) / 4);
+  const ww = wOf(end - 1 - by);
   G.rect(Math.round(hx - ww / 2), end - 1, ww, 1, g);
 }
 
@@ -354,7 +358,8 @@ export function headgear(G: GridT, def: ClassDef, kind: Dot2, hx: number, hy: nu
     G.set(Math.round(hx + 1), Math.round(hy - 0.5), hair);
     G.rect(Math.round(hx - 1), Math.round(hy - 2.5), 3, 1, hl, 'flat');
   }
-  G.ell(hx + 0.2, hy - 0.5, 7.0, 6.5, H, null, (x, y) => !op(x, y) && y <= hy + 5.5);
+  const hp = def.headPlus ?? 0;
+  G.ell(hx + 0.2, hy - 0.5 - hp / 2, 7.0 + hp / 2, 6.5 + hp / 2, H, null, (x, y) => !op(x, y) && y <= hy + 5.5);
   G.tri(hx - 6, hy - 3, hx - 2, hy - 6.5, hx - 7.5, hy - 7.5, H);
   // 두건 접힌 선
   if (!back) G.rect(Math.round(hx - 4), Math.round(hy - 3.5), 1, 7, dk(H, 0.2));

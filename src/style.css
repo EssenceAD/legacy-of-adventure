@@ -2334,6 +2334,15 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 #fiveSky i{position:absolute;width:3px;height:3px;background:#fff3c0;box-shadow:0 0 6px #ffd36b;border-radius:50%}
 /* 형철 피날레: 북쪽 하늘에 별 다섯 개가 오각형으로 */
 #fiveSky i:nth-child(1),#storyFx.sfx-constellation i:nth-child(1){left:24px;top:0}#fiveSky i:nth-child(2),#storyFx.sfx-constellation i:nth-child(2){left:47px;top:17px}#fiveSky i:nth-child(3),#storyFx.sfx-constellation i:nth-child(3){left:38px;top:45px}#fiveSky i:nth-child(4),#storyFx.sfx-constellation i:nth-child(4){left:10px;top:45px}#fiveSky i:nth-child(5),#storyFx.sfx-constellation i:nth-child(5){left:1px;top:17px}
+/* R21: 별자리 줄 — 마을 그림이 아래로 내려가며(카메라가 하늘로) 1.5초 · 탭하면 바로 끝 모습 */
+#scene.skypan{transform:translateY(42%);transition:transform 1.5s cubic-bezier(.4,0,.2,1)}
+#scene.skypan-now{transition:none}
+#storyFx.sfx-constellation.pan{background:none}
+#storyFx.pan .skyp{position:absolute;left:0;right:0;top:0;height:46%;background:linear-gradient(#070a24,#10164a 62%,rgba(16,22,74,0));transform:translateY(-100%);animation:skyIn 1.5s cubic-bezier(.4,0,.2,1) forwards}
+#storyFx.pan.now .skyp{animation:none;transform:none}
+#storyFx.pan .skyp i{margin-top:min(22vh,140px)}
+#storyFx.pan.now .skyp i{animation:none}
+@keyframes skyIn{to{transform:none}}
 #storyFx.sfx-constellation{background:radial-gradient(ellipse at 50% 20%,rgba(255,240,180,.16),rgba(10,8,40,.7))}
 #storyFx.sfx-constellation i{position:absolute;width:4px;height:4px;margin-left:calc(50% - 26px);margin-top:40px;background:#fff3c0;box-shadow:0 0 8px #ffd36b;border-radius:50%;animation:fcIn 1.2s ease both}
 #storyFx.sfx-constellation i:nth-child(2){animation-delay:.2s}#storyFx.sfx-constellation i:nth-child(3){animation-delay:.4s}#storyFx.sfx-constellation i:nth-child(4){animation-delay:.6s}#storyFx.sfx-constellation i:nth-child(5){animation-delay:.8s}

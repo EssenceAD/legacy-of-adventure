@@ -24,24 +24,24 @@ export const STAR_LOOKS: Record<string, NamedLook> = {
   star_woongs: {
     tier: 'legend', star: 'woongs', head: 'hair',
     patch: { style: 'short', hair: '#1e1a1a', skin: '#c8875a', cloth: '#4a4a56', arm: '#8a909c', pants: '#3a3238', boots: '#3a2a22', accent: GOLD, towel: '#f4f0e6', weapon: 'greatsword', dwarf: false, beard: undefined, helm: undefined },
-    extras: ['messy', 'goldTrim'], noBraids: true, sig: 'plant', sigN: 4, trail: 'star',
+    extras: ['messy', 'goldTrim', 'longTowel'], noBraids: true, sig: 'plant', sigN: 4, trail: 'star',
   },
   // 고느끼: 검남색 두건(분홍 테) 밖으로 분홍 머리 끝 · 분홍 눈 · 쌍단검
   star_gonu: {
     tier: 'legend', star: 'gonu', head: 'class',
-    patch: { hair: '#ef6f9a', hood: '#2c2640', cloth: '#2a2236', arm: '#3a2e4a', pants: '#24202e', boots: '#2a2030', accent: PINK, dual: true, weapon: 'dagger', dwarf: false },
+    patch: { hair: '#ef6f9a', hood: '#2c2640', cloth: '#2a2236', arm: '#3a2e4a', pants: '#24202e', boots: '#2a2030', accent: PINK, dual: true, weapon: 'dagger', dwarf: false, headPlus: 1 },
     extras: ['pinkTips', 'hoodTrim', 'pinkEyes'], sig: 'twirl', sigN: 4, trail: 'star',
   },
   // 이카몰리: 바람에 날리는 긴 갈색 머리 · 둥근 안경 · 크림색 로브 + 하늘색 목도리 · 바람개비 지팡이
   star_ikamolly: {
     tier: 'legend', star: 'ikamolly', head: 'hair',
-    patch: { style: 'long', hair: '#8a4a36', cloth: '#f0e6c8', arm: '#f0e6c8', pants: '#c8b890', boots: '#6a4a3a', accent: SKY, hat: undefined, hatc: undefined, weapon: 'staff', elf: false, glassesColor: '#6a4a3a' },
+    patch: { style: 'long', hair: '#8a4a36', cloth: '#f0e6c8', arm: '#f0e6c8', pants: '#c8b890', boots: '#6a4a3a', accent: SKY, hat: undefined, hatc: undefined, weapon: 'staff', elf: false, glassesColor: '#c9a46a' },
     extras: ['windHair', 'skyScarf'], sig: 'pinwheel', sigN: 4, walk: 'hair', trail: 'star',
   },
   // 왈왈콩선생(여): 흰 사제 두건 + 강아지 귀 · 꿀빛 머리 · 흰 로브(금 테) · 강아지 발자국 성표
   star_walwal: {
     tier: 'legend', star: 'walwal', head: 'class',
-    patch: { hair: '#e0a060', cloth: '#f6f3ea', arm: '#f6f3ea', pants: '#e0d8c4', boots: '#a07850', accent: '#e0b050', weapon: 'holy', dwarf: false, cape: undefined },
+    patch: { hair: '#e0a060', cloth: '#f6f3ea', arm: '#f6f3ea', pants: '#e0d8c4', boots: '#a07850', accent: '#e0b050', weapon: 'holy', dwarf: false, cape: undefined, robeTrim: 1 },
     extras: ['puppyEars'], sig: 'wag', sigN: 4, walk: 'ears', trail: 'star',
   },
   // 따뜻한밤: 덥수룩한 적갈색 머리 · 내린 붉은 두건 + 붉은 망토 · 가죽 갑옷 · 장궁 · 허리 등불
@@ -120,15 +120,22 @@ export function starHead(c: NCtx) {
   }
   if (has('puppyEars')) {
     // 두건 위 양옆으로 늘어진 크림색 강아지 귀 (걸을 때 · 흔들 때 귀 끝이 1px 들썩)
-    const E = '#e8c48e';
-    const E2 = '#c89a62';
+    // R21: 크림색 #f3dfb8 + 테두리 #c9a66b (테두리 칸은 가장자리 1px)
+    const E = '#f3dfb8';
+    const O = '#c9a66b';
     const f = (c.pose.wf !== undefined && c.pose.wf % 2) || (isS(c, 'wag') && c.pose.sig! % 2 === 0) ? 1 : 0;
     for (const s of [-1, 1]) {
-      const bx = s < 0 ? X - 6 : X + 6;
-      G.rect(Math.min(bx, bx + s * 2), Y - 6, 3, 2, E);
-      G.rect(bx + (s < 0 ? -3 : 1), Y - 4, 3, 4 - f, E);
-      G.rect(bx + (s < 0 ? -3 : 3), Y - 1 - f, 1, 2, E2);
-      if (!back) G.set(bx + (s < 0 ? -2 : 2), Y - 3, '#f0c8b8', 'flat');
+      const px = new Set<string>();
+      const add = (x: number, y: number) => px.add(x + ',' + y);
+      // 정수리 옆에서 시작해 바깥으로 늘어진다 (위 3×2 · 아래 4×(5−f))
+      for (let y = Y - 6; y <= Y - 5; y++) for (let k = 0; k < 3; k++) add(X + s * (5 + k), y);
+      for (let y = Y - 4; y <= Y - f; y++) for (let k = 0; k < 4; k++) add(X + s * (6 + k), y);
+      for (const p of px) {
+        const [x, y] = p.split(',').map(Number);
+        const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !px.has(x + dx + ',' + (y + dy)));
+        G.set(x, y, edge ? O : E, 'flat');
+      }
+      if (!back) G.set(X + s * 7, Y - 3, '#f0c8b8', 'flat');
     }
   }
 }
@@ -147,6 +154,11 @@ export function starFront(c: NCtx) {
     for (const x of [3, 4, 5, 6]) G.set(x, by + 2, GOLD, 'flat');
     for (const x of [15, 16, 17, 18]) G.set(x, by + 2, GOLD, 'flat');
     G.set(back ? 16 : 4, by, lt(def.arm, 0.55), 'flat');
+  }
+  if (has('longTowel') && def.towel) {
+    // R21 웅스: 흰 수건을 목에서 어깨까지 2px 더 길게 (양 끝이 어깨로 늘어짐)
+    G.rect(13, by + 3, 2, 2, def.towel, 'flat');
+    G.rect(7, by + 1, 2, 2, def.towel, 'flat');
   }
   if (has('skyScarf')) {
     // 하늘색 목도리 (앞: 목 + 늘어진 끝 · 뒤: 목만)
