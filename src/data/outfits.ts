@@ -15,6 +15,10 @@ export interface OutfitDef {
   pants: string;
   accent: string;
   extra?: string;
+  /** 팔(갑옷 팔·어깨받이) 색 — 표에 없는 칸 · 팔이 옷과 다른 색이라 옷만 바꾸면 티가 안 나는 사람만 (OVERRIDE) */
+  arm?: string;
+  /** 목 수건 벗기 (웅스) */
+  noTowel?: boolean;
 }
 export interface OutfitChar {
   char: string;
@@ -55,9 +59,9 @@ const RAW: Record<OutfitTier, Row[]> = {
   ],
   star: [
     ['woongs', '웅스', ['대장장이 셔츠', '#6a6a74 / #3a3a44 / #e8a040 / —'], ['별빛 양손검사', '#1e2a5a / #141e40 / #f8e070 / —']],
-    ['gonu', '고느끼', ['화가 앞치마', '#e8e0d0 / #4a4a5a / #e86a8a / #4a7ab8'], ['먹빛 그림자', '#1e1e24 / #141418 / #c8c8d8 / #2a2a34']],
+    ['gonu', '고느끼', ['화가 앞치마', '#e8e0d0 / #4a4a5a / #e86a8a / #4a7ab8'], ['달빛 화가', '#e8e4f4 / #8a80b0 / #f0a8c8 / #c8c0e8']],
     ['ikamolly', '이카몰리', ['바람 산책복', '#c8e8e0 / #7ab0a8 / #f8f8f8 / #a8d8d0'], ['첫 바람 대마법사', '#3a6ad8 / #2a4aa0 / #f8f0b0 / #5a8af0']],
-    ['walwal', '왈왈콩선생', ['밤산책 가디건', '#e8c8a0 / #6a5a7a / #f8e8a0 / #c8a880'], ['밤길 등불 사제', '#2a2a5a / #1e1e40 / #f8d060 / #fff4c8']],
+    ['walwal', '왈왈콩선생', ['밤산책 가디건', '#d8a878 / #6a5a7a / #f8e8a0 / #c8a880'], ['밤길 등불 사제', '#2a2a5a / #1e1e40 / #f8d060 / #fff4c8']],
     ['warmnight', '따뜻한밤', ['모닥불 후드', '#c85a3a / #4a3a2a / #f8c860 / #a84a30'], ['은하 사냥꾼', '#2a3a6a / #1e2a50 / #a8f0f8 / #3a5a9a']],
   ],
 };
@@ -67,12 +71,21 @@ const parse = (char: string, n: 1 | 2, [name, cols]: [string, string]): OutfitDe
   return { id: `${char}_${n}`, char, n, name, cloth, pants, accent, ...(extra && extra !== '—' ? { extra } : {}) };
 };
 
+/**
+ * 표 밖 덮개 (Code가 정함 · 형철 확인): 웅스 도트는 몸통 대부분이 흰 목 수건 + 강철 팔·어깨받이라 옷 색만 바꾸면 기본과 거의 같아 보였다
+ *  → 의상을 입으면 수건을 벗고(옷이 보이게) · ① 대장장이 셔츠 = 소매 걷은 맨팔(피부색) · ② 별빛 양손검사 = 남색 갑옷 팔
+ */
+const OVERRIDE: Record<string, Pick<OutfitDef, 'arm' | 'noTowel'>> = {
+  woongs_1: { arm: '#c8875a', noTowel: true },
+  woongs_2: { arm: '#34449a', noTowel: true },
+};
+
 export const OUTFIT_CHARS: OutfitChar[] = [];
 export const OUTFITS: Record<string, OutfitDef> = {};
 for (const tier of ['hero', 'legend', 'star'] as OutfitTier[])
   for (const [char, name, o1, o2] of RAW[tier]) {
     OUTFIT_CHARS.push({ char, name, tier });
-    for (const o of [parse(char, 1, o1), parse(char, 2, o2)]) OUTFITS[o.id] = o;
+    for (const o of [parse(char, 1, o1), parse(char, 2, o2)]) OUTFITS[o.id] = { ...o, ...OVERRIDE[o.id] };
   }
 export const OUTFIT_IDS = Object.keys(OUTFITS);
 export const charInfo = (char: string) => OUTFIT_CHARS.find((c) => c.char === char);

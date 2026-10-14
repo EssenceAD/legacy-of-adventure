@@ -19,11 +19,13 @@ export interface OutfitPalette {
   pants: string;
   accent: string;
   extra?: string;
+  arm?: string;
+  noTowel?: boolean;
 }
 /** 의상 색 (같은 id → 같은 색 · 없는 id면 null) */
 export function outfitPalette(id: string | undefined | null): OutfitPalette | null {
   const o = id ? OUTFITS[id] : undefined;
-  return o ? { cloth: o.cloth, pants: o.pants, accent: o.accent, ...(o.extra ? { extra: o.extra } : {}) } : null;
+  return o ? { cloth: o.cloth, pants: o.pants, accent: o.accent, ...(o.extra ? { extra: o.extra } : {}), ...(o.arm ? { arm: o.arm } : {}), ...(o.noTowel ? { noTowel: true } : {}) } : null;
 }
 
 /** 그 사람의 지금 겉모습 (이름 있는 영웅이면 고정 색까지 입힌 것 · 의상 전) */
@@ -37,7 +39,9 @@ const EXTRA_KEYS = ['cape', 'hood', 'hatc'] as const;
 /** 의상 덮개: 바꿀 칸만 (윗옷 · 아래 · 장식 · 망토/두건/모자 중 있는 것 · 팔이 윗옷과 같은 색이면 팔도) — 신화 별빛 망토는 신화 표시라 그대로 */
 export function dressPatch(look: ClassDef, pal: OutfitPalette): Partial<ClassDef> {
   const p: Partial<ClassDef> = { cloth: pal.cloth, pants: pal.pants, accent: pal.accent };
-  if (look.arm === look.cloth) p.arm = pal.cloth;
+  if (pal.arm) p.arm = pal.arm;
+  else if (look.arm === look.cloth) p.arm = pal.cloth;
+  if (pal.noTowel && look.towel) p.towel = undefined;
   if (pal.extra) for (const k of EXTRA_KEYS) if (look[k] && !(k === 'cape' && look.cape === STAR_NAVY)) p[k] = pal.extra;
   return p;
 }
@@ -54,8 +58,8 @@ export function swapPairs(look: ClassDef, pal: OutfitPalette): [string, string][
   return out;
 }
 /** 건드리면 안 되는 색: 머리 · 수염 · 피부 · 신발 · 투구 · 무기 등급 색 · 수건 · 안경 · 외곽선 · 신화 망토·별 */
-export function protectedColors(look: ClassDef): string[] {
-  const s = [look.hair, look.beard, look.skin ?? SKIN, SKIN2, look.boots, look.helm, look.weaponColor, look.towel, look.glassesColor, OUTL, '#2a1a2e'];
+export function protectedColors(look: ClassDef, pal?: OutfitPalette | null): string[] {
+  const s = [look.hair, look.beard, look.skin ?? SKIN, SKIN2, look.boots, look.helm, look.weaponColor, pal?.noTowel ? undefined : look.towel, look.glassesColor, OUTL, '#2a1a2e'];
   if (look.mythic || look.cape === STAR_NAVY) s.push(STAR_NAVY, STAR_GOLD);
   return s.filter((c): c is string => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c));
 }
@@ -131,7 +135,7 @@ export function dressGrid(def: ClassDef, draw: (d: ClassDef) => GridT): GridT {
   const base = { ...def, outfit: undefined, dress: undefined };
   const A = draw(base);
   const B = draw(dressedDef(base, pal));
-  const remap = makeRemap(swapPairs(look, pal), protectedColors(look));
+  const remap = makeRemap(swapPairs(look, pal), protectedColors(look, pal));
   if (A.w !== B.w || A.h !== B.h) return B;
   for (let y = 0; y < B.h; y++)
     for (let x = 0; x < B.w; x++) {

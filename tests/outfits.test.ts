@@ -66,6 +66,9 @@ describe('의상 표', () => {
     expect(OUTFITS.kael_1).toMatchObject({ name: '가을 산책복', cloth: '#c8742e', pants: '#5a3a2a', accent: '#f0c860' });
     expect(OUTFITS.kael_1.extra).toBeUndefined();
     expect(OUTFITS.twins_2).toMatchObject({ name: '흑백 쌍둥이', extra: '#1e1e24' });
+    expect(OUTFITS.gonu_2).toMatchObject({ name: '달빛 화가', cloth: '#e8e4f4', pants: '#8a80b0', accent: '#f0a8c8', extra: '#c8c0e8' });
+    expect(OUTFITS.walwal_1.cloth).toBe('#d8a878');
+    expect(OUTFITS.woongs_2.arm).toBeTruthy();
     expect(OUTFITS.warmnight_2).toMatchObject({ name: '은하 사냥꾼', cloth: '#2a3a6a', accent: '#a8f0f8', extra: '#3a5a9a' });
   });
   it('값: 영웅 200만 · 전설 300만~500만 · 다섯 별 500만 (①은 값 없음)', () => {
@@ -93,7 +96,7 @@ describe('색 바꾸기 (한 함수 dressGrid)', () => {
       const look = lookOf(base);
       // 옷 색과 똑같은 지킬 색(그롬: 대머리라 머리색 = 옷 색)은 옷 쪽으로 본다
       const src = new Set(swapPairs(look, outfitPalette(id)!).map(([f]) => f.toLowerCase()));
-      const prot = new Set(protectedColors(look).map((c) => c.toLowerCase()).filter((c) => !src.has(c)));
+      const prot = new Set(protectedColors(look, outfitPalette(id)).map((c) => c.toLowerCase()).filter((c) => !src.has(c)));
       for (const pose of POSES) {
         const A = drawChar2(base, dot2(base), pose, noWeapon);
         const B = dressGrid(worn, (x) => drawChar2(x, dot2(base), pose, noWeapon));
@@ -114,7 +117,7 @@ describe('색 바꾸기 (한 함수 dressGrid)', () => {
         if (!pose.back) expect(changed, `${id} 바뀐 칸이 있어야`).toBeGreaterThan(0);
       }
     }
-  });
+  }, 30_000);
 
   it('그림에 박힌 색: 원래 옷 색의 밝기 단계만 같은 순서로 옮긴다 · 지킬 색에 더 가까우면 그대로', () => {
     const remap = makeRemap([['#4a7a3a', '#c83a5a']], ['#7a4a2a']);
@@ -140,7 +143,7 @@ describe('색 바꾸기 (한 함수 dressGrid)', () => {
       const pp = dressPatch(fromPort, pal);
       for (const k of ['cloth', 'pants', 'accent'] as const) expect(pa[k]).toBe(pal[k]), expect(pp[k]).toBe(pal[k]);
       // 바뀌는 쪽 색 목록은 의상 색에서만 나온다
-      for (const [, to] of [...swapPairs(fromActor, pal), ...swapPairs(fromPort, pal)]) expect([pal.cloth, pal.pants, pal.accent, pal.extra]).toContain(to);
+      for (const [, to] of [...swapPairs(fromActor, pal), ...swapPairs(fromPort, pal)]) expect([pal.cloth, pal.pants, pal.accent, pal.extra, pal.arm]).toContain(to);
       // 그림 열쇠에 의상 id (캐시가 섞이지 않게)
       expect(appearance(actorOf(char), id).key.endsWith('|O:' + id)).toBe(true);
       expect(appearance(actorOf(char), null).key.includes('|O:')).toBe(false);

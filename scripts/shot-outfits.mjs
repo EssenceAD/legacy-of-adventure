@@ -51,7 +51,9 @@ const shot = async (p, name, full = false) => { const f = `${dir}/${name}.png`; 
   const { p, ctx, W, errs } = await session(1280);
   const rows = await p.evaluate(() => window.__outfits.chars().map((c) => window.__outfits.row(c, 2)).filter(Boolean));
   const stats = [];
-  for (const tier of ['hero', 'legend', 'star']) {
+  // TIERS=star · WIDTHS=360 · NOWORLD=1 (마을·전투 빼고 옷장만) — 고친 것만 다시 찍기
+const TIERS = (process.env.TIERS ?? 'hero,legend,star').split(',');
+for (const tier of TIERS) {
     const rs = rows.filter((r) => r.tier === tier);
     await p.evaluate(([rs, tier]) => {
       document.getElementById('osheet')?.remove();
@@ -73,14 +75,14 @@ const shot = async (p, name, full = false) => { const f = `${dir}/${name}.png`; 
     console.error('✓ sheet', tier);
     for (const r of rs) stats.push([r.name, ...r.looks.filter((l) => l.id).map((l) => `${l.name} ${l.portChanged}% [${l.portPairs.join(',')}]`)]);
   }
-  fs.writeFileSync(`${dir}/portrait_stats.json`, JSON.stringify(stats, null, 1));
+  if (!process.env.TIERS) fs.writeFileSync(`${dir}/portrait_stats.json`, JSON.stringify(stats, null, 1));
   if (errs.length) console.error('ERR', errs), errsAll.push(...errs);
   await ctx.close();
 }
 
 if (process.env.ONLY === 'sheet') { await b.close(); process.exit(0); }
 // ── 2·3) 옷장 · 마을 · 전투 (360 · 1280) ──
-for (const w of [360, 1280]) {
+for (const w of (process.env.WIDTHS ?? '360,1280').split(',').map(Number)) {
   const { p, ctx, W, errs, clear } = await session(w);
   // 영입한 사람 전부: 의상 다 주고 ②를 입힘 (카엘은 ①)
   const chars = await p.evaluate(() => {
@@ -106,6 +108,7 @@ for (const w of [360, 1280]) {
   await W(900);
   await shot(p, `${w}_3_wardrobe_locked_pip`);
   await clear();
+  if (process.env.NOWORLD) { await ctx.close(); continue; }
   // 마을
   await W(1500);
   await shot(p, `${w}_4_village`);

@@ -11,6 +11,7 @@ import { track as trackEv } from '../net/telemetry';
 import { $$, esc } from './common';
 import { portSrc } from './outfitPort';
 import { openWin, toast } from './windows';
+import { LUXE_OUTFITS } from '../data/luxe_cfg';
 
 const SIL = '#2a2238';
 
@@ -59,11 +60,13 @@ export function openWardrobe(a: Actor, back?: () => void) {
   if (!char || !outfitsOn()) return;
   outfitSync();
   const port = portOfChar(char);
+  const frameOnly = LUXE_OUTFITS.portrait.frameOnly.includes(char);
   const cells = wardrobeCells(char)
     .map((c, i) => {
       const lock = !c.owned;
       const dot = dotPreview(a, c.id, lock);
-      const face = lock ? '' : `<img class="wd-face" src="${portSrc(port, c.id)}" alt="">`;
+      // 도트가 칸의 주인공 · 초상화는 작은 배지 (테두리만 바뀌는 초상화면 더 작게)
+      const face = lock ? '' : `<img class="wd-face ${frameOnly ? 'sm' : ''}" src="${portSrc(port, c.id)}" alt="">`;
       const tag = c.worn ? '<em class="wd-on">입는 중</em>' : lock ? '<em class="wd-lock">🔒 잠김</em>' : '<em>입히기</em>';
       const sub = lock ? `<small class="wd-how">${esc(c.how || howToGet(c.id ?? ''))}</small>` : `<small>${c.n === 0 ? '처음 옷' : c.n === 1 ? '① 인연 「친구」 선물' : '② 명품관'}</small>`;
       return `<button class="wd-cell ${c.worn ? 'on' : ''} ${lock ? 'lock' : ''}" data-i="${i}" ${lock ? 'aria-disabled="true"' : ''}>
