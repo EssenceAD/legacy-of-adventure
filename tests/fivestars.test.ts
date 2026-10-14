@@ -68,9 +68,9 @@ beforeEach(() => {
 afterEach(() => setFlag('fiveStars', false));
 
 describe('플래그', () => {
-  it('기본 꺼짐 · public/flags.json도 꺼짐', () => {
+  it('코드 기본은 꺼짐 · v0.25.30 형철 OK로 public/flags.json 켬', () => {
     expect(FLAG_DEFAULTS.fiveStars).toBe(false);
-    expect(JSON.parse(fs.readFileSync('public/flags.json', 'utf8')).fiveStars).toBe(false);
+    expect(JSON.parse(fs.readFileSync('public/flags.json', 'utf8')).fiveStars).toBe(true);
   });
   it('꺼짐: 3막이어도 장·편지 없음 · 장부 칸 없음 · 꿈 한 줄 없음 · 신화 아님', () => {
     setFlag('fiveStars', false);
