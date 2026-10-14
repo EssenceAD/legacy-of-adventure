@@ -4,7 +4,7 @@
 //    첫 줄 주석 `// save: <파일 경로>` 로 저장을 바꿀 수 있다 (기본 tests/fixtures/real_ttabam.json · 없으면 real_lotte)
 //  결과: reports/checkin/<항목>/<label>_<폭>_<낮|밤>.png
 //  실행: node scripts/shot-checkin.mjs <항목> <before|after> <URL> [lab]   예) ... a1 before http://localhost:4310/
-//    4번째 인자 lab = 「새 화면 미리 보기」를 켠 기기로 찍기 (형철 확인 전 꺼진 채 배포하는 항목의 after)
+//    장면 안에선 LABEL(before|after) 을 읽을 수 있다 · 4번째 인자 lab = 「새 화면 미리 보기」를 켠 기기로 찍기 (형철 확인 전 꺼진 채 배포하는 항목의 after)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const [item, label = 'after', URL = 'http://localhost:4190/', LAB] = process.argv.slice(2);
@@ -59,7 +59,7 @@ for (const [w, dev] of Object.entries(SIZES))
     await p.waitForTimeout(1000);
     await clear();
     try {
-      await p.evaluate(`(async () => { ${scene}\n })()`);
+      await p.evaluate(`(async () => { const LABEL = ${JSON.stringify(label)};\n${scene}\n })()`);
     } catch (e) {
       errs.push(`${w}/${night ? '밤' : '낮'} 장면: ${String(e).slice(0, 200)}`);
     }

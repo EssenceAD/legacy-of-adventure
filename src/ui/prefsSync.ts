@@ -8,6 +8,7 @@ import { reloadSaver } from '../engine/fps';
 import { reloadKeys } from '../engine/keys';
 import { getPref, saveHooks, setPref, SYNC_PREF_KEYS, validPrefs } from '../save/save';
 import { P, type PrefsBlob } from '../world/state';
+import { reloadGuestNames } from '../world/guestNames';
 import { vis } from '../world/visual';
 import { setFontStep } from './screen';
 
@@ -62,6 +63,7 @@ function applyToDevice(b: PrefsBlob) {
   reloadSoundPrefs();
   reloadSaver();
   reloadKeys();
+  reloadGuestNames();
   setFontStep(getPref<number>('fontStep', 0));
   // 마을 캔버스 배율 상한이 절약 여부로 바뀐다
   dispatchEvent(new Event('resize'));
