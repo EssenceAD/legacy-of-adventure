@@ -891,10 +891,12 @@ export interface DayLog {
 /** 우편함: 출석·랭킹·운영자 선물·앞 주인 편지 */
 export interface Mail {
   id: number;
-  from: 'attend' | 'rank' | 'admin' | 'prev' | 'system';
+  from: 'attend' | 'rank' | 'admin' | 'prev' | 'system' | 'rift';
   title: string;
   body: string;
-  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string; /** EASTER: 개척자 금빛 편지 */ pioneer?: string };
+  reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string; /** EASTER: 개척자 금빛 편지 */ pioneer?: string; /** RAIDWEAPON §3' 하늘 균열: 무기 조각 · 선택 상자 · 하루 칭호(받은 날 05:00~다음 05:00 · titleUntil = 받은 균열의 하루) */ frags?: number; boxes?: number; title?: string; titleUntil?: string };
+  /** RAIDWEAPON §3' 하늘 균열 보상 번호 (서버 world_rewards.id · 같은 보상을 두 번 넣지 않게) */
+  rid?: number;
   /** HOTFIX14 §5: 업데이트 선물이면 그 버전 */
   ver?: string;
   /** 편지 안 링크 버튼 (유저 톡방) */

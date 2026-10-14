@@ -300,7 +300,7 @@ let attendStamped = 0;
 
 // ───────── 우편함 ─────────
 
-const FROM: Record<string, string> = { attend: '출석', rank: '랭킹', admin: '운영자', prev: '앞 주인', system: '여관' };
+const FROM: Record<string, string> = { attend: '출석', rank: '랭킹', admin: '운영자', prev: '앞 주인', system: '여관', rift: '하늘 균열' };
 let mailDelArmed = false;
 export function openMail() {
   const list = P.meta.mail;

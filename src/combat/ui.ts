@@ -193,7 +193,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     ids.add(opts.raid.look.id);
     ids.add(opts.raid.look.minion);
   }
-  await Promise.all([...[...ids].filter((id) => !id.startsWith('old_')).map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx(), loadHuntProps()]);
+  await Promise.all([...[...ids].filter((id) => !id.startsWith('old_') && !(id.startsWith('rift_') && sheets[id])).map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)), loadFx(), loadHuntProps()]);
   // 심연의 눈: 옛 그림 한 장으로 (모든 동작이 같은 그림 · 오른쪽을 보게 뒤집음)
   if (ids.has('old_eye') && !sheets.old_eye && BOSS_IMG.eye) {
     const im = BOSS_IMG.eye;
@@ -231,7 +231,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   root = document.createElement('div');
   // 토벌은 id 'raid' (배경음악이 토벌곡 · 체력 30%부터 「마지막 일격」)
   root.id = opts.mode === 'raid' ? 'raid' : 'hunt';
-  root.className = 'cbt';
+  root.className = opts.world ? 'cbt rift' : 'cbt';
   root.innerHTML = `
     <canvas id="cbCv"></canvas>
     <div class="cbtop"><span id="cbWave"></span><b id="cbTime"></b><button id="cbAuto" class="cbauto">AUTO<kbd class="kc" data-k="auto"></kbd></button>${opts.mode === 'raid' || opts.noFold ? '' : '<button id="cbFold" class="cbfold">접기 ▾<small>접으면 평가 보너스 없음</small><kbd class="kc" data-k="fold"></kbd></button>'}<button id="cbKeysBtn" class="cbkeys" aria-label="단축키">⌨</button>${vis('gearAlways') ? `<button id="cbQuit" class="cbgear" aria-label="일시정지 · 설정"><img draggable="false" src="${iconSrc('m_settings', true)}" alt=""></button>` : '<button id="cbQuit" aria-label="포기">✕</button>'}</div>
@@ -254,7 +254,7 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
     <div class="cbcast" id="cbCast" hidden></div>
     <div class="cbcut" id="cbCut" hidden></div>
     <div class="cbres" id="cbRes" hidden></div>
-    <div class="cbpause" id="cbPause" hidden>${vis('gearAlways') ? pauseSheetHtml(opts.mode === 'raid' ? '토벌' : '사냥') : `<div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div>`}</div>
+    <div class="cbpause" id="cbPause" hidden>${vis('gearAlways') ? pauseSheetHtml(opts.world ? '하늘 균열' : opts.mode === 'raid' ? '토벌' : '사냥') : `<div class="card px res"><b>일시정지</b><p>${opts.mode === 'raid' ? '토벌' : '사냥'}을 포기하면 패배로 기록돼요</p><div class="go"><button class="a" id="cbResume">계속하기</button><button class="b" id="cbGiveUp">포기하기</button></div></div>`}</div>
     <div class="cbkeycard" id="cbKeyCard" hidden></div>
     <div class="cbsyn" id="cbSyn" hidden></div>`;
   document.getElementById('view')!.appendChild(root);
@@ -420,7 +420,7 @@ function render() {
 
 function hud() {
   const f = F!;
-  $('#cbWave').textContent = f.mode === 'raid' ? '토벌' : '';
+  $('#cbWave').textContent = f.world ? '하늘 균열' : f.mode === 'raid' ? '토벌' : '';
   $('#cbTime').textContent = `${Math.max(0, Math.ceil(f.time))}`;
   $('#cbTime').classList.toggle('low', f.time < 15);
   $('#cbAuto').classList.toggle('on', f.auto);

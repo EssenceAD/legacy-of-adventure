@@ -25,6 +25,8 @@ import { chem5Titles, title5 } from './chemNews';
 import { fsay } from './visual';
 import { achStamp, hvTitles } from './hvLite';
 import { petCount, petsOn } from './pets';
+import { addFrags, exOn, rwState } from './frags';
+import { riftDay } from './riftDay';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -118,6 +120,9 @@ export function titlesOwned(): { t: string; from: string }[] {
   if (P.legacy.journeyEnd) out.push({ t: CONFIG.direction.journeyTitle, from: '여정 완주' });
   // HARVEST §1-5 「첫 수확제의 주인」 · CHECKIN §D2 연감 30칸 「수확의 주인」 (영구)
   out.push(...hvTitles());
+  // RAIDWEAPON §3' 하늘 균열 그날 피해 1~3위 「균열의 영웅」 — 편지를 받은 균열의 하루 동안만 (다음 05:00 KST까지)
+  const rd = riftDay(Date.now());
+  for (const m of P.meta.mail) if (m.claimed && m.reward.title && m.reward.titleUntil && m.reward.titleUntil >= rd) out.push({ t: m.reward.title, from: '하늘 균열 (오늘 하루)' });
   const seen = new Set<string>();
   return out.filter((x) => (seen.has(x.t) ? false : (seen.add(x.t), true)));
 }
@@ -138,7 +143,7 @@ export function addMail(m: Omit<Mail, 'id' | 'at' | 'claimed'>) {
   markDirty();
 }
 export const mailWaiting = () => P.meta.mail.filter((m) => !m.claimed && hasReward(m)).length;
-const hasReward = (m: Mail) => !!(m.reward.gear || m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco);
+const hasReward = (m: Mail) => !!(m.reward.gear || m.reward.gold || m.reward.dust || m.reward.tokens || m.reward.shards || m.reward.gift || m.reward.dustR || m.reward.cheer || m.reward.deco || m.reward.frags || m.reward.boxes || m.reward.title);
 /** EASTER: 편지를 열 때 화면 쪽이 하는 일 */
 export const mailHooks = { pioneer: (_id: string) => {} };
 export function claimMail(id: number): Mail['reward'] | null {
@@ -166,6 +171,10 @@ export function claimMail(id: number): Mail['reward'] | null {
   if (r.deco) P.meta.giftDeco[r.deco] = (P.meta.giftDeco[r.deco] ?? 0) + 1;
   // ONBOARDING §4: 장비 한 개 (가방이 꽉 차면 다음에)
   if (r.gear) addToBag(makeItem('forest', r.gear as Grade));
+  // RAIDWEAPON §3' 하늘 균열: 조각 · 선택 상자 (전용 무기가 꺼져 있으면 조각 모듈이 아무것도 안 함) · 하루 칭호는 받은 날까지
+  if (r.frags) addFrags(r.frags, 'world');
+  if (r.boxes && exOn()) rwState().boxes += Math.floor(r.boxes);
+  if (r.title) r.titleUntil = riftDay(Date.now());
   if (m.ver) track('gift_claim', { ver: m.ver });
   // EASTER: 금빛 편지를 열면 컷신
   if (r.pioneer) mailHooks.pioneer(r.pioneer);
@@ -193,7 +202,7 @@ export function claimAllMail(): number {
   return n;
 }
 export const rewardLine = (r: Mail['reward']) =>
-  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '', r.dustR ? `푸른 가루 ${r.dustR}` : '', r.cheer ? `모모의 응원 ${r.cheer}회` : '', r.deco ? `${(CATALOG as Record<string, { name: string }>)[r.deco]?.name ?? '장식'} 1개` : '', r.gear ? '희귀 장비 1개' : '']
+  [r.gold ? `금화 ${r.gold.toLocaleString('ko-KR')}` : '', r.dust ? `잿빛 가루 ${r.dust}` : '', r.tokens ? `인연의 증표 ${r.tokens}` : '', r.shards ? `증표 조각 ${r.shards}` : '', r.gift ? GIFTS[r.gift as GiftKey]?.name ?? '' : '', r.dustR ? `푸른 가루 ${r.dustR}` : '', r.cheer ? `모모의 응원 ${r.cheer}회` : '', r.deco ? `${(CATALOG as Record<string, { name: string }>)[r.deco]?.name ?? '장식'} 1개` : '', r.gear ? '희귀 장비 1개' : '', r.frags ? `무기 조각 ${r.frags}` : '', r.boxes ? `선택 상자 ${r.boxes}` : '', r.title ? `칭호 「${r.title}」(하루)` : '']
     .filter(Boolean)
     .join(' · ');
 
