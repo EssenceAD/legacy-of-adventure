@@ -91,7 +91,7 @@ export function openPetMenu(id: string, x: number, y: number, guest = false) {
   const el = document.createElement('div');
   el.id = 'petmenu';
   el.className = 'pmenu card px';
-  el.innerHTML = `<b class="pmname">${esc(petName(id))}</b><small class="pmfx">${esc(d.fxText)}${patted ? ` · 오늘 ×${PETS.patMult}` : ''}</small><button id="ptPat" ${patted ? 'disabled' : ''}>${patted ? '오늘은 쓰다듬었어요' : '쓰다듬기'}</button><button id="ptName">이름 바꾸기</button><button id="ptHome" class="ghost">펫 집으로</button>`;
+  el.innerHTML = `<b class="pmname">${esc(petName(id))}</b><small class="pmfx">${esc(d.fxText)}${patted ? ` · 오늘 ×${PETS.patMult}` : ''}</small><button id="ptPat" class="bigbtn sm" ${patted ? 'disabled' : ''}>${patted ? '오늘은 쓰다듬었어요' : '쓰다듬기'}</button><button id="ptName" class="bigbtn sm">이름 바꾸기</button><button id="ptHome" class="bigbtn sm">펫 집으로</button>`;
   document.body.appendChild(el);
   menuEl = el;
   if (vis('backRule')) dropLayer = pushLayer(closePetMenu);
@@ -156,8 +156,8 @@ export function petDexHtml(): string {
     if (!g) return `<div class="fcell pcell2 sil"><img class="petimg petsil" src="${petDotUrl(id)}" alt="" data-pet="${id}"><b>???</b><small class="lore">${esc(d.hint)}</small><small>나오는 곳: ${esc(d.where)}</small></div>`;
     const out = st.out.includes(id);
     return `<div class="fcell pcell2 on ${out ? 'out' : ''}">${portImg(id)}<b>${esc(g.name)}</b>${g.name !== d.name ? `<small>${esc(d.name)}</small>` : ''}<small class="g">${esc(d.fxText)}</small>${
-      out ? `<button data-pethome="${id}" class="ghost">펫 집으로</button>` : `<button data-petout="${id}">마을로 데려가기</button>`
-    }<button data-petname="${id}" class="ghost">이름 바꾸기</button></div>`;
+      out ? `<button data-pethome="${id}" class="bigbtn sm">펫 집으로</button>` : `<button data-petout="${id}" class="bigbtn sm">마을로 데려가기</button>`
+    }<button data-petname="${id}" class="bigbtn sm">이름 바꾸기</button></div>`;
   };
   const full = petPlaygroundUnlocked();
   return `<p class="sub">동물 친구 ${n}/${PET_IDS.length} · 마을에 ${st.out.length}/${PETS.outMax}마리</p>

@@ -72,6 +72,14 @@ export function bindWardrobeBtn(a: Actor, back: () => void) {
   if (b) b.onclick = () => openWardrobe(a, back);
 }
 
+/** 의상 색 점 줄 (형철 「의상실 색 점 크게」): 옷 · 바지 · 포인트 · 덧색 — 칸마다 큼직하게 (기본 옷은 없음) */
+function swatchRow(id: string | null): string {
+  const o = id ? OUTFITS[id] : null;
+  if (!o) return '';
+  const cols = [o.cloth, o.pants, o.accent, o.extra].filter((c): c is string => !!c && /^#[0-9a-f]{3,8}$/i.test(c));
+  return `<span class="wd-sw" aria-hidden="true">${cols.map((c) => `<i style="background:${c}"></i>`).join('')}</span>`;
+}
+
 /** 옷장 창 */
 export function openWardrobe(a: Actor, back?: () => void) {
   const char = charOf(a);
@@ -89,7 +97,7 @@ export function openWardrobe(a: Actor, back?: () => void) {
       const sub = lock ? `<small class="wd-how">${esc(c.how || howToGet(c.id ?? ''))}</small>` : `<small>${c.n === 0 ? '처음 옷' : c.n === 1 ? '① 인연 「친구」 선물' : '② 명품관'}</small>`;
       return `<button class="wd-cell ${c.worn ? 'on' : ''} ${lock ? 'lock' : ''}" data-i="${i}" ${lock ? 'aria-disabled="true"' : ''}>
         <span class="wd-pic"><img class="wd-dot" src="${dot}" alt="">${face}</span>
-        <b>${esc(c.name)}</b>${sub}${tag}</button>`;
+        <b>${esc(c.name)}</b>${swatchRow(c.id)}${sub}${tag}</button>`;
     })
     .join('');
   const name = charInfo(char)?.name ?? a.name;
