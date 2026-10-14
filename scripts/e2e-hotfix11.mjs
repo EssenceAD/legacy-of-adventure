@@ -7,6 +7,8 @@
 // 실행: BOT_BUILD=1 npx vite build --outDir dist-bot && npx vite preview --outDir dist-bot --port 4190 그리고 node scripts/e2e-hotfix11.mjs [se|phone|pc]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+// FIRSTLOOK §5 flSideRail: 접힌 「⋯」 안의 버튼이면 먼저 펼친다 (끄면 아무것도 안 함)
+const railExpand = (pg, sel) => pg.evaluate((s) => { const e = document.querySelector(s); const r = document.getElementById('bRail'); if (e && r && getComputedStyle(e).display === 'none' && !document.body.classList.contains('railopen')) r.click(); }, sel);
 const name = process.argv[2] ?? 'phone';
 const URL = process.argv[3] ?? 'http://localhost:4190/';
 const OUT = 'screenshots/hotfix11';
@@ -134,6 +136,7 @@ await click('#updLater', 500);
 ok(await vis('#updBar'), '「새 버전」 띠 떠 있음');
 await p.screenshot({ path: `${OUT}/${name}_updbar.png` });
 for (const [sel, nm] of [['#bNotice', '소식'], ['#bDN', '밤'], ['#bMenu', '메뉴'], ['#bHarm', '어울림'], ['#hSpk', '소리']]) {
+  await railExpand(p, sel);
   if (!(await vis(sel))) {
     out.push(`  · ${nm}: 이 화면엔 없음`);
     continue;
@@ -153,6 +156,7 @@ for (const [sel, nm] of [['#bNotice', '소식'], ['#bDN', '밤'], ['#bMenu', '�
   // 밤·소리는 다시 눌러 원래대로
   if (hitOk && (sel === '#bDN' || sel === '#hSpk')) {
     if (process.env.LIVE) console.error('→ 다시 ' + nm, await title(), await vis('#dlg'));
+    await railExpand(p, sel);
     await p.locator(sel).click({ timeout: 2000 }).catch(() => {});
     await W(400);
     await clear();

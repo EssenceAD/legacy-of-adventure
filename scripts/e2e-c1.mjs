@@ -4,6 +4,8 @@
 //  실행: URL=http://localhost:4361/ node scripts/e2e-c1.mjs [저장 파일]   (BOT_BUILD 빌드)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+// FIRSTLOOK §5 flSideRail: 접힌 「⋯」 안의 버튼이면 먼저 펼친다 (끄면 아무것도 안 함)
+const railExpand = (pg, sel) => pg.evaluate((s) => { const e = document.querySelector(s); const r = document.getElementById('bRail'); if (e && r && getComputedStyle(e).display === 'none' && !document.body.classList.contains('railopen')) r.click(); }, sel);
 const URL = process.env.URL ?? 'http://localhost:4361/';
 const saveFile = process.argv[2] ?? (fs.existsSync('tests/fixtures/real_ttabam.json') ? 'tests/fixtures/real_ttabam.json' : 'tests/fixtures/real_lotte.json');
 const sv = fs.readFileSync(saveFile, 'utf8');
@@ -168,8 +170,10 @@ async function run(mode) {
 
   // ── L2 구경 모드 ──
   await clear();
+  await railExpand(p, '#bEye');
   ok(await p.evaluate(() => { const e = document.querySelector('#bEye'); return !!e && getComputedStyle(e).visibility !== 'hidden' && e.getBoundingClientRect().width > 0; }), '👁 버튼 보임');
   await clear();
+  await railExpand(p, '#bEye');
   await p.locator('#bEye').click();
   await p.waitForTimeout(300);
   ok(await p.evaluate(() => document.body.classList.contains('uihide') && [...document.querySelectorAll('#hud > *')].every((e) => getComputedStyle(e).visibility === 'hidden' || getComputedStyle(e).display === 'none')), 'UI 전부 숨김');
@@ -186,12 +190,14 @@ async function run(mode) {
   ok(await p.evaluate(() => !document.body.classList.contains('uihide')), '두 번 누르기 → 복귀');
   await clear();
   await clear();
+  await railExpand(p, '#bEye');
   await p.locator('#bEye').click();
   await p.waitForTimeout(200);
   await p.evaluate(() => history.back());
   await p.waitForTimeout(500);
   ok(await p.evaluate(() => !document.body.classList.contains('uihide') && location.href.startsWith('http')), '뒤로가기 → 복귀 (페이지 그대로)');
   await clear();
+  await railExpand(p, '#bEye');
   await p.locator('#bEye').click();
   await p.waitForTimeout(200);
   await p.locator('#uhPhoto').click();

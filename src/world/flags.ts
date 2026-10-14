@@ -167,6 +167,8 @@ export const FLAG_DEFAULTS = {
   flFirstCam: false,
   /** FIRSTLOOK §4 티저·타이틀이 폰 화면을 채우게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 티저 작은 캔버스 컷(사냥·보스·다락)은 화면을 꽉 채우게(cover · 정수 배율 · 가운데 기준으로 좌우 자름) · 위아래 검은 띠 없음 · 타이틀·「터치해서 시작」·티저 마지막 컷 = 마을 낮(티저 3번째 컷)을 어둡게 깔고 큰 제목 (숫자 CONFIG.firstLook.title) */
   flTeaserFit: false,
+  /** FIRSTLOOK §5 오른쪽 버튼 줄 줄이기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 새 HUD 오른쪽 작은 버튼 줄: 배율(×1) + 「⋯」만 늘 보이고, 「⋯」를 누르면 낮밤·어울림·소리·구경(👁)이 그 아래로 펼쳐짐 · 바깥을 누르거나 하나를 고르면 접힘 · 안의 항목에 빨간 점이 있으면 「⋯」에 점 · id·동작은 그대로 (숫자 CONFIG.firstLook.rail) */
+  flSideRail: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
