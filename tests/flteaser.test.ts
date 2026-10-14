@@ -54,9 +54,45 @@ describe('coverFit (꽉 채우기 · 정수 배율 · 가운데 자름)', () => 
   });
   it('extra = 한 단계 더 (다락 줌인)', () => {
     const a = coverFit(160, 120, 412, 860, 2);
-    const b = coverFit(160, 120, 412, 860, 2, 1);
+    const b = coverFit(160, 120, 412, 860, 2, { extra: 1 });
     expect(b.k).toBe(a.k + 1);
     expect(b.left).toBeLessThan(a.left);
+  });
+  it('maxZoom 1.4: 폭 맞춤 × 1.4 넘게 당기지 않음 · 남는 위아래는 가운데 (흐린 배경 자리)', () => {
+    const mz = CONFIG.firstLook.teaser.maxZoom;
+    for (const [bw, bh, d] of [[412, 860, 2], [360, 780, 2], [412, 860, 2.625], [1280, 800, 1], [390, 844, 3]] as const) {
+      const f = coverFit(180, 168, bw, bh, d, { maxZoom: mz });
+      const wf = (bw * d) / 180;
+      expect(f.k).toBeLessThanOrEqual(Math.max(1, Math.floor(wf * mz + 1e-6)));
+      expect(f.w).toBeGreaterThanOrEqual(bw - 1e-6); // 폭은 여전히 꽉 (좌우 빈칸 없음)
+      expect(f.w / bw).toBeLessThanOrEqual(mz + 1e-6);
+      if (f.h < bh) expect(Math.abs(f.top - (bh - f.h) / 2)).toBeLessThanOrEqual(1 / d);
+    }
+    // 가로 화면은 상한에 안 걸림 = 그대로 cover
+    expect(coverFit(180, 168, 1280, 800, 1, { maxZoom: mz })).toEqual(coverFit(180, 168, 1280, 800, 1));
+  });
+  it('focus: 보스 범위가 통째로 보이게 가운데를 옮김 · 장면 끝 밖은 안 보임', () => {
+    const [x0, x1] = CONFIG.firstLook.teaser.bossFocus;
+    for (const [bw, bh, d] of [[412, 860, 2], [360, 780, 2], [412, 860, 2.625], [1280, 800, 1]] as const) {
+      const f = coverFit(180, 168, bw, bh, d, { maxZoom: CONFIG.firstLook.teaser.maxZoom, focus: [x0, x1] });
+      const s = f.w / 180;
+      expect(f.left + x0 * s).toBeGreaterThanOrEqual(-1e-6);
+      expect(f.left + x1 * s).toBeLessThanOrEqual(bw + 1e-6);
+      expect(f.left).toBeLessThanOrEqual(0);
+      expect(f.left + f.w).toBeGreaterThanOrEqual(bw - 1e-6);
+    }
+    // 오른쪽 끝 범위 → 오른쪽 끝에 붙음
+    const g = coverFit(180, 168, 412, 860, 2, { maxZoom: 1.4, focus: [170, 180] });
+    expect(g.left + g.w).toBeCloseTo(412, 5);
+  });
+  it('contain: 장면 전체(다락 창·상자·칼)가 들어가는 가장 큰 정수 배율', () => {
+    for (const [bw, bh, d] of [[412, 860, 2], [360, 780, 2], [1280, 800, 1], [412, 860, 2.625]] as const) {
+      const f = coverFit(160, 120, bw, bh, d, { contain: true });
+      expect(f.w).toBeLessThanOrEqual(bw + 1e-6);
+      expect(f.h).toBeLessThanOrEqual(bh + 1e-6);
+      const n = coverFit(160, 120, bw, bh, d, { contain: true, extra: 1 });
+      expect(n.w > bw + 1e-6 || n.h > bh + 1e-6).toBe(true);
+    }
   });
   it('딱 맞으면 그 배율 그대로 (부동소수 오차로 한 단계 더 커지지 않음)', () => {
     expect(coverFit(100, 50, 300, 150, 1).k).toBe(3);

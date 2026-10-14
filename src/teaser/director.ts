@@ -15,8 +15,8 @@ import { anim, startGradeAnim, teaserView } from '../world/grade';
 import { startTour, tour } from '../world/evalTour';
 import { S, world } from '../world/state';
 import { findKind } from '../world/town';
-import { ATTIC_H, ATTIC_W, drawAttic, placeCover, sceneCanvas, village } from './scenes';
-import { coverFit, teaserFitOn } from './fit';
+import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, syncCovers, village } from './scenes';
+import { teaserFitOn, type FitOpts } from './fit';
 import { CONFIG } from '../data/config';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
@@ -24,8 +24,8 @@ import { skipFrame } from '../engine/fps';
 import { skipTapOk } from '../ui/touchHints';
 
 /** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
-function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
-  const { cv, sc } = sceneCanvas(host, TF_W, TF_H, 0.6);
+function fieldCanvas(host: HTMLElement, fit: FitOpts = {}): { ctx: CanvasRenderingContext2D; k: number } {
+  const { cv, sc } = sceneCanvas(host, TF_W, TF_H, 0.6, fit);
   const k = Math.max(1, Math.round(sc * window.devicePixelRatio));
   cv.width = TF_W * k;
   cv.height = TF_H * k;
@@ -170,7 +170,8 @@ const CUTS: Cut[] = [
       // 전투 2차로 다시 찍음: 이번 주 보스(붉은 무사) · 내려찍기 예고 → 굴러 피하기 → 큰 한 방
       stage.classList.add('dark');
       const host = el('<div class="tscene"></div>');
-      const { ctx, k } = fieldCanvas(host);
+      // FIRSTLOOK §4: 꽉 채울 때 보스가 통째로 보이게
+      const { ctx, k } = fieldCanvas(host, { focus: CONFIG.firstLook.teaser.bossFocus });
       const bar = el('<div class="tbossbar"><span>붉은 무사</span><i><u></u></i></div>');
       const bd = bossCut(ctx, k);
       draw = (t) => {
@@ -219,17 +220,14 @@ const CUTS: Cut[] = [
     enter: () => {
       stage.classList.add('dark');
       const host = el('<div class="tscene attic"></div>');
-      const a = sceneCanvas(host, ATTIC_W, ATTIC_H, 0.62);
+      const a = sceneCanvas(host, ATTIC_W, ATTIC_H, 0.62, { contain: true });
       draw = (t) => {
         drawAttic(a.ctx, t);
         // 천천히 줌인: 정수 배율로 한 단계 (도트가 번지지 않게)
         if (t > 2.4 && !a.cv.dataset.z) {
           a.cv.dataset.z = '1';
-          // FIRSTLOOK §4: 꽉 채운 채로 한 단계 더 (가운데 기준)
-          if (host.classList.contains('cover')) {
-            const r = stage.getBoundingClientRect();
-            return placeCover(host, a.cv, coverFit(ATTIC_W, ATTIC_H, r.width, r.height, window.devicePixelRatio, 1));
-          }
+          // FIRSTLOOK §4: 꽉 채울 땐 방 전체(창·상자·칼)가 보이게 — 한 단계 더 당기지 않음
+          if (host.classList.contains('cover')) return;
           const k = Math.round(a.sc * window.devicePixelRatio) + 1;
           a.cv.style.width = (ATTIC_W * k) / window.devicePixelRatio + 'px';
           a.cv.style.height = (ATTIC_H * k) / window.devicePixelRatio + 'px';
@@ -323,6 +321,7 @@ function frame(now: number) {
   const lt = t - START[i];
   const dur = c.beats * BEAT;
   c.update?.(lt, dur);
+  syncCovers(stage);
   // 글자: 컷 끝 0.3초 전에 사라진다
   if (lt > dur - 0.3 && i < CUTS.length - 1) $('#tCap').classList.remove('on');
   // 마지막 컷: 2초 페이드아웃

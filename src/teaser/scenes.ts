@@ -13,7 +13,8 @@ import { S, world } from '../world/state';
 import { doorOf, findKind, landBounds, placeLayout, rebuildPaths, sizeFor, type LayoutEntry } from '../world/town';
 import { drawChar, LH, LW, LANES } from '../ui/battle';
 import { dpr } from '../ui/kit';
-import { coverFit, teaserFitOn, type Fit } from './fit';
+import { coverFit, teaserFitOn, type Fit, type FitOpts } from './fit';
+import { CONFIG } from '../data/config';
 
 const CITY = NEIGHBORS.find((v) => v.id === 'moon') ?? NEIGHBORS[NEIGHBORS.length - 1];
 
@@ -57,7 +58,7 @@ export function village(g: number, night: boolean, opts: { bench?: boolean; keep
 // ───────── 작은 캔버스 (전투 · 보스 · 다락) ─────────
 
 /** 356×200 장면을 화면 폭에 맞춰 정수 배율로 */
-export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5): { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D; sc: number } {
+export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5, fit: FitOpts = {}): { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D; sc: number } {
   const cv = document.createElement('canvas');
   cv.width = w;
   cv.height = h;
@@ -65,9 +66,9 @@ export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5): { cv
   const r = (host.parentElement ?? host).getBoundingClientRect();
   // FIRSTLOOK §4 (flTeaserFit): 무대를 꽉 채우게 (cover · 가운데 기준으로 자름)
   if (teaserFitOn()) {
-    const f = coverFit(w, h, r.width, r.height, dpr());
-    placeCover(host, cv, f);
+    const f = coverFit(w, h, r.width, r.height, dpr(), { maxZoom: CONFIG.firstLook.teaser.maxZoom, ...fit });
     host.appendChild(cv);
+    placeCover(host, cv, f);
     const ctx = cv.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
     return { cv, ctx, sc: f.k / dpr() };
@@ -88,6 +89,33 @@ export function placeCover(host: HTMLElement, cv: HTMLCanvasElement, f: Fit) {
   host.classList.add('cover');
   cv.className = 'tcv';
   Object.assign(cv.style, { position: 'absolute', width: f.w + 'px', height: f.h + 'px', left: f.left + 'px', top: f.top + 'px' });
+  // 무대를 다 못 덮으면: 같은 장면을 늘려 어둡고 흐리게 깐 배경 (매 프레임 syncCovers가 옮겨 그림)
+  const r = host.getBoundingClientRect();
+  const short = f.left > 0.5 || f.top > 0.5 || f.left + f.w < r.width - 0.5 || f.top + f.h < r.height - 0.5;
+  let bg = host.querySelector<HTMLCanvasElement>('canvas.tbg');
+  if (!short) return bg?.remove();
+  if (!bg) {
+    bg = document.createElement('canvas');
+    bg.className = 'tbg';
+    host.insertBefore(bg, host.firstChild);
+  }
+  const sw = (f.w * dpr()) / f.k;
+  const sh = (f.h * dpr()) / f.k;
+  bg.width = Math.round(sw);
+  bg.height = Math.round(sh);
+  const s = Math.max(r.width / sw, r.height / sh) * 1.06;
+  const t = CONFIG.firstLook.teaser;
+  Object.assign(bg.style, { position: 'absolute', width: sw * s + 'px', height: sh * s + 'px', left: (r.width - sw * s) / 2 + 'px', top: (r.height - sh * s) / 2 + 'px', filter: `blur(${t.bgBlur}px) brightness(${1 - t.bgDim})` });
+}
+/** 흐린 배경 = 지금 장면을 작게 옮겨 그림 (cover 컷마다 매 프레임) */
+export function syncCovers(stage: HTMLElement) {
+  stage.querySelectorAll<HTMLCanvasElement>('.tscene.cover canvas.tbg').forEach((bg) => {
+    const cv = bg.parentElement?.querySelector<HTMLCanvasElement>('canvas.tcv');
+    if (!cv) return;
+    const x = bg.getContext('2d')!;
+    x.imageSmoothingEnabled = true;
+    x.drawImage(cv, 0, 0, bg.width, bg.height);
+  });
 }
 
 const FR: Record<string, CharFrames> = {};

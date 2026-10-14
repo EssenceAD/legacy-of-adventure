@@ -1331,6 +1331,8 @@ export const CONFIG = {
       bandHideMs: 10000,
     },
     /** §4 flTeaserFit: 타이틀·「터치해서 시작」·티저 마지막 컷 — 뒤 마을 = 티저 3번째 컷(등급 g · 낮) · 그 위 어둡게(dim 알파) · 제목 배율 koScale(지금 크기 × · 폰은 화면 폭 − fitPad 안에 들게 줄임) · 마을 간판 이름 */
+    /** §4 flTeaserFit 티저 작은 캔버스 컷: 확대 상한 = 폭 맞춤 × maxZoom · 남는 위아래 = 같은 장면을 늘려 어둡게(bgDim)·흐리게(bgBlur px) · 보스 컷은 bossFocus(장면 도트 가로 범위 · 붉은 무사)가 통째로 보이게 · 다락은 방 전체(자르지 않음) */
+    teaser: { maxZoom: 1.4, bgDim: 0.55, bgBlur: 8, bossFocus: [100, 168] as [number, number] },
     title: { g: 4, night: false, dim: 0.55, koScale: 2, fitPad: 24, innName: '솔바람 여관' },
   },
   /**

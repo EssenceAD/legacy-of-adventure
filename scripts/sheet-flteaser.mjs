@@ -58,7 +58,7 @@ const blackBands = (p) =>
     const cv = document.querySelector('#tStage .tcv');
     if (!cv) return null;
     const c = cv.getBoundingClientRect();
-    return { top: Math.max(0, c.top - r.top) / r.height, bot: Math.max(0, r.bottom - c.bottom) / r.height, left: Math.max(0, c.left - r.left), hasBody };
+    return { top: Math.max(0, c.top - r.top) / r.height, bot: Math.max(0, r.bottom - c.bottom) / r.height, left: Math.max(0, c.left - r.left), bg: !!document.querySelector('#tStage canvas.tbg'), hasBody };
   });
 
 for (const dev of Object.keys(DEVS)) {
@@ -76,9 +76,9 @@ for (const dev of Object.keys(DEVS)) {
       for (let i = 0; i < BEATS.length; i++) {
         await p.waitForFunction((i) => window.__teaserCut?.() === i, i, { timeout: 30000 });
         await W(p, Math.round(BEATS[i] * BEAT * (i === BEATS.length - 1 ? 0.5 : 0.62) * 1000));
-        if ([5, 6, 9].includes(i)) {
+        if ([5, 6].includes(i)) {
           const bb = await blackBands(p);
-          if (bb) ok(after ? bb.top === 0 && bb.bot === 0 : true, `${tag} 컷 ${i + 1} 캔버스 위 ${(bb.top * 100).toFixed(0)}% · 아래 ${(bb.bot * 100).toFixed(0)}% 빈칸`);
+          if (bb) ok(after ? bb.left <= 0 && (bb.top === 0 || bb.bg) : true, `${tag} 컷 ${i + 1} 캔버스 위 ${(bb.top * 100).toFixed(0)}% · 아래 ${(bb.bot * 100).toFixed(0)}% (흐린 배경 ${bb.bg ? '있음' : '없음'})`);
         }
         await shot(p, `cut${String(i + 1).padStart(2, '0')}`, dev, after);
       }
