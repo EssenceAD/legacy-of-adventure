@@ -1,7 +1,7 @@
 // 초상화 작업: 손님 대화창·정보 창 초상화 = 직업×종족 일러스트 (작은 목록 아이콘은 도트 그대로)
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import { BASE_GUEST_KINDS as GUEST_KINDS, RACES } from '../src/data/classes';
+import { GUEST_KINDS, RACES } from '../src/data/classes';
 import { PORTRAITS } from '../src/engine/assets';
 import { pic, portrait } from '../src/ui/common';
 import type { Actor } from '../src/world/state';
@@ -12,7 +12,7 @@ PORTRAITS.keeper = '/assets/portraits/keeper.png';
 const guest = (kind: string, race?: string, extra: Partial<Actor> = {}) => ({ id: 1, kind, race, rarity: 'common', name: 'A', ...extra }) as unknown as Actor;
 
 describe('portrait()', () => {
-  it('직업 5 × 종족 4 = 20장 파일이 있고 이름이 맞다', () => {
+  it('직업 6 × 종족 4 = 24장 파일이 있고 이름이 맞다 (사냥꾼 포함)', () => {
     for (const k of GUEST_KINDS)
       for (const r of RACES) {
         expect(portrait(guest(k, r))).toBe(`/assets/portraits/g_${k}_${r}.png`);
