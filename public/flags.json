@@ -68,5 +68,5 @@
   "almanac": false,
   "leftIcons": false,
   "legendFrame": true,
-  "huntSlots": false
+  "huntSlots": true
 }
