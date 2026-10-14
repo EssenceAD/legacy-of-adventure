@@ -14,7 +14,7 @@ import { arrive } from '../world/actors';
 import { decorView } from '../world/decor';
 import { say } from '../world/fx';
 import { constellationOn, fiveChapterNew, fiveChapterViewed, fiveHeart, fiveHooks, fiveNoticeTake, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
-import { PRI } from '../world/quiet';
+import { PRI, quietHooks, quietOn } from '../world/quiet';
 import { S, world, type Actor } from '../world/state';
 import { entrance } from '../world/town';
 import { esc } from './common';
@@ -98,7 +98,13 @@ export function focusFiveLedger(root: ParentNode = document) {
 }
 /** 「새 장이 열렸어요」 1번 (편지 뒤 · 옛 저장은 처음 한가할 때) */
 function fiveNotice() {
-  if (S.started && fiveNoticeTake()) toastHtml(`<span>📖 새 장이 열렸어요 · 장부 3막 「<b class="g">${esc(FIVE_CHAPTER.name)}</b>」</span>`, 6000);
+  if (!S.started) return;
+  // FIRSTLOOK §2 리뷰 ④ 화면 조용히: 가운데 상자 대신 장부 카드 깜빡 + 「새 장!」 꼬리표 (누르면 장부 3막 머리로)
+  if (quietOn()) {
+    if (fiveNoticeTake()) quietHooks.chapterNudge(fiveChapterNew, () => void import('./menu').then((m) => m.openGuideList()));
+    return;
+  }
+  if (fiveNoticeTake()) toastHtml(`<span>📖 새 장이 열렸어요 · 장부 3막 「<b class="g">${esc(FIVE_CHAPTER.name)}</b>」</span>`, 6000);
 }
 /** 장부 칸 누르기 (menu.ts가 장부를 그린 뒤) */
 export function bindFiveLedger(root: ParentNode = document) {

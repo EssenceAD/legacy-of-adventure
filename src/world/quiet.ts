@@ -1,6 +1,6 @@
 // FIRSTLOOK §2 화면 조용히 (플래그 flQuiet · 설정 「화면 조용히」 기본 켬) — 규칙만 (DOM·그리기는 fx.ts · bldStatusDraw.ts · wayfind.ts · render.ts · ui/quiet.ts)
-//  1. 마을 위 말풍선은 한 번에 1개: 우선순위 줄 (안내 > 이야기·사건 > 손님 대사 > 건물 상태) · 사이 최소 2.5초
-//     - 손님 대사·이야기 = 잠깐 뜨는 것(ms) → 줄 서서 하나씩 · 오래 못 뜨면 버림
+//  1. 마을 위 말풍선은 한 번에 1개: 우선순위 줄 (안내 > 이야기·사건 > 손님 대사 > 건물 상태) · 2.5~4초마다 하나씩 (무작위)
+//     - 손님 대사·이야기 = 잠깐 뜨는 것(ms) → 줄 서서 차례로 (버리지 않음 · 1분 넘게 못 뜬 것만)
 //     - 안내 「!」 = 붙잡는 것(hold) → 자리가 나면 잡고, 놓을 때까지 다른 건 기다림
 //     - 건물 상태 = 빈자리 채우기 → 아무것도 없고 간격이 지났을 때만 (다른 게 오면 바로 비켜 줌)
 //  3. 이름표 규칙 (nameTagRule) · 4. 떠다니는 글씨 합치기 (mergeFloat) · 5. 아래 띠 숨김 시간 (bandHidden)
@@ -57,19 +57,26 @@ export class BubbleQueue {
   /** 붙잡는 쪽이 이만큼 안 부르면 놓은 것으로 (틱이 멈췄거나 잊었을 때 줄이 영영 막히지 않게) */
   holdTtl = 3000;
   q: QItem[] = [];
-  /** 마지막 말풍선이 사라진 시각 */
-  lastEnd = -Infinity;
-  constructor(
-    public gap = () => Q().bubbleGapMs,
-    public stale = () => Q().bubbleStaleMs,
-    public max = () => Q().bubbleQueueMax,
-  ) {}
+  /** 다음 말풍선이 떠도 되는 시각 */
+  nextAt = -Infinity;
+  /** 간격(뜬 때부터) · 사라진 뒤 최소 빈 시간 · 「!」 놓은 뒤 · 버리는 나이 · 줄 길이 — 시험에서 바꿔 끼운다 */
+  every = () => {
+    const [a, b] = Q().bubbleEveryMs;
+    return a + Math.random() * (b - a);
+  };
+  blank = () => Q().bubbleBlankMs;
+  holdGap = () => Q().bubbleHoldGapMs;
+  stale = () => Q().bubbleStaleMs;
+  max = () => Q().bubbleQueueMax;
+  constructor(o: Partial<Pick<BubbleQueue, 'every' | 'blank' | 'holdGap' | 'stale' | 'max'>> = {}) {
+    Object.assign(this, o);
+  }
   reset() {
     this.cur = null;
     this.hold = null;
     this.wants.clear();
     this.q = [];
-    this.lastEnd = -Infinity;
+    this.nextAt = -Infinity;
   }
   /** 잠깐 뜨는 말풍선 줄 서기 → 바로 떴으면 true */
   request(it: QItem, now: number): boolean {
@@ -102,34 +109,31 @@ export class BubbleQueue {
     this.wants.delete(key);
     if (this.hold?.key === key) {
       this.hold = null;
-      this.lastEnd = now;
+      this.nextAt = now + this.holdGap();
       this.pump(now);
     }
   }
   /** 자리가 비고 간격도 지났나 (건물 상태처럼 「빈자리 채우기」용 · 줄도 비어야) */
   idle(now: number): boolean {
     this.pump(now);
-    return !this.cur && !this.hold && !this.q.length && !this.wants.size && now >= this.lastEnd + this.gap();
+    return !this.cur && !this.hold && !this.q.length && !this.wants.size && now >= this.nextAt;
   }
   /** 지금 떠 있는 것 (없으면 null) */
   showing(now: number): string | null {
     this.pump(now);
     return this.hold?.key ?? this.cur?.key ?? null;
   }
-  /** 시간이 흐름: 끝난 것 치우고 · 간격이 지났으면 가장 급한 것 하나 */
+  /** 시간이 흐름: 끝난 것 치우고 · 차례가 되면 가장 급한 것 하나 */
   pump(now: number) {
-    if (this.cur && now >= this.cur.until) {
-      this.lastEnd = this.cur.until;
-      this.cur = null;
-    }
+    if (this.cur && now >= this.cur.until) this.cur = null;
     if (this.hold && now - this.hold.seen > this.holdTtl) {
       this.hold = null;
-      this.lastEnd = now;
+      this.nextAt = now + this.holdGap();
     }
     for (const [k, w] of this.wants) if (now - w.seen > this.holdTtl) this.wants.delete(k);
     if (this.cur || this.hold) return;
-    if (now < this.lastEnd + this.gap()) return;
-    // 오래 기다린 대사·주인이 사라진 대사는 버림 (안내는 버리지 않음)
+    if (now < this.nextAt) return;
+    // 아주 오래 기다린 대사만 버림 (안내는 버리지 않음 · 주인이 사라진 대사는 아래에서 건너뜀)
     this.q = this.q.filter((x) => x.pri <= PRI.guide || now - x.at! <= this.stale());
     for (;;) {
       let best: { kind: 'q'; i: number; pri: number; at: number } | { kind: 'w'; key: string; pri: number; at: number } | null = null;
@@ -148,6 +152,8 @@ export class BubbleQueue {
       if (it.ok && !it.ok()) continue;
       if (it.show() === false) continue;
       this.cur = { key: it.key, pri: it.pri, until: now + it.ms };
+      // 다음은 뜬 때부터 2.5~4초 (단 이 말풍선이 사라지고 잠깐 빈 뒤)
+      this.nextAt = now + Math.max(this.every(), it.ms + this.blank());
       return;
     }
   }
@@ -155,10 +161,24 @@ export class BubbleQueue {
 /** 마을 말풍선 자리 (하나) */
 export const qb = new BubbleQueue();
 
+/** 리뷰 ②: 말풍선 화면 안쪽 여백 (CSS px) */
+export const EDGE_PAD = 8;
+/** 가로 [left,right] 를 [lo,hi] 안으로 옮기는 양 (넘치게 넓으면 왼쪽 맞춤) */
+export function edgeShift(left: number, right: number, lo: number, hi: number): number {
+  if (right - left > hi - lo) return lo - left;
+  if (left < lo) return lo - left;
+  if (right > hi) return hi - right;
+  return 0;
+}
+
 // ───────── 2. 가운데 덮는 알림 대신 ─────────
 
 /** ui/quiet.ts 가 채운다: 왼쪽 위 목표 알약 깜빡 + 「받기!」 꼬리표 */
-export const quietHooks = { goalNudge: () => {} };
+export const quietHooks = {
+  goalNudge: () => {},
+  /** 리뷰 ④: 장부 새 장 (still = 아직 안 봤나 · open = 장부 열기) */
+  chapterNudge: (_still: () => boolean, _open: () => void) => {},
+};
 
 // ───────── 3. 이름표 ─────────
 

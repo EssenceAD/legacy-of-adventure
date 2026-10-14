@@ -5,7 +5,7 @@ import { scr, sx, sy, TW, view } from '../engine/iso';
 import { P } from '../engine/pixel';
 import type { Actor, Building } from './state';
 import { saverOn } from '../engine/fps';
-import { mergeFloat, PRI, qb, quietOn } from './quiet';
+import { EDGE_PAD, edgeShift, mergeFloat, PRI, qb, quietOn } from './quiet';
 
 interface Part {
   x: number;
@@ -201,6 +201,19 @@ function bldBubble(o: Building, text: string) {
   setTimeout(() => b.remove(), 2600);
 }
 
+/** 말풍선을 화면 안으로: 몸통 가로 이동(margin-left · 움직임 애니메이션은 margin-top만 씀) · 꼬리는 --dx 만큼 거꾸로 (style.css) */
+function keepOnScreen(b: HTMLElement) {
+  const cur = parseFloat(b.style.marginLeft) || 0;
+  const r = b.getBoundingClientRect();
+  const lo = Math.max(0, over().getBoundingClientRect().left) + EDGE_PAD;
+  const hi = Math.min(document.documentElement.clientWidth || innerWidth, over().getBoundingClientRect().right) - EDGE_PAD;
+  const dx = Math.round(edgeShift(r.left - cur, r.right - cur, lo, hi));
+  if (dx === cur) return;
+  b.style.marginLeft = dx ? dx + 'px' : '';
+  if (dx) b.style.setProperty('--dx', dx + 'px');
+  else b.style.removeProperty('--dx');
+}
+
 export function clearBubbles() {
   over().querySelectorAll('.bub,.flt').forEach((b) => b.remove());
   floatLive.clear();
@@ -233,6 +246,8 @@ export function posBubbles() {
       b.style.top = Math.round(Y * view.SC) + 'px';
       b.classList.toggle('rt', X * view.SC > view.LW * view.SC - 90);
     });
+  // FIRSTLOOK §2 리뷰 ②: 화면 가장자리에서 잘리지 않게 안쪽(좌우 8px)으로 밀고 · 꼬리만 말한 사람 쪽으로
+  if (quietOn()) over().querySelectorAll<HTMLElement>('.bub, .wfbub').forEach(keepOnScreen);
   // 핫픽스 9: 그래도 겹치면 뒤의 것을 위로 밀어 쌓는다
   const list = [...over().querySelectorAll<HTMLElement>('.bub')];
   for (let i = 1; i < list.length; i++) {

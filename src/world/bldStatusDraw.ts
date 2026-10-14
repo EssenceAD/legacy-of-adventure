@@ -8,7 +8,7 @@ import { scr, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { av } from '../engine/ver';
 import { bubblesHidden, collectCands, dismissBubble, selectBubbles, type BldCand, type BldIcon } from './bldStatus';
-import { qb, quietOn } from './quiet';
+import { EDGE_PAD, qb, quietOn } from './quiet';
 import { decorView } from './decor';
 import { S, type Actor, type Building } from './state';
 import { placing } from './town';
@@ -164,11 +164,15 @@ export function drawBldStatus(ctx: CanvasRenderingContext2D, nt: number) {
       return;
     }
     if (!bub) return;
-    const X = a[0] - (BW >> 1);
+    const X0 = a[0] - (BW >> 1);
+    // FIRSTLOOK §2 리뷰 ②: 조용히면 화면 좌우 8px 안으로 밀고 꼬리만 건물 쪽에
+    const X = quietOn() ? edgeX(X0) : X0;
     const Y = a[1] - BH + 2 - bob;
     const s = { c, x: X, y: Y, w: BW, h: BH };
     if (wf && hit(wf, s)) return;
-    ctx.drawImage(nt > 0.5 && NIGHT ? NIGHT : bub, X, Y);
+    const img = nt > 0.5 && NIGHT ? NIGHT : bub;
+    if (X === X0) ctx.drawImage(img, X, Y);
+    else bubbleShifted(ctx, img, X, Y, X0);
     const ic = IM[c.icon];
     if (ic) ctx.drawImage(ic, X + 3, Y + 2);
     if (c.shine) sparkle(ctx, X + BW - 3, Y + 1, S.T + i);
@@ -178,6 +182,24 @@ export function drawBldStatus(ctx: CanvasRenderingContext2D, nt: number) {
   spots = next;
   perf.draws++;
   perf.drawMs += performance.now() - t0;
+}
+
+/** 화면 좌우 EDGE_PAD(CSS px) 안의 말풍선 왼쪽 (논리 px) */
+function edgeX(X: number): number {
+  const m = Math.ceil(EDGE_PAD / view.SC);
+  return Math.max(m, Math.min(view.LW - m - BW, X));
+}
+/**
+ * 민 말풍선 (bubble.png 22×24: 0~18줄 몸통 · 19줄 아래 테두리(9~12칸 꼬리 입구) · 20~22줄 꼬리)
+ *  몸통은 X에 · 아래 테두리는 1칸을 늘려 다시 긋고 · 꼬리(9~12칸 19~22줄)는 원래 자리(X0)에 — 몸통 안쪽 3칸까지만
+ */
+function bubbleShifted(ctx: CanvasRenderingContext2D, img: CanvasImageSource, X: number, Y: number, X0: number) {
+  ctx.drawImage(img, 0, 0, BW, 19, X, Y, BW, 19);
+  ctx.drawImage(img, 0, 19, 3, 1, X, Y + 19, 3, 1);
+  ctx.drawImage(img, 3, 19, 1, 1, X + 3, Y + 19, BW - 6, 1);
+  ctx.drawImage(img, BW - 3, 19, 3, 1, X + BW - 3, Y + 19, 3, 1);
+  const tx = Math.max(X + 3, Math.min(X + BW - 7, X0 + 9));
+  ctx.drawImage(img, 9, 19, 4, 4, tx, Y + 19, 4, 4);
 }
 
 /** 진행 고리 (말풍선 없이) — 반지름 4 · 위에서 시계 방향으로 채움 */
