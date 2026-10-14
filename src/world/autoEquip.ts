@@ -5,6 +5,7 @@ import { powerCalc, powerOf } from './adventurers';
 import { equip, gearStat, itemById, unequip } from './items';
 import { P, world, type Actor, type Item } from './state';
 import { favRank, isFav } from './growth';
+import { exCanWear } from './exGate';
 
 export type Gear = Partial<Record<Slot, Item>>;
 const listOf = (g: Gear): Item[] => SLOTS.map((s) => g[s]).filter((x): x is Item => !!x);
@@ -15,6 +16,8 @@ export const equipTargets = (): Actor[] => homeActors().filter((a) => !!a.id && 
 
 /** 이 손님이 쓸 수 있는 후보인가 — 잠금은 이미 자기가 끼고 있는 것만, 남이 낀 건 take일 때만 (그 손님이 원정 중이면 안 됨) */
 function usable(a: Actor, it: Item, take: boolean): boolean {
+  // RAIDWEAPON §2: 전용 무기는 그 영웅 ★5만
+  if (it.ex && !exCanWear(a, it)) return false;
   if (it.owner === a.id) return true;
   if (it.locked) return false;
   if (it.owner == null) return true;
@@ -150,7 +153,7 @@ export function upgradeFor(items: Item[], also: Actor[] = []): { a: Actor; it: I
     const cur = SLOTS.map((s) => itemById(a.equip?.[s])).filter((x): x is Item => !!x);
     const now = calc(cur);
     for (const it of items) {
-      if (it.owner != null || it.locked || !P.bag.includes(it)) continue;
+      if (it.owner != null || it.locked || !P.bag.includes(it) || (it.ex && !exCanWear(a, it))) continue;
       const old = itemById(a.equip?.[it.slot]);
       if (old?.locked) continue;
       const g = calc([...cur.filter((x) => x.slot !== it.slot), it]) - now;
@@ -207,7 +210,7 @@ export function applyBest(a: Actor, plan: BestPlan): { changed: number; gain: nu
 export function whoWears(it: Item, n = 3): { a: Actor; gain: number }[] {
   const out: { a: Actor; gain: number }[] = [];
   for (const a of equipTargets()) {
-    if (it.owner === a.id) continue;
+    if (it.owner === a.id || (it.ex && !exCanWear(a, it))) continue;
     const old = itemById(a.equip?.[it.slot]);
     if (old?.locked) continue;
     const calc = powerCalc(a);

@@ -12,6 +12,7 @@ import { best, recPower, regionBossOf } from './hunt';
 import { rollUnique } from './uniques';
 import { markDirty, P, S, type Item } from './state';
 import { petTry } from './pets';
+import { abyssFrags } from './exWeapons';
 
 const A = () => CONFIG.abyss;
 export type AbyssRec = ReturnType<typeof abyssRec>;
@@ -136,6 +137,8 @@ export function clearFloor(f: number, bossRegion: RegionId | null = null, rng: (
   if (rest) addBlessMin(A().restMin, now);
   // LUXE §2 펫: 심연 층 클리어 = 별고양이 시도 1
   petTry('abyss', rng);
+  // RAIDWEAPON §2: 25층마다 무기 조각 (이번 주 새 층만 · 꺼져 있으면 0)
+  if (!S.visiting) abyssFrags(f, now);
   const rec = abyssRec(now);
   const record = f > rec.best;
   rec.best = Math.max(rec.best, f);

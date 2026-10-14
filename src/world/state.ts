@@ -222,6 +222,8 @@ export interface Item {
   owner?: number | null;
   /** 핫픽스 12 §1-3: 잠금 — 자동 장착·자동 분해에서 빠짐 */
   locked?: boolean;
+  /** RAIDWEAPON §2 전용 무기: 주인 영웅 키 (전설 legendId · 다섯 별 starId — data/exweapons) · 등급은 유물(a) 규칙 그대로, 이름표만 「전용」 */
+  ex?: string;
 }
 
 export interface Quest {
@@ -664,8 +666,20 @@ export function freshProgress() {
     outfits: freshOutfits(),
     /** LUXE §2 펫 「동물 친구」 (world/pets.ts petState()가 칸을 바로잡는다 · 플래그를 꺼도 만난 펫은 그대로) */
     pets: freshPets(),
+    /** RAIDWEAPON 무기 조각 · 선택 상자 · 전용 무기 (world/frags.ts rwState()가 칸을 바로잡는다 · 플래그를 꺼도 모은 것은 그대로) */
+    raidWeapon: freshRaidWeapon(),
   };
 }
+
+/**
+ * RAIDWEAPON: frags = 무기 조각 (공통 재화 · 10개 = 선택 상자 1) · boxes = 따로 받은 선택 상자(월드 레이드 상위 등)
+ *  · got = 받은 전용 무기 (영웅 키 → 받은 수 · 도감 ✦) · awoke = 처음 끼워 깨어난 영웅 키 (컷 1번만)
+ *  · bundle = 「토벌 전리품」 방 조각을 줬나 (1번만 · 옛 저장도) · abyssWk/abyssHi = 이번 주(한국 시간) 심연 조각을 준 가장 높은 층
+ */
+export function freshRaidWeapon() {
+  return { frags: 0, boxes: 0, got: {} as Record<string, number>, awoke: [] as string[], bundle: false, abyssWk: '', abyssHi: 0 };
+}
+export type RaidWeaponState = ReturnType<typeof freshRaidWeapon>;
 
 /** LUXE §1-3: owned = 가진 의상 id · worn = 캐릭터 키(heroId·legendId·starId) → 입은 의상 id (없으면 기본 옷) · got = 「친구」 보상 안내를 한 의상 id */
 export function freshOutfits() {

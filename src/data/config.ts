@@ -1396,6 +1396,17 @@ export const CONFIG = {
     /** 파티 출발 때 다섯 별 하나가 출발 말풍선(대사 파일 depart)을 띄울 확률 */
     departBubble: 0.5,
   },
+  /**
+   * RAIDWEAPON (월드 레이드 · 전용 무기 · 보스 연전) — 숫자는 여기 한 곳. §1 보스 연전 = rush · §2 전용 무기 = ex · 조각 나오는 곳 = frag
+   *  ex: 바탕 능력치 = 그 사람이 열 수 있는 가장 높은 지역 고유 무기(유물) × exMult · 고정 옵션 = 그 영웅 스킬 값 × fixedPct · 일반 옵션 rolled개
+   *      needStars = 끼우는 조건(★) · cutMs = 처음 낄 때 컷 길이 · legendColor = 전설 무기 궤적 색(지금 ★5 금빛 그대로)
+   *  frag: perBox 조각 = 선택 상자 1 · 주간 토벌 첫 보스 처치 raidFirst · 연속 2·3번째 처치 raidChainP 확률로 raidChainN
+   *      · 심연 abyssEvery층마다 abyssN (주마다 새 층만 — 같은 주에 같은 층을 다시 깨도 안 줌) · 마을 회관 「토벌 전리품」 방 완성 bundle (이미 고친 사람도 한 번)
+   */
+  raidWeapon: {
+    ex: { exMult: 1.15, fixedPct: 0.5, rolled: 2, needStars: 5, cutMs: 1500, legendColor: '#ffd36b' },
+    frag: { perBox: 10, raidFirst: 1, raidChainP: 0.5, raidChainN: 1, abyssEvery: 25, abyssN: 1, bundle: 5, bundleRoom: 'raid' },
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

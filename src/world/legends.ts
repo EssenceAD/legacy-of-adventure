@@ -5,6 +5,7 @@ import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
 import { josa } from '../data/josa';
+import { exReadyText } from './exGate';
 import { isStarId, STARS, type StarId } from '../data/fivestars';
 import { LEGENDS, legendByKey, type BondEvent, type LegendCtx, type RequestEvent } from '../data/legends';
 import { makeLegend } from './adventurers';
@@ -347,8 +348,8 @@ export function starUpLegend(a: Actor): string | null {
   if (a.stars === 5) {
     if (!a.legendId && isStarId(a.starId)) {
       const w = starWeaponName(a.starId);
-      uiHooks.announce(`★ ${a.name}의 ${w}${josa(w, '이')} 깨어났습니다!`);
-    } else uiHooks.announce(`★ ${a.name}의 유산 무기가 깨어났습니다!`);
+      uiHooks.announce(exReadyText(a) ?? `★ ${a.name}의 ${w}${josa(w, '이')} 깨어났습니다!`);
+    } else uiHooks.announce(exReadyText(a) ?? `★ ${a.name}의 유산 무기가 깨어났습니다!`);
   }
   return null;
 }

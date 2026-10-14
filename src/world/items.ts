@@ -14,6 +14,8 @@ import { P, pick, S, world, type Actor, type Item, type ItemOpt } from './state'
 import { dexAddItem } from './progress';
 import { brag, checkSet3 } from './growth';
 import { starSkillOpt } from './fivestars';
+import { exAwaken, exCanWear } from './exGate';
+import { exIconPath } from '../data/exweapons';
 
 const I = CONFIG.items;
 const E = CONFIG.expedition;
@@ -133,6 +135,8 @@ export function equippedItems(a: Actor): Item[] {
 
 /** 끼우기 (다른 손님이 끼고 있었으면 빼서 옮긴다) */
 export function equip(a: Actor, it: Item) {
+  // RAIDWEAPON §2: 전용 무기는 그 영웅 ★5만 (못 끼면 아무것도 안 바꾼다 · 후보 목록에서도 빠진다)
+  if (it.ex && !exCanWear(a, it)) return;
   if (it.owner != null && it.owner !== a.id) {
     const prev = world.actors.find((x) => x.id === it.owner);
     if (prev) prev.equip[it.slot] = null;
@@ -144,6 +148,8 @@ export function equip(a: Actor, it: Item) {
   it.isNew = false;
   // GROWTH §3-5: 세트 3부위 첫 완성 자랑
   if (it.set && S.started) checkSet3(a);
+  // RAIDWEAPON §2: 처음 끼우면 깨어남 (알림 + 짧은 컷 · 영웅마다 1번)
+  if (it.ex) exAwaken(a, it);
 }
 
 export function unequip(a: Actor, slot: Slot) {
@@ -186,12 +192,29 @@ export function optSumOf(a: Actor, items: Item[], k: OptKey, region?: RegionId):
 // ───────── 아이콘 (16×16 도트: 부위 모양 × 등급 색 × 소재 색) ─────────
 
 const ICONS: Record<string, string> = {};
-export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'>): string {
-  const key = `${it.slot}|${it.grade}|${it.region}|${it.wkind ?? ''}`;
+// RAIDWEAPON §2 전용 무기 아이콘: public/assets/weapons/ex_<id>.png 가 있으면 그 그림 (넣기만 하면 저절로) · 없으면 직업 무기 아이콘 + 금빛 테두리
+const EX_PNG: Record<string, HTMLImageElement | null> = {};
+function exPng(id: string): string | null {
+  if (typeof Image === 'undefined') return null;
+  const hit = EX_PNG[id];
+  if (hit === null) return null;
+  if (hit) return hit.complete && hit.naturalWidth ? hit.src : null;
+  const im = new Image();
+  EX_PNG[id] = im;
+  im.onerror = () => void (EX_PNG[id] = null);
+  im.src = (import.meta.env?.BASE_URL ?? '/') + exIconPath(id);
+  return null;
+}
+export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'> & { ex?: string }): string {
+  if (it.ex) {
+    const png = exPng(it.ex);
+    if (png) return png;
+  }
+  const key = `${it.slot}|${it.grade}|${it.region}|${it.wkind ?? ''}${it.ex ? '|ex' : ''}`;
   if (ICONS[key]) return ICONS[key];
   const c = canvas(16, 16);
   const p = Paint(c.getContext('2d')!);
-  const g = GRADE_INFO[it.grade];
+  const g = it.ex ? { color: '#ffd36b', dark: '#5a3a10' } : GRADE_INFO[it.grade];
   const mat = regionById(it.region).color;
   p.rect(0, 0, 16, 16, '#1c1018');
   p.rect(1, 1, 14, 14, g.dark);
@@ -235,6 +258,14 @@ export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'>):
     p.ell(8, 9, 3.5, 3.5, '#e8b94a');
     p.ell(8, 9, 2, 2, g.dark);
     p.rect(7, 3, 3, 3, mat);
+  }
+  if (it.ex) {
+    // 금빛 두 겹 테두리 + 네 귀퉁이 반짝
+    p.rect(0, 0, 16, 1, '#ffd36b');
+    p.rect(0, 15, 16, 1, '#ffd36b');
+    p.rect(0, 0, 1, 16, '#ffd36b');
+    p.rect(15, 0, 1, 16, '#ffd36b');
+    for (const [x, y] of [[0, 0], [15, 0], [0, 15], [15, 15]] as const) p.px(x, y, '#fff6d0');
   }
   return (ICONS[key] = c.toDataURL());
 }

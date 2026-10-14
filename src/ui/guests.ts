@@ -42,6 +42,8 @@ import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
 import { bindWardrobeBtn, wardrobeBtnHtml } from './wardrobe';
 import { heroCardHtml, sagaFirst } from './heroCard';
+import { bindExBag, bindExItem, exBagLine, exItemHtml } from './exWeapons';
+import { exWhy } from '../world/exGate';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -413,6 +415,10 @@ export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActo
   const cands = P.bag.filter((it) => it.slot === slot && it.id !== cur?.id).sort((p, q) => itemPower(q) - itemPower(p));
   const rows = cands
     .map((it) => {
+      // RAIDWEAPON §2: 못 끼는 전용 무기는 회색 + 까닭 (다른 영웅 것은 아예 안 보임)
+      const xw = it.ex ? exWhy(a, it) : '';
+      if (xw && !xw.startsWith('★')) return '';
+      if (xw) return `<div class="irow" style="opacity:.55">${itemCell(it)}<span><b style="color:#ffd36b">${esc(it.name)}</b><small>🔒 ${esc(xw)}</small></span></div>`;
       const old = a.equip[slot];
       a.equip[slot] = it.id;
       const diff = powerOf(a) - before;
@@ -426,7 +432,7 @@ export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActo
     `${cur ? `<div class="irow cur">${itemCell(cur)}<span><b>${esc(cur.name)}</b><small>지금 착용</small></span><button id="unEq">빼기</button></div>` : ''}
     <div class="ilist">${rows || '<p class="note">가방에 이 부위 장비가 없어요 · 원정에서 얻어요</p>'}</div>`,
   );
-  $$('.ilist .irow').forEach(
+  $$('.ilist button.irow').forEach(
     (b) =>
       (b.onclick = () => {
         equip(a, P.bag.find((x) => x.id === +b.dataset.id!)!);
@@ -455,7 +461,7 @@ export function openBag() {
       .filter(([, v]) => v)
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>
-    ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}
+    ${full ? '<p class="sub bad">가방이 가득 찼어요 · 분해하거나 대장간 레벨을 올려요</p>' : ''}${exBagLine()}
     ${visOn('bulkTidy') ? `<div class="btnrow"><button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>${tidyBtnHtml()}</div>` : '<button class="bigbtn sm" id="bagAuto">모두 자동 장착</button>'}
     <div class="bag">${items.map((it) => itemCell(it, `data-id="${it.id}"`)).join('') || '<p class="note">아직 장비가 없어요 · 원정을 보내 봐요</p>'}</div>
     ${autoSalvageHtml('autoS')}
@@ -465,6 +471,7 @@ export function openBag() {
   if (td) td.onclick = () => openTidyConfirm(openBag);
   $$('.bag .ic').forEach((b) => (b.onclick = () => showItem(P.bag.find((x) => x.id === +b.dataset.id!)!)));
   bindAutoSalvage('autoS');
+  bindExBag(openBag);
   $('#salAll').onclick = () => openBulkSalvage(openBag);
   $('#bagAuto').onclick = () => {
     autoAll();
@@ -511,11 +518,12 @@ addEventListener('click', (e) => {
 /** 아이템 상세 */
 export function showItem(it: Item, back: () => void = openBag) {
   it.isNew = false;
-  const g = GRADE_INFO[it.grade];
+  // RAIDWEAPON §2: 전용 무기 이름표 「전용」 (금빛 · 규칙은 유물 그대로)
+  const g = it.ex ? { ...GRADE_INFO[it.grade], name: '전용', color: '#ffd36b' } : GRADE_INFO[it.grade];
   const reg = regionById(it.region);
   const owner = it.owner != null ? homeActors().find((x) => x.id === it.owner) : null;
   const stats = Object.keys(it.stats).map((k) => `<span>${STAT_NAME[k as never]} <b>${itemStat(it, k as never)}</b></span>`).join('');
-  const opts = it.opts.map((o) => `<div class="${o.u ? 'uopt' : ''}">${o.u ? '★' : '·'} ${OPT_INFO[o.k].label(o.v, o.region ? regionById(o.region).name : undefined)}${o.u ? ' <small>(고유)</small>' : ''}</div>`).join('');
+  const opts = it.opts.map((o) => `<div class="${o.u ? 'uopt' : ''}">${o.u ? '★' : '·'} ${OPT_INFO[o.k].label(o.v, o.region ? regionById(o.region).name : undefined)}${o.u ? ` <small>(${it.ex ? '전용' : '고유'})</small>` : ''}</div>`).join('');
   const set = it.set ? `<div class="setb">세트 「${reg.set.name}」 2부위: ${OPT_INFO[reg.set.two.k].label(reg.set.two.v, reg.name)} · 3부위: ${OPT_INFO[reg.set.three.k].label(reg.set.three.v, reg.name)}</div>` : '';
   const smith = !!smithObj();
   const maxed = it.enh >= CONFIG.smith.maxEnhance;
@@ -524,7 +532,7 @@ export function showItem(it: Item, back: () => void = openBag) {
     `<div class="idet">${itemCell(it)}<div><b style="color:${g.color}">${g.name} ${SLOT_NAME[it.slot]}</b><small>${reg.name}${owner ? ` · ${esc(owner.name)} 착용` : ''}</small></div></div>
     <div class="stats">${stats}<span class="pw">합 <b>${itemPower(it)}</b></span></div>
     ${it.slot === 'weapon' && it.wkind ? `<p class="note">딱 맞는 직업: <b>${fitClassName(it)}</b> (끼면 공격·마력 +${Math.round(CONFIG.items.classWeaponBonus * 100)}%)</p>` : ''}
-    ${opts ? `<div class="opts">${opts}</div>` : ''}${it.uniq ? `<div class="opts g">유물: ${esc(it.uniq)}</div>` : ''}${uniqHtml(it)}${set}
+    ${opts ? `<div class="opts">${opts}</div>` : ''}${it.uniq ? `<div class="opts g">유물: ${esc(it.uniq)}</div>` : ''}${uniqHtml(it)}${exItemHtml(it)}${set}
     ${whoHtml(it)}
     <div class="btnrow">
       <button class="bigbtn sm" id="iEnh" ${smith && !maxed ? '' : 'disabled'}>${maxed ? '최대 강화' : smith ? `강화 +${it.enh + 1} (${DUST_NAME[it.grade]} ${enhanceCost(it)}/${P.dust[it.grade]} · ${pct(enhanceRate(it))})` : '강화 (대장간 필요)'}</button><button class="bigbtn sm ghost" id="iEnhW" ${smith ? '' : 'disabled'}>강화 창…</button>
@@ -535,6 +543,7 @@ export function showItem(it: Item, back: () => void = openBag) {
   );
   const ew = document.getElementById('iEnhW');
   if (ew) ew.onclick = () => openEnhance(it, () => showItem(it, back));
+  bindExItem(it, () => showItem(it, back));
   $$('[data-wear]').forEach(
     (b) =>
       (b.onclick = () => {
