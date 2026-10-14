@@ -44,11 +44,11 @@ afterEach(() => {
 });
 
 describe("flSideRail", () => {
-  it("기본 꺼짐 · flags.json 도 꺼짐", () => {
+  it("코드 기본은 꺼짐 · v0.25.42 형철 OK로 flags.json 켬", () => {
     expect(FLAG_DEFAULTS.flSideRail).toBe(false);
     expect(
       JSON.parse(fs.readFileSync("public/flags.json", "utf8")).flSideRail,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("끄면 예전 그대로: 「⋯」 없음 · 다섯 버튼 다 보임", () => {
