@@ -490,8 +490,8 @@ function drawSignLabel(ctx: CanvasRenderingContext2D) {
   const txt = stars() < need ? `★${need} 필요` : `땅 넓히기 ${CONFIG.land[next - 1].cost}G`;
   const X = Math.round(view.OX + sx(sg[0] + 0.5, sg[1] + 0.5));
   const Y = Math.round(view.OY + sy(sg[0] + 0.5, sg[1] + 0.5) - 44);
-  // FIRSTLOOK §1 flFirstCam: 「땅 넓히기 ○G」 글씨는 금화가 그 값의 50% 이상일 때만 (그 전엔 팻말 그림만 · 누르는 자리는 그대로)
-  if (stars() >= need && !signLabelOn(S.gold, CONFIG.land[next - 1].cost)) return void Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
+  // FIRSTLOOK §1 flFirstCam: 「땅 넓히기 ○G」 글씨는 장부 1장을 마친 뒤에만 (그 전엔 팻말 그림만 · 누르는 자리는 그대로)
+  if (stars() >= need && !signLabelOn()) return void Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
   ctx.font = '8px "Galmuri9"';
   const w = Math.ceil(ctx.measureText(txt).width) + 6;
   const p = P(ctx);

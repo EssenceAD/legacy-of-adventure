@@ -1013,7 +1013,7 @@ async function boot() {
   // 핫픽스 7 (8-2·8-3): 새 버전 확인 · 타이틀 아래 「v… · 패치노트」
   game.resumeHooks.folded = () => void settleFolded();
   // 땅 개편 §5: 땅에 맞춘 배율 — 넓히면 한 단계 멀어진다 · 처음(고른 배율 없음)엔 땅 크기에 맞춰
-  // FIRSTLOOK §1 flFirstCam: 새 세이브는 배율 3 · 여관 가운데 · 첫 낮 숲 옮기기 · 땅을 처음 넓히면 배율 2로 한 번 부드럽게 (옛 저장·고른 배율은 그대로)
+  // FIRSTLOOK §1 flFirstCam: 새 세이브는 여관 가운데 · PC 배율 3(땅을 처음 넓히면 2로 한 번 부드럽게) · 폰 배율 2 그대로 (옛 저장·고른 배율은 그대로)
   game.camHooks.fit = (expand) => {
     const z = landZoom();
     if (expand) {
@@ -1022,9 +1022,9 @@ async function boot() {
       return;
     }
     if (!firstCamClose()) resetPull();
-    const fz = firstCamZoom(zoomsNow(), hasZoomPref(), game.camHold.title);
+    const fz = firstCamZoom(zoomsNow(), hasZoomPref(), game.camHold.title, screen.size === 'phone');
     if (!hasZoomPref() && (fz ?? z) !== S.zoom) tempZoom(fz ?? z);
-    if (fz != null) placeFirstCam(findKind('inn'), landBounds(), S.day);
+    if (fz != null) placeFirstCam(findKind('inn'), screen.size === 'phone');
   };
   firstCamFx.pull = (to) => {
     const sc0 = view.SC;
