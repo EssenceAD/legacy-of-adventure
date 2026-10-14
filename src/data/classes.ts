@@ -62,6 +62,9 @@ export interface ClassDef {
   /** HERODOT 3: 전설(legendId)·이름 있는 영웅(heroId) 고정 겉모습 열쇠 · 신화 (heroDotV2 켰을 때 appearance()가 넣는다) */
   named?: string;
   mythic?: boolean;
+  /** LUXE §1-3: 입은 의상 id (appearance()가 넣는다 · outfits 켰을 때만) · dress = 이름 있는 겉모습 위에 덮는 옷 색 (engine/outfitPaint.ts만 넣는다) */
+  outfit?: string;
+  dress?: Partial<ClassDef>;
 }
 
 export type ClassKey = 'knight' | 'mage' | 'dwarf' | 'rogue' | 'cleric' | 'hunter' | 'keeper' | 'post' | 'hero';

@@ -1,5 +1,6 @@
 // 4단계 화면: 「당신은 누구였나요?」(주인 만들기·출신 컷) · 주인 정보창(6각형·달력) · 인연 목록 · 선물 · 엔딩 앨범 · 엔딩 카드
 import { BONDS, bondById, GIFT_KEYS, GIFTS, type BondDef, type GiftKey } from '../data/bonds';
+import { portSrc } from './outfitPort';
 import { endCredits, saveChronThumb } from './chronicle';
 import { backupCycle, bindMemoryRow, bindStoryAlbum, giftsHtml, newInn, playCycleOpening, storyAlbumHtml, storyUi } from './story';
 import { lastGrant, rememberFav, startCycle, storyLines } from '../world/story';
@@ -31,7 +32,8 @@ import { harvestShopOn } from '../world/harvest';
 import { openHarvestShop } from './harvest';
 
 const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender)] : PORTRAITS.hero) || '';
-const portOf = (d: BondDef) => PORTRAITS[d.port] || '';
+// LUXE §1-3: 입은 의상 색 (한 함수 portSrc)
+const portOf = (d: BondDef) => portSrc(d.port);
 const JOB_NAME: Record<Job, string> = Object.fromEntries(ORIGINS.map((o) => [o.job, o.jobName])) as Record<Job, string>;
 
 /** 빵집 도라 아줌마 초상화: 따로 그림이 없어 도트 캐릭터로 만든다 */

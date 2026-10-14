@@ -159,6 +159,8 @@ export const FLAG_DEFAULTS = {
   bundles: false,
   /** LUXE §4 이웃 방명록 · 좋아요 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 방문 화면 [👍 좋아요] + 도장 한마디 8개(하루 1번 · 로그인 + 장부 2장 · 내 마을 X) · 이웃 창 「방명록」 탭(이번 주 · 누적 · 최근 30 · 새 좋아요 빨간 점) · 10개마다 우편함 선물(주 5번) · 랭킹 「이번 주 인기 마을」 · 이웃 목록 맨 위 「🏆 지난주 인기 마을」 · 서버 supabase/guestbook.sql (없으면 「준비 중」 · 좋아요는 예전처럼) */
   guestbook: false,
+  /** LUXE §1-3 영웅 의상실 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 영웅 10 · 전설 14 · 다섯 별 5 각자 색 바꾸기 의상 2벌(① 인연 「친구」 보상 · ② 명품관) · 영웅 창 [의상] 2칸 미리보기(잠김 = 실루엣 + 얻는 법) · 바꾸기 무료 · 마을·전투·파티 칸·카드·대화 초상화·이웃 대표 영웅 모두 한 함수(engine/outfitPaint.ts) — 끄면 모두 기본 옷 (가진 것·입은 것은 그대로) */
+  outfits: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

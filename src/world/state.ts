@@ -656,8 +656,16 @@ export function freshProgress() {
     bundles: freshBundles(),
     /** LUXE §4 방명록 (world/guestbook.ts gbState()가 칸을 바로잡는다) — seen: 확인한 누적 좋아요(빨간 점) · tens: 선물로 바꾼 10개 묶음 수 · week/weekN: 이번 주(KST) 선물 횟수 */
     guestbook: freshGuestbook(),
+    /** LUXE §1-3 영웅 의상실 (world/outfits.ts odState()가 칸을 바로잡는다 · 플래그를 꺼도 가진 것·입은 것은 그대로 — 그림만 기본 옷) */
+    outfits: freshOutfits(),
   };
 }
+
+/** LUXE §1-3: owned = 가진 의상 id · worn = 캐릭터 키(heroId·legendId·starId) → 입은 의상 id (없으면 기본 옷) · got = 「친구」 보상 안내를 한 의상 id */
+export function freshOutfits() {
+  return { owned: [] as string[], worn: {} as Record<string, string>, got: [] as string[] };
+}
+export type OutfitState = ReturnType<typeof freshOutfits>;
 
 /**
  * LUXE §3: seen = 처음 열기(무너진 회관 + 버나드)를 봤나 · put = 칸에 바친 수 ("꾸러미id:칸번호" → 개수) · done = 완성한 꾸러미(보상 받음)

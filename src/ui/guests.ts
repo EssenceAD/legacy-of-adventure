@@ -39,6 +39,7 @@ import { enhMsg, enhUse, openEnhance } from './enhance';
 import { closeWin, glowOnce, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
+import { bindWardrobeBtn, wardrobeBtnHtml } from './wardrobe';
 import { heroCardHtml, sagaFirst } from './heroCard';
 
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -245,9 +246,11 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && !a.starId && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    <div class="btnrow">${personActionsHtml(a, { talk: true })}${byeBtn(a)}</div>`,
+    <div class="btnrow">${personActionsHtml(a, { talk: true })}${wardrobeBtnHtml(a, !!S.visiting)}${byeBtn(a)}</div>`,
   );
   bindPersonActions(a, talkGuest);
+  // LUXE §1-3: [의상] → 옷장 (2×n 미리보기)
+  bindWardrobeBtn(a, () => showActor(a));
   // GROWTH §3-1: 장비 칸 → 그 장비 강화 창 바로 (빈 칸이면 고르기)
   $$('.slot').forEach(
     (b) =>

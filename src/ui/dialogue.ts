@@ -1,5 +1,6 @@
 // 대화창: 초상화 + 이름표 + 한 글자씩 타이핑 + ▼. Z/엔터/탭 = 다음, X = 건너뛰기(이름 짓기는 못 건너뜀)
 import { GUEST_KINDS, speakerName } from '../data/classes';
+import { portSrc } from './outfitPort';
 import { appearance } from '../world/adventurers';
 import { portrait } from './common';
 import { CONFIG } from '../data/config';
@@ -104,7 +105,8 @@ export function resolveSpeaker(who: string, nameTag?: string): { actor: Actor | 
   if (actor) return { actor, port: portrait(actor), name: actor.name };
   // EASTER: 카메오는 id가 0 — 전용 초상화 키 p_<id>로 말한다
   if (who.startsWith('p_') && PORTRAITS[who]) return { actor: null, port: PORTRAITS[who], name: nameTag ?? who };
-  return { actor: null, port: PORTRAITS[who] || '', name: nameTag ?? speakerName(who, S.innName) };
+  // LUXE §1-3: 입은 의상 색 (한 함수 portSrc)
+  return { actor: null, port: portSrc(who), name: nameTag ?? speakerName(who, S.innName) };
 }
 /** 대사 줄을 만들 때: 손님이면 '@id', 영웅·전설은 전용 초상화 키 */
 export const speakerOf = (a: Actor) => (a.heroId ? 'hero_' + a.heroId : a.legendId ? 'legend_' + a.legendId : '@' + a.id);
@@ -140,7 +142,7 @@ function showLine() {
     const L = $<HTMLImageElement>('#dDuoL');
     const R = $<HTMLImageElement>('#dDuoR');
     L.src = myPort();
-    R.src = PORTRAITS[DQ.duo] || '';
+    R.src = portSrc(DQ.duo);
     L.classList.toggle('dim', !narr && !me);
     R.classList.toggle('dim', !narr && me);
   }

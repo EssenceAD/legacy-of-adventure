@@ -73,6 +73,8 @@ export const namedOf = (d: ClassDef): NamedLook | undefined => (d.named ? NAMED[
 /** 고정 색·모양 입히기 (무기 등급 색은 그대로 · 마법사 구슬 색은 등급 색이 없을 때만) */
 export function applyNamed(d: ClassDef, L: NamedLook): ClassDef {
   const o: ClassDef = { ...d, ...L.patch, face: { ...d.face, ...(L.patch.face ?? {}) } };
+  // LUXE §1-3: 의상 색은 고정 색 위에 (engine/outfitPaint.ts dressedDef만 넣는다 · 신화 별빛 망토는 아래에서 그대로)
+  if (d.dress) Object.assign(o, d.dress);
   if (L.orb && !d.weaponColor) o.weaponColor = L.orb;
   if (d.mythic && L.tier === 'legend' && !L.star) o.cape = STAR_NAVY;
   if (L.star) o.mythic = true;

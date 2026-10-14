@@ -8,6 +8,8 @@ export interface Neighbor {
   uid?: string;
   /** 대표 영웅 초상화 키 */
   repHero?: string | null;
+  /** LUXE §1-3: 대표 영웅이 입은 의상 id (없으면 기본 옷) */
+  repOutfit?: string | null;
   /** 5단계 마을 등급 (0 오두막 ~ 4 도시) · 주인 칭호 */
   grade?: number;
   title?: string;

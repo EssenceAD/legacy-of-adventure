@@ -5,6 +5,7 @@ import { CONFIG } from '../data/config';
 import { canvasAlive, Lru } from './lru';
 import { drawChar2, drawLying2, drawRoll2, type Dot2, type Pose2 } from './sprites2';
 import { applyNamed, LEGEND_RIM, MYTHIC_RIM, namedOf, sigPoses } from './named2';
+import { dressGrid } from './outfitPaint';
 import { vis } from '../world/visual';
 import type { StarId } from '../data/fivestars';
 
@@ -618,6 +619,9 @@ export interface CharFrames {
   star?: StarId;
 }
 
+/** LUXE §1-3: 의상을 입었으면 한 함수(dressGrid)로 옷 색을 바꿔 그린다 (안 입었으면 그대로) */
+const dc = (d: ClassDef, p: Pose) => dressGrid(d, (x) => drawChar(x, p));
+
 /** 직업 하나의 모든 프레임: 앞 걷기4·뒤 걷기4·대기2·뒤 대기2·앉기2·공격2·기도/밭일2 */
 export function buildChar(key: ClassKey): CharFrames {
   return buildFrom(CLASSES[key]);
@@ -632,24 +636,24 @@ export function buildFrom(d: ClassDef): CharFrames {
   return {
     def: d,
     cb: () => (cbf ??= buildCombat(d)),
-    idle: [R(drawChar(d, {})), R(drawChar(d, { bob: 1 }))],
+    idle: [R(dc(d, {})), R(dc(d, { bob: 1 }))],
     walk: [
-      R(drawChar(d, { lx: -1, rx: 1, armF: 1, armB: -1 })),
-      R(drawChar(d, { bob: -1 })),
-      R(drawChar(d, { lx: 1, rx: -1, armF: -1, armB: 1 })),
-      R(drawChar(d, { bob: -1 })),
+      R(dc(d, { lx: -1, rx: 1, armF: 1, armB: -1 })),
+      R(dc(d, { bob: -1 })),
+      R(dc(d, { lx: 1, rx: -1, armF: -1, armB: 1 })),
+      R(dc(d, { bob: -1 })),
     ],
     walkB: [
-      R(drawChar(d, { back: 1, lx: -1, rx: 1, armF: 1, armB: -1 })),
-      R(drawChar(d, { back: 1, bob: -1 })),
-      R(drawChar(d, { back: 1, lx: 1, rx: -1, armF: -1, armB: 1 })),
-      R(drawChar(d, { back: 1, bob: -1 })),
+      R(dc(d, { back: 1, lx: -1, rx: 1, armF: 1, armB: -1 })),
+      R(dc(d, { back: 1, bob: -1 })),
+      R(dc(d, { back: 1, lx: 1, rx: -1, armF: -1, armB: 1 })),
+      R(dc(d, { back: 1, bob: -1 })),
     ],
-    idleB: [R(drawChar(d, { back: 1 })), R(drawChar(d, { back: 1, bob: 1 }))],
-    sit: [R(drawChar(d, { sit: 1, eat: 1 })), R(drawChar(d, { sit: 1, eat: 2 }))],
-    atk: [R(drawChar(d, { atk: 1, face: 'shout' })), R(drawChar(d, { atk: 2, face: 'shout' }))],
-    pray: [R(drawChar(d, { pray: 1 })), R(drawChar(d, { pray: 1, bob: 1 }))],
-    sleep: [R(drawSleep(d, 0)), R(drawSleep(d, 1))],
+    idleB: [R(dc(d, { back: 1 })), R(dc(d, { back: 1, bob: 1 }))],
+    sit: [R(dc(d, { sit: 1, eat: 1 })), R(dc(d, { sit: 1, eat: 2 }))],
+    atk: [R(dc(d, { atk: 1, face: 'shout' })), R(dc(d, { atk: 2, face: 'shout' }))],
+    pray: [R(dc(d, { pray: 1 })), R(dc(d, { pray: 1, bob: 1 }))],
+    sleep: [R(dressGrid(d, (x) => drawSleep(x, 0))), R(dressGrid(d, (x) => drawSleep(x, 1)))],
   };
 }
 
@@ -666,16 +670,16 @@ function buildCombat(d: ClassDef): CombatFrames {
   const R = (g: GridT) => g.render();
   return {
     // 숨쉬기 3프레임
-    idle: [R(drawChar(d, {})), R(drawChar(d, { bob: 1 })), R(drawChar(d, { bob: 1, armF: 1, armB: 1 }))],
-    idleB: [R(drawChar(d, { back: 1 })), R(drawChar(d, { back: 1, bob: 1 })), R(drawChar(d, { back: 1, bob: 1, armF: 1 }))],
-    walk: WALK6.map((p) => R(drawChar(d, p))),
-    walkB: WALK6.map((p) => R(drawChar(d, { ...p, back: 1 }))),
+    idle: [R(dc(d, {})), R(dc(d, { bob: 1 })), R(dc(d, { bob: 1, armF: 1, armB: 1 }))],
+    idleB: [R(dc(d, { back: 1 })), R(dc(d, { back: 1, bob: 1 })), R(dc(d, { back: 1, bob: 1, armF: 1 }))],
+    walk: WALK6.map((p) => R(dc(d, p))),
+    walkB: WALK6.map((p) => R(dc(d, { ...p, back: 1 }))),
     // 공격 4: 들어 올림 → 휘두름(잔상) → 내려침 → 거두기 · 기합 표정
-    atk: [R(drawChar(d, { atk: 1, face: 'shout' })), R(drawChar(d, { atk: 3, face: 'shout' })), R(drawChar(d, { atk: 2, face: 'shout' })), R(drawChar(d, { atk: 4 }))],
-    roll: [0, 1, 2, 3].map((i) => R(drawRoll(d, i))),
-    cast: [1, 2, 3].map((c) => R(drawChar(d, { cast: c, face: 'shout' }))),
-    hurt: [R(drawChar(d, { hurt: 1, face: 'hurt', armF: -1, armB: -1 }))],
-    die: [R(drawChar(d, { sit: 1, face: 'hurt' })), R(drawChar(d, { sit: 1, bob: 2, face: 'hurt' })), R(drawLying(d))],
+    atk: [R(dc(d, { atk: 1, face: 'shout' })), R(dc(d, { atk: 3, face: 'shout' })), R(dc(d, { atk: 2, face: 'shout' })), R(dc(d, { atk: 4 }))],
+    roll: [0, 1, 2, 3].map((i) => R(dressGrid(d, (x) => drawRoll(x, i)))),
+    cast: [1, 2, 3].map((c) => R(dc(d, { cast: c, face: 'shout' }))),
+    hurt: [R(dc(d, { hurt: 1, face: 'hurt', armF: -1, armB: -1 }))],
+    die: [R(dc(d, { sit: 1, face: 'hurt' })), R(dc(d, { sit: 1, bob: 2, face: 'hurt' })), R(dressGrid(d, drawLying))],
   };
 }
 
@@ -747,7 +751,7 @@ const tierOf = (d: ClassDef) => { const L = namedOf(d); return !L ? undefined : 
 function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
   const rim = rimOf(d);
   const L = namedOf(d);
-  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : {});
+  const R = (p: Pose2) => dressGrid(d, (x) => drawChar2(x, k, p, weapon)).render(rim ? { rim } : {});
   let cbf: CombatFrames | null = null;
   let sigC: HTMLCanvasElement[] | undefined;
   const f: CharFrames = {
@@ -760,7 +764,7 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
     sit: [R({ sit: 1, eat: 1 }), R({ sit: 1, eat: 2 })],
     atk: [R({ atk: 1, face: 'shout' }), R({ atk: 2, face: 'shout' })],
     pray: [R({ pray: 1 }), R({ pray: 1, bob: 1 })],
-    sleep: [drawSleep(L ? applyNamed(d, L) : d, 0).render(), drawSleep(L ? applyNamed(d, L) : d, 1).render()],
+    sleep: [0, 1].map((i) => dressGrid(d, (x) => drawSleep(L ? applyNamed(x, L) : x, i)).render()),
     blink: R({ blink: 1 }),
     tier: tierOf(d),
     star: L?.star,
@@ -773,8 +777,8 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
 function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
   const rim = rimOf(d);
   const L = namedOf(d);
-  const dd = L ? applyNamed(d, L) : d;
-  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : {});
+  const dd = (x: ClassDef) => (L ? applyNamed(x, L) : x);
+  const R = (p: Pose2) => dressGrid(d, (x) => drawChar2(x, k, p, weapon)).render(rim ? { rim } : {});
   const RR = (g: GridT) => g.render(rim ? { rim } : {});
   return {
     idle: [R({}), R({ bob: 1, tw: 1 }), R({ bob: 1, armF: 1, armB: 1 })],
@@ -783,10 +787,10 @@ function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
     walkB: WALK6_2.map((p) => R({ ...p, back: 1 })),
     // 공격 4: 들어 올림 → 휘두름(깔끔한 호) → 내려침 → 거두기
     atk: [R({ atk: 1, face: 'shout' }), R({ atk: 3, face: 'shout' }), R({ atk: 2, face: 'shout' }), R({ atk: 4 })],
-    roll: [0, 1, 2, 3].map((i) => RR(drawRoll2(dd, k, i))),
+    roll: [0, 1, 2, 3].map((i) => RR(dressGrid(d, (x) => drawRoll2(dd(x), k, i)))),
     cast: [1, 2, 3].map((c) => R({ cast: c, face: 'shout' })),
     hurt: [R({ hurt: 1, face: 'hurt', armF: -1, armB: -1 })],
-    die: [R({ sit: 1, face: 'hurt' }), R({ sit: 1, bob: 2, face: 'hurt' }), RR(drawLying2(dd, k))],
+    die: [R({ sit: 1, face: 'hurt' }), R({ sit: 1, bob: 2, face: 'hurt' }), RR(dressGrid(d, (x) => drawLying2(dd(x), k)))],
     blink: R({ blink: 1, bob: 1 }),
   };
 }

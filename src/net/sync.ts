@@ -11,6 +11,7 @@ import { validRecord } from './local';
 import { chaptersDone, townGrade } from '../world/guide';
 import { addMail, myTitle } from '../world/meta';
 import { pollGuestbook } from './gbSync';
+import { charOfPort, wornOf } from '../world/outfits';
 import { isGuest, me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
@@ -34,6 +35,8 @@ export function villageSnapshot() {
     // GUEST_SPEC §2: 게스트는 주인 이름 대신 「○○ 여관 주인」(보는 쪽에서)
     owner: isGuest() ? '' : (me.profile?.nickname ?? ''),
     repHero: repHero(),
+    // LUXE §1-3: 대표 영웅이 입은 의상 (이웃 목록 초상화 · outfits 끄면 null)
+    repOutfit: wornOf(charOfPort(repHero())),
     // 5단계: 마을 등급 (이웃이 보러 오면 비교하는 맛) · 칭호
     grade: townGrade(),
     title: myTitle(),
