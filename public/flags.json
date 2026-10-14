@@ -85,5 +85,6 @@
   "flCharPop": true,
   "luxeShop": false,
   "outfits": false,
-  "pets": false
+  "pets": false,
+  "abyssRush": false
 }

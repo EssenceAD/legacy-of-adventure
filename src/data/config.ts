@@ -1396,6 +1396,14 @@ export const CONFIG = {
     /** 파티 출발 때 다섯 별 하나가 출발 말풍선(대사 파일 depart)을 띄울 확률 */
     departBubble: 0.5,
   },
+  /**
+   * RAIDWEAPON 월드 레이드 · 전용 무기 · 심연 보스 연전 — 숫자는 여기 한 곳
+   *  rush (§1 abyssRush): unlockBest = 보스 연전이 열리는 심연(한 층씩) 최고 층 · fragEvery = 무기 조각이 나오는 층 간격 · frags = 그때 조각 수
+   *   (같은 25층 배수는 한 주(월요일 KST)에 한 번만 — 체크포인트로 같은 층을 되풀이해 모으지 않게)
+   */
+  raidWeapon: {
+    rush: { unlockBest: 10, fragEvery: 25, frags: 1 },
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

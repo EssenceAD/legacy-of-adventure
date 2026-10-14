@@ -1,6 +1,6 @@
 // 효과음 · 팡파르: Suno로 만든 파일 (public/audio/sfx/*.wav 미리 받기 · jingle/J1~J5.mp3 처음 쓸 때 받기)
 //  동시 최대 8개 · 같은 소리 50ms 안 겹침 금지 · 잦은 소리는 재생 속도를 살짝 흔든다. 파일이 없으면 부드러운 합성음(예비)
-import { ctx, duck, onUnlock, sfxBus } from './engine';
+import { ctx, duck, onUnlock, prefs, sfxBus } from './engine';
 import { holdSfx, setScenePlayer } from './scene';
 import { COMBAT_SYNTH, combatSynth } from './combatSfx';
 import { FISH_SFX, fishSamples, type FishSfx } from './fishSynth';
@@ -125,8 +125,8 @@ export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean
     const vol = jg[1];
     let [file, , dk] = jg;
     if (n === 'win' || n === 'levelup' || n === 'chapter') {
-      const f = fanfare.pick(n as FanfareKind, performance.now() / 1000);
-      // 45초 안에 같은 팡파르 → 작은 coin
+      const f = fanfare.pick(n as FanfareKind, performance.now() / 1000, prefs.fanfareOn !== false);
+      // 45초 안에 같은 팡파르 · 설정 「팡파르」 끔 → 작은 coin
       if (!f) {
         smallWin();
         return;

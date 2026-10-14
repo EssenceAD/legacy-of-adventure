@@ -3,6 +3,7 @@
 //     반복 사냥 · 자동 사냥 · 접어 둔 판 · 토벌 시간 끝 → 팡파르 없이 작은 coin(0.4)
 //  2. 같은 팡파르는 45초에 한 번까지 (그 안이면 coin)
 //  3. win = J1 · J6 · J7 돌려 쓰기(직전 것 빼고 무작위) · levelup = J8(없으면 J5 0.6) · chapter = J1
+//  4. 설정 「소리」 「팡파르」를 끄면 팡파르 대신 늘 coin (효과음은 그대로 · prefs.fanfareOn)
 //  다른 모듈을 불러오지 않는다 (sfx · field 어디서 불러도 순환 없게 · 단위 테스트용)
 
 export const WIN_JINGLES = ['J1', 'J6', 'J7'] as const;
@@ -45,7 +46,9 @@ export function makeFanfarePicker(rnd: () => number = Math.random) {
   const ready = (f: string, now: number) => lastAt[f] == null || now - lastAt[f] >= FANFARE_GAP;
   const take = (f: string, now: number) => ((lastAt[f] = now), f);
   return {
-    pick(kind: FanfareKind, now: number): string | null {
+    /** on = 설정 「팡파르」 (끄면 늘 null → coin · 45초 기록도 안 남김) */
+    pick(kind: FanfareKind, now: number, on = true): string | null {
+      if (!on) return null;
       if (kind === 'win') {
         const free = WIN_JINGLES.filter((f) => ready(f, now));
         const pool = free.length > 1 ? free.filter((f) => f !== prevWin) : free;
