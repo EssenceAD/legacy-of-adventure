@@ -10,7 +10,8 @@ import { tapCameo } from './easter';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
 import { legendByKey } from '../data/legends';
-import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
+import { offerItem, showRelic, starUpLegend, starWeaponName, tokenNeed } from '../world/legends';
+import { STARS } from '../data/fivestars';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
 import { CLASS_WEAPON, CLASSES, KIND_LINES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
 import { hvLine } from '../world/harvest';
@@ -223,7 +224,7 @@ export function showActor(a: Actor) {
   }
   const st = totalStats(a);
   const status =
-    starOf(a) ? '신화 「다섯 별」 동료' : a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
+    starOf(a) ? `신화 「다섯 별」 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
   const slots = SLOTS.map((s) => {
     const it = P.bag.find((x) => x.id === a.equip[s]);
     return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small>${it ? fitTag(a, it) : ''}</button>`;
@@ -242,7 +243,7 @@ export function showActor(a: Actor) {
     <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b>${k === 'def' && flag('rolesV2') ? `<small class="defcut"> 받는 피해 −${Math.round(Math.min(CONFIG.combat.roles.defMax, Math.max(0, st.def) / (Math.max(0, st.def) + CONFIG.combat.roles.defK)) * 100)}%</small>` : ''}</span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
     ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? '<button class="bigbtn sm best" id="aBest">✨ 가장 좋은 걸로 입히기</button>' : ''}${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
-    ${a.legendId ? legendPanel(a) : ''}
+    ${a.legendId ? legendPanel(a) : ''}${mythicStarPanel(a)}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && !a.starId && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
     <div class="btnrow">${personActionsHtml(a, { talk: true })}${byeBtn(a)}</div>`,
@@ -352,6 +353,16 @@ function legendPanel(a: Actor): string {
   }
   const need = tokenNeed(a.stars ?? 1);
   return `<div class="legend-box"><b class="g">전설 「${d.title}」 ${'★'.repeat(a.stars ?? 1)}${'☆'.repeat(5 - (a.stars ?? 1))}</b><p>${sk} · ★마다 전투력 +${Math.round(CONFIG.legends.starPowerPct * 100)}%${(a.stars ?? 1) >= 5 ? ' · 유산 무기' : ''}</p>${need != null ? `<button class="bigbtn sm" id="lgStar" ${P.tokens >= need ? '' : 'disabled'}>★${(a.stars ?? 1) + 1} 올리기 (인연의 증표 ${P.tokens}/${need})</button>` : '<p class="note">★5 — 유산 무기가 깨어났어요</p>'}<p class="note">증표: 주간 토벌 참여(주 1개) · 원정에서 아주 드물게 · 랭킹 상위 10%(2차)</p></div>`;
+}
+
+/** STARUP: 신화 「다섯 별」도 전설처럼 인연의 증표로 ★ (같은 비용 · ★마다 전투력 · ★3 기술 강화 · ★5 고유 무기 빛) */
+export function mythicStarPanel(a: Actor): string {
+  const id = starOf(a);
+  if (!id || a.status !== 'hero') return '';
+  const s = a.stars ?? 1;
+  const need = tokenNeed(s);
+  const w = starWeaponName(id);
+  return `<div class="legend-box"><b class="g">신화 「${STARS[id].title}」 ${'★'.repeat(s)}${'☆'.repeat(5 - s)}</b><p>기술 「${STARS[id].skill.name}」 ${OPT_INFO[STARS[id].skill.k].label(STARS[id].skill.v * (s >= 3 ? 1.5 : 1))} · ★마다 전투력 +${Math.round(CONFIG.legends.starPowerPct * 100)}%${s >= 5 ? ' · ' + w : ''}</p>${need != null ? `<button class="bigbtn sm" id="lgStar" ${P.tokens >= need ? '' : 'disabled'}>★${s + 1} 올리기 (인연의 증표 ${P.tokens}/${need})</button>` : `<p class="note">★5 — ${w}${josa(w, '이')} 깨어났어요</p>`}<p class="note">증표: 주간 토벌 참여(주 1개) · 원정에서 아주 드물게 · 랭킹 상위 10%(2차)</p></div>`;
 }
 
 function bindLegend(a: Actor) {

@@ -151,7 +151,7 @@ export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
   const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
   const m0 = 1 + dexBonus() + heroStarBonus() + ownerBonus() + legacyPower(a);
   // 전설 영웅: ★ 하나 오를 때마다 +8%
-  const legend = a.legendId ? 1 + CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
+  const legend = a.legendId || a.starId ? 1 +CONFIG.legends.starPowerPct * ((a.stars ?? 1) - 1) : 1;
   // MYTHIC: 신화 영웅 능력치 ×1.15
   const rest = legend * (1 + bondTierBonus(a)) * chemMult * mythicStat(a);
   return (items) => {
@@ -184,6 +184,8 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
   def.weaponColor = w && w.grade !== 'n' ? GRADE_INFO[w.grade].color : undefined;
   // 전설 ★5: 전용 「유산 무기」 (금빛)
   if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
+  // STARUP: 신화 「다섯 별」 ★5 — 그 별의 궤적 색 (data/fivestars STARS[id].trail = engine/stars2 starTrailColor)
+  else if (isStarId(a.starId) && (a.stars ?? 1) >= 5) def.weaponColor = STARS[a.starId].trail;
   // EASTER §2·§5: 놀러 온 개척자 — 고정 소품
   if (a.cameo && a.cameo in CAMEO_DEF) return { key: 'cameo|' + a.cameo, def: { ...def, ...CAMEO_DEF[a.cameo as keyof typeof CAMEO_DEF] } };
   let key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');

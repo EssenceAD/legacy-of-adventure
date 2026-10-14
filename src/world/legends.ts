@@ -5,6 +5,7 @@ import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
 import { hfx } from './harmony';
 import { josa } from '../data/josa';
+import { isStarId, STARS, type StarId } from '../data/fivestars';
 import { LEGENDS, legendByKey, type BondEvent, type LegendCtx, type RequestEvent } from '../data/legends';
 import { makeLegend } from './adventurers';
 import { arrive, sendAway } from './actors';
@@ -326,15 +327,25 @@ function fail(key: string) {
 
 export const tokenNeed = (stars: number) => (stars >= 5 ? null : L.tokenNeeds[stars - 1]);
 
+/** STARUP: ★ 올리기 대상 = 영입한 전설(legendId) + 신화 「다섯 별」(starId) — 증표 비용·효과 같음 (★는 손님 a.stars에 저장 · 없으면 1) */
+export const starUpable = (a: Actor) => !!(a.legendId || a.starId) && a.status === 'hero';
+/** 신화 ★5 무기 이름 (대사 파일 STARS[id].weapon · 따뜻한밤 「장궁 · 허리 등불」 → 「장궁」) */
+export const starWeaponName = (id: StarId) => STARS[id].weaponName.split(' · ')[0];
+
 export function starUpLegend(a: Actor): string | null {
-  if (!a.legendId || a.status !== 'hero') return '영입한 전설만 별을 올릴 수 있어요';
+  if (!starUpable(a)) return '영입한 전설만 별을 올릴 수 있어요';
   const need = tokenNeed(a.stars ?? 1);
   if (need == null) return '이미 ★5예요';
   if (P.tokens < need) return `인연의 증표가 모자라요 (${P.tokens}/${need})`;
   P.tokens -= need;
   a.stars = (a.stars ?? 1) + 1;
   markDirty();
-  if (a.stars === 5) uiHooks.announce(`★ ${a.name}의 유산 무기가 깨어났습니다!`);
+  if (a.stars === 5) {
+    if (!a.legendId && isStarId(a.starId)) {
+      const w = starWeaponName(a.starId);
+      uiHooks.announce(`★ ${a.name}의 ${w}${josa(w, '이')} 깨어났습니다!`);
+    } else uiHooks.announce(`★ ${a.name}의 유산 무기가 깨어났습니다!`);
+  }
   return null;
 }
 

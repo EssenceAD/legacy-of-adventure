@@ -178,7 +178,8 @@ export function optSumOf(a: Actor, items: Item[], k: OptKey, region?: RegionId):
     if (sk && sk.k === k && (k !== 'regionDmg' || sk.region === region)) v += sk.v * ((a.stars ?? 1) >= 3 ? 1.5 : 1);
   }
   // FIVESTARS: 다섯 별 신화 영웅 고유 스킬 (플래그 fiveStars)
-  if (a.starId) v += starSkillOpt(a, k);
+  // STARUP: 전설과 같이 ★3부터 강화(×1.5)
+  if (a.starId) v += starSkillOpt(a, k) * ((a.stars ?? 1) >= 3 ? 1.5 : 1);
   return v;
 }
 
