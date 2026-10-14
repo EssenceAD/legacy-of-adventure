@@ -56,6 +56,7 @@ import { initStoryInbox } from './world/storyInbox';
 import { chemTalk } from './world/chemNews';
 import { proposeTalk } from './world/actors';
 import { initGoalPill } from './ui/goalPill';
+import { initQuietUi } from './ui/quiet';
 import { initStoryUI, playStory, tapYuan } from './ui/story';
 import { cycleLines } from './world/story';
 import { ripeCount } from './world/craft';
@@ -925,6 +926,8 @@ async function boot() {
   initStoryInbox();
   if (import.meta.env.DEV) Object.assign(window, { __inbox: { propose: queueProposal, chem: chemTalk, pending: pendingSide, run: runFirstSide, events: pendingEvents } });
   initGoalPill();
+  // FIRSTLOOK §2 화면 조용히 (flQuiet): 목표 알약 깜빡 · 아래 띠 10초 숨김
+  initQuietUi();
   initGuide();
   // 「가기」가 여는 창들 (순환 import를 피해 여기서 잇는다)
   Object.assign(navHooks, { hunt: () => openHunt(), goals: () => openGoals(), owner: () => openOwner(), dex: () => openDex(), menu: () => openGridMenu(), eval: () => openEval() });

@@ -54,7 +54,7 @@ export const saveHooks = { beforeSnapshot: () => {} };
 /** CHECKIN §C2: 세이브에 실어 나르는 설정 키 (이것 말고는 세이브가 localStorage를 건드리지 못한다) */
 export const SYNC_PREF_KEYS = [
   'sound', 'saver', 'shake', 'fontStep', 'rumorOff', 'settleOff', 'goalPillOff', 'wfBubOff', 'propCard', 'chemNotice', 'propFilter', 'storyInbox',
-  'telemetry', 'keys', 'guestFavPin', 'haptics', 'dmgNums', 'ssAuto', 'ssWake', 'guestNames',
+  'telemetry', 'keys', 'guestFavPin', 'haptics', 'dmgNums', 'ssAuto', 'ssWake', 'guestNames', 'quietOff',
 ] as const;
 /** 세이브에 든 설정값 검사 (모양이 이상하면 없는 것으로 · 아는 키 · 문자열만) */
 export function validPrefs(p: any): import('../world/state').PrefsBlob | undefined {

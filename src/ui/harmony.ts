@@ -3,6 +3,7 @@ import { bigNum, vis } from '../world/visual';
 import { av } from '../engine/ver';
 import { addMail } from '../world/meta';
 import { say } from '../world/fx';
+import { PRI } from '../world/quiet';
 import { track as trackEv } from '../net/telemetry';
 import { def, type Kind } from '../data/catalog';
 import { HARMONIES, harmonyById } from '../data/harmony';
@@ -124,6 +125,6 @@ function praise(s: HSet) {
   if (!name) return;
   const c = s.members[0];
   const near = world.actors.filter((a) => !a.role && !a.hidden && Math.hypot(a.x - (c.tx + c.fw / 2), a.y - (c.ty + c.fh / 2)) < 8).sort(() => Math.random() - 0.5)[0];
-  if (near) setTimeout(() => say(near, pickLine([`「${name}」 멋지다!`, `와, ${name}이에요!`, `여기 ${name} 생겼네요~`]), 2), 1500);
+  if (near) setTimeout(() => say(near, pickLine([`「${name}」 멋지다!`, `와, ${name}이에요!`, `여기 ${name} 생겼네요~`]), 2, '', PRI.story), 1500);
 }
 const pickLine = (l: string[]) => l[(Math.random() * l.length) | 0];

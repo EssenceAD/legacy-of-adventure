@@ -19,6 +19,7 @@ import { idleFor, saverOn } from '../engine/fps';
 import { ssOn } from '../ui/screenSaver';
 import { uiHidden as uiHiddenBody } from './bldStatus';
 import { guestNamesOn } from './guestNames';
+import { nameTagRule, quietOn, TIER_DOT } from './quiet';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
@@ -1054,7 +1055,7 @@ function sigAt(s: CharFrames, T: number, ph: number): HTMLCanvasElement | null {
 }
 
 /** HERODOT 이름표 (R8 판정): 이번 프레임에 그릴 이름표 · 눌러 본 영웅(몇 초 동안 이름표) */
-const TAGS: { X: number; top: number; name: string; tier: 'legend' | 'hero' | 'mythic' | 'guest'; d: number; rainbow?: boolean }[] = [];
+const TAGS: { X: number; top: number; name: string; tier: 'legend' | 'hero' | 'mythic' | 'guest'; d: number; rainbow?: boolean; alpha?: number }[] = [];
 /** FIVESTARS ④ 무지갯빛 이름표 색 (글자마다 · 천천히 흐름 · 조용할 땐 멈춤) */
 export const RAINBOW = ['#ff8a8a', '#ffc46b', '#fff08a', '#9be89b', '#8ad0ff', '#b8a0ff', '#ff9ad8'];
 /** 설정 「손님 이름 항상 보기」가 지금 그려지나 (UI 끄기·화면 보호 중엔 쉼 · 사진 모드는 그 전에 TAGS를 비운다) — 프레임마다 한 번 */
@@ -1068,10 +1069,13 @@ function allNames(): boolean {
   return namesV;
 }
 const TAG_TAP = new WeakMap<Actor, number>();
-/** 손님 창을 열면(누르면) 그 영웅 이름표를 6초 동안 보인다 */
+/** 손님 창을 열면(누르면) 그 영웅 이름표를 6초 동안 보인다 · FIRSTLOOK §2-3 화면 조용히: 누른 사람 누구나 3초 */
 export function tagTap(a: Actor) {
-  TAG_TAP.set(a, S.T + 6);
+  TAG_TAP.set(a, S.T + (quietOn() ? CONFIG.firstLook.quiet.tagTapSec : 6));
 }
+/** FIRSTLOOK §2-3: 이 사람 이름표 규칙 (null = 예전 그대로 — 조용히 끔 · 「손님 이름 항상 보기」 켬) */
+const quietTag = (a: Actor, tier: 'legend' | 'mythic' | 'hero' | null, T: number) =>
+  nameTagRule({ quiet: quietOn(), names: guestNamesOn(), tier, regular: a.status === 'regular' || a.status === 'hero', zoom: S.zoom, tapped: (TAG_TAP.get(a) ?? -1) > T });
 /** 이름표 한 번에: 전설·신화는 화면 가운데에 가까운 3명까지 · 겹치면 위로 한 줄씩 비켜 쌓는다 · 영웅(흰)은 그 다음
  *  「손님 이름 항상 보기」: 그 뒤에 나머지 전설·신화 → 평범한 손님(흐린 베이지) — 둘 다 비킬 자리가 없으면 안 그린다 (앞 이름표를 가리지 않게) */
 function drawNamedTags(ctx: CanvasRenderingContext2D) {
@@ -1087,7 +1091,8 @@ function drawNamedTags(ctx: CanvasRenderingContext2D) {
   const allLeg = TAGS.filter((t) => t.tier === 'legend' || t.tier === 'mythic').sort(byD);
   const legends = allLeg.slice(0, 3);
   const heroes = TAGS.filter((t) => t.tier === 'hero').sort(byD);
-  const rest = names ? [...allLeg.slice(3), ...TAGS.filter((t) => t.tier === 'guest').sort(byD)] : [];
+  // FIRSTLOOK §2-3: 조용히일 때 넣은 손님 이름표(누름 · 배율 3 단골)는 「항상 보기」가 꺼져 있어도 그린다
+  const rest = names ? [...allLeg.slice(3), ...TAGS.filter((t) => t.tier === 'guest').sort(byD)] : TAGS.filter((t) => t.tier === 'guest').sort(byD);
   const placed: [number, number, number, number][] = [];
   const hit = (b: [number, number, number, number]) => placed.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]);
   for (const t of [...legends, ...heroes, ...rest]) {
@@ -1108,7 +1113,7 @@ function drawNamedTags(ctx: CanvasRenderingContext2D) {
     const col = guest ? '#e6dccb' : t.tier === 'mythic' ? '#dfe6f5' : t.tier === 'legend' ? '#ffd36b' : '#ffffff';
     const tx = t.X - (t.tier === 'mythic' ? 3 : 0);
     // 평범한 손님은 흐리게 (테두리도 한 겹 덜)
-    ctx.globalAlpha = guest ? 0.78 : 1;
+    ctx.globalAlpha = t.alpha ?? (guest ? 0.78 : 1);
     ctx.fillStyle = '#1a1220';
     ctx.fillText(t.name, tx + 1, ty + 1);
     if (!guest) ctx.fillText(t.name, tx - 1, ty + 1);
@@ -1167,7 +1172,15 @@ function namedFx(ctx: CanvasRenderingContext2D, a: Actor, s: CharFrames, X: numb
     }
   // 이름표는 모아 두었다가 한 번에 (겹치면 위로 쌓기 · 전설·신화 최대 3 · 영웅은 확대 2배 이상이거나 눌렀을 때만)
   const tier = s.tier!;
-  if (TAGS.length < 64 && (tier !== 'hero' || S.zoom >= 2 || (TAG_TAP.get(a) ?? -1) > T || allNames())) TAGS.push({ X, top: top + (s.idle[0].height - 33) + 2, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2), rainbow: !!s.star });
+  const tagTop = top + (s.idle[0].height - 33) + 2;
+  // FIRSTLOOK §2-3 화면 조용히: 평소엔 이름표 대신 머리 위 2px 등급색 점 · 누르면 3초 · 배율 3이면 연하게
+  const qt = quietTag(a, tier, T);
+  if (qt) {
+    if (qt.dot) p.rect(X - 1, tagTop - 5, 2, 2, TIER_DOT[tier]);
+    if (qt.tag && TAGS.length < 64) TAGS.push({ X, top: tagTop, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2), rainbow: !!s.star, alpha: qt.alpha });
+    return;
+  }
+  if (TAGS.length < 64 && (tier !== 'hero' || S.zoom >= 2 || (TAG_TAP.get(a) ?? -1) > T || allNames())) TAGS.push({ X, top: tagTop, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2), rainbow: !!s.star });
 }
 
 function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
@@ -1220,6 +1233,11 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   // 설정 「손님 이름 항상 보기」: 등급 이름표가 없는 손님도 (직원·주인 · 금색 이름표를 단 개척자는 빼고)
   else if (!s.tier && fade === 1 && !a.role && !a.cameo && TAGS.length < 48 && allNames())
     TAGS.push({ X, top: y + (s.idle[0].height - 33) + 2, name: a.name, tier: 'guest', d: Math.hypot(X - view.LW / 2, y - view.LH / 2) });
+  // FIRSTLOOK §2-3 화면 조용히: 등급 없는 손님도 누르면 3초 · 배율 3이면 단골 이상 연하게
+  else if (!s.tier && fade === 1 && !a.role && !a.cameo && TAGS.length < 48) {
+    const qt = quietTag(a, null, T);
+    if (qt?.tag) TAGS.push({ X, top: y + (s.idle[0].height - 33) + 2, name: a.name, tier: 'guest', d: Math.hypot(X - view.LW / 2, y - view.LH / 2), alpha: qt.alpha });
+  }
   // 전설 영웅: 머리 위 금빛 마름모 + 반짝 · 방문 때 금빛 발자국
   if (a.legendId && fade === 1 && !s.tier) {
     const p = P(ctx);

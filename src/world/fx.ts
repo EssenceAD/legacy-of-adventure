@@ -5,6 +5,7 @@ import { scr, sx, sy, TW, view } from '../engine/iso';
 import { P } from '../engine/pixel';
 import type { Actor, Building } from './state';
 import { saverOn } from '../engine/fps';
+import { mergeFloat, PRI, qb, quietOn } from './quiet';
 
 interface Part {
   x: number;
@@ -65,6 +66,18 @@ const floatNext = new Map<string, number>();
 export function floatW(x: number, y: number, up: number, text: string, cls = '') {
   const key = `${Math.round(x)},${Math.round(y)}`;
   const now = performance.now();
+  // FIRSTLOOK §2-4 화면 조용히: 같은 자리에 막 뜬 글씨가 있으면 합쳐서 하나로 (「케미 +1」 두 번 → 「케미 +2」)
+  if (quietOn()) {
+    const live = floatLive.get(key);
+    if (live && live.e.isConnected && now - live.at < CONFIG.firstLook.quiet.floatMergeMs) {
+      const m = mergeFloat(live.text, text);
+      if (m !== null) {
+        live.text = m;
+        live.e.textContent = m;
+        return;
+      }
+    }
+  }
   const at = Math.max(now, floatNext.get(key) ?? 0);
   floatNext.set(key, at + 600);
   if (at > now + 3000) return; // 너무 밀리면 버린다
@@ -74,15 +87,27 @@ export function floatW(x: number, y: number, up: number, text: string, cls = '')
   }
   floatNow(x, y, up, text, cls);
 }
+/** FIRSTLOOK §2-4: 자리마다 지금 떠 있는 글씨 (합치기용) */
+const floatLive = new Map<string, { e: HTMLElement; text: string; at: number }>();
 function floatNow(x: number, y: number, up: number, text: string, cls: string) {
   const [X, Y] = scr(x, y);
   const e = document.createElement('div');
-  e.className = 'flt ' + cls;
+  const q = quietOn();
+  // 조용히: 글자 한 단계 작게 · 0.9초 (style.css .flt.q)
+  e.className = 'flt ' + cls + (q ? ' q' : '');
   e.textContent = text;
   e.style.left = X * view.SC + 'px';
   e.style.top = (Y - up) * view.SC + 'px';
   over().appendChild(e);
-  setTimeout(() => e.remove(), 1500);
+  const key = `${Math.round(x)},${Math.round(y)}`;
+  if (q) floatLive.set(key, { e, text, at: performance.now() });
+  setTimeout(
+    () => {
+      e.remove();
+      if (floatLive.get(key)?.e === e) floatLive.delete(key);
+    },
+    q ? CONFIG.firstLook.quiet.floatMs : 1500,
+  );
 }
 
 interface Bubble extends HTMLDivElement {
@@ -117,9 +142,25 @@ function nextBubble() {
     return;
   }
 }
-/** 손님 머리 위 말풍선. p = 뜰 확률 */
-export function say(a: Actor, text: string, p = 1, cls = '') {
+/** FIRSTLOOK §2-1: 말풍선 자리 줄의 이름 (사람·건물마다 하나) */
+const qid = new WeakMap<object, number>();
+let qn = 0;
+const qkey = (k: string, o: object) => {
+  let n = qid.get(o);
+  if (n === undefined) qid.set(o, (n = ++qn));
+  return k + n;
+};
+/**
+ * 손님 머리 위 말풍선. p = 뜰 확률
+ *  pri = FIRSTLOOK §2 화면 조용히의 차례 (안내 · 이야기·사건 · 손님 대사) — 없으면 케미(chem)는 사건, 나머지는 손님 대사
+ */
+export function say(a: Actor, text: string, p = 1, cls = '', pri?: number) {
   if (Math.random() > p || a.bub || a.hidden) return;
+  if (quietOn()) {
+    const can = () => !a.hidden && !a.bub && !a.leaving;
+    qb.request({ pri: pri ?? (cls.includes('chem') ? PRI.story : PRI.guest), key: qkey('a', a), ms: CONFIG.actors.bubbleMs, ok: can, show: () => (can() ? showBubble(a, text, cls) : false) }, performance.now());
+    return;
+  }
   if (!bubbleRoom(a)) {
     // 자리가 없으면 차례를 기다린다 (오래된 것부터 버림)
     if (!bubQ.some((q) => q.a === a)) bubQ.push({ a, text, cls });
@@ -142,9 +183,16 @@ function showBubble(a: Actor, text: string, cls: string) {
   }, CONFIG.actors.bubbleMs);
 }
 
-/** 건물 지붕 위 말풍선 (안에 있는 손님 대사) — 핫픽스 9: 자리가 없으면 띄우지 않음 */
+/** 건물 지붕 위 말풍선 (안에 있는 손님 대사) — 핫픽스 9: 자리가 없으면 띄우지 않음 · FIRSTLOOK §2: 조용히면 손님 대사 줄에 */
 export function bldSay(o: Building, text: string) {
+  if (quietOn()) {
+    qb.request({ pri: PRI.guest, key: qkey('o', o), ms: 2600, show: () => bldBubble(o, text) }, performance.now());
+    return;
+  }
   if (over().querySelectorAll('.bub').length >= MAX_BUB) return;
+  bldBubble(o, text);
+}
+function bldBubble(o: Building, text: string) {
   const b = document.createElement('div') as Bubble;
   b.className = 'bub';
   b.textContent = text;
@@ -155,10 +203,14 @@ export function bldSay(o: Building, text: string) {
 
 export function clearBubbles() {
   over().querySelectorAll('.bub,.flt').forEach((b) => b.remove());
+  floatLive.clear();
+  qb.reset();
 }
 
 /** 매 프레임: 말풍선을 주인 위치로 */
 export function posBubbles() {
+  // FIRSTLOOK §2-1: 차례가 된 말풍선 띄우기
+  if (quietOn()) qb.pump(performance.now());
   over()
     .querySelectorAll<Bubble>('.bub, .wfbub')
     .forEach((b) => {
