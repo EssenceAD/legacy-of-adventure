@@ -688,6 +688,9 @@ export function freshFive() {
     setSeen: [] as number[],
     heart: [] as string[],
     oswin: false,
+    /** 새 장 알림: 0 = 아직 모름(빨간 점 · 알림 1번) · 1 = 「새 장이 열렸어요」 알림 봄(점은 그대로) · 2 = 장부에서 3막을 봄(끝)
+     *  옛 저장(이미 열렸는데 칸이 없음)은 fiveState()가 0으로 채워 → 알림 1번 */
+    chSeen: 0,
     /** 고느끼 부탁: 현실 하루(한국 시간) 구경거리 1번 보장 — specKst = 사건이 마지막으로 생긴 한국 날짜 · sessKst/sessAt = 부탁 중 그 한국 날짜에 마을이 처음 돌아간 때(게임 시각 absHours)
      *  (옛 specDay = 게임 날 기준은 안 씀 — 남아 있어도 무시) */
     specKst: '',
