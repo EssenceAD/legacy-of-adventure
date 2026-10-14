@@ -565,7 +565,9 @@ export function arrive(a?: Actor): Actor | null {
   markDirty();
   const tag = a.rarity !== 'common' ? `<b style="color:${RARITY_INFO[a.rarity].color}">${RARITY_INFO[a.rarity].name}</b> ` : '';
   const what = back ? '다시 찾아온 손님' : a.status === 'passer' ? '지나가는 손님' : '새 손님';
-  uiHooks.toastHtml(`<span>${tag}${what} ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
+  // FIVESTARS: 다섯 별 합류는 신화 배너
+  if (a.starId) uiHooks.toastHtml(`<span><b style="color:#dfe6f5">✦ 신화 · 다섯 별의 원정대 ✦</b>  ${a.name} 합류!</span>`);
+  else uiHooks.toastHtml(`<span>${tag}${what} ${a.name} 도착${fresh ? ' · <b>도감 NEW!</b>' : ''}</span>`);
   // PARTY §1: 사냥꾼 출신 주인 — 첫 사냥꾼 손님이 오면 한 줄 (한 번)
   if (a.kind === 'hunter' && P.owner?.job === 'hunter' && !P.meta.hunterMet && S.started && !S.visiting) {
     P.meta.hunterMet = true;
