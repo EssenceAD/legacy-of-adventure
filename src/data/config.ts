@@ -549,6 +549,13 @@ export const CONFIG = {
     /** 막 전환: 장부 몇 장 · 이 회차 운영 며칠째 이상 · 영웅 수 */
     act2: { chapters: 3, day: 12 },
     act3: { chapters: 7, day: 40, heroes: 1 },
+    /**
+     * PACE §3-1 storyClock: 막 전환·은퇴의 「며칠째」 = max(켜 둔 게임 일수, 그 막에 들어간 날 + 현실 경과일 × realDayAs)
+     *  · 옛 저장(막 들어간 현실 시각 없음)은 처음 불러올 때 추정 (world/story.ts backfillActAt)
+     */
+    realDayAs: 8,
+    /** 옛 저장 추정을 「회차 시작 시각」으로 (true = 너그럽게: 막에 들어간 날을 회차 첫날로 봄 · false = 게임 일수 비율로 나눈 자리 — 기본) */
+    backfillAtStart: false,
     /** 은퇴: 이 회차 운영 일수 목표 (3막 40일차 진입 → 20일 ≈ 실제 8시간) */
     retireDays: 60,
     /** 손님 기분 최고인 날 = 그날 평균 기분 이 값 이상 · 모을 날 수 */
@@ -673,8 +680,8 @@ export const CONFIG = {
     /** 한 판 시간(초), 파티 인원 (영웅 1 + 동료 2) */
     seconds: 60,
     partySize: 3,
-    /** 하루 도전 (실제 날짜) */
-    triesPerDay: 3,
+    /** 하루 도전 (실제 날짜) · PACE §1 raidPace: 3 → 4 (연속 보스와 같이 쓴다) */
+    triesPerDay: 4,
     /** 권장의 이 비율 미만이면 시작 전 경고 */
     warnRatio: 0.6,
     /** 피해량 = 전투력 × 초 × dmgPerPowerSec × 상성 × 케미 (자동은 ±autoSpread 흔들림) */
@@ -697,12 +704,23 @@ export const CONFIG = {
     /** 한 판 뒤 파티 체력 감소 */
     hpCost: 20,
     /** 원정 승리 때 떠돌이 보스와 마주칠 확률 · 도전 가능 시간 · 체력 비율 */
-    wanderChance: 0.08,
-    wanderHours: 24,
+    /** PACE §1-3 raidPace: 0.08 → 0.15 · 24 → 48시간 (플래그 끄면 paceOff 값 — 하루 도전 3 포함) */
+    wanderChance: 0.15,
+    wanderHours: 48,
+    paceOff: { wanderChance: 0.08, wanderHours: 24, triesPerDay: 3 },
     wanderHpShare: 0.4,
     /** 처치 보너스: 금화 = 보스 기준 금화 × 이 값, 전용 재료 */
     killGoldMult: 3,
     killMats: 5,
+    /**
+     * PACE §1 raidPace: 한 주 최대 보스 수 (첫 보스는 순환 · 2·3번째는 「도전장」으로 고름)
+     *  · n번째 보스 보상 배수(금화·재료, 0번 = 첫 보스) — 명세 0.7·0.5 → 시뮬(reports/pace/raid.md) 헤비 주당 토벌 금화가 하루 자동 사냥의 1.5배를 넘어 0.5·0.3으로 낮춤 · 첫 보스가 살아 있으면 목·토 0시(한국 시간)에 남은 체력 −weakStep
+     */
+    chainMax: 3,
+    chainMult: [1, 0.5, 0.3],
+    weakStep: 0.25,
+    /** 약해지는 요일 (0=일 … 4=목 · 6=토) */
+    weakDays: [4, 6],
   },
   legends: {
     /** 인연 활동 한 번에 게이지 +min~max% */

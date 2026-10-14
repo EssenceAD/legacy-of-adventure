@@ -18,6 +18,7 @@ import { pairOf } from '../world/chem';
 import { isCompanion, powerTips } from '../world/expeditions';
 import {
   canSweep, expectOf, raidCrew, rankOf, settle, submitRecord, triesLeft, wanderTarget, weeklyTarget, type RaidExpect, type RaidOutcome, type RaidTarget,
+  chainLine, chainMult, challengeChoices, pickChallenge, triesMax,
   beginRaid,
   cancelRaid,
 } from '../world/raid';
@@ -59,6 +60,34 @@ export function bossPic(b: BossDef): string {
   return c ? c.toDataURL() : '';
 }
 
+// ───────── PACE §1: 연속 토벌 · 도전장 (새 창 없이 토벌 창·게시판 안에서) ─────────
+
+/** 토벌 창 맨 위 한 줄 (주간 보스 · raidPace) */
+function paceTop(t: RaidTarget): string {
+  const line = t.kind === 'weekly' ? chainLine() : '';
+  return line ? `<p class="sub chainline" id="rChain">${esc(line)}</p>` : '';
+}
+/** 도전장: 지금 보스를 잡았으면 열린 지역 보스 중 이번 주 아직 안 잡은 것을 고른다 (게시판 · 결과 창) */
+export function challengeHtml(line = true): string {
+  const list = challengeChoices();
+  if (!list.length) return '';
+  const n = (P.raid.chainN || 1) + 1;
+  const cards = list
+    .map((b) => `<button class="raidcard" data-chal="${b.id}"><img src="${bossPic(b)}" alt=""><span><b>도전장 · ${esc(b.name)}</b><small>권장 ${fmt(b.power)} · 지금까지 처치 ${P.raid.kills[b.id] ?? 0}번</small></span><em>고르기 ›</em></button>`)
+    .join('');
+  return `<div class="chal">${line ? `<p class="sub" id="rChalLine">${esc(chainLine())}</p>` : ''}<p class="note">도전장 — ${n}번째 보스를 골라요 · 체력 가득 · 금화·재료 ×${chainMult(n)} · 랭킹엔 안 들어가요</p><div class="raids">${cards}</div></div>`;
+}
+export function bindChallenge(before?: () => void) {
+  $$('[data-chal]').forEach(
+    (el) =>
+      (el.onclick = () => {
+        if (!pickChallenge(el.dataset.chal!)) return toast('지금은 고를 수 없어요');
+        before?.();
+        openRaidPrep(weeklyTarget());
+      }),
+  );
+}
+
 export function openRaidPrep(t: RaidTarget) {
   // PARTY §3: 4번째 자리
   checkParty4();
@@ -75,6 +104,9 @@ export function openRaidPrep(t: RaidTarget) {
   const tips = low ? powerTips(members) : [];
   const left = triesLeft();
   const hpPct = t.hpLeft / t.max;
+  // PACE §1: 맨 위 한 줄 「이번 주 1/3 · 다음: 도전장 고르기」 · 도전장 보스는 보상 배수 · 랭킹 X
+  const top = paceTop(t);
+  const rankNote = (t.chain ?? 1) > 1 ? `도전장 보스 · 금화·재료 ×${chainMult(t.chain)} · 랭킹엔 안 들어가요` : '직접 토벌만 랭킹 최고 기록에 도전해요';
   const affOf = (a: Actor) => (b.weak.includes(a.kind as never) ? '<b class="good">상성 ↑</b>' : b.resist.includes(a.kind as never) ? '<b class="bad">상성 ↓</b>' : '');
   // J6 partyRulesV2: 동행(방문 중인 전설)도 · 못 가는 사람은 흐리게 + 이유(원정 중 n분 · 쉬는 중) · [추천 편성]
   const v2 = rulesV2();
@@ -113,14 +145,14 @@ export function openRaidPrep(t: RaidTarget) {
     };
     openWin(
       `토벌 · ${b.name}`,
-      `${deckTopHtml(cfg)}${deckGridHtml(cfg)}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
+      `${top}${deckTopHtml(cfg)}${deckGridHtml(cfg)}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
         <p class="sub">${t.kind === 'weekly' ? '이번 주 보스' : `떠돌이 보스 · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음`}</p>
         <div class="bhp"><i style="width:${hpPct * 100}%"></i></div>
         <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
         <p class="note">패턴: ${b.patterns.join(' · ')}<br>상성 ↑ ${b.weak.map((k) => CLASSES[k].name).join('·')} / ↓ ${b.resist.map((k) => CLASSES[k].name).join('·')}</p>
       </div></div>
       ${low ? `<div class="tips"><b>전투력이 ${fmt(b.power * R.warnRatio - ex.power)} 모자라요 (권장의 ${Math.round(R.warnRatio * 100)}% 미만) · 이렇게 올릴 수 있어요</b>${tips.map((x) => `<div>· ${esc(x.text)}</div>`).join('')}</div>` : ''}
-      <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 토벌만 랭킹 최고 기록에 도전해요</p>
+      <p class="note">오늘 남은 도전 ${left}/${triesMax()} · 실패해도 깎은 만큼 보상 · ${rankNote}</p>
       <div class="btnrow raidgo">
         <button class="bigbtn" id="rgAuto" ${dis}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
         ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${dis}>소탕</button>` : ''}
@@ -137,7 +169,7 @@ export function openRaidPrep(t: RaidTarget) {
   } else
   openWin(
     `토벌 · ${b.name}`,
-    `<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
+    `${top}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
       <p class="sub">${t.kind === 'weekly' ? '이번 주 보스' : `떠돌이 보스 · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음`}</p>
       <div class="bhp"><i style="width:${hpPct * 100}%"></i></div>
       <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
@@ -152,7 +184,7 @@ export function openRaidPrep(t: RaidTarget) {
       <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
       ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
     </div>
-    <p class="note">오늘 남은 도전 ${left}/${R.triesPerDay} · 실패해도 깎은 만큼 보상 · 직접 토벌만 랭킹 최고 기록에 도전해요</p>`,
+    <p class="note">오늘 남은 도전 ${left}/${triesMax()} · 실패해도 깎은 만큼 보상 · ${rankNote}</p>`,
   );
   $$('.pm').forEach(
     (el) =>
@@ -869,8 +901,9 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
     <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>${esc(b.mat)} ×${out.mats}</span><span>경험치 +${fmt(out.xp)}</span>${out.token ? '<span class="g">인연의 증표 +1 (주간 참여)</span>' : ''}${out.charm ? '<span class="g">🧿 강화 보호 부적 +1 (주간 참여)</span>' : ''}${(out.items ?? []).map((it) => `<span class="g">✦ ${esc(it.name)}</span>`).join('')}${out.firstKill ? `<span class="g">트로피 · ${esc(b.trophy)}</span><span class="g">칭호 「${esc(b.title)}」</span>` : ''}</div>
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
-    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>${rec?.noWind ? '<p class="cen"><small id="rNoWind">바람 보정 제외 기록</small></p>' : ''}
-    <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${R.triesPerDay})</button><button class="b" id="rHome">마을로</button></div>`;
+    <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : rec?.chain ? '도전장 보스는 주간 랭킹에 안 들어가요 (랭킹은 이번 주 첫 보스만)' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>${rec?.noWind ? '<p class="cen"><small id="rNoWind">바람 보정 제외 기록</small></p>' : ''}
+    ${t.kind === 'weekly' && out.killed ? challengeHtml() : ''}
+    <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${triesMax()})</button><button class="b" id="rHome">마을로</button></div>`;
   markDirty();
   if (inBattle) {
     const box = document.getElementById('rResBody')!;
@@ -884,6 +917,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
       const el = document.getElementById('rMyRank');
       if (el) el.textContent = row ? `${row.rank}위 / ${total}명` : '순위 없음';
     });
+  bindChallenge(() => active?.stop());
   document.getElementById('rHome')!.onclick = () => {
     active?.stop();
     closeWin();

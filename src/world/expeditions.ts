@@ -347,7 +347,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   if (win) {
     const wb = maybeWander(q.region);
-    if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (24시간 동안 토벌 가능)`]);
+    if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (${Math.round(((P.raid.wander?.until ?? Date.now()) - Date.now()) / 36e5)}시간 동안 토벌 가능)`]);
   }
   if (win) {
     P.counters.regionWins[q.region] = (P.counters.regionWins[q.region] ?? 0) + 1;

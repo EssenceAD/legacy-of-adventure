@@ -396,6 +396,15 @@ export function freshProgress() {
       prevWeek: '',
       rankChecked: '',
       rank1Week: '',
+      /**
+       * PACE §1 raidPace (옛 저장엔 없음 → world/raid.ts가 기본값으로 읽는다): 이번 주 몇 번째 보스(1부터) · 이번 주 잡은 보스
+       *  · 주 후반 약해짐 단계(0~2) · 「보스가 지쳐 보여요」 알렸나 · 떠돌이 보스 처치 수 (장부 「토벌 보스 처치하기」)
+       */
+      chainN: 1 as number | undefined,
+      chainKilled: [] as string[] | undefined,
+      weak: 0 as number | undefined,
+      tiredSaid: false as boolean | undefined,
+      wanderKills: 0 as number | undefined,
     },
     /** 보스 전용 재료 */
     bossMats: {} as Record<string, number>,
@@ -554,6 +563,8 @@ export function freshProgress() {
       base: {} as Record<string, number>,
       flags: {} as Record<string, number>,
       mythic: {} as Record<string, { prog?: number; done?: boolean; met?: boolean; heart?: boolean }>,
+      /** PACE §3-1 storyClock: 그 막에 들어간 현실 시각(ms) — 막 번호 → 시각 · 옛 저장은 backfillActAt가 한 번 추정 */
+      actAt: {} as Record<string, number> | undefined,
       /** DIRECTION §1-2: 이번 회차의 바람 ('' = 없음 · 1회차) */
       wind: '',
     },

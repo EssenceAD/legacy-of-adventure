@@ -1,4 +1,4 @@
-// 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, 24시간) · 하루 3번 · 소탕 · 보상
+// 토벌전 (3단계 1~5장): 주간 보스(월요일 교체, 체력 누적) · 떠돌이 보스(원정에서 만남, CONFIG wanderHours) · 하루 도전(triesMax) · 소탕 · 보상 · PACE §1 연속 토벌(도전장)·주 후반 약해짐
 import { BOSSES, bossById, RAID_BOSSES, type BossDef } from '../data/bosses';
 import { markAdventured } from './actors';
 import { pioneerRaidMult } from './easter';
@@ -40,10 +40,12 @@ const weekIndex = () => {
   return Math.round(new Date(y, mo - 1, da).getTime() / (7 * 864e5));
 };
 
+/** 열린 지역의 토벌 보스 (REGIONS2: 별을 삼킨 것은 넣지 않는다 — 엔딩 전용) */
+const openBosses = () => RAID_BOSSES.filter((b) => regionUnlocked(regionIdx(b.region)));
+
 /** 이번 주 보스: 열린 지역의 보스 중에서 주마다 돌아가며 */
 function pickWeekly(): BossDef {
-  // REGIONS2: 별을 삼킨 것은 넣지 않는다 (엔딩 전용)
-  const open = RAID_BOSSES.filter((b) => regionUnlocked(regionIdx(b.region)));
+  const open = openBosses();
   const list = open.length ? open : [BOSSES[0]];
   return list[weekIndex() % list.length];
 }
@@ -54,9 +56,82 @@ export function ensureWeek(): boolean {
   if (P.raid.week === wk && bossById(P.raid.bossId)) return false;
   const b = pickWeekly();
   if (P.raid.week && P.raid.week !== wk) P.raid.prevWeek = P.raid.week;
-  Object.assign(P.raid, { week: wk, bossId: b.id, hpLeft: b.hp, killed: false, best: 0, joined: false, alarmed: false });
+  Object.assign(P.raid, { week: wk, bossId: b.id, hpLeft: b.hp, killed: false, best: 0, joined: false, alarmed: false, chainN: 1, chainKilled: [], weak: 0, tiredSaid: false });
   markDirty();
   return true;
+}
+
+// ───────── PACE §1 raidPace: 연속 토벌 · 도전장 · 주 후반 약해짐 ─────────
+
+export const pace = () => flag('raidPace');
+/** 하루 도전 (플래그 끄면 예전 3) */
+export const triesMax = () => (pace() ? R.triesPerDay : R.paceOff.triesPerDay);
+/** 이번 주 몇 번째 보스 (1부터 · 옛 저장 = 1) */
+export const chainN = () => Math.max(1, P.raid.chainN || 1);
+/** 이번 주 잡은 보스 (옛 저장: 지금 보스를 잡았으면 그것 하나) */
+export function chainDone(): string[] {
+  const l = Array.isArray(P.raid.chainKilled) ? P.raid.chainKilled : [];
+  return P.raid.killed && P.raid.bossId && !l.includes(P.raid.bossId) ? [...l, P.raid.bossId] : l;
+}
+/** n번째 보스 보상 배수 (금화·재료) */
+export const chainMult = (n = chainN()) => (pace() ? R.chainMult[Math.min(R.chainMult.length, Math.max(1, n)) - 1] ?? 1 : 1);
+/** 도전장 후보: 지금 보스를 잡았고 · 이번 주 chainMax 미만 · 열린 지역 보스 중 이번 주 아직 안 잡은 것 */
+export function challengeChoices(): BossDef[] {
+  if (!pace()) return [];
+  ensureWeek();
+  if (!P.raid.killed || chainN() >= R.chainMax) return [];
+  const done = chainDone();
+  return openBosses().filter((b) => !done.includes(b.id));
+}
+/** 도전장 고르기: 그 보스가 이번 주 다음 보스로 (체력 가득) */
+export function pickChallenge(id: string): boolean {
+  const b = challengeChoices().find((x) => x.id === id);
+  if (!b) return false;
+  P.raid.chainKilled = chainDone();
+  P.raid.chainN = chainN() + 1;
+  Object.assign(P.raid, { bossId: b.id, hpLeft: b.hp, killed: false });
+  trackEv('raid_chain', { boss: b.id, n: P.raid.chainN });
+  markDirty();
+  return true;
+}
+/** 토벌 창 맨 위 한 줄: 「이번 주 1/3 · 다음: 도전장 고르기」 (플래그 끔이면 '') */
+export function chainLine(): string {
+  if (!pace()) return '';
+  ensureWeek();
+  const n = chainN();
+  const all = n >= R.chainMax && P.raid.killed;
+  const more = n < R.chainMax && openBosses().some((b) => !chainDone().includes(b.id) && b.id !== P.raid.bossId);
+  const next = all ? '모두 처치! 월요일에 새 보스' : n >= R.chainMax ? '이번 주 마지막 보스' : more ? '다음: 도전장 고르기' : '다음 보스는 지역을 더 열면';
+  return `이번 주 ${n}/${R.chainMax} · ${next}`;
+}
+
+const KST = 9 * 36e5;
+/** 이번 주 지금까지 지난 약해짐 단계 수 (한국 시간 목 0시 · 토 0시) */
+export function weakDue(t = Date.now()): number {
+  const dow = new Date(t + KST).getUTCDay();
+  const ord = (d: number) => (d === 0 ? 7 : d);
+  return R.weakDays.filter((d) => ord(dow) >= ord(d)).length;
+}
+/** 첫 보스가 아직 살아 있으면 주 후반에 남은 체력 −25% (단계마다 한 번) · 마을 경보 한 줄 (주에 한 번) */
+export function tireBoss(t = Date.now()): boolean {
+  if (!pace() || chainN() !== 1 || P.raid.killed || P.raid.hpLeft <= 0) return false;
+  const due = weakDue(t);
+  const w = P.raid.weak ?? 0;
+  if (due <= w) return false;
+  for (let i = w; i < due; i++) P.raid.hpLeft = Math.max(1, Math.round(P.raid.hpLeft * (1 - R.weakStep)));
+  P.raid.weak = due;
+  markDirty();
+  trackEv('raid_tired', { boss: P.raid.bossId, step: due });
+  return true;
+}
+function sayTired() {
+  if (P.raid.tiredSaid || !(P.raid.weak ?? 0) || P.raid.killed) return;
+  P.raid.tiredSaid = true;
+  const b = bossById(P.raid.bossId);
+  markDirty();
+  queueEvent(() => {
+    uiHooks.talk([['narr', `「${b?.name ?? '보스'}」${josa(b?.name ?? '보스', '가')} 지쳐 보여요… 남은 체력이 줄었어요. 지금이 기회!`]]);
+  }, 'tired' + P.raid.week);
 }
 
 function ensureDay() {
@@ -66,14 +141,14 @@ function ensureDay() {
 }
 export const triesLeft = () => {
   ensureDay();
-  return Math.max(0, R.triesPerDay - P.raid.tries);
+  return Math.max(0, triesMax() - P.raid.tries);
 };
 
 /** HOTFIX17 §2: 토벌 한 판 = 시작할 때 도전 1 차감 + 판 번호. 남은 도전이 없으면 null */
 export function beginRaid(): number | null {
   ensureDay();
-  if (P.raid.tries >= R.triesPerDay) return null;
-  P.raid.tries = Math.min(R.triesPerDay, P.raid.tries + 1);
+  if (P.raid.tries >= triesMax()) return null;
+  P.raid.tries = Math.min(triesMax(), P.raid.tries + 1);
   P.raid.runSeq = (P.raid.runSeq ?? 0) + 1;
   markDirty();
   return P.raid.runSeq;
@@ -92,7 +167,7 @@ export function repairRaidTries() {
     P.raid.fix17 = true;
     P.raid.tries = 0;
     markDirty();
-  } else if (P.raid.tries > R.triesPerDay) P.raid.tries = R.triesPerDay - 1;
+  } else if (P.raid.tries > triesMax()) P.raid.tries = triesMax() - 1;
 }
 let lastOut: RaidOutcome | null = null;
 
@@ -101,7 +176,9 @@ export function maybeAlarm() {
   // 5단계: 토벌전은 장부 4장에 열린다 (예전 저장은 그대로)
   if (!S.started || S.visiting || !feature('raid')) return;
   ensureWeek();
-  if (P.raid.alarmed) return;
+  // PACE §1-4: 주 후반 약해짐 (경보 대화는 이번 주 첫 경보 뒤에)
+  tireBoss();
+  if (P.raid.alarmed) return sayTired();
   P.raid.alarmed = true;
   const b = bossById(P.raid.bossId)!;
   markDirty();
@@ -122,12 +199,15 @@ export interface RaidTarget {
   boss: BossDef;
   hpLeft: number;
   max: number;
+  /** PACE §1: 이번 주 몇 번째 보스 (주간만 · 2·3번째는 도전장 보스 — 랭킹 X · 보상 배수) */
+  chain?: number;
 }
 
 export function weeklyTarget(): RaidTarget {
   ensureWeek();
+  tireBoss();
   const b = bossById(P.raid.bossId)!;
-  return { kind: 'weekly', boss: b, hpLeft: P.raid.hpLeft, max: b.hp };
+  return { kind: 'weekly', boss: b, hpLeft: P.raid.hpLeft, max: b.hp, chain: chainN() };
 }
 export function wanderTarget(): RaidTarget | null {
   const w = P.raid.wander;
@@ -136,13 +216,15 @@ export function wanderTarget(): RaidTarget | null {
   return b ? { kind: 'wander', boss: b, hpLeft: w.hpLeft, max: w.max } : null;
 }
 
-/** 원정 승리 때: 그 지역 보스를 떠돌이로 만날 수도 (24시간) */
+/** 원정 승리 때: 그 지역 보스를 떠돌이로 만날 수도 (wanderHours) */
 export function maybeWander(region: RegionId): BossDef | null {
-  if (wanderTarget() || Math.random() >= R.wanderChance) return null;
+  // PACE §1-3: 0.08 → 0.15 · 24 → 48시간 (플래그 끄면 예전 값)
+  const W = pace() ? R : R.paceOff;
+  if (wanderTarget() || Math.random() >= W.wanderChance) return null;
   const b = RAID_BOSSES.find((x) => x.region === region);
   if (!b) return null;
   const max = Math.round(b.hp * R.wanderHpShare);
-  P.raid.wander = { bossId: b.id, until: Date.now() + R.wanderHours * 36e5, hpLeft: max, max };
+  P.raid.wander = { bossId: b.id, until: Date.now() + W.wanderHours * 36e5, hpLeft: max, max };
   markDirty();
   return b;
 }
@@ -220,6 +302,9 @@ export interface RaidOutcome {
   items?: Item[];
   personalBest: boolean;
   weekBest: boolean;
+  /** PACE §1: 이번 주 몇 번째 보스 · 금화·재료 배수 */
+  chain?: number;
+  mult?: number;
   record?: { ok: boolean; reason?: string };
 }
 
@@ -234,18 +319,29 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   damage = Math.max(0, Math.round(damage));
   const applied = Math.min(damage, t.hpLeft);
   let killed = false;
+  // PACE §1: 이번 주 n번째 보스 (2·3번째 = 도전장 · 금화·재료 배수 · 랭킹 X)
+  const chain = t.kind === 'weekly' ? chainN() : 1;
+  const cm = t.kind === 'weekly' ? chainMult(chain) : 1;
   if (t.kind === 'weekly') {
     P.raid.hpLeft = Math.max(0, P.raid.hpLeft - applied);
     killed = P.raid.hpLeft <= 0 && !P.raid.killed;
     if (killed) {
       P.counters.raidKills = (P.counters.raidKills ?? 0) + 1;
       P.raid.killed = true;
-      P.raid.weeksKilled++;
+      // 「주간 보스를 잡은 주」는 첫 보스만 (도전장 보스는 같은 주라 다시 안 센다)
+      if (chain === 1) P.raid.weeksKilled++;
+      const l = Array.isArray(P.raid.chainKilled) ? P.raid.chainKilled : [];
+      if (!l.includes(b.id)) l.push(b.id);
+      P.raid.chainKilled = l;
     }
   } else if (P.raid.wander) {
     P.raid.wander.hpLeft = Math.max(0, P.raid.wander.hpLeft - applied);
     killed = P.raid.wander.hpLeft <= 0;
-    if (killed) P.raid.wander = null;
+    if (killed) {
+      P.raid.wander = null;
+      // PACE §1-3: 떠돌이 처치도 장부 「토벌 보스 처치하기」로 센다
+      P.raid.wanderKills = (P.raid.wanderKills ?? 0) + 1;
+    }
   }
   const firstKill = killed && !P.raid.firstKills.includes(b.id);
   if (killed) P.raid.kills[b.id] = (P.raid.kills[b.id] ?? 0) + 1;
@@ -260,8 +356,10 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   const ratio = damage / Math.max(1, b.power * R.seconds * R.dmgPerPowerSec);
   // EASTER: 붉은 무사의 투구 — 토벌 금화 +3%
   // PARTY §2: 뒷골목 싸움 금화 +8%
-  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold));
-  const mats = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
+  // PACE §1: 도전장 보스는 금화·재료 ×chainMult (고유 장비 확률·장부·업적·전설 카운트는 그대로)
+  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold) * cm);
+  const mats0 = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
+  const mats = cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm));
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));
   S.gold += gold;
   S.ledger.dungeon += gold;
@@ -295,7 +393,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
       if (P.raid.personalBest > 0) legendHooks.req('raidPersonalBest');
       P.raid.personalBest = damage;
     }
-    if (t.kind === 'weekly' && damage > P.raid.best) {
+    // 이번 주 최고(랭킹 기준)는 첫 보스만
+    if (t.kind === 'weekly' && chain === 1 && damage > P.raid.best) {
       P.raid.best = damage;
       weekBest = true;
     }
@@ -320,13 +419,14 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   track('expeditionWin');
   markDirty();
-  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, charm, items, personalBest, weekBest };
+  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, charm, items, personalBest, weekBest, chain, mult: cm };
   return lastOut;
 }
 
-/** 랭킹용 기록 (주간 보스, 직접·자동 한 판만). 2차에서 서버로 */
-export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect): Promise<{ ok: boolean; reason?: string; online: boolean; noWind?: boolean }> {
+/** 랭킹용 기록 (주간 보스, 직접·자동 한 판만). 2차에서 서버로 · PACE §1: 첫 보스만 (도전장 보스는 안 올린다) */
+export async function submitRecord(t: RaidTarget, damage: number, mode: 'auto' | 'manual', ex: RaidExpect): Promise<{ ok: boolean; reason?: string; online: boolean; noWind?: boolean; chain?: boolean }> {
   if (t.kind !== 'weekly') return { ok: true, online: false };
+  if ((t.chain ?? 1) > 1) return { ok: true, online: false, chain: true };
   // v0.24.2: 「전쟁의 소문」 바람 보정은 주간 랭킹 기록에서 뺀다 (전투에선 그대로)
   const wm = flag('raidNoWind') ? windRaid() : 1;
   const v = wm !== 1 ? stripWind(damage, ex.theory, wm) : { damage, theory: ex.theory };

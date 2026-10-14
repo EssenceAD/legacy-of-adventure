@@ -7,7 +7,7 @@ import {
   blessCost, blessed, blessFx, blessLeft, blessRoom, buyBless, buyConv, convItem, convItems, convMax, convPrice, convTotal, fmtKo, gsState, onceDay, onceEver, refreshCost, taperAt, taperInfo,
   untilKstMidnight,
 } from '../world/goldsink';
-import { storyWaitDay } from '../world/story';
+import { storyWaitDay, storyWaitText as storyWaitWhen } from '../world/story';
 import { bestOf } from '../world/town';
 import { P, S, type Building } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
@@ -262,6 +262,8 @@ export function taperLine(): string {
 export function storyWaitText(): string {
   const d = storyWaitDay();
   if (!d || S.visiting || !flag('storyWaitHint')) return '';
+  // PACE §3-1 storyClock: 「○일 뒤 (또는 ○일차)」 — 더 빠른 쪽이 앞
+  if (flag('storyClock')) return `다음 이야기: ${storyWaitWhen()} · 지금 ${S.day}일차 · ☾로 밤을 넘기면 하루가 빨리 가요`;
   return `다음 이야기: ${d}일차 (지금 ${S.day}일차) · ☾로 밤을 넘기면 하루가 빨리 가요`;
 }
 export function tickGoldsinkHud() {
