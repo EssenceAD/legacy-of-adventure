@@ -139,6 +139,8 @@ export const FLAG_DEFAULTS = {
   almanac: false,
   /** CHECKIN §K2 왼쪽 가장자리 아이콘 줄 (새 HUD hudV2 안 · 오늘의 장부 · 수확제(기간 중) · 여관 연감(시즌 중) 최대 3 · 빨간 점 규칙) — 끄면 메뉴 칸으로만 */
   leftIcons: false,
+  /** 웅스 제보 「전설 영웅 카드가 전설 손님과 똑같아요」 (형철 확인 전 꺼짐 · 비교 시트 reports/checkin/legendframe · 「새 화면 미리 보기」로 켜 봄 — vis()) — 전설 영웅은 새 등급 「전설 영웅」: 이중 금테 + 네 귀 보석 + 왼쪽 위 왕관 리본 「전설」(역할은 오른쪽) + 금빛 이름(마을 이름표와 같은 금색) + 3초마다 테를 도는 빛 한 줄기(calmWorld·배터리 절약·동작 줄이기면 멈춘 금테) · 전설 손님은 주황 그대로 · 신화는 한 겹 더(은빛) · 정렬 값이 같으면 전설 영웅 먼저(★ 고정이 우선) */
+  legendFrame: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

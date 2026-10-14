@@ -66,5 +66,6 @@
   "sunset": false,
   "ledgerDaily": false,
   "almanac": false,
-  "leftIcons": false
+  "leftIcons": false,
+  "legendFrame": false
 }
