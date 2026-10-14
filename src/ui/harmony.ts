@@ -9,6 +9,7 @@ import { def, type Kind } from '../data/catalog';
 import { HARMONIES, harmonyById } from '../data/harmony';
 import { advanceHint, dailyHarmonyRep, harmonyHooks, hintText, setsOf, type HSet } from '../world/harmony';
 import { harmonyAnim } from '../world/harmonyDraw';
+import { luxeSetOf } from '../world/luxeShop';
 import { MOVABLE_PROPS, propKey, type Prop } from '../world/grade';
 import { onNewDay } from '../world/clock';
 import { markDirty, P, S, uiHooks, world, type Building } from '../world/state';
@@ -57,13 +58,16 @@ function next() {
 /** 건물 창에 붙일 어울림 줄 */
 export function harmonyRows(o: Building): string {
   const list = setsOf(o);
-  if (!list.length) return '';
+  // LUXE §1: 「명품 세트」 줄 (세트 장식이 완성 세트에 끼었으면)
+  const lx = luxeSetOf(o);
+  const lxRow = lx ? `<p><img src="${iconSrc('harmony', true)}" alt=""><b>명품 세트 · ${esc(lx.set.name)}</b> <small>${esc(lx.set.text)}</small></p>` : '';
+  if (!list.length && !lxRow) return '';
   return `<div class="hrows">${list
     .map((s) => {
       const h = harmonyById(s.id);
       return `<p><img src="${iconSrc('harmony', true)}" alt=""><b>${esc(h.name)}</b> <small>${esc(h.text)}</small></p>`;
     })
-    .join('')}</div>`;
+    .join('')}${lxRow}</div>`;
 }
 
 /** 마을 등급 장식을 눌렀을 때: 마을 안으로 옮기면 어울림 재료가 된다 */

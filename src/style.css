@@ -2445,3 +2445,13 @@ body.hud2.flrail :is(#bDN,#bHarm,#hSpk,#bEye){top:calc(var(--h2-top) + (2 + var(
 .talking #bRail,.placing #bRail,body.winopen #bRail{visibility:hidden}
 /* 「⋯」 점: .px::before{display:none} 보다 세게 (빌드가 규칙 순서를 바꿔도) */
 body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2px;top:2px}
+/* LUXE §1 명품관 */
+.lxrow .lthumb{width:56px;height:44px;object-fit:contain;image-rendering:pixelated}
+.lxrow b{color:var(--cream)}.lxrow small.g{color:var(--gold)}
+.lxweek{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold);background:#2a2440}
+.lxweek .lthumb{width:72px;height:60px}
+.lxbtns{display:flex;flex-direction:column;gap:4px}
+.shop .irow button.lxcp{background:#7a4fc8}
+.lxsale{font-style:normal;color:#1c1018;background:#ffb347;padding:0 4px;white-space:nowrap}
+.lxrow s{opacity:.6;font-size:var(--f-small)}
+.lxgot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;margin:4px 0;background:#203a2a;box-shadow:0 0 0 2px var(--ink)}

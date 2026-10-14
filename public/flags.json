@@ -82,5 +82,7 @@
   "flFirstCam": false,
   "flTeaserFit": false,
   "flSideRail": false,
-  "flCharPop": false
+  "flCharPop": false,
+  "luxeShop": false,
+  "guestbook": false
 }

@@ -5,6 +5,7 @@ import { isMythic, mythicStat } from './mythic';
 import { vis } from './visual';
 import { CAMEO_DEF } from './easter';
 import { libraryXp } from './facilities';
+import { luxeSetFx } from './luxeShop';
 import {
   CLASS_RACES, CLASS_STATS, CLASS_WEAPON, CLASSES, FACE_POOL, GUEST_KINDS, HAIR_COLORS, RACE_NAMES, RARITY_INFO,
   type ClassDef, type ClassKey, type Face, type GuestKind, type Race, type Rarity,
@@ -126,7 +127,8 @@ export const xpToNext = (lvl: number) => 40 + lvl * 25;
 /** 경험치를 주고 레벨이 오르면 true */
 export function gainXp(a: Actor, n: number): boolean {
   if (a.lvl >= G.maxLevel) return false;
-  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100) * xpMult() * (1 + libraryXp()));
+  // LUXE §1: 「명품 세트」 별의 서재 = 경험치 +2% (플래그 끄면 0)
+  a.xp += Math.round(n * (1 + optSum(a, 'xpPct') / 100) * xpMult() * (1 + libraryXp()) * (1 + luxeSetFx('xp')));
   let up = false;
   while (a.lvl < G.maxLevel && a.xp >= xpToNext(a.lvl)) {
     a.xp -= xpToNext(a.lvl);

@@ -33,7 +33,9 @@ import { PORTRAITS } from '../engine/assets';
 import { $$, bindTabs, claimOrder, esc, fmt, keepScroll, pct, tabs } from './common';
 import { CHEM_TALKS_PER_DAY, chemUnread, readChemNews, title5, ultName5 } from '../world/chemNews';
 import { openWin, thumbOf, toast } from './windows';
-import { def } from '../data/catalog';
+import { def, type Kind } from '../data/catalog';
+import { LUXE_SHOP } from '../data/luxe_cfg';
+import { luxeSets, lxOn, setOwnedN } from '../world/luxeShop';
 import { openPlace, type Place } from './nav';
 import { SYN_IDS, SYN_INFO } from '../world/synergy';
 import { chronPageHtml, contribHtml, fillContrib } from './chronicle';
@@ -173,7 +175,14 @@ export function openDex(tab = dTab) {
       if (h.open) return `<div class="hcell open"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small>${h.text}</small></div>`;
       return `<div class="hcell"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
     }).join('');
-    body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · ${flag('harmonyV2') ? `큰 건물은 최대 ${CONFIG.harmony.perBuilding}개 (2×2는 ${CONFIG.harmony.perBuildingBySize['2x2']} · 3×3은 ${CONFIG.harmony.perBuildingBySize['3x3']}) · 1칸 장식은 제한 없음` : `한 건물에 최대 ${CONFIG.harmony.perBuilding}개`}</p><div class="hgrid">${cells}</div>`;
+    // LUXE §1: 「명품 세트」 4칸 (명품관이 켜졌을 때만 · 발견 수에는 안 셈)
+    const lxCells = lxOn()
+      ? LUXE_SHOP.sets.map((st) => {
+          const on = luxeSets().some((h) => h.set.id === st.id);
+          return `<div class="hcell ${on ? 'on' : 'open'}"><em>✦</em><b>명품 세트 · ${esc(st.name)}</b><small>${st.items.map((it) => def(it.kind as Kind).name).join(' + ')} (중심에서 ${LUXE_SHOP.setRange}칸 안)</small><small class="${on ? 'g' : ''}">${esc(st.text)} · 모음 ${setOwnedN(st)}/4</small></div>`;
+        }).join('')
+      : '';
+    body = `<p class="sub">어울림 ${P.harmony.found.length}/${HARMONIES.length} 발견 · 건물·장식이 서로 ${CONFIG.harmony.range}칸 안에 모이면 생겨요</p><p class="note">숨은 어울림 힌트는 하루에 하나씩 더 또렷해져요 · ${flag('harmonyV2') ? `큰 건물은 최대 ${CONFIG.harmony.perBuilding}개 (2×2는 ${CONFIG.harmony.perBuildingBySize['2x2']} · 3×3은 ${CONFIG.harmony.perBuildingBySize['3x3']}) · 1칸 장식은 제한 없음` : `한 건물에 최대 ${CONFIG.harmony.perBuilding}개`}</p><div class="hgrid">${cells}${lxCells}</div>`;
   } else if (tname === '지역') {
     // REGIONS2 §5-7: 지역 칸 — 열린 지역은 이름·재료·세트 · 첫 발자국 · 길잡이 (한 줄씩)
     const cells = REGIONS.slice(BASE_REGIONS).map((r, k) => {

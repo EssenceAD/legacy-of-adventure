@@ -13,7 +13,6 @@ import {
   buyHv, checkTitle, finaleState, harvestOn, harvestShopOn, hvChronicle, hvNow, hvPhase, hvState, markFinale, markShopSeen, shopLeft, wantOpening,
 } from '../world/harvest';
 import { stopLanterns } from '../world/harvestDraw';
-import { shopOpen } from '../world/meta';
 import { markDirty, P, S, world, type Actor } from '../world/state';
 import { duskFirst, duskTick, isDusk, sunsetOn } from '../world/sunset';
 import { $$, esc, fmt } from './common';
@@ -21,6 +20,7 @@ import { iconSrc } from './kit';
 import { playStory } from './story';
 import { ledgerHooks } from './daybook';
 import { openWin, thumbOf, toast } from './windows';
+import { bindShopTabsBar, shopTabHooks, shopTabsBar } from './shopTabs';
 
 // ───────── 리본 표시 ─────────
 
@@ -58,7 +58,8 @@ export function openHarvestShop() {
     const btn = left <= 0 ? '<button disabled>다 바꿈</button>' : `<button data-hvb="${it.kind}" ${h.ribbons >= it.cost ? '' : 'disabled'}>${ribbonImg()} ${it.cost}</button>`;
     return `<div class="irow shopi hvrow ${left <= 0 ? 'sold' : ''}"><img src="${thumbOf(it.kind as Kind)}" alt=""><span>${esc(it.name)}<small>${got}/${it.max}${it.note ? ` · ${esc(it.note)}` : ''}</small></span>${btn}</div>`;
   }).join('');
-  const tabs = shopOpen() ? `<div class="tabs" id="hvTabs"><button class="tab" data-hvt="shop">상점</button><button class="tab on">🌾 수확제</button></div>` : '';
+  // LUXE §1: 탭 줄 하나 (상점 · 수확제 · 명품관)
+  const tabs = shopTabsBar('hv');
   openWin(
     '수확제 교환소',
     `${tabs}<div class="ohd hvhd"><img src="${PORTRAITS.baker ?? ''}" alt=""><div><b>도라 아줌마</b><small>「${esc(line)}」</small></div></div>
@@ -67,8 +68,7 @@ export function openHarvestShop() {
     <div class="shop">${rows}</div>`,
     'hvshop',
   );
-  const st = document.querySelector<HTMLElement>('#hvTabs [data-hvt="shop"]');
-  if (st) st.onclick = () => shopHooks.shop();
+  bindShopTabsBar();
   $$('[data-hvb]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -91,12 +91,13 @@ export function openHarvestShop() {
 export const shopHooks = { shop: () => {} };
 /** 메뉴 상점 창 맨 위 「상점 · 수확제」 탭 (기간 밖이면 '') */
 export function shopTabsHtml(): string {
-  return harvestShopOn() ? `<div class="tabs" id="hvTabs"><button class="tab on">상점</button><button class="tab" data-hvt="hv">🌾 수확제</button></div>` : '';
+  return shopTabsBar('shop');
 }
 export function bindShopTabs() {
-  const b = document.querySelector<HTMLElement>('#hvTabs [data-hvt="hv"]');
-  if (b) b.onclick = () => openHarvestShop();
+  bindShopTabsBar();
 }
+shopTabHooks.hv = () => openHarvestShop();
+shopTabHooks.shop = () => shopHooks.shop();
 
 // ───────── 1-2 여는 컷 · 1-7 마지막 밤 ─────────
 

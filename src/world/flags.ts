@@ -171,6 +171,8 @@ export const FLAG_DEFAULTS = {
   flSideRail: false,
   /** FIRSTLOOK §6 캐릭터가 눈에 띄게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 사람 발밑 그림자 한 단계 진하게(+알파 0.15 · 돌길 위에서도) · 사람 도트 바깥 1px 외곽선을 남보라(팔레트 0번)로 통일(만들 때 한 번 · 전설·신화 테두리는 그대로) · 걷는 동안 1px 통통 (숫자 CONFIG.firstLook.pop) */
   flCharPop: false,
+  /** LUXE §1 명품관 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 상점 창 「명품관」 탭(장부 4장부터 · 그 전엔 자물쇠) · 세트 장식 4×4(하나씩 · 보관함으로 · 4점을 2칸 안에 모으면 「명품 세트」 효과·반짝이) · 이번 주 명품(월요일 0시 KST · 6주마다 돌아옴 · 마을 회관 쿠폰 무료) · 작은 사치(매일 하나 −30%) · 「영웅 의상」 줄은 luxeShopHooks.outfits (숫자 data/luxe_cfg.ts LUXE_SHOP) — 끄면 탭·사기·세트 효과·반짝이 멈춤 (산 것·놓은 것은 그대로) */
+  luxeShop: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
