@@ -129,6 +129,8 @@ export const FLAG_DEFAULTS = {
   checkinFx: false,
   /** CHECKIN §J3 글 대신 카드 (형철 확인 전 꺼짐 · vis()) — 전투 결과 별 1~3·MVP·드랍 칸 · 의뢰·부탁 한 줄 카드(아이콘·진행 막대·보상 칸) · 건설 그림 타일(못 지으면 어둡게 + 모자란 금화만 빨간 숫자) · 레벨업·해금 가운데 배너 1초 */
   uiCards: false,
+  /** 웅스 제보 「전설 영웅 카드가 전설 손님과 똑같아요」 (형철 확인 전 꺼짐 · 비교 시트 reports/checkin/legendframe · 「새 화면 미리 보기」로 켜 봄 — vis()) — 전설 영웅은 새 등급 「전설 영웅」: 이중 금테 + 네 귀 보석 + 왼쪽 위 왕관 리본 「전설」(역할은 오른쪽) + 금빛 이름(마을 이름표와 같은 금색) + 3초마다 테를 도는 빛 한 줄기(calmWorld·배터리 절약·동작 줄이기면 멈춘 금테) · 전설 손님은 주황 그대로 · 신화는 한 겹 더(은빛) · 정렬 값이 같으면 전설 영웅 먼저(★ 고정이 우선) */
+  legendFrame: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

@@ -2053,6 +2053,34 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 .hcd.sm .hcd-badge{top:auto;bottom:calc(100% - 4px * var(--k) - 24px * var(--k));left:1px}
 .hcd.sm .hcd-txt{padding:1px 0 0}
 .hcd.sm .hcd-nm{font-size:var(--f-tiny);text-align:center}
+/* ── legendFrame (실험실): 전설 영웅·신화 카드 테 — 남색 창은 그대로 · 카드 테만 · 플래그 끄면 .lf 클래스가 없어 하나도 안 걸린다 ──
+   이중 금테(바깥 1 · 잉크 1 · 안쪽 1) + 네 귀 보석 + 왼쪽 위 왕관 리본(역할은 오른쪽) + 금빛 이름(마을 HERODOT 전설 이름표 #ffd36b) + 3초마다 빛 한 줄기
+   신화 = 두 겹 더(옅은 금 · 은빛 줄) · 네 변 가운데도 은빛 보석 · 은빛 이름(마을 신화 이름표 #dfe6f5) — 원정 중 흐린 초상화여도 테·리본은 제 색 */
+.hcd>.hcd-lf{position:absolute;inset:-3px;z-index:3;pointer-events:none;--lfw:3px;--gem:#7fe0ff;box-shadow:inset 0 0 0 1px #ffd36b,inset 0 0 0 2px #1a1220,inset 0 0 0 3px #ffd36b}
+.hcd.lf.t-mythic>.hcd-lf{inset:-5px;--lfw:5px;box-shadow:inset 0 0 0 1px #fff3b0,inset 0 0 0 2px #ffd36b,inset 0 0 0 3px #1a1220,inset 0 0 0 4px #dfe6f5,inset 0 0 0 5px #ffd36b}
+.hcd-lf::before{content:'';position:absolute;inset:0;background:
+  linear-gradient(#fff,#fff) left 1px top 1px/1px 1px no-repeat,linear-gradient(#fff,#fff) right 1px top 1px/1px 1px no-repeat,linear-gradient(#fff,#fff) left 1px bottom 1px/1px 1px no-repeat,linear-gradient(#fff,#fff) right 1px bottom 1px/1px 1px no-repeat,
+  linear-gradient(var(--gem),var(--gem)) left top/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) right top/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) left bottom/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) right bottom/3px 3px no-repeat}
+/* 신화는 네 귀 + 네 변 가운데에도 은빛 보석 */
+.hcd.lf.t-mythic .hcd-lf::before{background:linear-gradient(#fff3b0,#fff3b0) left 2px top 2px/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) right 2px top 2px/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) left 2px bottom 2px/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) right 2px bottom 2px/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) 50% 2px/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) 50% calc(100% - 2px)/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) left 2px top 50%/1px 1px no-repeat,linear-gradient(#fff3b0,#fff3b0) right 2px top 50%/1px 1px no-repeat,linear-gradient(var(--gem),var(--gem)) left 1px top 1px/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) right 1px top 1px/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) left 1px bottom 1px/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) right 1px bottom 1px/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) 50% 1px/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) 50% calc(100% - 1px)/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) left 1px top 50%/3px 3px no-repeat,linear-gradient(var(--gem),var(--gem)) right 1px top 50%/3px 3px no-repeat;--gem:#dfe6f5}
+.hcd-lf::after{content:'';position:absolute;inset:0;padding:var(--lfw);background:linear-gradient(120deg,transparent 44%,#fff3b0 47%,#ffffff 50%,#fff3b0 53%,transparent 56%) 100% 0/300% 100% no-repeat;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:lfStreak 3s steps(60) infinite}
+@keyframes lfStreak{0%{background-position:100% 0}30%,100%{background-position:0 0}}
+.hcd.lf.calm .hcd-lf::after{display:none}
+@media (prefers-reduced-motion:reduce){.hcd-lf::after{display:none}}
+.hcd.lf.on{box-shadow:0 0 0 4px #1a1220,0 0 0 5px #fff3b0}
+.hcd.lf.t-mythic.on{box-shadow:0 0 0 6px #1a1220,0 0 0 7px #fff3b0}
+.hcd-crown{position:absolute;left:calc(2px * var(--k));top:calc(2px * var(--k));display:inline-flex;align-items:center;gap:2px;padding:0 3px;background:#1c1018;color:#ffd36b;font-size:var(--f-tiny);line-height:1.5;box-shadow:0 0 0 1px #ffd36b;z-index:2}
+.hcd.t-mythic .hcd-crown{color:#dfe6f5;box-shadow:0 0 0 1px #dfe6f5}
+.hcd-crown i{display:block;flex:none;width:calc(7px * var(--k1));height:calc(5px * var(--k1));background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%207%205%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%23ffd36b%22%20d%3D%22M0%200h1v5H0zM3%200h1v5H3zM6%200h1v5H6zM1%201h1v4H1zM5%201h1v4H5zM2%202h1v3H2zM4%202h1v3H4z%22%2F%3E%3Cpath%20fill%3D%22%23ff5a6a%22%20d%3D%22M3%203h1v1H3z%22%2F%3E%3Cpath%20fill%3D%22%23fff3b0%22%20d%3D%22M0%200h1v1H0zM3%200h1v1H3zM6%200h1v1H6z%22%2F%3E%3C%2Fsvg%3E") 0 0/100% 100% no-repeat;image-rendering:pixelated}
+.hcd-crown small{font-size:var(--f-tiny);font-weight:700}
+.hcd.lf .hcd-role{left:auto;right:calc(2px * var(--k))}
+.hcd.lf .hcd-fav{top:calc(2px * var(--k) + var(--f-tiny) * 1.5 + 3px)}
+.hcd.lf .hcd-nm{color:#ffd36b;text-shadow:1px 0 0 #1a1220,-1px 0 0 #1a1220,0 1px 0 #1a1220,0 -1px 0 #1a1220,1px 1px 0 #1a1220}
+.hcd.lf.t-mythic .hcd-nm{color:#dfe6f5}
+.hcd.sm.lf .hcd-crown{left:1px;top:1px;padding:1px 2px}
+.hcd.sm.lf .hcd-role{left:auto;right:1px}
+.hcd.sm.lf .hcd-fav{top:calc(1px + var(--f-tiny) * 1.5 + 2px)}
 /* 격자 · 덱 */
 .hcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(44px * var(--k)),1fr));gap:8px 6px;padding:4px 3px}
 .hcgrid .gdiv{grid-column:1/-1}

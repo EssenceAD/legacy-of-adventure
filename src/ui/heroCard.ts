@@ -16,6 +16,8 @@ import { ledgerNeed, party4Open } from '../world/party4';
 import { markDirty, P, type Actor } from '../world/state';
 import { $$, esc, fmt, keepScroll, pic, portrait } from './common';
 import { shakeLv } from '../engine/shake';
+import { saverOn } from '../engine/fps';
+import { vis } from '../world/visual';
 import { uiSrc } from './kit';
 import { roleRow, synRow } from './partyUi';
 import { toast } from './windows';
@@ -23,19 +25,26 @@ import { showActor } from './guests';
 
 // ───────── 카드 한 장 ─────────
 
-export type HeroTier = 'common' | 'special' | 'legend' | 'hero' | 'mythic';
-export const TIER_NAME: Record<HeroTier, string> = { common: '평범', special: '특별', legend: '전설', hero: '영웅', mythic: '신화' };
+export type HeroTier = 'common' | 'special' | 'legend' | 'hero' | 'saga' | 'mythic';
+export const TIER_NAME: Record<HeroTier, string> = { common: '평범', special: '특별', legend: '전설', hero: '영웅', saga: '전설 영웅', mythic: '신화' };
+/** 전설 영웅 금빛 = 마을 HERODOT 이름표의 전설 금색 (world/render.ts drawNamedTags) */
+export const SAGA_GOLD = '#ffd36b';
 /** 희귀도 색 (있는 색 그대로: 손님 희귀도 · 장비 「영웅」 보라 · 전설 표시 금빛) */
 const TIER_COLOR: Record<HeroTier, string> = {
   common: RARITY_INFO.common.color,
   special: RARITY_INFO.special.color,
   legend: RARITY_INFO.legend.color,
   hero: GRADE_INFO.e.color,
+  saga: SAGA_GOLD,
   mythic: '#ffd36b',
 };
-export function heroTier(a: Actor): HeroTier {
+/**
+ * 카드 등급: 신화 > 전설 영웅 > 영웅(보라) > 전설 손님(주황) > 특별 > 평범
+ *  legendFrame(실험실) 끄면 예전 그대로 — 전설 영웅도 전설 손님과 같은 'legend'
+ */
+export function heroTier(a: Actor, lf = vis('legendFrame')): HeroTier {
   if (isMythic(a)) return 'mythic';
-  if (a.legendId) return 'legend';
+  if (a.legendId) return lf ? 'saga' : 'legend';
   if (a.heroId) return 'hero';
   return a.rarity === 'legend' ? 'legend' : a.rarity === 'special' ? 'special' : 'common';
 }
@@ -89,23 +98,29 @@ export function heroCardData(a: Actor, o: CardOpts = {}) {
   };
 }
 
+/** 금빛 줄기를 쉴 때: calmWorld · 배터리 절약(saver) — prefers-reduced-motion 은 CSS가 */
+const lfCalm = () => vis('calmWorld') || saverOn();
+
 export function heroCardHtml(a: Actor, o: CardOpts = {}): string {
   const d = heroCardData(a, o);
   const sm = o.size === 'sm';
-  const cls = ['hcd', sm ? 'sm' : 'md', `t-${d.tier}`, o.on ? 'on' : '', d.dim ? 'dim' : '', o.glow ? 'rglow' : '', o.pop ? 'pop' : '', d.dot ? 'dotf' : ''].filter(Boolean).join(' ');
+  // legendFrame: 전설 영웅·신화 = 이중 금테 + 네 귀 보석 + 왼쪽 위 왕관 리본(역할은 오른쪽) + 금빛 이름 + 3초마다 빛 한 줄기
+  const lf = (d.tier === 'saga' || d.tier === 'mythic') && vis('legendFrame');
+  const cls = ['hcd', sm ? 'sm' : 'md', `t-${d.tier}`, lf ? 'lf' : '', lf && lfCalm() ? 'calm' : '', o.on ? 'on' : '', d.dim ? 'dim' : '', o.glow ? 'rglow' : '', o.pop ? 'pop' : '', d.dot ? 'dotf' : ''].filter(Boolean).join(' ');
   const tag = o.still ? 'div' : 'button';
   const title = `${d.name} · ${d.tierName} ${d.cls} · ${d.roleName} · Lv.${d.lvl} · 전투력 ${fmt(d.power)}${d.why ? ` · ${d.why}` : ''}`;
   const role = `<span class="hcd-role r-${d.role}"><i>${ROLE_ICON[d.role]}</i>${sm ? '' : `<small>${d.roleName}</small>`}</span>`;
   const fav = d.fav ? '<b class="hcd-fav">★</b>' : '';
   const heart = o.heart ? `<img class="hcd-heart" src="${uiSrc('heart')}" alt="케미">` : '';
   const badge = o.badge ? `<b class="hcd-badge">${esc(o.badge)}</b>` : '';
+  const frame = lf ? `<span class="hcd-lf" aria-hidden="true"></span><span class="hcd-crown"><i></i>${sm ? '' : `<small>${d.tier === 'mythic' ? '신화' : '전설'}</small>`}</span>` : '';
   const pic1 = `<span class="hcd-pic"><img src="${d.src}" alt=""></span>`;
   const txt = sm
     ? `<span class="hcd-txt"><b class="hcd-nm">${esc(d.name)}</b></span>`
     : `<span class="hcd-txt"><b class="hcd-nm">${esc(d.name)}</b><span class="hcd-ln"><small class="hcd-lv">Lv.${d.lvl}</small><em class="hcd-pw">${fmt(d.power)}</em></span>${
         d.why ? `<small class="hcd-why">${esc(d.why)}</small>` : o.note ? `<small class="hcd-note">${esc(o.note)}</small>` : o.extra ? `<small class="hcd-ex">${o.extra}</small>` : ''
       }</span>`;
-  return `<${tag} class="${cls}" ${o.still ? '' : `type="button" data-hc="${a.id}" data-id="${a.id}"`} style="--rc:${d.color}" title="${esc(title)}" aria-label="${esc(title)}">${pic1}${role}${fav}${heart}${badge}${txt}${sm && d.why ? `<small class="hcd-why">${esc(d.why)}</small>` : ''}</${tag}>`;
+  return `<${tag} class="${cls}" ${o.still ? '' : `type="button" data-hc="${a.id}" data-id="${a.id}"`} style="--rc:${d.color}" title="${esc(title)}" aria-label="${esc(title)}">${pic1}${frame}${role}${fav}${heart}${badge}${txt}${sm && d.why ? `<small class="hcd-why">${esc(d.why)}</small>` : ''}</${tag}>`;
 }
 
 // ───────── 파티 덱 ─────────
@@ -192,13 +207,15 @@ export function deckTopHtml(c: DeckCfg): string {
 }
 
 const sortKey = (a: Actor) => [powerOf(a), a.lvl * 1e6 + powerOf(a), (isFav(a) ? 1e12 : 0) + powerOf(a)][sortI];
+/** legendFrame: 정렬 값이 같으면 전설 영웅(신화 포함) 먼저 (끄면 0 = 예전 그대로) */
+export const sagaFirst = (a: Pick<Actor, 'legendId'>, lf = vis('legendFrame')) => (lf && a.legendId ? 1 : 0);
 
 /** 아래 카드 격자 (역할 칩 · 정렬) — 못 가는 사람은 맨 뒤 */
 export function deckGridHtml(c: DeckCfg): string {
   const ids = new Set(c.sel.map((a) => a.id));
   const shown = c.pool
     .filter((a) => filter === 'all' || roleOf(a) === filter)
-    .sort((a, b) => +!!c.block(a) - +!!c.block(b) || sortKey(b) - sortKey(a));
+    .sort((a, b) => +!!c.block(a) - +!!c.block(b) || sortKey(b) - sortKey(a) || sagaFirst(b) - sagaFirst(a));
   const chips = FILTERS.map((f) => `<button class="${f === filter ? 'on' : ''}" data-hf="${f}" title="${f === 'all' ? '전체' : ROLE_NAME[f]}" aria-label="${f === 'all' ? '전체' : ROLE_NAME[f]}">${f === 'all' ? '전체' : `${ROLE_ICON[f]}<small>${ROLE_NAME[f]}</small>`}</button>`).join('');
   // 정렬은 한 버튼(누를 때마다 전투력 → 레벨 → ★) — 폭 360에서도 칩과 한 줄
   const sorts = `<button class="on" data-hs="${(sortI + 1) % SORTS.length}" title="정렬 바꾸기">정렬 · ${SORTS[sortI]}</button>`;

@@ -35,7 +35,7 @@ import { enhMsg, enhUse, openEnhance } from './enhance';
 import { closeWin, glowOnce, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
-import { heroCardHtml } from './heroCard';
+import { heroCardHtml, sagaFirst } from './heroCard';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -80,8 +80,8 @@ export function openGuests() {
   const pinUi = visOn('guestSortPin');
   const pin = pinUi ? getPref<boolean>('guestFavPin', true) : true;
   // GROWTH §3-1: ★ 아끼는 영웅이 늘 맨 위 (플래그 끄면 예전: ★끼리는 ★한 순서)
-  if (pinUi) list.splice(0, list.length, ...sortGuests(list, key, P.growth.favs, pin));
-  else list.sort((a, b) => favRank(a) - favRank(b) || key(b) - key(a));
+  if (pinUi) list.splice(0, list.length, ...sortGuests(list, key, P.growth.favs, pin, (a) => sagaFirst(a)));
+  else list.sort((a, b) => favRank(a) - favRank(b) || key(b) - key(a) || sagaFirst(b) - sagaFirst(a));
   const divAt = pinUi && pin ? list.findIndex((a) => !isFav(a)) : -1;
   const sortLine = pinUi
     ? `<div class="sortb gsortln"><span>지금: <b>${SORTS[gSort]}</b> 높은 순${gSort === 2 ? '(같으면 레벨)' : ''}${pin ? ' · ★ 먼저' : ' · ★도 섞어서'}</span><button id="gPin" class="${pin ? 'on' : ''}" aria-pressed="${pin}">★ 맨 위 고정</button></div>`

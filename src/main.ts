@@ -2,7 +2,8 @@
 import { openNotices } from './ui/notice';
 import { kstDay } from './world/goldsink';
 import { flag } from './world/flags';
-import { loadFlags } from './world/flags';
+import { loadFlags, setFlag } from './world/flags';
+import { heroCardHtml } from './ui/heroCard';
 import { vis, fsay } from './world/visual';
 import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
@@ -1143,6 +1144,9 @@ async function boot() {
         r.openRaidPrep(w.weeklyTarget());
       },
       __power: powerOf,
+      // legendFrame 비교 시트: 플래그 하나만 켜고 끄기 · 카드 한 장 html
+      __flag: setFlag,
+      __heroCard: heroCardHtml,
       __photo: { capture: photoCapture, frameRect, photoScale, saveBlob, enter: enterPhoto, exit: exitPhoto },
       __star: () => { const s = starInfo(); const r = cv.getBoundingClientRect(); return { ...s, cx: r.left + s.x * view.SC, cy: r.top + s.y * view.SC }; },
       __run: (sec: number) => {
