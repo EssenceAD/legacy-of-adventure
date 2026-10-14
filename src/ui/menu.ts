@@ -8,7 +8,6 @@ import { openAlmanac } from './almanac';
 import { openDaybook } from './daybook';
 import { bindShopTabs, openHarvestShop, shopHooks, shopTabsHtml } from './harvest';
 import { tileDot } from './redDots';
-import { ACHIEVEMENTS } from '../data/achieve';
 import { flag, type FlagKey } from '../world/flags';
 import { MANUAL_V2 } from '../data/story/manual';
 import { INBOX_NAME, inboxMode, PROP_FILTER_NAME, propFilterMode, setInboxMode, setPropFilterMode, type InboxMode, type PropFilterMode } from '../world/storyInbox';
@@ -29,7 +28,7 @@ import * as game from '../game';
 import { online, me } from '../net/server';
 import { featureChapter, feature, currentMission, missionProgress } from '../world/guide';
 import {
-  achProgress, achReady, achVisible, ATTEND7, ATTEND28, buyShop, claimAch, claimAllMail, claimMail, ensureShop, mailWaiting, myTitle, rewardLine, setTitle,
+  achList, achProgress, achReady, achVisible, ATTEND7, ATTEND28, buyShop, claimAch, claimAllMail, claimMail, ensureShop, mailWaiting, myTitle, rewardLine, setTitle,
   SHOP_FIXED, SHOP_POOL, shopOpen, titlesOwned, deleteMail, deleteReadMail, readMailCount } from '../world/meta';
 import { markDirty, P, S, world } from '../world/state';
 import { openAccount } from './account';
@@ -203,7 +202,7 @@ export function openGuideList() {
 
 export function openAchieve() {
   // 핫픽스 11 §9-1: 받기 가능 → 진행 중(진행률 순) → 받음
-  const sorted = claimOrder(ACHIEVEMENTS, (d) => {
+  const sorted = claimOrder(achList(), (d) => {
     const pr = achProgress(d);
     return { ready: pr.done && !pr.claimed, got: pr.claimed, ratio: pr.cur / Math.max(1, pr.need) };
   });
@@ -217,7 +216,7 @@ export function openAchieve() {
       ${pr.claimed ? '<em>받음</em>' : pr.done ? `<button data-a="${d.id}">받기</button>` : ''}</div>`;
   }).join('');
   const got = P.meta.ach.length;
-  openWin('업적', `<p class="sub">${got}/${ACHIEVEMENTS.length} · 받을 수 있는 업적 ${achReady()}개</p>${readyIds.length >= 2 ? `<button class="bigbtn sm claimall" id="aAll">모두 받기 (${readyIds.length})</button>` : ''}<div class="alist">${rows}</div>`);
+  openWin('업적', `<p class="sub">${got}/${achList().length} · 받을 수 있는 업적 ${achReady()}개</p>${readyIds.length >= 2 ? `<button class="bigbtn sm claimall" id="aAll">모두 받기 (${readyIds.length})</button>` : ''}<div class="alist">${rows}</div>`);
   const aa = document.getElementById('aAll');
   if (aa)
     aa.onclick = () => {

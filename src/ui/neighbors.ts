@@ -9,6 +9,7 @@ import { getVillage, likeVillage, listVillages, myVillage, online, pioneerOfUid,
 import { CONFIG } from '../data/config';
 import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
+import { cleanPetIds } from '../world/pets';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
 import { gbHasNew, gbOn, lastTopHtml, loadGuestbook, pollGuestbook } from './guestbook';
 import { isWinOpen, openWin, toast } from './windows';
@@ -50,6 +51,8 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     layout,
     // FEEDBACK23 §5: 옮긴 입구 (v3부터만 · 숫자가 아니면 자동)
     ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) } : {}),
+    // LUXE §2: 꺼내 둔 펫 (아는 id · 3개까지 · 없으면 빼기)
+    ...(cleanPetIds((s as { pets?: unknown }).pets).length ? { pets: cleanPetIds((s as { pets?: unknown }).pets) } : {}),
   };
 }
 

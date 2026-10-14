@@ -28,6 +28,7 @@ import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progres
 import { gotGold, legendHooks, markDirty, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
 import { baelNeedsLong, baelShortWin, tokenPity } from './paceGates';
 import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
+import { petExpCut, petTry } from './pets';
 import { addCharm, mealGold } from './growth';
 import { partySpecial, rollUniqueAny } from './uniques';
 import { windQuestGold } from './wind';
@@ -229,7 +230,7 @@ export function partyInfo(members: Actor[], q: Quest): PartyInfo {
   power = Math.round(power * chem * roleMult(members) * (1 + buffOf('power')) * mythicAtk(members, q.region));
   // 4단계: 사냥꾼 출신 원정 시간 -5%
   // BUILDINGS_SPEC: 마구간 의뢰 시간 −%
-  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + blessFx('expTime') + pioneerExpCut() + mythicTimeCut(members) + hunterTimeCut(members));
+  const cut = Math.min(0.5, members.reduce((s, m) => s + optSum(m, 'timeCut'), 0) / Math.max(1, members.length) / 100 + expTimeCut() - hfx('expTime') + stableTimeCut() + blessFx('expTime') + pioneerExpCut() + mythicTimeCut(members) + hunterTimeCut(members) + petExpCut());
   return {
     power,
     chem,
@@ -380,6 +381,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   if (win) {
     P.counters.regionWins[q.region] = (P.counters.regionWins[q.region] ?? 0) + 1;
+    // LUXE §2 펫: 원정 성공 = 아기 그리핀 시도 1
+    petTry('expedition');
     if (q.guild) {
       const bid = BOSSES.find((b) => b.region === q.region)!.id;
       P.bossMats[bid] = (P.bossMats[bid] ?? 0) + CONFIG.newBuildings.guild.specialBossMats;

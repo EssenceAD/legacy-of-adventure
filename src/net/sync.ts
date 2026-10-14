@@ -13,6 +13,7 @@ import { addMail, myTitle } from '../world/meta';
 import { pollGuestbook } from './gbSync';
 import { charOfPort, wornOf } from '../world/outfits';
 import { isGuest, me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
+import { petSnapshot } from '../world/pets';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
 
@@ -43,6 +44,8 @@ export function villageSnapshot() {
     trophies: [...P.trophies],
     // FEEDBACK23 §5: 옮긴 마을 입구 x (v3 좌표 · 옮긴 적 없으면 빼서 보는 쪽이 자동으로)
     ...(typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
+    // LUXE §2: 꺼내 둔 펫 (켰고 있을 때만 — 보는 쪽은 아는 id만 그린다)
+    ...(petSnapshot().length ? { pets: petSnapshot() } : {}),
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.con?.from?.[0] ?? o.tx, o.con?.from?.[1] ?? o.ty, o.lvl, o.hue, !!o.flip]),
   };
 }

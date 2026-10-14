@@ -7,7 +7,7 @@ export interface AchCtx {
 }
 export type AchStat =
   | 'expeditions' | 'wins' | 'huntBest' | 'huntClears' | 'raidTries' | 'bossKills' | 'regulars' | 'heroes' | 'chem' | 'dexGuests' | 'dexItems'
-  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos' | 'regFirst' | 'regGuide' | 'fishN' | 'fishKinds' | 'fishLegend' | 'diceAch';
+  | 'enhance' | 'crafted' | 'harvests' | 'meals' | 'gold' | 'land' | 'stars' | 'ties5' | 'endings' | 'attend' | 'guide' | 'gifts' | 'shop' | 'talks' | 'grade' | 'harmony' | 'events' | 'evalBest' | 'innLv' | 'taps' | 'photos' | 'regFirst' | 'regGuide' | 'fishN' | 'fishKinds' | 'fishLegend' | 'diceAch' | 'pets';
 
 export interface AchDef {
   id: string;
@@ -124,6 +124,10 @@ export const ACHIEVEMENTS: AchDef[] = [
   A('diceClean', '꽝 없이 3,000점', '주사위 술내기에서 한 번도 꽝 없이 이기기', 'diceAch', 1, { title: '꽝을 모르는 손목' }, true),
   A('diceStraight', '스트레이트', '주사위 술내기에서 1~6 스트레이트 굴리기', 'diceAch', 1, { title: '스트레이트' }, true),
   A('diceStreak', '그롬에게 10연승', '주사위 술내기에서 그롬을 10판 내리 이기기', 'diceAch', 1, { title: '드워프 손목을 꺾은 자' }, true),
+  // LUXE §2 펫 「동물 친구」 (플래그 pets가 꺼지면 목록에서 빠진다 — world/meta.ts achList)
+  A('pet1', '첫 펫', '동물 친구를 처음 만나요', 'pets', 1, { gold: 500, title: '동물 친구' }),
+  A('pet5', '펫 다섯', '동물 친구 5마리 만나기', 'pets', 5, { gold: 3000, dust: 100 }),
+  A('pet10', '펫 열', '동물 친구 10마리를 모두 만나기', 'pets', 10, { gold: 10000, dust: 300, title: '작은 동물원장' }),
   // REGIONS2 §5-7: 지역 6~10 「첫 발자국」(첫 입장) · 「길잡이」(보스) — 금화 + 칭호 (열리기 전엔 숨김)
   ...REGIONS.slice(BASE_REGIONS).flatMap((r, i) => {
     const t = REGION_TITLES[r.id as keyof typeof REGION_TITLES];

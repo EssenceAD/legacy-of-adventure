@@ -162,6 +162,8 @@ import { talk } from './ui/dialogue';
 import { NEIGHBORS } from './data/neighbors';
 import { say } from './world/fx';
 import type { TalkLine } from './world/state';
+import { initPets, openPetMenu } from './ui/pets';
+import { petAt } from './world/petsDraw';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -765,6 +767,9 @@ function tap(e: PointerEvent) {
   if (starHit(mx, my)) return catchStarAt(e);
   // 베타: 구경거리 사건 (이모트 · 사건 사람)
   if (!S.visiting && tapSpectacle(mx, my)) return;
+  // LUXE §2 펫: 누르면 [쓰다듬기] [이름 바꾸기] [펫 집으로] (이웃 마을 펫은 이름만)
+  const pet = petAt(mx, my);
+  if (pet) return openPetMenu(pet.id, e.clientX, e.clientY, pet.guest);
   // 캐릭터 먼저 (화면 거리)
   let best: (typeof world.actors)[number] | null = null;
   let bd = 1e9;
@@ -890,6 +895,8 @@ async function boot() {
     syncZoomLabel();
   });
   initKit();
+  // LUXE §2 펫 (플래그 pets — 꺼지면 아무것도 안 함)
+  initPets();
   // VISUAL 실험실 §4·§5: 켠 기기만 body.hud2 / body.ui2 (글자 크기 변수보다 먼저)
   initVisualClasses();
   // FIRSTLOOK §4 (flTeaserFit): 타이틀·티저는 저장보다 먼저 뜬다 — 플래그(flags.json)·실험실은 여기서 이미 읽힘

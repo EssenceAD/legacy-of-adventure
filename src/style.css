@@ -1561,6 +1561,23 @@ body.cbtalk #storyFx{z-index:45}
 .uqcell small,.fcell small{color:#9aa6d8}.uqcell .g{color:#bfe6ff}.fcell .lore{font-style:italic}
 .fcell img{width:48px;height:auto;max-height:40px;object-fit:contain;image-rendering:pixelated}
 .fcell.gl{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #f2a13a}.fcell.ge{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #a35bd6}
+/* LUXE §2 펫 「동물 친구」: 만남 연출(분홍) · 카드 · 도감 칸 · 마을 메뉴 */
+.ff-pet .ffflash.pink{background:#ffd6ec}
+.ffheart{position:absolute;left:var(--hx);bottom:-24px;font-style:normal;color:#ff6fae;font-size:calc(18px * var(--hs));text-shadow:0 0 0 #000,1px 1px 0 #7a2a5a;animation:ffHeart 1.7s ease-out var(--hd) forwards;opacity:0}.ffheart::before{content:'\2665'}
+@keyframes ffHeart{0%{opacity:0;translate:0 0}15%{opacity:1}100%{opacity:0;translate:0 -70vh}}
+.ff-pet .ffname b{color:#ffd6ec}.ffq{display:inline-block;margin-bottom:4px;padding:2px 8px;background:#fff;color:#c2408a;font-size:22px;box-shadow:0 0 0 2px var(--ink);animation:ffQ .5s steps(2) 2}
+@keyframes ffQ{50%{transform:translateY(-4px)}}
+.petcard{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.pcport{width:96px;height:96px;display:flex;align-items:center;justify-content:center;background:#1b1f4a;box-shadow:0 0 0 2px var(--ink),0 0 0 4px #ff8fc2}
+.pcport img{width:96px;height:96px;image-rendering:pixelated}
+.petimg.miss{visibility:hidden}.pcport:has(.petimg.miss)::after,.pcell2:has(.petimg.miss)::before{content:'?';color:#ff8fc2;font-size:28px}
+.pcfx{margin:0;color:#ffd6ec}.pcfx small{display:block;color:#9aa6d8}
+.pcname{display:flex;flex-direction:column;gap:4px;font-size:var(--f-small);color:#cfd8ff}.pcname input{font:inherit;font-size:var(--f-ui);padding:6px 8px;width:180px;text-align:center;background:#0f1330;color:#fff;border:0;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--line)}
+.petgrid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))}.petgrid .pcell2 img{width:56px;height:56px;max-height:56px}
+.petgrid .pcell2 img.petsil{width:auto;height:auto;max-height:none;transform:scale(2.5);margin:18px 0 20px;filter:brightness(0) opacity(.55)}
+.pcell2.out{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #ff8fc2}
+.pcell2 button{margin-top:2px;width:100%;min-height:34px;font-size:var(--f-small)}
+.pmenu .pmfx{color:#ffd6ec;text-align:center;font-size:11px}.pmenu button:disabled{opacity:.6;cursor:default}
 /* ───────── GROWTH §4 낚시 ───────── */
 .fstage{position:relative;height:180px;margin:8px 0;overflow:hidden;background:linear-gradient(180deg,#2a5a8a,#173a66);box-shadow:0 0 0 2px var(--ink);touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
 .fwater{position:absolute;inset:0;background:repeating-linear-gradient(170deg,rgba(255,255,255,.06) 0 6px,transparent 6px 22px);animation:fWave 3s linear infinite}

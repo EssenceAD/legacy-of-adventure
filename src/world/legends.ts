@@ -19,6 +19,7 @@ import { towerStars } from './facilities';
 import { addMail } from './meta';
 import { addEmber, linkedGauge, linkedScale, meetLinked, tieRequestDone } from './owner';
 import { windLegend, windStars } from './wind';
+import { petStarKeep, petTry } from './pets';
 
 const L = CONFIG.legends;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -178,7 +179,10 @@ export function catchStar(): StarCatch | null {
   if (!starAvailable()) return null;
   const n = starsCaught();
   P.starDay = today();
-  P.starN = n + 1;
+  // LUXE §2 별여우(꺼내 둔 펫): 3% 확률로 이번 별은 그날 잡은 수로 안 센다 (한 번 더)
+  P.starN = petStarKeep() ? n : n + 1;
+  // LUXE §2 펫: 별똥별 잡기 = 별여우 시도 1
+  petTry('star');
   const cands = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor');
   const d = cands[(Math.random() * cands.length) | 0];
   const w = L.starWeights;

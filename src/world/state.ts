@@ -662,6 +662,8 @@ export function freshProgress() {
     luxe: freshLuxe(),
     /** LUXE §1-3 영웅 의상실 (world/outfits.ts odState()가 칸을 바로잡는다 · 플래그를 꺼도 가진 것·입은 것은 그대로 — 그림만 기본 옷) */
     outfits: freshOutfits(),
+    /** LUXE §2 펫 「동물 친구」 (world/pets.ts petState()가 칸을 바로잡는다 · 플래그를 꺼도 만난 펫은 그대로) */
+    pets: freshPets(),
   };
 }
 
@@ -679,6 +681,16 @@ export function freshLuxe() {
   return { got: [] as string[], spent: 0, coupons: 0, seen: false, week: '' };
 }
 export type LuxeState = ReturnType<typeof freshLuxe>;
+
+/**
+ * LUXE §2: got = 만난 펫 (id → 지은 이름 · 만난 시각) · out = 마을에 꺼내 둔 펫(최대 3 · 효과도 이 펫들만)
+ *  · tries = 아직 못 만난 펫의 시도 수(천장 게이지 · 숨김) · hint = 「작은 발소리」 힌트를 본 펫 · pat = 쓰다듬은 날(한국 날짜)
+ *  · card = 아직 카드(이름 짓기)를 못 본 펫
+ */
+export function freshPets() {
+  return { got: {} as Record<string, { name: string; at: number }>, out: [] as string[], tries: {} as Record<string, number>, hint: [] as string[], pat: {} as Record<string, string>, card: [] as string[] };
+}
+export type PetState = ReturnType<typeof freshPets>;
 
 /**
  * LUXE §3: seen = 처음 열기(무너진 회관 + 버나드)를 봤나 · put = 칸에 바친 수 ("꾸러미id:칸번호" → 개수) · done = 완성한 꾸러미(보상 받음)

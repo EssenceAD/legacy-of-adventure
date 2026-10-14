@@ -1,4 +1,4 @@
-// LUXE_SPEC 숫자 한 곳 (config.ts를 크게 건드리지 않게 따로) — 지금은 §3 마을 회관 꾸러미만
+// LUXE_SPEC 숫자 한 곳 (config.ts를 크게 건드리지 않게 따로) — §3 마을 회관 꾸러미 · §2 펫(PETS)
 //  §3 플래그 bundles · 세이브 P.bundles (world/bundles.ts bdState()가 칸을 바로잡는다)
 //  칸 종류: crop 작물(P.crops · 연금 예약분은 빼고) · fish 물고기(P.growth.fish.bag) · mat 지역 재료(P.mats) · dust 가루(P.dust)
 //          · boss 보스 재료(P.bossMats · 보스 id) · potion 물약(P.potions) · rec 기록(바치지 않고 카운터만 확인)
@@ -35,6 +35,54 @@ export interface RoomDef {
 }
 
 const S = (k: BundleSlotKind, id: string, n: number): BundleSlot => ({ k, id, n });
+
+// ───────── §2 펫 「동물 친구」 (플래그 pets · 세이브 P.pets — world/pets.ts petState()가 칸을 바로잡는다) ─────────
+//  한 줄 = 펫 하나: 나오는 활동(src) · 기본 확률 p · 천장 pity(= 확률의 2배 시도에서 확정 · PACE 규칙) · 효과 수치 fx(꺼내 둔 3마리만 · 쓰다듬은 날 ×2)
+export type PetSrc = 'hunt' | 'fish' | 'harvest' | 'enhance' | 'expedition' | 'raid' | 'abyss' | 'brew' | 'meal' | 'star';
+export interface PetDef {
+  id: string;
+  name: string;
+  src: PetSrc;
+  p: number;
+  pity: number;
+  fx: number;
+  /** 효과 한 줄 (도감·메뉴) */
+  fxText: string;
+  /** 나오는 곳 (도감) */
+  where: string;
+  /** 못 만났을 때 도감 힌트 한 줄 */
+  hint: string;
+}
+export const PETS = {
+  defs: [
+    { id: 'raccoon', name: '아기 너구리', src: 'hunt', p: 1 / 1200, pity: 2400, fx: 0.02, fxText: '사냥 금화 +2%', where: '사냥 스테이지 클리어', hint: '사냥터 덤불이 바스락거려요…' },
+    { id: 'otter', name: '아기 수달', src: 'fish', p: 1 / 250, pity: 500, fx: 0.03, fxText: '낚시 판정 창 +0.03초', where: '낚시 성공', hint: '물가에서 뭔가 철벙…' },
+    { id: 'mole', name: '꼬마 두더지', src: 'harvest', p: 1 / 300, pity: 600, fx: 0.1, fxText: '텃밭 수확량 +1 (10% 확률)', where: '텃밭 수확', hint: '텃밭 흙이 볼록 솟았다 꺼져요…' },
+    { id: 'salamander', name: '불도마뱀', src: 'enhance', p: 1 / 400, pity: 800, fx: 0.02, fxText: '강화·초월 가루 −2%', where: '강화·초월 시도', hint: '대장간 불씨 속에 작은 꼬리가…?' },
+    { id: 'griffin', name: '아기 그리핀', src: 'expedition', p: 1 / 250, pity: 500, fx: 0.03, fxText: '원정 시간 −3%', where: '원정 성공', hint: '원정대 짐 위에 깃털 한 가닥이…' },
+    { id: 'tengu', name: '꼬마 텐구', src: 'raid', p: 1 / 60, pity: 120, fx: 0.02, fxText: '토벌 피해 +2%', where: '토벌 도전', hint: '토벌 길목에서 작은 부채 소리가…' },
+    { id: 'starcat', name: '별고양이', src: 'abyss', p: 1 / 150, pity: 300, fx: 0.02, fxText: '심연 피해 +2%', where: '심연 층 클리어', hint: '심연 계단 아래서 반짝이는 눈이…' },
+    { id: 'slime', name: '물약 슬라임', src: 'brew', p: 1 / 120, pity: 240, fx: 0.1, fxText: '물약 재료 1개 덜 (10% 확률)', where: '물약 만들기', hint: '공방 솥이 혼자 꿀렁거려요…' },
+    { id: 'puppy', name: '배부른 강아지', src: 'meal', p: 1 / 800, pity: 1600, fx: 1, fxText: '식사한 손님 기분 +1', where: '주점 단골 식사 · 마을 회관 「주방」', hint: '주점 식탁 밑에서 꼬리가 살랑…' },
+    { id: 'starfox', name: '별여우', src: 'star', p: 1 / 20, pity: 40, fx: 0.03, fxText: '별똥별을 잡아도 3% 확률로 한 번 더', where: '별똥별 잡기', hint: '별똥별 꼬리에 여우 꼬리가 섞였어요…?' },
+  ] as PetDef[],
+  /** 천장 게이지가 이만큼 넘으면 그 활동에 한 줄 힌트 (1번) */
+  hintAt: 0.5,
+  hintLine: '…어디선가 작은 발소리가 들려요',
+  /** 마을에 꺼내 둘 수 있는 수 (효과도 이 펫들만) */
+  outMax: 3,
+  /** 쓰다듬은 날 효과 배수 */
+  patMult: 2,
+  /** 마을 회관 「주방」 첫 펫 (bundles petGrant 'dog' → 이 펫) */
+  bundlePet: 'puppy',
+  /** 10마리 다 = 명품관 「펫 놀이터」(2×2 장식) 해금 · 장식 종류 키 (§1 명품관이 등록·판매) */
+  playgroundKind: 'pet_playground',
+  /** 마을 움직임: 여관 문에서 떠도는 반경(칸) · 속도(칸/초) · 주인 따라가기 확률(새 목표마다) · 손님 옆 하트 확률(초당) */
+  roam: 3,
+  speed: 0.9,
+  follow: 0.25,
+  heart: 0.25,
+};
 
 export const LUXE = {
   bundles: {

@@ -25,6 +25,7 @@ import { takeUniqueBoost } from './favors';
 import { fsay, vis } from './visual';
 import { settleAuto } from './harvest';
 import { perkHuntSlot, perkHuntSlotMax } from './bundlePerks';
+import { petHuntGold, petTry } from './pets';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -98,7 +99,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const ri = regionIdx(r);
   // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
   const EC = CONFIG.economy;
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult * fiveGold(members));
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult * fiveGold(members) * petHuntGold());
   // GOLDSINK §3: 축복 — 사냥 경험치 +
   const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult * (1 + blessFx('xp')));
   // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
@@ -154,6 +155,8 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
   // 숲 사냥도 숲 원정처럼 셈 (전설 루나 소문)
   if (r === 'forest') P.counters.forestSends++;
   P.counters.huntClears++;
+  // LUXE §2 펫: 사냥 스테이지 클리어 = 아기 너구리 시도 1
+  petTry('hunt');
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
   if (isBoss(s)) gsState().cnt.hboss++;
   const out = reward(r, s, members, first, mult, dropItem, taperFor(s, first, auto) * goldX);
@@ -176,6 +179,7 @@ function bossUnique(r: RegionId, s: number, out: HuntReward) {
 export function sweepStage(r: RegionId, s: number, members: Actor[]): HuntReward | null {
   if (s > best(r)) return null;
   P.counters.huntClears++;
+  petTry('hunt');
   const out = reward(r, s, members, false, CONFIG.combat.sweep);
   bossUnique(r, s, out);
   markDirty();

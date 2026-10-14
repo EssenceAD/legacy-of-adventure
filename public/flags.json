@@ -85,5 +85,7 @@
   "flCharPop": false,
   "luxeShop": false,
   "guestbook": false,
-  "outfits": false
+  "outfits": false,
+  "pets": false,
+  "guestbook": false
 }

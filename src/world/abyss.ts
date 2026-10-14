@@ -11,6 +11,7 @@ import { brag } from './growth';
 import { best, recPower, regionBossOf } from './hunt';
 import { rollUnique } from './uniques';
 import { markDirty, P, S, type Item } from './state';
+import { petTry } from './pets';
 
 const A = () => CONFIG.abyss;
 export type AbyssRec = ReturnType<typeof abyssRec>;
@@ -133,6 +134,8 @@ export function clearFloor(f: number, bossRegion: RegionId | null = null, rng: (
   }
   const rest = isRestFloor(f);
   if (rest) addBlessMin(A().restMin, now);
+  // LUXE §2 펫: 심연 층 클리어 = 별고양이 시도 1
+  petTry('abyss', rng);
   const rec = abyssRec(now);
   const record = f > rec.best;
   rec.best = Math.max(rec.best, f);
