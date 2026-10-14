@@ -178,3 +178,36 @@ describe("flSideRail", () => {
     expect(railDot([a, c])).toBe(true);
   });
 });
+
+describe("R28 「⋯」 운명의 별 ★ · .px 빨간 점", () => {
+  it("접힌 동안 낮밤 버튼 ★(#starMark)가 보이면 「⋯」에도 ★ · 펼치면 끔 · 별 없으면 끔", () => {
+    document.getElementById("bDN")!.innerHTML =
+      '<b>☾</b><i id="starMark" hidden>★</i>';
+    setFlag("flSideRail", true);
+    initSideRail();
+    const star = () => document.getElementById("railStar")!;
+    expect(star().textContent).toBe("★");
+    expect(star().hidden).toBe(true);
+    document.getElementById("starMark")!.hidden = false;
+    railTick();
+    expect(star().hidden).toBe(false);
+    setRailOpen(true);
+    expect(star().hidden).toBe(true);
+    setRailOpen(false);
+    expect(star().hidden).toBe(false);
+    document.getElementById("starMark")!.hidden = true;
+    railTick();
+    expect(star().hidden).toBe(true);
+  });
+
+  it("★ 모양은 #starMark 와 같은 색·크기·그림자", () => {
+    const rule = (sel: string) =>
+      css.match(new RegExp("\n" + sel + "\{([^}]*)\}"))?.[1];
+    expect(rule("#railStar")).toBe(rule("#starMark"));
+  });
+
+  it(".px.rdot::before 가 .px::before{display:none} 보다 세다 (규칙 순서와 상관없이)", () => {
+    expect(css).toContain(".px.rdot::before{display:block;content:'';left:auto;bottom:auto}");
+    // 선택자 세기: .px.rdot::before (클래스 2) > .px::before · .rdot::before (클래스 1) — 실제 빌드 확인은 dist CSS·스크린샷
+  });
+});

@@ -47,6 +47,18 @@ export function coverFit(sw: number, sh: number, bw: number, bh: number, dpr: nu
   return { k, w, h, left: px(left), top: px((bh - h) / 2) };
 }
 
+/** R27: 가로 화면(PC · 폭 > 높이)이면 꽉 채우지 않는다 — 예전 크기(줌 1× = 꺼졌을 때와 같은 배율) 그대로 가운데 · 남는 곳은 흐린 배경 */
+export const landscapeStage = (bw: number, bh: number): boolean => bw > bh;
+
+/** 가로 화면 자리: 예전(플래그 끔) 배율 = 폭·높이×maxH 안에 드는 가장 큰 정수 배율 (+extra) · 가운데 */
+export function landFit(sw: number, sh: number, bw: number, bh: number, dpr: number, maxH: number, extra = 0): Fit {
+  const k = Math.max(1, Math.floor(Math.min((bw * dpr) / sw, (bh * maxH * dpr) / sh))) + extra;
+  const w = (sw * k) / dpr;
+  const h = (sh * k) / dpr;
+  const px = (v: number) => Math.round(v * dpr) / dpr;
+  return { k, w, h, left: px((bw - w) / 2), top: px((bh - h) / 2) };
+}
+
 /** 처음 한 번만 자동 재생: 저장이 없고 아직 본 적 없을 때 (본 순간 seen을 남긴다 → 두 번째부터 타이틀로 바로) */
 export const shouldAutoTeaser = (hasSave: boolean, seen: boolean): boolean => !hasSave && !seen;
 

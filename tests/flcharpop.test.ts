@@ -1,4 +1,4 @@
-// FIRSTLOOK §6 캐릭터가 눈에 띄게 (flCharPop): 그림자 +알파 · 바깥 외곽선 = 팔레트 0번(바깥 칸만) · 걷는 동안만 통통 · 끄면 그대로
+// FIRSTLOOK §6 캐릭터가 눈에 띄게 (flCharPop): 그림자 +알파 · 바깥 외곽선 = 팔레트 4번 #2b2440(바깥 칸만) · 걷는 동안만 통통 · 끄면 그대로
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CLASSES } from '../src/data/classes';
 import { CONFIG } from '../src/data/config';
@@ -29,7 +29,7 @@ afterEach(() => {
   setFlag('flCharPop', false);
   setFlag('heroDotV2' as never, false);
 });
-const P0 = MASTER_PALETTE[0];
+const P0 = MASTER_PALETTE[CONFIG.firstLook.pop.outline];
 
 /** 바깥 고리 = 바깥 빈칸(가장자리에서 이어진 빈칸)과 4방향으로 닿은 칠한 칸 */
 function outerRing(cv: HTMLCanvasElement) {
@@ -50,6 +50,15 @@ function outerRing(cv: HTMLCanvasElement) {
 }
 
 describe('FIRSTLOOK §6 flCharPop', () => {
+  it('숫자: 그림자 +0.3 · 외곽선 = 팔레트 4번 #2b2440', () => {
+    expect(CONFIG.firstLook.pop.shadowAdd).toBe(0.3);
+    expect(CONFIG.firstLook.pop.outline).toBe(4);
+    expect(P0).toBe('#2b2440');
+    setFlag('flCharPop', true);
+    expect(popOutline()).toBe('#2b2440');
+    expect(shadowGap()).toBeCloseTo(0.6);
+  });
+
   it('기본 꺼짐 · 꺼지면 그림자 빈칸 0 · 외곽선 없음 · 통통 0', () => {
     expect(FLAG_DEFAULTS.flCharPop).toBe(false);
     expect(shadowGap()).toBe(0);
@@ -72,7 +81,7 @@ describe('FIRSTLOOK §6 flCharPop', () => {
     const on = rec(shadowGap());
     // 예전 칸은 그대로 진하게 (같은 자리 · 같은 색 · 같은 알파)
     for (const f of off) expect(on).toContainEqual(f);
-    // 안쪽(#1c1424) 칸 평균 알파: 예전 대비 +0.15 (전체 알파 0.8 기준)
+    // 안쪽(#1c1424) 칸 평균 알파: 예전 대비 +shadowAdd(0.3) (전체 알파 0.8 기준)
     const core = (l: typeof on) => l.filter((f) => f.c === '#1c1424');
     const cells = core(on).length;
     const mean = (l: typeof on) => core(l).reduce((s, f) => s + f.a, 0) / cells / 0.8;
@@ -97,13 +106,13 @@ describe('FIRSTLOOK §6 flCharPop', () => {
         if (ring) expect(b[i], `${x},${y}`).toBe(P0);
         else expect(b[i], `${x},${y}`).toBe(a[i]);
       }
-    // 구멍 안 외곽선은 있고 팔레트 0이 아니다
+    // 구멍 안 외곽선은 있고 외곽선 색이 아니다
     expect(b[4 * 12 + 4]).not.toBe('');
     expect(b[4 * 12 + 4]).not.toBe(P0);
   });
 
   for (const dot2 of [false, true])
-    it(`외곽선: 마을 도트(${dot2 ? '새 도트' : '예전 도트'}) — 바깥 고리 전부 팔레트 0 · 바뀐 칸은 바깥 고리뿐 · 크기 그대로 · 전투 프레임 그대로`, async () => {
+    it(`외곽선: 마을 도트(${dot2 ? '새 도트' : '예전 도트'}) — 바깥 고리 전부 외곽선 색(팔레트 4번) · 바뀐 칸은 바깥 고리뿐 · 크기 그대로 · 전투 프레임 그대로`, async () => {
       setFlag('heroDotV2' as never, dot2);
       const { buildFrom } = await import('../src/engine/sprites');
       for (const k of ['knight', 'cleric', 'rogue', 'mage', 'post'] as const) {
@@ -119,7 +128,7 @@ describe('FIRSTLOOK §6 flCharPop', () => {
           const ring = new Set(outerRing(cvOn));
           // 'fx'(빛 궤적)는 외곽선 위에 그대로 덮일 수 있다 → 끈 그림에서도 같은 칸이면 넘어감
           for (const i of ring) if (A[i] !== B[i] || B[i] === P0) expect(A[i]).toBe(P0);
-          // 바깥 = 가장자리에서 빈칸·팔레트 0 칸만 밟아 닿는 칸 (좁은 틈의 외곽선도 바깥) — 몸 안쪽·구멍은 못 닿는다
+          // 바깥 = 가장자리에서 빈칸·외곽선 색 칸만 밟아 닿는 칸 (좁은 틈의 외곽선도 바깥) — 몸 안쪽·구멍은 못 닿는다
           const ext = outsideOf(cvOn.width, cvOn.height, (x, y) => !!A[y * cvOn.width + x] && A[y * cvOn.width + x] !== P0);
           let changed = 0;
           for (let i = 0; i < A.length; i++)

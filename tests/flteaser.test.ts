@@ -139,3 +139,24 @@ describe('티저는 처음 한 번만', () => {
     expect(shouldAutoTeaser(true, true)).toBe(false);
   });
 });
+
+describe('R27 가로 화면(PC)은 꽉 채우지 않음', () => {
+  it('landscapeStage: 폭 > 높이만', async () => {
+    const { landscapeStage } = await import('../src/teaser/fit');
+    expect(landscapeStage(1280, 800)).toBe(true);
+    expect(landscapeStage(412, 860)).toBe(false);
+    expect(landscapeStage(800, 800)).toBe(false);
+  });
+  it('landFit = 예전(플래그 끔) 배율 그대로 · 가운데 · 위아래 남음', async () => {
+    const { landFit } = await import('../src/teaser/fit');
+    for (const [bw, bh, d] of [[1280, 800, 1], [1280, 720, 1.5], [1920, 1080, 1]] as const) {
+      const f = landFit(180, 168, bw, bh, d, 0.6);
+      const old = Math.max(1, Math.floor(Math.min((bw * d) / 180, (bh * 0.6 * d) / 168)));
+      expect(f.k).toBe(old);
+      expect(f.h).toBeLessThan(bh);
+      expect(Math.abs(f.left - (bw - f.w) / 2)).toBeLessThan(1);
+      expect(Math.abs(f.top - (bh - f.h) / 2)).toBeLessThan(1);
+      expect(landFit(180, 168, bw, bh, d, 0.6, 1).k).toBe(old + 1);
+    }
+  });
+});

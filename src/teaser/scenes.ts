@@ -13,7 +13,7 @@ import { S, world } from '../world/state';
 import { doorOf, findKind, landBounds, placeLayout, rebuildPaths, sizeFor, type LayoutEntry } from '../world/town';
 import { drawChar, LH, LW, LANES } from '../ui/battle';
 import { dpr } from '../ui/kit';
-import { coverFit, teaserFitOn, type Fit, type FitOpts } from './fit';
+import { coverFit, landFit, landscapeStage, teaserFitOn, type Fit, type FitOpts } from './fit';
 import { CONFIG } from '../data/config';
 
 const CITY = NEIGHBORS.find((v) => v.id === 'moon') ?? NEIGHBORS[NEIGHBORS.length - 1];
@@ -66,7 +66,10 @@ export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5, fit: 
   const r = (host.parentElement ?? host).getBoundingClientRect();
   // FIRSTLOOK §4 (flTeaserFit): 무대를 꽉 채우게 (cover · 가운데 기준으로 자름)
   if (teaserFitOn()) {
-    const f = coverFit(w, h, r.width, r.height, dpr(), { maxZoom: CONFIG.firstLook.teaser.maxZoom, ...fit });
+    // R27: 가로 화면(PC)은 꽉 채우지 않고 예전 크기 그대로 가운데 · 위아래(옆)는 흐린 배경 — 세로 폰만 cover(상한 maxZoom)
+    const land = landscapeStage(r.width, r.height);
+    const f = land ? landFit(w, h, r.width, r.height, dpr(), maxH) : coverFit(w, h, r.width, r.height, dpr(), { maxZoom: CONFIG.firstLook.teaser.maxZoom, ...fit });
+    if (land) host.dataset.land = String(maxH);
     host.appendChild(cv);
     placeCover(host, cv, f);
     const ctx = cv.getContext('2d')!;

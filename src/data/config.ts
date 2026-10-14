@@ -1345,10 +1345,10 @@ export const CONFIG = {
     /** §5 flSideRail: 「⋯」 안에 접히는 버튼(id · 펼친 순서 · 위에서 아래로) · 빨간 점·접힘 확인 주기(ms) */
     rail: { items: ['bDN', 'bHarm', 'hSpk', 'bEye'] as string[], tickMs: 500 },
     /**
-     * §6 flCharPop (world/charPop.ts): shadowAdd = 발밑 그림자 진하기 +알파(디더 빈칸을 같은 색으로 채워 평균 +0.15 · 돌길 위에서도 보이게) ·
-     *  outline = 사람 도트 바깥 1px 외곽선 = 마스터 팔레트 칸(0번 = 남보라 · 전설·신화 금빛·은빛 테두리는 그대로) · bobPx = 걷는 동안 발이 지나가는 프레임에서 통째로 위로
+     * §6 flCharPop (world/charPop.ts): shadowAdd = 발밑 그림자 진하기 +알파(디더 빈칸을 같은 색으로 채워 평균 +0.3 · 돌길 위에서도 보이게) ·
+     *  outline = 사람 도트 바깥 1px 외곽선 = 마스터 팔레트 칸(4번 = #2b2440 남보라 · 전설·신화 금빛·은빛 테두리는 그대로) · bobPx = 걷는 동안 발이 지나가는 프레임에서 통째로 위로
      */
-    pop: { shadowAdd: 0.15, outline: 0, bobPx: 1 },
+    pop: { shadowAdd: 0.3, outline: 4, bobPx: 1 },
   },
   /**
    * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식

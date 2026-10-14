@@ -1980,6 +1980,8 @@ body.j4press :is(.bigbtn,.menu button,.irow button,#winF button,.tab,.mtile,.go 
 /* §C4 빨간 점 (redDots): 버튼·장부 카드·소식 띠에 점 하나 (::before — 안의 글을 다시 그려도 그대로) */
 .rdot::before{content:'';position:absolute;right:4px;top:4px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%;z-index:1;pointer-events:none}
 body.hud2 .dk button.rdot::before{top:2px;right:calc(50% - 18px)}
+/* FIRSTLOOK R28: .px 버튼(판 테두리)의 점 — .px::before{display:none}·{content:"+";left:-9px} 보다 세게 (빌드가 규칙 순서를 바꿔도) */
+.px.rdot::before{display:block;content:'';left:auto;bottom:auto}
 /* §C3 「다녀오셨어요」 카드 (welcomeBack) */
 .wbgift{display:flex;gap:10px;align-items:center;margin:6px 0;padding:8px;background:var(--navy2);box-shadow:0 0 0 2px var(--gold)}
 .wbgift img{width:calc(24px * var(--k));height:calc(24px * var(--k));image-rendering:pixelated;flex:none}
@@ -2444,6 +2446,9 @@ body.flteaser #teaser.gate .tstage{background:transparent}
 #teaser img.tlate{opacity:0}
 #teaser img.tin{animation:tlatein .2s ease-out}
 @keyframes tlatein{from{opacity:0}to{opacity:1}}
+/* R27: 보스 그림이 늦으면 7번 컷 장면 통째로 같은 페이드인 */
+#teaser .tscene.tlate{opacity:0}
+#teaser .tscene.tin{animation:tlatein .2s ease-out}
 /* FIRSTLOOK §2 리뷰 ②: 가장자리에서 안으로 민 말풍선 — 꼬리는 말한 사람 위에 그대로 (--dx = 몸통을 민 만큼) */
 .bub::after{left:clamp(4px,calc(10px - var(--dx,0px)),calc(100% - 10px))}
 .bub.rt::after{left:auto;right:clamp(4px,calc(10px + var(--dx,0px)),calc(100% - 10px))}
@@ -2462,6 +2467,9 @@ body.hud2.flrail :is(#bDN,#bHarm,#hSpk,#bEye){top:calc(var(--h2-top) + (2 + var(
 .talking #bRail,.placing #bRail,body.winopen #bRail{visibility:hidden}
 /* 「⋯」 점: .px::before{display:none} 보다 세게 (빌드가 규칙 순서를 바꿔도) */
 body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2px;top:2px}
+/* R28: 접힌 「⋯」에 오늘 잡은 운명의 별(★ = 낮밤 버튼 #starMark 와 같은 모양) */
+#railStar{position:absolute;right:-3px;top:-5px;font-style:normal;font-size:12px;color:#ffd36b;text-shadow:1px 1px 0 #1c1018}
+:where(body.ui2) #railStar{font-size:var(--fs-small)}
 /* LUXE §1 명품관 */
 .lxrow .lthumb{width:56px;height:44px;object-fit:contain;image-rendering:pixelated}
 .lxrow b{color:var(--cream)}.lxrow small.g{color:var(--gold)}

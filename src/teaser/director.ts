@@ -15,10 +15,10 @@ import { anim, startGradeAnim, teaserView } from '../world/grade';
 import { startTour, tour } from '../world/evalTour';
 import { S, world } from '../world/state';
 import { findKind } from '../world/town';
-import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, syncCovers, village } from './scenes';
-import { teaserFitOn, type FitOpts } from './fit';
+import { ATTIC_H, ATTIC_W, drawAttic, placeCover, sceneCanvas, syncCovers, village } from './scenes';
+import { landFit, teaserFitOn, type FitOpts } from './fit';
 import { CONFIG } from '../data/config';
-import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
+import { bossCut, bossSheet, bossSheetReady, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
 import { skipFrame } from '../engine/fps';
 import { skipTapOk } from '../ui/touchHints';
@@ -204,6 +204,14 @@ const CUTS: Cut[] = [
       const { ctx, k } = fieldCanvas(host, { focus: CONFIG.firstLook.teaser.bossFocus });
       const bar = el('<div class="tbossbar"><span>붉은 무사</span><i><u></u></i></div>');
       const bd = bossCut(ctx, k);
+      // R27: 보스 그림(붉은 무사)이 아직 안 왔으면 장면은 숨겼다가 오면 0.2초 페이드인 (초상화와 같은 대비책 · 보스 없는 빈 들판이 먼저 보이지 않게)
+      if (!bossSheetReady()) {
+        host.classList.add('tlate');
+        void bossSheet().then(() => {
+          host.classList.remove('tlate');
+          host.classList.add('tin');
+        });
+      }
       draw = (t) => {
         bd(t);
         (bar.querySelector('u') as HTMLElement).style.width = t > 1.7 ? '62%' : '100%';
@@ -257,6 +265,12 @@ const CUTS: Cut[] = [
         if (t > 2.4 && !a.cv.dataset.z) {
           a.cv.dataset.z = '1';
           // FIRSTLOOK §4: 꽉 채울 땐 방 전체(창·상자·칼)가 보이게 — 한 단계 더 당기지 않음
+          //  R27: 가로 화면(PC)은 예전처럼 한 단계 줌인 (가운데 그대로 · 흐린 배경은 placeCover가 다시)
+          if (host.dataset.land) {
+            const r = (host.parentElement ?? host).getBoundingClientRect();
+            placeCover(host, a.cv, landFit(ATTIC_W, ATTIC_H, r.width, r.height, window.devicePixelRatio, Number(host.dataset.land), 1));
+            return;
+          }
           if (host.classList.contains('cover')) return;
           const k = Math.round(a.sc * window.devicePixelRatio) + 1;
           a.cv.style.width = (ATTIC_W * k) / window.devicePixelRatio + 'px';
@@ -425,6 +439,8 @@ function finish() {
 /** 처음 실행: 「터치해서 시작」 → 첫 터치(소리 잠금 해제)와 함께 티저 */
 export function teaserTouchGate(done: () => void) {
   preloadTeaserPortraits();
+  // R27: 전투 컷 그림(몬스터·보스)도 「터치해서 시작」 동안 미리
+  void preloadTeaserField();
   const root = $('#teaser');
   root.hidden = false;
   root.classList.add('gate');

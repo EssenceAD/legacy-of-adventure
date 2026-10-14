@@ -27,6 +27,16 @@ export function hasDot(el: Element): boolean {
 /** 「⋯」에 점 = 안의 항목 중 하나라도 점 */
 export const railDot = (items: Element[]): boolean => items.some(hasDot);
 
+/** 「⋯」에 ★ = 접힌 동안 낮밤 버튼(#bDN)의 「★ 운명의 별」(#starMark)이 보일 때 (펼치면 원래 자리에 보이니 끔) */
+export function railStar(open = railOpen()): boolean {
+  const m = document.getElementById("starMark");
+  return !open && !!m && !m.hidden;
+}
+function syncStar() {
+  const s = document.getElementById("railStar");
+  if (s) s.hidden = !railStar();
+}
+
 export const railOpen = (): boolean =>
   document.body.classList.contains("railopen");
 
@@ -46,6 +56,7 @@ export function setRailOpen(open: boolean) {
   b.setAttribute("aria-expanded", String(open));
   b.classList.toggle("on", open);
   if (open) layout();
+  syncStar();
 }
 
 /** 빨간 점 · 창/대화가 열리면 접기 (HUD 틱처럼 0.5초마다) */
@@ -54,6 +65,7 @@ export function railTick() {
   if (!b) return;
   const dot = railDot(railItems());
   if (b.classList.contains("rdot") !== dot) b.classList.toggle("rdot", dot);
+  syncStar();
   if (
     railOpen() &&
     (document.body.classList.contains("winopen") ||
@@ -79,7 +91,8 @@ export function initSideRail() {
   b.className = "ibtn px hb";
   b.setAttribute("aria-label", "버튼 더 보기");
   b.setAttribute("aria-expanded", "false");
-  b.innerHTML = "<b>⋯</b><small>더 보기</small>";
+  b.innerHTML =
+    '<b>⋯</b><small>더 보기</small><i id="railStar" hidden title="오늘 운명의 별을 잡았어요">★</i>';
   b.onclick = (e) => {
     e.stopPropagation();
     setRailOpen(!railOpen());

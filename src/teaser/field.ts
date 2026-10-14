@@ -13,6 +13,11 @@ export const TF_W = 180;
 export const TF_H = 168;
 const FOREST = ['na_slime_green', 'na_racoon', 'na_bamboo', 'na_spideryellow'];
 
+/** R27: 7번 컷 보스(붉은 무사) 그림 — 다 받았나 · 받기(캐시된 같은 약속) */
+const BOSS = 'nb_samurai';
+export const bossSheetReady = (): boolean => !!sheets[BOSS];
+export const bossSheet = (): Promise<void> => loadMon(BOSS).then((s) => void (sheets[BOSS] ??= s ?? undefined));
+
 /** 티저 시작 때 미리 (못 받아도 티저는 그대로 흐른다) */
 export function preloadTeaserField(): Promise<unknown> {
   return Promise.all([loadFx(), ...[...FOREST, 'nb_samurai'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined))]);
@@ -185,7 +190,7 @@ export function bossCut(out: CanvasRenderingContext2D, k: number): (t: number) =
     }
     if (t > 1.7 && !f.nums.some((n) => n.crit) && boss.hp === 1000) {
       boss.hp = 620;
-      boss.flash = 0.06;
+      // R27: 흰 번쩍임(통째로 흰 실루엣)은 티저에선 뺀다 — 한 프레임만 잡혀도 「흰 덩어리」로 보인다 · 맞은 느낌은 베기·큰 숫자·흔들림·체력 막대로
       me.swing = me.swingMax = 0.24;
       f.fx.push({ kind: 'slash', x: boss.x - 0.6, y: boss.y + 0.4, ax: 1, ay: -0.3, t: 0, dur: 0.18, big: true });
       f.nums.push({ x: boss.x, y: boss.y - 0.5, text: '12480', crit: true, t: 0, dx: 0 });
