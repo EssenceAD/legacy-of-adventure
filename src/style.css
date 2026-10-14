@@ -2423,3 +2423,7 @@ body.flteaser #teaser.gate .tgate{display:flex;flex-direction:column;align-items
 body.flteaser #teaser.gate .tgate::before{content:'';position:absolute;inset:0;z-index:-1;background:#05060f;opacity:var(--flt-dim)}
 body.flteaser #teaser.gate .tgo{font-size:var(--f-big);color:#cfd8ff;letter-spacing:2px;animation:beat 1.4s ease infinite}
 body.flteaser #teaser.gate .tstage{background:transparent}
+/* 버그 고침: 티저 초상화가 늦게 오면 그 칸만 0.2초 페이드인 */
+#teaser img.tlate{opacity:0}
+#teaser img.tin{animation:tlatein .2s ease-out}
+@keyframes tlatein{from{opacity:0}to{opacity:1}}

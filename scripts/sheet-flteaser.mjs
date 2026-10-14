@@ -75,7 +75,8 @@ for (const dev of Object.keys(DEVS)) {
       await p.mouse.click(DEVS[dev].viewport.width / 2, DEVS[dev].viewport.height / 2);
       for (let i = 0; i < BEATS.length; i++) {
         await p.waitForFunction((i) => window.__teaserCut?.() === i, i, { timeout: 30000 });
-        await W(p, Math.round(BEATS[i] * BEAT * (i === BEATS.length - 1 ? 0.5 : 0.62) * 1000));
+        await W(p, Math.round(BEATS[i] * BEAT * (i === BEATS.length - 1 ? 0.5 : i === 4 ? 0.9 : 0.62) * 1000));
+        if (i === 4) ok(await p.evaluate(() => [...document.querySelectorAll('#tStage img')].every((im) => im.complete && im.naturalWidth > 0 && getComputedStyle(im).opacity !== '0')), `${tag} 컷 5 초상화 다 그려짐`);
         if ([5, 6].includes(i)) {
           const bb = await blackBands(p);
           if (bb) ok(after ? bb.left <= 0 && (bb.top === 0 || bb.bg) : true, `${tag} 컷 ${i + 1} 캔버스 위 ${(bb.top * 100).toFixed(0)}% · 아래 ${(bb.bot * 100).toFixed(0)}% (흐린 배경 ${bb.bg ? '있음' : '없음'})`);

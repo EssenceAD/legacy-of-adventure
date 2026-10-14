@@ -53,8 +53,38 @@ const el = (html: string) => {
   const d = document.createElement('div');
   d.innerHTML = html;
   stage.appendChild(d.firstElementChild!);
-  return stage.lastElementChild as HTMLElement;
+  const e = stage.lastElementChild as HTMLElement;
+  lateFade(e);
+  return e;
 };
+
+/** 버그 고침: 컷에 쓰는 초상화는 티저 전에 미리 불러 둔다 (빈 칸으로 뜨지 않게) */
+const TEASER_PORTRAITS = () => [...HEROES.slice(0, 5).map((h) => 'hero_' + h.id), 'legend_aria', 'mc_knight_f', 'legend_leon'];
+const preloaded: HTMLImageElement[] = [];
+export function preloadTeaserPortraits() {
+  if (preloaded.length) return;
+  for (const k of TEASER_PORTRAITS()) {
+    const src = portrait(k);
+    if (!src) continue;
+    const im = new Image();
+    im.src = src;
+    im.decode?.().catch(() => {});
+    preloaded.push(im);
+  }
+}
+/** 그래도 늦은 그림은 그 칸만 0.2초 페이드인 (다른 칸·컷은 그대로 흐른다) */
+function lateFade(root: HTMLElement) {
+  const imgs = root instanceof HTMLImageElement ? [root] : [...root.querySelectorAll('img')];
+  for (const im of imgs) {
+    if (im.complete && im.naturalWidth > 0) continue;
+    im.classList.add('tlate');
+    const show = () => {
+      im.classList.remove('tlate');
+      im.classList.add('tin');
+    };
+    im.addEventListener('load', show, { once: true });
+  }
+}
 
 // ───────── 컷 11개 ─────────
 
@@ -346,6 +376,7 @@ export function playTeaser(isAuto: boolean, done: () => void) {
   saved = { land: S.land, night: S.night, nightT: S.nightT, innName: S.innName, cam: [view.cam.x, view.cam.y], zoom: S.zoom, focus: { ...view.focus } };
   S.innName = '솔바람 여관';
   void preloadTeaserField();
+  preloadTeaserPortraits();
   $('#title').hidden = true;
   const root = $('#teaser');
   root.hidden = false;
@@ -393,6 +424,7 @@ function finish() {
 
 /** 처음 실행: 「터치해서 시작」 → 첫 터치(소리 잠금 해제)와 함께 티저 */
 export function teaserTouchGate(done: () => void) {
+  preloadTeaserPortraits();
   const root = $('#teaser');
   root.hidden = false;
   root.classList.add('gate');
