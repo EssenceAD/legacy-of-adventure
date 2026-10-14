@@ -1,8 +1,8 @@
 // CHECKIN §K2 왼쪽 가장자리 아이콘 줄 (새 HUD hudV2 안 · 플래그 leftIcons)
 //  「오늘의 장부」 · 「수확제」(기간 중) · 「여관 연감」(시즌 중) — 최대 3개, 세로 한 줄 · 빨간 점 규칙(C4) 그대로 · 기간 끝난 건 사라짐
+import { vis } from '../world/visual';
 import { almanacDot, almanacOn } from '../world/almanac';
 import { daybookDot, daybookOn } from '../world/daybook';
-import { flag } from '../world/flags';
 import { shopDot } from '../world/harvest';
 import { S } from '../world/state';
 import { openAlmanac } from './almanac';
@@ -52,7 +52,7 @@ export function initLeftIcons() {
 /** 보일 것 · 빨간 점 (0.5초마다) */
 export function syncLeftIcons() {
   if (!box) return;
-  const show = flag('leftIcons') && S.started && !S.visiting;
+  const show = vis('leftIcons') && S.started && !S.visiting;
   box.hidden = !show;
   if (!show) return;
   let n = 0;

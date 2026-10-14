@@ -1,6 +1,7 @@
 // HARVEST §1 · CHECKIN §D 가벼운 핵심 — 날짜 판정 · 리본 · 연감 도장 · 장부 기록 · 칭호
 //  여기는 data·flags·state만 import한다 (meta·progress·expeditions가 부르는데, 무거운 모듈을 끌어오면 불러오기 순서가 꼬인다)
 //  world/harvest.ts · world/almanac.ts · world/daybook.ts가 이걸 그대로 다시 내보낸다
+import { vis } from './visual';
 import { ALMANAC, HV } from '../data/harvest_cfg';
 import { HARVEST_TITLE } from '../data/story/harvest';
 import { flag, serverSkew } from './flags';
@@ -109,7 +110,7 @@ export function expRibbons(minutes: number, at = hvNow()): number {
 /** 시즌 기간인가 (시험용: 플래그와 상관없이) */
 export const inSeason = (now = hvNow()) => now >= ALMANAC.from && now <= ALMANAC.to;
 /** 연감이 보이나 (플래그 켬 · 시즌 중) */
-export const almanacOn = (now = hvNow()) => flag('almanac') && inSeason(now);
+export const almanacOn = (now = hvNow()) => vis('almanac') && inSeason(now);
 /** 지금 도장 배수 (마지막 주 ×2) */
 export const stampMult = (now = hvNow()) => (now >= ALMANAC.catchUp ? 2 : 1);
 

@@ -1,8 +1,8 @@
 // CHECKIN §D1 오늘의 장부 창 — 탭: 오늘의 장부(6중3) · 오늘의 목표 · 마을 부탁 · 이번 주
 //  기존 「🎯 오늘의 목표」·마을 부탁을 이 창 안 탭으로 합친다 (플래그 ledgerDaily · 끄면 예전 그대로)
+import { vis } from '../world/visual';
 import { DAYBOOK } from '../data/harvest_cfg';
 import { GOAL_TEMPLATES } from '../data/goals';
-import { flag } from '../world/flags';
 import { untilKstMidnight } from '../world/goldsink';
 import { almanacOn, stampMult } from '../world/almanac';
 import {
@@ -100,7 +100,7 @@ function weekHtml(): string {
 
 /** 오늘의 장부 창 (t = 탭 번호) */
 export function openDaybook(t = tab) {
-  if (!daybookOn() || !flag('ledgerDaily')) return toast('오늘의 장부는 아직 열리지 않았어요');
+  if (!daybookOn() || !vis('ledgerDaily')) return toast('오늘의 장부는 아직 열리지 않았어요');
   if (t !== tab) sel = null;
   tab = Math.max(0, Math.min(TABS.length - 1, t));
   const body = tab === 0 ? ledgerHtml() : tab === 1 ? goalsHtml() : tab === 2 ? favorsHtml() : weekHtml();

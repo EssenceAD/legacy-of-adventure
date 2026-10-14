@@ -2,6 +2,7 @@
 //  대부분 평소 플레이로 저절로 찬다 (진행 = 뽑았을 때 기록 값 → 지금 값 · 마을 부탁과 같은 방식)
 //  하나 끝낼 때마다 작은 보상(금화·재료 소량) · 셋 다 하면 연감 도장 3 + 작은 상자 · 주간 미션 없음 — 이번 주 완료 누적 7·14·21에 상자
 //  후보 섞기: CHECKIN §G 성향 점수가 아직 없어 고르게 섞는다 → daybookHooks.order (G가 들어오면 여기서 순서를 바꾼다)
+import { vis } from './visual';
 import { DAYBOOK } from '../data/harvest_cfg';
 import { REGIONS, type RegionId } from '../data/items';
 import { addStamps, almanacOn, giveReward, giveSkillBooks } from './almanac';
@@ -58,7 +59,7 @@ const shuffle = <T>(a: T[], rng: () => number) => {
 };
 
 /** 오늘의 장부가 켜져 있나 (플래그 · 수확제 시작 시각부터 계속) */
-export const daybookOn = (now = hvNow()) => flag('ledgerDaily') && launched(now);
+export const daybookOn = (now = hvNow()) => vis('ledgerDaily') && launched(now);
 
 /** 칸 바로잡기 + 날·주가 바뀌었으면 새로 */
 export function dbState(now = hvNow(), rng: () => number = Math.random): DaybookState {

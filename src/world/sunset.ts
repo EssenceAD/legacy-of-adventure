@@ -2,8 +2,8 @@
 //  17→19: 노을 색 0 → 최대 (사진 모드 노을 multiply 색 · 세기 ×0.75)
 //  19→22: 노을 → 밤 색조로 (22:00에 지금의 밤과 똑같이 — 밤 로직·S.night는 그대로, 그리기만 덧칠)
 //  19:00부터 가로등·등불 빛이 서서히 (밤 불빛 0.5배 → 22:00에 1배) · 저사양(배터리 절약)은 색만
+import { vis } from './visual';
 import { DUSK_FIRST, DUSK_LINES } from '../data/story/harvest';
-import { flag } from './flags';
 import { launched, hvNow } from './harvest';
 import { markDirty, P, S, world, type Actor } from './state';
 
@@ -12,7 +12,7 @@ export const DUSK_RGB = '255,170,110';
 export const DUSK_ALPHA = 0.45 * 0.75;
 const DAY0 = 6;
 
-export const sunsetOn = (now = hvNow()) => flag('sunset') && launched(now);
+export const sunsetOn = (now = hvNow()) => vis('sunset') && launched(now);
 
 /** 게임 분(06:00부터) → 노을 세기 · 밤 앞당김(0~1) · 등불(0~1) */
 export function duskOf(clock: number): { sun: number; night: number; light: number } {

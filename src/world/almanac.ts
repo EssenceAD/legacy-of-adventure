@@ -1,9 +1,9 @@
 // CHECKIN §D2 여관 연감 (무료 시즌 패스) — 시즌 1 = 수확제 (10/22 20:00 ~ 11/05) + 정리 3일 (~ 11/08)
 //  도장: 오늘의 장부 셋 다(3) · 수확제 리본 교환(1) · 업적 받기(1) — 마지막 주(11/02~)는 ×2 (따라잡기)
 //  30칸 · 한 칸 = 도장 2 · 10·20·30칸 시즌 장식 · 30칸 칭호 「수확의 주인」 · 시즌이 끝나면 남은 도장 30%는 다음 시즌으로
+import { vis } from './visual';
 import { ALMANAC, ALMANAC_CELLS, BOOK_AS_MATS, type AlmanacReward } from '../data/harvest_cfg';
 import { REGIONS, type RegionId } from '../data/items';
-import { flag } from './flags';
 import { almanacOn, alState } from './hvLite';
 import { topRegion } from './goldsink';
 import { addCharm, addWhet, brag } from './growth';
@@ -130,7 +130,7 @@ export function carryOf(stamps: number): number {
  *  (플래그를 꺼 둔 동안 끝났어도 다음에 켜졌을 때 닫는다)
  */
 export function closeSeason(now = hvNow()): boolean {
-  if (!flag('almanac') || now <= ALMANAC.to) return false;
+  if (!vis('almanac') || now <= ALMANAC.to) return false;
   const a = alState();
   if (a.closed === ALMANAC.season || (!a.stamps && !a.claimed.length)) return false;
   a.closed = ALMANAC.season;

@@ -63,8 +63,8 @@
   "checkinFx": false,
   "uiCards": false,
   "harvestFest": true,
-  "sunset": true,
-  "ledgerDaily": true,
-  "almanac": true,
-  "leftIcons": true
+  "sunset": false,
+  "ledgerDaily": false,
+  "almanac": false,
+  "leftIcons": false
 }

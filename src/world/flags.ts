@@ -132,13 +132,13 @@ export const FLAG_DEFAULTS = {
   /** HARVEST §1 첫 번째 가을 수확제 (기간 한정 · 10/22 20:00 ~ 11/05 · 교환소 11/08까지 · 날짜는 서버 시각 world/harvest.ts) — 켜 둬도 기간 밖엔 아무것도 안 보인다 · 끄면 마을 가을 장식·호박 도깨비·교환소·수프·소문·컷 모두 숨김 (모은 리본·바꾼 장식·칭호는 그대로 남음) */
   harvestFest: true,
   /** HARVEST §2 노을 (영구 · 수확제 시작 시각부터): 게임 17:00~22:00 노을 색 → 밤 색조 · 19:00부터 등불이 서서히 · 손님 노을 말풍선 · 첫 노을 한 번 대사 — 끄면 예전처럼 22:00에 바로 밤 */
-  sunset: true,
+  sunset: false,
   /** CHECKIN §D1 오늘의 장부 (수확제 시작 시각부터 · 그 뒤 계속): 매일(한국 0시) 후보 6개 중 3개 · 하나마다 작은 보상 · 셋이면 연감 도장 3 + 상자 · 「오늘의 목표」·마을 부탁·이번 주 장부를 탭으로 — 끄면 오늘의 목표·부탁 예전 그대로 */
-  ledgerDaily: true,
+  ledgerDaily: false,
   /** CHECKIN §D2 여관 연감 시즌 1 = 수확제 (10/22 20:00 ~ 11/08 · 30칸 · 마지막 주 도장 ×2 · 다음 시즌으로 30%) — 기간 밖·끄면 안 보임 */
-  almanac: true,
+  almanac: false,
   /** CHECKIN §K2 왼쪽 가장자리 아이콘 줄 (새 HUD hudV2 안 · 오늘의 장부 · 수확제(기간 중) · 여관 연감(시즌 중) 최대 3 · 빨간 점 규칙) — 끄면 메뉴 칸으로만 */
-  leftIcons: true,
+  leftIcons: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
