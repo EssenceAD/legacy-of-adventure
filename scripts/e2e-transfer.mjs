@@ -89,6 +89,17 @@ const setup = (p) =>
     return { hero: hero.id, heroName: hero.name, other: other?.id, giver: wp.id, recv: recv.id, relic: relic.id };
   });
 const openPanel = async (p, heroId) => {
+  // 대사(불씨·이야기 등)가 떠 있으면 먼저 넘긴다
+  const said = await p.evaluate(async () => {
+    const seen = [];
+    for (let i = 0; i < 40 && !document.querySelector('#dlg').hidden; i++) {
+      seen.push(document.querySelector('#dlg').textContent.trim().slice(0, 40));
+      document.querySelector('#dlg').click();
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    return seen;
+  });
+  if (said.length) console.error(`  (대사 넘김: ${said[0]}…)`);
   await p.evaluate(() => window.__showObj(window.__world.objs.find((o) => o.kind === 'smith')));
   await W(p, 500);
   await p.locator(`.smo-heroes [data-hc="${heroId}"]`).first().click();
@@ -102,7 +113,9 @@ const openPanel = async (p, heroId) => {
   const { ctx, p } = await boot(false);
   const s = await setup(p);
   await openPanel(p, s.hero);
-  ok(await p.evaluate(() => !!document.getElementById('smoPanel') && !document.getElementById('smoTf')), '끔: 행동 판에 [전수] 없음');
+  // v0.25.21 형철 OK로 flags.json에서 켬 → 서버 flags.json을 따른다
+  const on = await p.evaluate(async () => (await (await fetch('flags.json?x=' + Date.now())).json()).enhTransfer === true);
+  ok(await p.evaluate((on) => !!document.getElementById('smoPanel') && !!document.getElementById('smoTf') === on, on), on ? '실험실 끔 + flags.json 켬: 행동 판에 [전수]' : '끔: 행동 판에 [전수] 없음');
   await ctx.close();
 }
 

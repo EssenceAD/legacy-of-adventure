@@ -209,6 +209,11 @@ export function openRaidPrep(t: RaidTarget) {
   // 전투 2차: 자동 토벌은 소탕 역할 (전투 화면 없이 기대 피해의 70% · 보상도 70%)
   // HOTFIX17 §2: 판마다 시작할 때 도전 1 차감 (연타·이중 정산 막기)
   const go = (): number | null => {
+    // 판정 #2: 이번 주 보스가 이미 쓰러졌으면 시작 안 함 (쓰러진 보스로 금화 받던 구멍)
+    if (t.kind === 'weekly' && P.raid.hpLeft <= 0) {
+      toast('이번 주 보스는 이미 쓰러졌어요');
+      return null;
+    }
     const run = beginRaid();
     if (run == null) toast(fsay('오늘 남은 도전이 없어요', '오늘 도전은 다 쓰셨어요 · 내일 또 오세요'));
     else $$('#rgMan, #rgAuto, #rgSweep').forEach((b) => ((b as HTMLButtonElement).disabled = true));
@@ -896,6 +901,8 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
   const rec = mode === 'sweep' ? null : await submitRecord(t, out.damage, mode, ex);
   const title = out.killed ? `${b.name} 처치!` : mode === 'sweep' ? '소탕 완료' : died ? '파티가 쓰러졌다…' : '시간 종료';
   const left = triesLeft();
+  // 판정 #2: 주간 보스 체력 0이면 「다시 하기」 대신 도전장(있으면) · 닫기
+  const dead = t.kind === 'weekly' && P.raid.hpLeft <= 0;
   const html = `<h2>${esc(title)}</h2><div class="big">${fmt(out.damage)}</div>
     <div class="stars">${mode === 'sweep' ? '소탕' : `등급 ${out.rank}`}</div>
     <p class="cen">${t.kind === 'weekly' ? `이번 주 누적 처치 <b class="g">${pct(1 - P.raid.hpLeft / t.max)}</b>${out.killed ? '' : ' · 남은 체력은 내일 이어서!'}` : `떠돌이 보스 남은 체력 ${fmt(Math.max(0, (P.raid.wander?.hpLeft ?? 0)))}`}</p>
@@ -903,7 +910,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
     <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : rec?.chain ? '도전장 보스는 주간 랭킹에 안 들어가요 (랭킹은 이번 주 첫 보스만)' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>${rec?.noWind ? '<p class="cen"><small id="rNoWind">바람 보정 제외 기록</small></p>' : ''}
     ${t.kind === 'weekly' && out.killed ? challengeHtml() : ''}
-    <div class="go"><button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${triesMax()})</button><button class="b" id="rHome">마을로</button></div>`;
+    <div class="go">${dead ? '' : `<button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${triesMax()})</button>`}<button class="b" id="rHome">${dead ? '닫기' : '마을로'}</button></div>`;
   markDirty();
   if (inBattle) {
     const box = document.getElementById('rResBody')!;
@@ -922,12 +929,14 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     active?.stop();
     closeWin();
   };
-  document.getElementById('rAgain')!.onclick = () => {
+  const again = document.getElementById('rAgain');
+  if (again) again.onclick = () => {
     active?.stop();
     const alive = members.filter((m) => m.hp >= CONFIG.expedition.minHp);
     if (!alive.length) return toast(fsay('파티가 너무 지쳤어요 · 쉬고 와요', '파티가 많이 지쳤어요 · 쉬고 오세요'));
     const next = t.kind === 'weekly' ? weeklyTarget() : wanderTarget();
     if (!next) return toast('떠돌이 보스가 떠났어요');
+    if (next.kind === 'weekly' && P.raid.hpLeft <= 0) return toast('이번 주 보스는 이미 쓰러졌어요');
     openRaidPrep(next);
   };
 }

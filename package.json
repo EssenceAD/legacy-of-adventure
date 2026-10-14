@@ -1,7 +1,7 @@
 {
   "name": "legacy-of-adventure",
   "private": true,
-  "version": "0.25.20-beta",
+  "version": "0.25.21-beta",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

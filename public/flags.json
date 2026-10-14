@@ -73,5 +73,5 @@
   "legendFrame": true,
   "huntSlots": true,
   "fishSfx": true,
-  "enhTransfer": false
+  "enhTransfer": true
 }

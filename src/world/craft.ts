@@ -261,7 +261,7 @@ export const bossHint = (id: string) => {
   const m = bossById(id)?.mat ?? '보스 재료';
   // REGIONS2: 별을 삼킨 것은 토벌에 안 나온다 → 심연의 바닥 x-10 사냥
   if (bossById(id)?.noRaid) return `${m}${josa(m, '는')} 「심연의 바닥 10」 보스 사냥에서 얻을 수 있어요`;
-  return `${m}${josa(m, '는')} 「${bossById(id)?.name ?? '보스'}」 토벌에서 얻을 수 있어요`;
+  return `${m}${josa(m, '는')} 「${bossById(id)?.name ?? '보스'}」 토벌이나 지역 10스테이지 사냥(맡겨 두기 포함)에서 나와요`;
 };
 
 /** 그 지역 세트 부위를 만든다 (대장간 레벨이 높을수록 좋은 등급) */

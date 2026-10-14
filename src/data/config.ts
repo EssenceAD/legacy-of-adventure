@@ -913,7 +913,8 @@ export const CONFIG = {
     stagePower: 0.02,
   },
   ember: {
-    daily: 0.6,
+    /** 판정 #3: 0.6 → 3 (결심 21일과 맞춤) */
+    daily: 3,
     report: 0.5,
     legend: 3,
     raidManual: 0.5,

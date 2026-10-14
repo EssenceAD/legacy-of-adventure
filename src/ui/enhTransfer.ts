@@ -66,7 +66,8 @@ export function openTransfer(it: Item, back: () => void, done: (r: TransferDone,
         if (!giver || !recv) return openTransfer(it, back, done);
         const p = transferPlan(giver, recv);
         if (!p.ok) return toast(p.why);
-        const wear = p.wearer ? `\n${p.wearer.name}님에게 「${recv.name}」을(를) 끼워 드려요${p.leaves ? ` (${p.leaves.name}님 ${SLOT_NAME[recv.slot]} 칸은 비어요)` : ''}` : '';
+        const wear = p.wearer ? `\n${p.wearer.name}님에게 「${recv.name}」을(를) 끼워 드려요${p.leaves ? `
+${p.leaves.name}님이 끼고 있어요 → 벗겨요 (${SLOT_NAME[recv.slot]} 칸은 비어요)` : ''}` : '';
         const ok = await confirmSheet({
           title: '강화를 전수할까요?',
           body: `「${nameOf(giver)}」 → 「${recv.name}」 +${p.from} → +${p.to}\n비용: ${costText(p, recv)}\n「${giver.name}」은(는) 사라지고 ${DUST_NAME[giver.grade]} +${fmt(p.back.dust)}${p.back.ash ? ` · ${DUST_NAME.n} +${p.back.ash}` : ''}을 받아요 (되돌릴 수 없어요)${wear}`,
