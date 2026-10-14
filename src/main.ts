@@ -17,7 +17,6 @@ ledgerHooks.stamp = (el) => void stampFx('almanac', el);
 import { openAlmanac } from './ui/almanac';
 import { addRibbons, buyHv, fieldHarvest, finaleState, hvNow, hvPhase, hvState, setHvNow, settleField } from './world/harvest';
 import { HV } from './data/harvest_cfg';
-import { setFlag } from './world/flags';
 import { huntCrew } from './world/hunt';
 import { runHeadless } from './combat/ui';
 import type { RegionId } from './data/items';

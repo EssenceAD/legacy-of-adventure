@@ -34,6 +34,8 @@ async function boot(now, save = sv) {
     localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
     localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
     localStorage.setItem('legacy-of-adventure-settleOff', 'true');
+    // v0.25.15: 노을·장부·연감·왼쪽 아이콘은 꺼짐 + 실험실 → 이 검사는 실험실 켠 채로
+    localStorage.setItem('legacy-of-adventure-visualLab', 'true');
     localStorage.setItem('legacy-of-adventure-telemetry', 'false');
     localStorage.setItem('legacy-of-adventure-wfBubOff', 'true');
     localStorage.setItem('legacy-of-adventure-hvNow', String(now));
@@ -252,7 +254,8 @@ if (only(2)) {
   // 플래그 끔 → 장식·아이콘 사라짐
   await p.evaluate(() => { window.__hv.flag('harvestFest', false); window.__hv.flag('almanac', false); window.__hv.flag('ledgerDaily', false); });
   await p.waitForTimeout(900);
-  ok((await p.evaluate(() => window.__hv.props().length)) === 0 && (await icons(p)).length === 0, '플래그 끔: 자동 장식·왼쪽 아이콘 없음');
+  // 실험실이 켜져 있어 장부·연감 아이콘(vis)은 남는다 — 수확제(harvestFest) 쪽만 사라지는지
+  ok((await p.evaluate(() => window.__hv.props().length)) === 0 && !(await icons(p)).includes('liHv'), '플래그 끔: 자동 장식·수확제 아이콘 없음');
   await ctx.close();
 }
 
