@@ -43,12 +43,28 @@ describe('일괄 강화', () => {
   });
   it('+1까지(GROWTH: +1만 확정): 요약 숫자 = 실제 차감 · 미리보기 = 실제', () => {
     give(3);
+    // +1 성공은 확정이지만 대성공(3%, +2로 뛰어오름)은 운 — 0.5로 고정해 대성공을 빼고 본다 (대성공 쪽은 아래 테스트)
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const plan = bulkPlan({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
     const d0 = dustSum();
     const r = startBulk({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
     while (bulkTick(r));
     expect(r.stopped).toBe('done');
     expect(P.bag.every((it) => it.enh === 1)).toBe(true);
+    expect(d0 - dustSum()).toBe(r.spentDust);
+    expect(r.spentDust).toBe(plan.dust);
+    expect(r.fails).toBe(0);
+  });
+  it('+1까지 · 대성공이 나면 +2로 넘어가도 요약 숫자 = 실제 차감 = 미리보기', () => {
+    give(3);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const plan = bulkPlan({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
+    const d0 = dustSum();
+    const r = startBulk({ target: 'bag', goal: 1, budget: 1, skipLocked: false });
+    while (bulkTick(r));
+    expect(r.stopped).toBe('done');
+    expect(P.bag.every((it) => it.enh === 2)).toBe(true);
+    expect(r.tries).toBe(3);
     expect(d0 - dustSum()).toBe(r.spentDust);
     expect(r.spentDust).toBe(plan.dust);
     expect(r.fails).toBe(0);

@@ -74,15 +74,28 @@ async function boot(url, lab) {
   return { ctx, p, calm, st };
 }
 const W = (p, ms) => p.waitForTimeout(ms);
+/** 마을 해설(#dlg.narr)·대화가 때맞춰 뜨면 창 위를 덮어 누르기를 가로챈다(가끔 죽던 까닭) → 대화만 넘겨 닫는다 (창은 그대로 · calm과 같은 방식) */
+const clearDlg = (p) => p.evaluate(async () => {
+  const T = (ms) => new Promise((r) => setTimeout(r, ms));
+  const d = document.querySelector('#dlg');
+  for (let i = 0; i < 40 && d && !d.hidden; i++) {
+    d.click();
+    await T(120);
+  }
+  return !d || d.hidden;
+});
 const openSmith = async (p) => {
   await p.evaluate(() => window.__showObj(window.__world.objs.find((o) => o.kind === 'smith')));
   await W(p, 500);
+  await clearDlg(p);
 };
 const delta = (a, b) => { const o = {}; for (const k of Object.keys(a)) if (a[k] !== b[k]) o[k] = b[k] - a[k]; return o; };
 /** 누르기: 창 몸통 밖(가려짐)이면 한 번 밀기(스크롤)로 셈 */
 async function tap(p, c, sel, why) {
   const loc = p.locator(sel).first();
   await loc.waitFor({ state: 'attached', timeout: 8000 });
+  // 해설이 덮고 있으면 스크롤로 세지 않게 먼저 닫는다 (터치 수 = 사람이 창에서 누르는 수)
+  if (!(await clearDlg(p))) throw new Error(`#dlg가 닫히지 않음 (${why})`);
   const vis = await loc.evaluate((el) => { const r = el.getBoundingClientRect(); if (!r.width) return false; const x = r.left + r.width / 2, y = r.top + r.height / 2; if (y < 0 || y > innerHeight) return false; const e = document.elementFromPoint(x, y); return !!e && (e === el || el.contains(e)); });
   if (!vis) {
     c.scroll++;
@@ -92,7 +105,16 @@ async function tap(p, c, sel, why) {
   }
   c.tap++;
   c.log.push(`• ${why}`);
-  await loc.click({ timeout: 6000 });
+  // 해설이 누르는 사이에 새로 뜰 수도 있다 → 가로채이면 닫고 다시 (같은 한 번의 누르기로 셈)
+  for (let k = 0; ; k++) {
+    try {
+      await loc.click({ timeout: 3000 });
+      break;
+    } catch (e) {
+      if (k >= 2 || !(await p.evaluate(() => !document.querySelector('#dlg')?.hidden))) throw e;
+      await clearDlg(p);
+    }
+  }
   await W(p, 350);
 }
 
