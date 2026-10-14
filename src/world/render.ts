@@ -37,9 +37,11 @@ import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
 import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from './spectacle';
 import { drawBldStatus, hasBubble, setBldHooks } from './bldStatusDraw';
+import { drawFestLights, drawFestProp, drawLanterns, drawLeaves, festivalProps, type FestProp } from './harvestDraw';
+import { DUSK_ALPHA, DUSK_RGB, duskOf, nightOverlay, sunsetOn } from './sunset';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
-type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc });
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc } | { fp: FestProp });
 
 /**
  * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
@@ -77,9 +79,11 @@ export function objTL(o: { sprite: string | null; tx: number; ty: number; fw: nu
 //  배치가 바뀔 때만 다시 계산해서 캐시한다 (매 프레임 계산 안 함 — 발열).
 type Box = { l: number; r: number; t: number; b: number };
 function boxOf(it: Thing): Box {
-  if ('o' in it && it.o.sprite && META[it.o.sprite]) {
-    const [x, y] = spriteOrigin(it.o);
-    const m = META[it.o.sprite];
+  // HARVEST §1-3 수확제 자동 장식: 그림 크기 그대로
+  const sp = 'o' in it ? it.o : 'fp' in it ? { sprite: it.fp.k, tx: it.fp.x, ty: it.fp.y, fw: it.fp.fw, fh: it.fp.fh } : null;
+  if (sp && sp.sprite && META[sp.sprite]) {
+    const [x, y] = spriteOrigin(sp);
+    const m = META[sp.sprite];
     return { l: x, r: x + m.w, t: y, b: y + m.h };
   }
   const h = 'w' in it ? 80 : 64;
@@ -131,6 +135,32 @@ export function orderThings<T extends { d: number; tx: number; ty: number; fw: n
 let orderKey = '';
 let orderCache: Thing[] = [];
 
+/** HARVEST §2 노을: 등불 정도(드는 0~1) · 밤 앞당김을 부드럽게 (☾로 건너뛰어도 1초쯤에 걸쳐) */
+let duskLight = 0;
+let duskNight = 0;
+function duskSmooth(dt: number) {
+  const d = duskOf(S.clock);
+  duskNight += (d.night - duskNight) * Math.min(1, dt * CONFIG.dayNight.blendRate * 1.5);
+  if (Math.abs(d.night - duskNight) < 0.002) duskNight = d.night;
+  return { sun: d.sun, night: duskNight, light: d.light };
+}
+/** 노을 색(multiply) + 밤 색조 덧칠 — 바닥·건물·손님을 다 그린 뒤, 불빛 전에 (불빛은 덮지 않는다) */
+function drawDusk(ctx: CanvasRenderingContext2D, LW: number, LH: number, dk: { sun: number; night: number }) {
+  const real = NL / CONFIG.dayNight.tintSteps;
+  const ov = nightOverlay(dk.night, real);
+  if (dk.sun <= 0.003 && !ov) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  if (dk.sun > 0.003) {
+    ctx.fillStyle = `rgba(${DUSK_RGB},${(DUSK_ALPHA * dk.sun).toFixed(3)})`;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+  if (ov) {
+    ctx.fillStyle = `rgb(${ov[0]},${ov[1]},${ov[2]})`;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+  ctx.restore();
+}
 /** PHOTO_SPEC: 사진 모드 — 시간(밤 색조·노을)과 손님 보이기, 겹침 UI(이름판·별·팻말 글씨·어울림 선·배치) 빼기 */
 export const photoState = { on: false, time: 'now' as 'now' | 'morning' | 'sunset' | 'night', people: true };
 const PHOTO_NT: Record<string, number | null> = { now: null, morning: 0, sunset: 0.35, night: 1 };
@@ -191,7 +221,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   // 2) 깊이 정렬: 건물·나무를 먼저 기존 키로 정렬하고,
   //    캐릭터는 하나씩 "자기가 앞에 있어야 하는 마지막 건물" 바로 뒤에 끼워 넣는다
   // 핫픽스 11 §11: 건물·나무·장식 순서는 배치가 바뀔 때만 다시 계산 (길 다시 깔기 번호 · 건물 수 · 옮기는 중 · 마을 등급 · 이웃)
-  const key = `${groundVersion}|${world.objs.length}|${pl?.move ? world.objs.indexOf(pl.move) : -1}|${gradeNow()}|${anim.on ? Math.round(animF() * 20) : -1}|${S.visiting?.id ?? ''}|${ground.wild.length}`;
+  const key = `${groundVersion}|${world.objs.length}|${pl?.move ? world.objs.indexOf(pl.move) : -1}|${gradeNow()}|${anim.on ? Math.round(animF() * 20) : -1}|${S.visiting?.id ?? ''}|${ground.wild.length}|${festivalProps().length}`;
   if (key !== orderKey) {
     orderKey = key;
     const list: Thing[] = [];
@@ -200,6 +230,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     for (const w of ground.wild) list.push({ d: depthWild(w.x, w.y), tx: w.x, ty: w.y, fw: 1, fh: 1, w });
     // 마을 등급 장식 · NPC (울타리 밖 개간지·입구 길)
     for (const pr of propsNow()) list.push({ d: depthBuilding(pr.x, pr.y, pr.fw, pr.fh), tx: pr.x, ty: pr.y, fw: pr.fw, fh: pr.fh, pr });
+    // HARVEST §1-3: 수확제 자동 장식 (기간 중에만 · 그리기 전용)
+    for (const fp of festivalProps()) list.push({ d: depthBuilding(fp.x, fp.y, fp.fw, fp.fh), tx: fp.x, ty: fp.y, fw: fp.fw, fh: fp.fh, fp });
     orderCache = orderThings(list, boxOf);
   }
   const things: Thing[] = orderCache.slice();
@@ -251,12 +283,13 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
         if (ds) drawDoorActors(ctx, it.o, ds);
         if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
       } else if ('pr' in it) drawProp(ctx, it.pr);
+      else if ('fp' in it) drawFestProp(ctx, it.fp);
       else if ('fk' in it) drawFolk(ctx, it.fk);
       else if ('iv' in it) drawInspector(ctx, it.iv);
       else if ('sn' in it) drawSpecNpc(ctx, it.sn);
       else drawWild(ctx, it.w);
     } catch {
-      recoverCtx(ctx, 'o' in it ? (it.o.sprite ?? it.o.kind) : 'w' in it ? it.w.k : 'pr' in it ? 'prop:' + it.pr.k : 'thing');
+      recoverCtx(ctx, 'o' in it ? (it.o.sprite ?? it.o.kind) : 'w' in it ? it.w.k : 'pr' in it ? 'prop:' + it.pr.k : 'fp' in it ? 'fest:' + it.fp.k : 'thing');
     }
   }
   ctx.globalAlpha = 1;
@@ -284,22 +317,32 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     }
   updDrawParts(ctx, dt);
 
-  // 4) 모닥불 빛 (더하기)
-  if (nt > 0.01) {
+  // HARVEST §2 노을: 17~19시 노을 색 · 19~22시 밤 색조로 (22시에 지금의 밤과 같게) — 사진 모드는 따로 · 밤 로직은 그대로
+  const dk = !photoState.on && sunsetOn() ? duskSmooth(dt) : null;
+  if (dk) drawDusk(ctx, LW, LH, dk);
+  duskLight = dk && !saverOn() ? dk.light : 0;
+  const lt = Math.max(nt, duskLight);
+  // 4) 모닥불 빛 (더하기) — 노을: 19시부터 가로등·등불이 서서히 (배터리 절약이면 밤에만)
+  if (lt > 0.01) {
     ctx.globalCompositeOperation = 'lighter';
     for (const o of world.objs)
       if (o.kind === 'fire') {
         const X = OX + sx(o.tx + 0.5, o.ty + 0.5);
         const Y = OY + sy(o.tx + 0.5, o.ty + 0.5);
-        glow(ctx, X, Y - FIRE_FLAME_Y, 34, nt * (0.45 + Math.sin(T * 9) * 0.05));
+        glow(ctx, X, Y - FIRE_FLAME_Y, 34, lt * (0.45 + Math.sin(T * 9) * 0.05));
       }
-    drawGradeLights(ctx, nt);
+    drawGradeLights(ctx, lt);
+    drawFestLights(ctx, lt);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
   drawAmbient(ctx, T, LW, LH);
+  // HARVEST §1-3: 단풍잎 (기간 중 · 배터리 절약이면 끔)
+  drawLeaves(ctx, T, LW, LH);
   // DIRECTION §1-2: 회차의 바람 분위기 (내 마을에서만)
   if (!S.visiting && curWind()) drawWindSky(ctx, T, LW, LH);
+  // HARVEST §1-7: 마지막 밤 등불 날리기
+  drawLanterns(ctx, LW, LH);
   // 사진: 노을은 주황빛 · 아침은 살짝 밝게
   if (photoState.on && photoState.time === 'sunset') {
     ctx.globalCompositeOperation = 'multiply';
@@ -1416,6 +1459,10 @@ const DECO_FX: Record<string, { glow?: string; r?: number; gx?: number; gy?: num
   mushroom_lamp: { glow: '140,200,255', r: 1.4, gx: 0.5, gy: 0.4 },
   mushroom_dark: { glow: '90,230,200', r: 1.2, gx: 0.5, gy: 0.5 },
   shop_sign: { glow: '255,214,140', r: 0.9, gx: 0.5, gy: 0.3 },
+  // HARVEST §1-5: 수확제 장식 밤 불빛
+  jack_lantern: { glow: '255,190,90', r: 1.0, gx: 0.5, gy: 0.55, flicker: true },
+  lantern_post: { glow: '255,200,120', r: 1.3, gx: 0.5, gy: 0.3 },
+  pumpkin_carriage: { glow: '255,190,90', r: 0.7, gx: 0.25, gy: 0.3 },
   fountain: { water: true },
   lily_pond: { water: true },
   koi_pond: { water: true },
@@ -1426,7 +1473,8 @@ const DECO_FX: Record<string, { glow?: string; r?: number; gx?: number; gy?: num
 function drawDecoFx(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {
   const F = DECO_FX[o.kind];
   const T = S.T;
-  const night = NL / CONFIG.dayNight.tintSteps;
+  // HARVEST §2: 노을 등불 (19시부터 서서히)
+  const night = Math.max(NL / CONFIG.dayNight.tintSteps, duskLight);
   if (F.glow && night > 0.15) {
     const cx = x + im.width * (F.gx ?? 0.5);
     const cy = y + im.height * (F.gy ?? 0.3);

@@ -19,6 +19,9 @@ import { openBoard } from './expedition';
 import { openGarden, openSmith } from './smith';
 import { feature, featureChapter } from '../world/guide';
 import { decoLock } from '../world/harmony';
+import { isHvDeco } from '../world/harvest';
+/** HARVEST §1-5: 수확제에서 받은 무료 장식 수 (땅 단계와 상관없이 놓을 수 있다) */
+const hvGiftN = (k: Kind) => (isHvDeco(k) ? (PG.meta.giftDeco?.[k] ?? 0) : 0);
 import { online, sendLetter } from '../net/server';
 import { openAccount } from './account';
 import { APP_VERSION } from './update';
@@ -518,6 +521,7 @@ function buildLocked(k: Kind): boolean {
   const gate = GATED[k];
   const cap = maxCopies(k);
   const full = Number.isFinite(cap) && countKind(k) > 0 && countKind(k) >= cap;
+  if (hvGiftN(k) > 0) return false;
   return d.unlock > S.land || (d.stars ?? 0) > stars() || (!!gate && !feature(gate)) || !!decoLock(k) || full;
 }
 /**
@@ -546,11 +550,12 @@ export function openBuild(target?: Kind) {
       const poor = S.gold < cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
       const why = full ? `${cap}/${cap}채${cap < capMax ? ' · 땅을 넓히면 더' : ''}` : dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
-      // CHECKIN §J3 (uiCards): 그림 타일 — 금화가 모자라면 어둡게 + 그 숫자만 빨갛게 (모자란 만큼 −n)
-      const j3 = cardsOn() && poor && !locked;
-      const sub = why ? `<small class="lock">${why}</small>` : j3 ? `<small class="miss">${fmt(cost)} G <u>−${fmt(cost - S.gold)}</u></small>` : `<small>${fmt(cost)} G</small>`;
+      // CHECKIN §J3 (uiCards): 그림 타일 — 금화가 모자라면 어둡게 + 그 숫자만 빨갛게 (모자란 만큼 −n) · HARVEST: 수확제 선물은 무료라 그대로
+      const hvN = hvGiftN(k);
+      const j3 = cardsOn() && poor && !locked && !hvN;
+      const sub = hvN ? `<small class="g">수확제 선물 · 무료 ${hvN}개</small>` : why ? `<small class="lock">${why}</small>` : j3 ? `<small class="miss">${fmt(cost)} G <u>−${fmt(cost - S.gold)}</u></small>` : `<small>${fmt(cost)} G</small>`;
       const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
-      return `<button data-k="${k}" class="${locked ? 'locked' : j3 ? 'poor' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
+      return `<button data-k="${k}" class="${locked ? 'locked' : j3 ? 'poor' : ''}" ${poor && !locked && !hvN ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
   // DECO_DROP §2: 뽐내기 장식은 「특별 장식」 탭에
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide' && !def(k).luxury);
@@ -601,7 +606,7 @@ export function openBuild(target?: Kind) {
           toast(`버나드의 장부 ${featureChapter(gate)}장을 마치면 ${fsay('지을 수 있어요', '지어 드릴게요')}`);
           return;
         }
-        if (def(k).unlock > S.land) {
+        if (def(k).unlock > S.land && !hvGiftN(k)) {
           toast(`땅을 ${def(k).unlock}단계까지 넓히면 ${fsay('지을 수 있어요', '지어 드릴게요')}`);
           return;
         }

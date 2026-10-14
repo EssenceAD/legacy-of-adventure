@@ -61,5 +61,10 @@
   "heroDotV2": true,
   "smithOne": true,
   "checkinFx": false,
-  "uiCards": false
+  "uiCards": false,
+  "harvestFest": true,
+  "sunset": true,
+  "ledgerDaily": true,
+  "almanac": true,
+  "leftIcons": true
 }

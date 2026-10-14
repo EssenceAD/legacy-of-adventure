@@ -6,6 +6,7 @@ import { REGIONS, type Grade, type OptKey, type RegionId, type Slot, type StatKe
 /** 지역마다 0 (REGIONS2: 새 지역 칸도 같이) */
 const perRegion = () => Object.fromEntries(REGIONS.map((r) => [r.id, 0])) as Record<RegionId, number>;
 import type { Neighbor } from '../data/neighbors';
+import { freshAlmanac, freshDaybook, freshHarvest } from './hvState';
 
 /** BUILDUX §2-3: 보관함에 넣어 둔 건물·장식 (레벨·색·방향 그대로) */
 export interface StoredObj {
@@ -499,6 +500,8 @@ export function freshProgress() {
       /** DIRECTION §2-1: 우편함에 넣은 운영자 답장 (편지 번호@답장 시각 — 답장을 고치면 다시 온다) */
       replied: [] as string[],
       /** EASTER: 금빛 편지(보냄·받음) · 카메오 일정 · 만난 개척자 · 선물 쿠폰 */
+      /** HARVEST §2 노을: 업데이트 뒤 첫 노을 한 번 (DUSK_FIRST) */
+      duskFirst: false,
       easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean },
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
@@ -605,6 +608,12 @@ export function freshProgress() {
     },
     /** CHECKIN §A2 모아 보기: 오늘(현실 날짜) 저절로 띄운 곁이야기 수 */
     inbox: { day: '', shown: 0 },
+    /** HARVEST §1 첫 번째 가을 수확제 (world/harvest.ts hvState가 칸을 바로잡는다 · 리본·장식·칭호는 기간이 끝나도 남는다) */
+    harvest: freshHarvest(),
+    /** CHECKIN §D1 오늘의 장부 (world/daybook.ts) */
+    daybook: freshDaybook(),
+    /** CHECKIN §D2 여관 연감 (world/almanac.ts) */
+    almanac: freshAlmanac(),
   };
 }
 

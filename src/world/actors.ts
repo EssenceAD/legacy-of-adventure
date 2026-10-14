@@ -6,6 +6,7 @@ import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
 import { blessed, blessFx } from './goldsink';
 import { GUEST_KINDS, KIND_LINES, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
+import { hvLine, soupBonus } from './harvest';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
@@ -266,7 +267,8 @@ function choose(a: Actor) {
     if (Math.random() < A.idleTalkChance) {
       // PARTY §1: 사냥꾼은 절반쯤 자기 말풍선
       const kl = KIND_LINES[a.kind];
-      say(a, pick(kl && Math.random() < 0.5 ? kl : a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : LINES.idle));
+      // HARVEST §1-6: 수확제 기간엔 30% 수확제 대사
+      say(a, hvLine(a) ?? pick(kl && Math.random() < 0.5 ? kl : a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : LINES.idle));
     }
     chem(a);
   });
@@ -339,6 +341,13 @@ function fillNeeds(a: Actor, act: Act | undefined) {
       a.food = clamp(a.food + NE.mealWithProduce);
       a.mood = clamp(a.mood + NE.mealProduceMood * moodMult());
     } else a.food = clamp(a.food + NE.meal);
+    // HARVEST §1-6: 기간 중 주점 한정 메뉴 호박 수프 (포만 +10 · 기분 +5)
+    const soup = !S.visiting && a.id ? soupBonus() : null;
+    if (soup) {
+      a.food = clamp(a.food + soup.food);
+      a.mood = clamp(a.mood + soup.mood);
+      if (a.at && Math.random() < 0.35) bldSay(a.at, '호박 수프!');
+    }
     if (!S.visiting && a.id) {
       P.counters.tavernMeals++;
       track('meal');

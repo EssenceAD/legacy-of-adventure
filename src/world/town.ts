@@ -1,6 +1,7 @@
 // 건물 배치·점유 격자·길찾기(A*)·땅 단계
 import { vis } from './visual';
 import { CATALOG, def, START_TOWN, type Kind } from '../data/catalog';
+import { HV_NEW_DECO } from '../data/harvest_cfg';
 import { CONFIG } from '../data/config';
 import type { Neighbor } from '../data/neighbors';
 import { FLIP, META } from '../engine/assets';
@@ -579,6 +580,8 @@ export function buildableKinds(): Kind[] {
     if (k === 'thanks_basket') return (P.meta.giftDeco?.[k] ?? 0) > 0;
     // GROWTH §4: 물고기 박제는 박제해서 받은 게 있을 때만 (무료)
     if (k.startsWith('fish_')) return (P.meta.giftDeco?.[k] ?? 0) > 0;
+    // HARVEST §1-5: 수확제 새 장식은 교환소·연감에서 받은 게 있을 때만 (무료)
+    if (HV_NEW_DECO.includes(k)) return (P.meta.giftDeco?.[k] ?? 0) > 0;
     // HOTFIX14 §1: 한 채뿐인 건물(여관 본관·던전)과 unique 장식만 이미 있으면 못 지음 — 나머지는 여러 채 (두 번째부터 비용 ↑)
     return !d.fixed && !((d.unique || SINGLE(k)) && world.objs.some((o) => o.kind === k));
   });

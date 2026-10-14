@@ -29,7 +29,8 @@ export type IconKey =
   | 'cur_gold' | 'cur_seed' | 'cur_token' | 'cur_dust_n' | 'cur_dust_r' | 'cur_dust_e' | 'cur_dust_l' | 'cur_dust_a'
   // CHECKIN §E 그림 (asset_raw/checkin → public/assets/icons)
   | 'box_gift'
-  | 'box_crate' | 'box_chest' | 'stamp_checkin' | 'stamp_almanac' | 'key_room';
+  // CHECKIN §E 도장·열쇠·상자 · HARVEST §1 리본 · 스킬 책 (asset_raw/checkin · asset_raw/harvest_ready)
+  | 'box_crate' | 'box_chest' | 'stamp_checkin' | 'stamp_almanac' | 'key_room' | 'cur_ribbon' | 'skill_book';
 export const iconSrc = (k: IconKey, small = false) => av(`assets/icons/${k}${small ? '_16' : ''}.png`);
 /** 아이콘 <img>: 크기는 그림의 정수배만 (24 → 24·48, 16 → 16·32) */
 export const icon = (k: IconKey, px: 16 | 24 | 32 | 48 = 24, cls = '') =>
