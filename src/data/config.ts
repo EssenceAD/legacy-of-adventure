@@ -1305,9 +1305,10 @@ export const CONFIG = {
   fiveStars: {
     // pace.md: +12는 초월 단계라 라이트 유저 3일 안에 2개는 무리 → +10 (일반 강화 끝) · 사건은 마을 화면 게임 1시간 7%라 3번은 p50 8일 → 2번 + 숨은 어울림 새 발견도 사건 칸에 셈(hiddenCounts)
     woongs: { enh: 10, items: 2, kills: 1 },
-    gonu: { events: 2, hidden: 1, hiddenCounts: true },
+    // 부탁 중에는 게임 하루에 구경거리 1번 보장: 그날 아직 없으면 그날 마지막 기회(forceHour시 · 사건은 07~23시 매시 확률)에 꼭 생긴다
+    gonu: { events: 2, hidden: 1, hiddenCounts: true, forceHour: 23 },
     ikamolly: { sets: 1, wins: 10 },
-    // pace.md: 밤 출발 = 현실 20~04시 — 이틀에 한 번 저녁에 켜는 라이트 유저 5번은 3일 안 56% → 3번 (79%)
+    // pace.md: 밤 출발 = 현실 20~04시 또는 게임 안 밤(22~06시, 보낼 때 기록) — 이틀에 한 번 저녁에 켜는 라이트 유저 기준 3번
     walwal: { nights: 3, hp: 60, talks: 5 },
     warmnight: { regions: 5, harvests: 5 },
     /** 신화 능력치 = 전설 × statMult (MYTHIC과 같음) · 합류 레벨 = max(joinLvlMin, 단골 상위 3명 평균) */

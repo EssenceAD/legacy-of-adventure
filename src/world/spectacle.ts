@@ -10,6 +10,7 @@ import { absHours, hourNow } from './clock';
 import { NL } from './daynight';
 import { emote, tour } from './evalTour';
 import { evalOpen } from './evaluation';
+import { fiveSpecForce, fiveSpecSeen } from './fivestars';
 import { hfx } from './harmony';
 import { P, S, world, type Actor, type Building } from './state';
 import { entrance, inLand, landBounds, walkable } from './town';
@@ -128,6 +129,7 @@ export function spawn(kind: SpecKind): Spectacle | null {
     }
   }
   spectacles.push(ev);
+  fiveSpecSeen();
   sfx('event');
   return ev;
 }
@@ -151,11 +153,13 @@ export function tickSpectacle(viewing: boolean) {
     if (gone) spectacles.splice(i, 1);
   }
   const h = Math.floor(now);
-  if (h === today.hour) return;
+  // FIVESTARS 고느끼 부탁: 그날 마지막 기회인데 아직 사건이 없으면 확률 없이 꼭 (마을을 볼 때까지 그 시간 안에서 다시 시도)
+  const force = fiveSpecForce(hourNow());
+  if (h === today.hour && !force) return;
   today.hour = h;
   if (today.day !== S.day) Object.assign(today, { day: S.day, n: 0 });
   if (!viewing || tour.on || today.n >= SP.perDay || spectacles.length >= 2) return;
-  if (hourNow() < 7 || Math.random() > SP.chancePerHour) return;
+  if (hourNow() < 7 || (!force && Math.random() > SP.chancePerHour)) return;
   for (let i = 0; i < 4; i++) {
     if (spawn(roll())) {
       today.n++;

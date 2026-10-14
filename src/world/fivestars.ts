@@ -170,6 +170,13 @@ export function fiveRaidKill(ms: Actor[]) {
     markDirty();
   }
 }
+/** 현실 밤(20~04시)인가 */
+export const realNightAt = (t: number) => {
+  const h = new Date(t).getHours();
+  return h >= 20 || h < 4;
+};
+/** 왈왈 부탁의 「밤 출발」: 현실 밤에 보냈거나 게임 안 밤에 보냈다 (gameNight 없는 옛 기록은 현실 시각만) */
+export const walwalNightRun = (run: { start: number; gameNight?: boolean }) => realNightAt(run.start) || run.gameNight === true;
 /** 밤에 출발한 원정이 성공했을 때 (world/expeditions.ts · 체력이 깎인 뒤): 모두 체력 60 이상이면 왈왈 칸 */
 export function fiveNightWin(ms: Actor[]) {
   const f = fiveState();
@@ -179,6 +186,18 @@ export function fiveNightWin(ms: Actor[]) {
     markDirty();
   }
 }
+
+/** 고느끼 부탁이 진행 중 (장 열림 · 칸 안 채움 · 켜짐) */
+const gonuActive = () => fiveOn() && fiveState().open && !fiveState().done.includes('gonu');
+/** 구경거리 사건이 생겼다 (world/spectacle.ts spawn) — 그 게임 날 기록 */
+export function fiveSpecSeen() {
+  const f = fiveState();
+  if (f.specDay === S.day) return;
+  f.specDay = S.day;
+  markDirty();
+}
+/** 그날 마지막 사건 기회(forceHour시)인데 고느끼 부탁 중 아직 사건이 없었으면: 꼭 생기게 */
+export const fiveSpecForce = (hour: number) => hour === C().gonu.forceHour && gonuActive() && fiveState().specDay !== S.day;
 
 // ───────── §1 흐름 ─────────
 

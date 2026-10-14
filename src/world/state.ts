@@ -259,6 +259,8 @@ export interface Run {
   result?: RunResult;
   /** 마을로 돌아왔다(받기 끝) */
   claimed?: boolean;
+  /** FIVESTARS: 보낼 때 게임 안이 밤이었나 (옛 기록엔 없음 → 현실 시각만 본다) */
+  gameNight?: boolean;
 }
 
 export interface RunResult {
@@ -669,6 +671,8 @@ export function freshFive() {
     setSeen: [] as number[],
     heart: [] as string[],
     oswin: false,
+    /** 구경거리 사건이 마지막으로 생긴 게임 날 (고느끼 부탁: 하루 1번 보장) */
+    specDay: 0,
   };
 }
 export interface FiveBase {

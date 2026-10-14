@@ -5,7 +5,7 @@ import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
 import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
-import { fiveHpMult, fiveNightSuccess, fiveNightWin, fiveStealth, fiveWanderMult, fiveDepart } from './fivestars';
+import { fiveHpMult, fiveNightSuccess, fiveNightWin, fiveStealth, fiveWanderMult, fiveDepart, walwalNightRun } from './fivestars';
 import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
 import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
@@ -254,7 +254,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   const info = partyInfo(members, q);
   const scale = TEST ? CONFIG.test.timeScale : 1;
   const now = Date.now();
-  const run: Run = { id: P.nextRunId++, quest: q, members: members.map((m) => m.id), start: now, end: now + info.minutes * 60000 * scale };
+  const run: Run = { id: P.nextRunId++, quest: q, members: members.map((m) => m.id), start: now, end: now + info.minutes * 60000 * scale, gameNight: S.night };
   P.runs.push(run);
   // EASTER: 이카몰리 선물(다음 의뢰 −10%)은 한 번 쓰면 끝
   useExpCoupon();
@@ -320,8 +320,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
   markAdventured(members);
-  // FIVESTARS 왈왈콩선생 부탁: 밤 출발 성공 · 모두 체력 지켜 귀환
-  if (win && nightStart(run.start)) fiveNightWin(members);
+  // FIVESTARS 왈왈콩선생 부탁: 밤 출발 성공 · 모두 체력 지켜 귀환 ·
+  // 현실 밤(20~04시) 또는 게임 안 밤(보낼 때 기록)에 출발
+  if (win && walwalNightRun(run)) fiveNightWin(members);
   const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
   P.mats[q.region] += mats;
   const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
