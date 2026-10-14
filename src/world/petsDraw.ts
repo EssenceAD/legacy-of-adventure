@@ -2,8 +2,11 @@
 //  움직임은 코드: 2프레임 깡총(위 1px) · 좌우는 뒤집기 · 미끄러지듯 이동 · 밤엔 잠(Zz 말풍선 + 1px 낮추기) · 손님 옆에서 가끔 하트
 //  여관 문 근처를 돌아다니고 가끔 주인 캐릭터를 따라간다. 그리기는 render.ts 깊이 정렬(캐릭터처럼 발판 기준)에 끼운다.
 //  그림: assets/pets/pet_<id>.png (16~21px) · 10마리 모두 그림 있음 · 못 불러오면 중립 코드 도트 자리표시 — 못 불러와도 안 깨진다
+//  걷기 시트(있으면): assets/pets/pet_<id>_sheet.png — 한 줄 [앞 서기, 앞 걷기1·2, 뒤 서기, 뒤 걷기1·2] (data/petSheets.ts · scripts/copy-pet-sheets.mjs)
+//   움직일 땐 0.18초마다 걷기1/2 (깡총 1px도 그대로) · 화면 위쪽으로 가면 뒷모습(back일 때) · 좌우는 뒤집기 · 가만히·잠 = 서기 칸
 import { dotShadow } from '../combat/draw';
 import { PETS } from '../data/luxe_cfg';
+import { PET_SHEETS, type PetSheet } from '../data/petSheets';
 import { tinted } from '../engine/assets';
 import { sx, sy, TH, view, depthActor } from '../engine/iso';
 import { av } from '../engine/ver';
@@ -31,6 +34,34 @@ export function petDot(id: string): HTMLImageElement | null {
   im.src = av(`${BASE}pets/pet_${id}.png`);
   return null;
 }
+const SHEET: Record<string, HTMLImageElement | null> = {};
+const NOSHEET = new Set<string>();
+/** 펫 걷기 시트 (메타가 있을 때만 · 아직이면 불러오기 시작 · 실패면 null → 한 장 그림으로) */
+export function petSheet(id: string): { im: HTMLImageElement; m: PetSheet } | null {
+  const m = PET_SHEETS[id];
+  if (!m || NOSHEET.has(id)) return null;
+  const hit = SHEET[id];
+  if (hit !== undefined) return hit && hit.complete && hit.naturalWidth >= m.cw * m.frames ? { im: hit, m } : null;
+  const im = new Image();
+  SHEET[id] = im;
+  im.onerror = () => {
+    NOSHEET.add(id);
+    SHEET[id] = null;
+  };
+  im.src = av(`${BASE}pets/pet_${id}_sheet.png`);
+  return null;
+}
+/** 칸 좌표로 dx·dy 움직일 때 화면 위쪽(sy 감소)으로 가나 — 순수 좌우(dx = −dy)·아래는 아니다 */
+export const movingUp = (dx: number, dy: number) => dx + dy < -0.01;
+/** 걷기 0.18초 박자 (0·1) — 깡총과 같은 박자 */
+export const walkBeat = (T: number, ph: number) => Math.floor(T / 0.18 + ph * 7) % 2;
+/** 시트 칸 번호: 0 앞 서기 · 1·2 앞 걷기 · 3 뒤 서기 · 4·5 뒤 걷기 (뒷모습 없으면 앞) */
+export function petFrame(m: PetSheet, moving: boolean, up: boolean, T: number, ph: number): number {
+  const base = up && m.back && m.frames >= 6 ? 3 : 0;
+  if (!moving || m.frames < 3) return base;
+  return base + 1 + walkBeat(T, ph);
+}
+
 /** 카드·도감 초상 주소 (없으면 화면 쪽이 자리표시로 바꾼다) */
 export const petPortrait = (id: string) => av(`${BASE}portraits/petp_${id}.png`);
 export const petDotUrl = (id: string) => av(`${BASE}pets/pet_${id}.png`);
@@ -43,6 +74,8 @@ export interface PetRT {
   y: number;
   path: [number, number][];
   dir: 1 | -1;
+  /** 화면 위쪽(멀어지는 쪽)을 보고 있나 — 뒷모습 */
+  up: boolean;
   wait: number;
   moving: boolean;
   ph: number;
@@ -86,7 +119,7 @@ function sync() {
     const old = S.visiting ? null : keep.get(id);
     if (old && !old.guest) return old;
     const s = spotNear(ax, ay, 2) ?? [ax, ay];
-    return { id, x: s[0], y: s[1], path: [], dir: i % 2 ? -1 : 1, wait: 0.5 + i, moving: false, ph: i * 0.37, hearts: [], guest: !!S.visiting };
+    return { id, x: s[0], y: s[1], path: [], dir: i % 2 ? -1 : 1, up: false, wait: 0.5 + i, moving: false, ph: i * 0.37, hearts: [], guest: !!S.visiting };
   });
 }
 /** 새 목적지: 가끔 주인 곁 · 아니면 여관 문 근처 */
@@ -123,6 +156,8 @@ function step(p: PetRT, dt: number) {
     // 화면 좌우: sx = (x − y) — 오른쪽으로 가면 1
     const sdx = dx - dy;
     if (Math.abs(sdx) > 0.01) p.dir = sdx > 0 ? 1 : -1;
+    // 화면 위아래: sy = (x + y) — 줄면 위로(멀어짐) → 뒷모습 · 아래·순수 좌우는 앞모습
+    p.up = movingUp(dx, dy);
     if (d <= mv) {
       p.x = tx;
       p.y = ty;
@@ -169,24 +204,19 @@ export function drawPet(ctx: CanvasRenderingContext2D, p: PetRT) {
   const T = S.T;
   const asleep = S.night;
   // 깡총: 움직일 땐 0.18초마다 · 가만히 있을 땐 가끔 한 번 · 자면 1px 낮게
-  const hop = asleep ? 0 : p.moving ? (Math.floor(T / 0.18 + p.ph * 7) % 2 ? -1 : 0) : (T + p.ph * 3) % 2.6 < 0.16 ? -1 : 0;
+  const hop = asleep ? 0 : p.moving ? (walkBeat(T, p.ph) ? -1 : 0) : (T + p.ph * 3) % 2.6 < 0.16 ? -1 : 0;
   const Y = Y0 + (asleep ? 1 : 0);
   dotShadow(ctx, X, Y0, 5, 2);
-  const im = petDot(p.id);
-  if (im) {
-    const img = tinted(im, NL);
-    const x = X - (im.width >> 1);
-    const y = Y - im.height + 1 + hop;
-    if (p.dir > 0) ctx.drawImage(img, x, y);
-    else {
-      ctx.save();
-      ctx.translate(x + im.width, y);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0);
-      ctx.restore();
-    }
-  } else placeholder(ctx, X, Y + hop, p.dir);
-  const top = Y - (im?.height ?? 12);
+  const sh = petSheet(p.id);
+  const im = sh ? null : petDot(p.id);
+  if (sh) {
+    // 시트 한 칸 (발 = 칸 아래 가운데)
+    const { cw, ch } = sh.m;
+    const fr = petFrame(sh.m, p.moving && !asleep, p.up, T, p.ph);
+    blit(ctx, tinted(sh.im, NL), fr * cw, cw, ch, X - (cw >> 1), Y - ch + 1 + hop, p.dir);
+  } else if (im) blit(ctx, tinted(im, NL), 0, im.width, im.height, X - (im.width >> 1), Y - im.height + 1 + hop, p.dir);
+  else placeholder(ctx, X, Y + hop, p.dir);
+  const top = Y - petH(p.id);
   if (asleep) zz(ctx, X + 6, top - 2, T + p.ph);
   for (const h of p.hearts) if (h.t >= 0) drawHeart(ctx, X + Math.round(h.x), Math.round(top - 3 - h.t * 10), Math.max(0, 1 - h.t / 1.3));
   // 쓰다듬은 날: 머리 위 작은 반짝 (가끔)
@@ -194,6 +224,21 @@ export function drawPet(ctx: CanvasRenderingContext2D, p: PetRT) {
     ctx.fillStyle = '#ffd6ec';
     ctx.fillRect(X + 4, top - 1, 1, 1);
   }
+}
+/** 그림 한 칸 (sx부터 w×h) · 왼쪽이면 뒤집기 */
+function blit(ctx: CanvasRenderingContext2D, img: CanvasImageSource, sx0: number, w: number, h: number, x: number, y: number, dir: number) {
+  if (dir > 0) ctx.drawImage(img, sx0, 0, w, h, x, y, w, h);
+  else {
+    ctx.save();
+    ctx.translate(x + w, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, sx0, 0, w, h, 0, 0, w, h);
+    ctx.restore();
+  }
+}
+/** 지금 그리는 그림 높이 (시트 칸 · 한 장 · 자리표시 12) — 누르기·말풍선 기준 */
+export function petH(id: string): number {
+  return petSheet(id)?.m.ch ?? petDot(id)?.height ?? 12;
 }
 /** 그림을 못 불러온 펫(늦은 로딩 · 실패): 작은 중립 코드 도트 (둥근 몸 + 눈) — 특정 펫 모양 아님 */
 function placeholder(ctx: CanvasRenderingContext2D, X: number, Y: number, dir: number) {
@@ -246,7 +291,7 @@ export function petAt(mx: number, my: number): PetRT | null {
   let bd = 1e9;
   for (const p of rt) {
     const [X, Y] = feet(p);
-    const h = petDot(p.id)?.height ?? 12;
+    const h = petH(p.id);
     const d = Math.hypot(X - mx, Y - h / 2 - my);
     if (d < Math.max(9, h / 2 + 3) && d < bd) {
       bd = d;
