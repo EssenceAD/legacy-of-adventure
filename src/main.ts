@@ -3,7 +3,7 @@ import { openNotices } from './ui/notice';
 import { kstDay } from './world/goldsink';
 import { flag } from './world/flags';
 import { loadFlags } from './world/flags';
-import { vis } from './world/visual';
+import { vis, fsay } from './world/visual';
 import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
 import { gearHooks, initGear } from './ui/gear';
@@ -833,7 +833,7 @@ async function boot() {
   const t0 = performance.now();
   await loadFonts();
   // ONBOARDING §3: 진행 막대 + 팁 한 줄
-  const TIPS = ['손님을 누르면 체크인!', '모닥불 곁에 손님들이 모여요', '장부의 할 일을 따라가면 마을이 커져요', '밤하늘 별똥별을 눌러 보세요'];
+  const TIPS = [fsay('손님을 누르면 체크인!', '손님을 누르면 체크인 도와드려요'), '모닥불 곁에 손님들이 모여요', '장부의 할 일을 따라가면 마을이 커져요', '밤하늘 별똥별을 눌러 보세요'];
   const tip = TIPS[(Math.random() * TIPS.length) | 0];
   try {
     await loadFlags();

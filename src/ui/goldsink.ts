@@ -12,6 +12,8 @@ import { bestOf } from '../world/town';
 import { P, S, type Building } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
 import { esc, fmt } from './common';
+import { cardsOn, lineCard } from './checkin';
+import { iconSrc } from './kit';
 import { talk } from './dialogue';
 import { objExtra, showObj, toast } from './windows';
 
@@ -195,6 +197,8 @@ export function favorsHtml(): string {
         : done
           ? `<button class="rd" data-fc="${i}">받기</button>`
           : `<button data-fs="${i}" ${S.gold >= sc ? '' : 'disabled'}>바꾸기${sc ? ` · ${fmtKo(sc)} G` : ' (무료)'}</button>`;
+      // CHECKIN §J3 (uiCards): 아이콘 + 진행 막대 + 보상 칸(선물 상자) + [받기] 한 줄 카드
+      if (cardsOn()) return lineCard({ cls: `fvrow ${f.claimed ? 'got' : done ? 'ready' : ''}`, ic: iconSrc('m_quest'), title: esc(d.text), prog: [p, f.target], box: 'box_gift', reward: esc(d.reward()), btn: act });
       return `<div class="fvrow ${f.claimed ? 'got' : done ? 'ready' : ''}"><span><b>${esc(d.text)}</b><i><u style="width:${Math.round((p / f.target) * 100)}%"></u></i><small>${p}/${f.target} · 보상 ${esc(d.reward())}</small></span>${act}</div>`;
     })
     .join('');

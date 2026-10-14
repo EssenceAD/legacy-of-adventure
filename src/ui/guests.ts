@@ -1,7 +1,7 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { bindPersonActions, personActionsHtml } from './personActions';
 import { tagTap } from '../world/render';
-import { vis as visOn } from '../world/visual';
+import { vis as visOn, fsay } from '../world/visual';
 import { CONFIG } from '../data/config';
 import { checkout, dismissWhy, farewell, formerList, recall } from '../world/dismiss';
 import { tapCameo } from './easter';
@@ -104,7 +104,7 @@ export function openGuests() {
         : `<div class="sortb${visOn('heroCards') ? ' gsort1' : ''}">${
             // J6 다듬기(R6): 카드 모드는 정렬 한 버튼(누를 때마다 레벨 → 전투력 → 희귀도) — 폭 360에서 글자가 세로로 꺾이지 않게
             visOn('heroCards') ? `<button class="on" data-s="${(gSort + 1) % SORTS.length}" title="정렬 바꾸기">정렬 · ${SORTS[gSort]}</button>` : `정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}`
-          }${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? '한 번 더 누르면 내보내기' : `한꺼번에 내보내기 (${picked.size})`}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
+          }${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? fsay('한 번 더 누르면 내보내기', '한 번 더 누르면 체크아웃') : fsay(`한꺼번에 내보내기 (${picked.size})`, `한꺼번에 체크아웃 (${picked.size})`)}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
     <div class="glist${cards ? ' hcgrid' : ''}">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
@@ -148,14 +148,14 @@ export function openGuests() {
       let n = 0;
       for (const a of vis) if (picked.has(a.id) && checkout(a)) n++;
       picked.clear();
-      toast(n ? `${n}명 체크아웃` : '내보낼 손님이 없어요');
+      toast(n ? fsay(`${n}명 체크아웃`, `${n}분 체크아웃 도와드렸어요`) : fsay('내보낼 손님이 없어요', '체크아웃하실 손님이 없어요'));
       openGuests();
     };
   $$('[data-recall]').forEach(
     (b) =>
       (b.onclick = () => {
         const err = recall(+b.dataset.recall!);
-        toast(err ?? '다시 돌아왔어요!');
+        toast(err ?? fsay('다시 돌아왔어요!', '다시 모셔 왔어요!'));
         openGuests();
       }),
   );
@@ -265,7 +265,7 @@ export function showActor(a: Actor) {
       const r = recommendEquip(a, takeOthers);
       trackEv('auto_equip', { mode: 'one', take: takeOthers, gain: r.gain });
       markDirty();
-      toast(r.changed ? `${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
+      toast(r.changed ? fsay(`${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}`, `${a.name}님 장비 ${r.changed}칸 바꿔 드렸어요 · 전투력 +${fmt(r.gain)}`) : fsay('이미 최선이에요', '지금이 제일 좋은 차림이에요'));
       showActor(a);
     };
   bindLegend(a);
@@ -277,16 +277,16 @@ export function showActor(a: Actor) {
         if (a.status === 'regular') {
           const line = farewell(a);
           if (line) talk([[speakerOf(a), line], ['narr', `${a.name}${josa(a.name, '이')} 떠났다. 끼고 있던 장비는 가방으로 돌아왔다. (3일 안에는 「옛 단골」에서 다시 부를 수 있어요)`]]);
-        } else if (checkout(a)) toast(`${a.name} 체크아웃`);
+        } else if (checkout(a)) toast(fsay(`${a.name} 체크아웃`, `${a.name}님 체크아웃 도와드렸어요`));
         closeWin();
       };
       // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 하나 (작별 = 빨강)
       if (visOn('confirmSheet')) {
         const reg = a.status === 'regular';
         void confirmSheet({
-          title: reg ? `${a.name}${josa(a.name, '와')} 작별할까요?` : `${a.name}${josa(a.name, '을')} 내보낼까요?`,
-          body: reg ? `끼고 있던 장비는 가방으로 돌아와요 · ${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : '오늘 밤 체크아웃해요',
-          ok: reg ? '작별하기' : '내보내기',
+          title: reg ? `${a.name}${josa(a.name, '와')} 작별할까요?` : fsay(`${a.name}${josa(a.name, '을')} 내보낼까요?`, `${a.name}님 체크아웃 도와드릴까요?`),
+          body: reg ? `끼고 있던 장비는 가방으로 돌아와요 · ${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : fsay('오늘 밤 체크아웃해요', '오늘 밤 체크아웃 도와드릴게요'),
+          ok: reg ? '작별하기' : fsay('내보내기', '체크아웃'),
           danger: reg,
         }).then((ok) => ok && doBye());
         return;
@@ -294,7 +294,7 @@ export function showActor(a: Actor) {
       // 실수 방지: 창 안에서 한 번 더 누르기
       if (byeArmed !== a.id) {
         byeArmed = a.id;
-        bye.textContent = a.status === 'regular' ? '한 번 더 누르면 작별' : '오늘 밤 체크아웃할까요? (한 번 더 누르면 확인)';
+        bye.textContent = a.status === 'regular' ? '한 번 더 누르면 작별' : fsay('오늘 밤 체크아웃할까요? (한 번 더 누르면 확인)', '체크아웃 도와드릴까요? (한 번 더 누르면 확인)');
         bye.classList.add('red');
         return;
       }
@@ -321,7 +321,7 @@ export function openBestPreview(a: Actor, back: () => void = () => showActor(a))
     const r = applyBest(a, bestPlan(a));
     trackEv('auto_equip', { mode: 'best', gain: r.gain, fav: isFav(a) });
     markDirty();
-    toast(r.changed ? `${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
+    toast(r.changed ? fsay(`${a.name} 장비 ${r.changed}칸 교체 · 전투력 +${fmt(r.gain)}`, `${a.name}님 장비 ${r.changed}칸 바꿔 드렸어요 · 전투력 +${fmt(r.gain)}`) : fsay('이미 최선이에요', '지금이 제일 좋은 차림이에요'));
     back();
   };
   $('#bNo').onclick = back;
@@ -459,7 +459,7 @@ export function autoAll() {
   const r = autoEquipAll();
   trackEv('auto_equip', { mode: 'all', people: r.people, gain: r.gain });
   markDirty();
-  toast(r.people ? `단골 ${r.people}명 장비 정리 · 전투력 +${fmt(r.gain)}` : '이미 최선이에요');
+  toast(r.people ? fsay(`단골 ${r.people}명 장비 정리 · 전투력 +${fmt(r.gain)}`, `단골 ${r.people}분 장비 챙겨 드렸어요 · 전투력 +${fmt(r.gain)}`) : fsay('이미 최선이에요', '지금이 제일 좋은 차림이에요'));
 }
 /** §1-4: 결과 창 「○○에게 더 좋아요 → 바로 끼우기」 (없으면 빈 글) */
 export function upgradeBtn(items: Item[], also: Actor[] = []): string {
@@ -480,7 +480,7 @@ addEventListener('click', (e) => {
   equip(a, it);
   markDirty();
   trackEv('auto_equip', { mode: 'new', gain: powerOf(a) - before });
-  toast(`${a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(a) - before)}`);
+  toast(fsay(`${a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(a) - before)}`, `${a.name}님께 「${it.name}」 입혀 드렸어요 · 전투력 +${fmt(powerOf(a) - before)}`));
 });
 
 /** 아이템 상세 */
@@ -518,7 +518,7 @@ export function showItem(it: Item, back: () => void = openBag) {
         const before = powerOf(a);
         equip(a, it);
         markDirty();
-        toast(`${a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(a) - before)}`);
+        toast(fsay(`${a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(a) - before)}`, `${a.name}님께 「${it.name}」 입혀 드렸어요 · 전투력 +${fmt(powerOf(a) - before)}`));
         showItem(it, back);
       }),
   );
@@ -535,14 +535,14 @@ export function showItem(it: Item, back: () => void = openBag) {
     if (it.grade !== 'n' && !(visOn('confirmSheet') ? await confirmSheet({ title: `${g.name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${g.name} 장비를 분해할까요?`))) return;
     if (!P.bag.includes(it)) return;
     salvage(it);
-    toast(`분해 · ${salvageText(it.grade)}`);
+    toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}`);
     back();
   };
   $('#iBack').onclick = back;
   $('#iLock').onclick = () => {
     it.locked = !it.locked;
     markDirty();
-    toast(it.locked ? '잠갔어요 · 자동 장착·분해에서 빠져요' : '잠금을 풀었어요');
+    toast(it.locked ? fsay('잠갔어요 · 자동 장착·분해에서 빠져요', '잠가 뒀어요 · 자동 장착·분해에서 빼 드릴게요') : '잠금을 풀었어요');
     showItem(it, back);
   };
 }
@@ -565,13 +565,13 @@ let byeArmed = 0;
 function byeBtn(a: Actor): string {
   if (a.heroId || a.legendId || a.status === 'hero' || a.cameo) return '';
   const why = dismissWhy(a);
-  const label = a.status === 'regular' ? '단골 작별하기' : '내보내기';
+  const label = a.status === 'regular' ? '단골 작별하기' : fsay('내보내기', '체크아웃');
   return why ? `<button class="bigbtn sm ghost" disabled title="${esc(why)}">${label} · ${esc(why)}</button>` : `<button class="bigbtn sm ghost" id="aBye">${label}</button>`;
 }
 /** 옛 단골 (실제 3일 안 다시 부르기) · 추억 (작별한 단골 이름) */
 function formerHtml(): string {
   const fl = formerList();
-  const rows = fl.map((r) => `<div class="wrow"><b style="color:${RARITY_INFO[r.rarity].color}">${esc(r.name)}</b> · Lv.${r.lvl} ${RACE_NAME[r.race]} ${CLASSES[r.kind].name} <small>${Math.max(1, Math.ceil((r.at + CONFIG.dismiss.recallDays * 864e5 - Date.now()) / 864e5))}일 남음</small> <button class="bagb" data-recall="${r.id}">다시 부르기</button></div>`).join('');
+  const rows = fl.map((r) => `<div class="wrow"><b style="color:${RARITY_INFO[r.rarity].color}">${esc(r.name)}</b> · Lv.${r.lvl} ${RACE_NAME[r.race]} ${CLASSES[r.kind].name} <small>${Math.max(1, Math.ceil((r.at + CONFIG.dismiss.recallDays * 864e5 - Date.now()) / 864e5))}일 남음</small> <button class="bagb" data-recall="${r.id}">${fsay('다시 부르기', '다시 모시기')}</button></div>`).join('');
   const names = P.farewells ?? [];
   return `<p class="note">작별한 단골은 실제 ${CONFIG.dismiss.recallDays}일 동안 레벨·장비 그대로 다시 부를 수 있어요 (단골 자리가 있을 때)</p><div class="glist">${rows || '<p class="note">옛 단골이 없어요</p>'}</div>${names.length ? `<p class="sub">추억 · ${names.map(esc).join(' · ')}</p>` : ''}`;
 }

@@ -16,6 +16,7 @@ import { sx, sy } from '../engine/iso';
 import { isTalking, speakerOf, talk } from './dialogue';
 import { esc, fmt } from './common';
 import { closeWin, isWinOpen, openWin, toast } from './windows';
+import { fsay } from '../world/visual';
 
 const SP = CONFIG.spectacle;
 const inn = () => S.innName || '어느 여관';
@@ -125,7 +126,7 @@ export function resolve(s: Spectacle) {
         { label: '한꺼번에 받는다', fn: () => {
           let n = 0;
           for (let i = 0; i < 3 + (Math.random() < 0.5 ? 1 : 0); i++) if (arrive()) n++;
-          toast(n ? `손님 ${n}명이 들어왔어요` : '방이 모자라 다들 지나가는 손님으로 갔어요');
+          toast(n ? fsay(`손님 ${n}명이 들어왔어요`, `손님 ${n}분 체크인했어요`) : fsay('방이 모자라 다들 지나가는 손님으로 갔어요', '빈방이 없어 다들 그냥 지나가셨어요'));
           solved(s, `${inn()}에 손님 무리가 몰렸대`);
         } },
         { label: '다음에', fn: () => solved(s) },
@@ -172,7 +173,7 @@ function openMerchant(s: Spectacle) {
     S.gold -= g.cost;
     g.give();
     ids!.splice(ids!.indexOf(g.id), 1);
-    toast(`${g.name} 구매!`);
+    toast(fsay(`${g.name} 구매!`, `${g.name} 준비해 드렸어요`));
     if (!ids!.length) {
       closeWin();
       solved(s, `${inn()}에 떠돌이 상인이 왔다 갔대`);

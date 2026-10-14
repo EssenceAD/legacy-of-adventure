@@ -20,6 +20,7 @@ import { partySpecial, rollUnique } from './uniques';
 import { partySynMult, synergyFx } from './synergy';
 import { autoGoldMult, blessFx, gsState } from './goldsink';
 import { takeUniqueBoost } from './favors';
+import { fsay } from './visual';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -214,7 +215,7 @@ export function autoTick(now = Date.now()): HuntReward | null {
   const ms = autoMembers().filter((m) => m.runId == null);
   if (!ms.length || partyPower(ms) < recPower(a.region, a.stage) * H.autoRatio) {
     stopAuto(ms.length ? 'power' : 'party');
-    uiHooks.toast('맡겨 둔 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)');
+    uiHooks.toast(fsay('맡겨 둔 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)', '맡아 둔 사냥을 멈췄어요 (파티가 없거나 전투력이 부족해요)'));
     return null;
   }
   const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true);

@@ -46,6 +46,7 @@ import { likeReal } from './ui/neighbors';
 import { refreshNoticeDot } from './ui/notice';
 import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
 import { closeWin, isWinOpen, toast } from './ui/windows';
+import { bannerFx } from './ui/checkin';
 import { maybeShowPatchCard } from './ui/update';
 import { mergePrefsOnLoad } from './ui/prefsSync';
 import { track as trackEv } from './net/telemetry';
@@ -512,6 +513,8 @@ conHooks.done = (o, offline) => {
   o.pop = 1;
   puffAt(o, '#fff3b0', 20);
   floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 60, name + ' 완성!', 'big');
+  // CHECKIN §J3 (uiCards): 건물 레벨업은 가운데 짧은 배너 + 반짝 1초
+  if (o.lvl > 1) bannerFx(name);
   sfx('grade_up');
   if (isWinOpen()) toast(`${name} 완성!`);
   afterLayoutChange();

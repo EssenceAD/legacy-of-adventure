@@ -1,7 +1,7 @@
 // HUD: 위 상태판(이름·금화·날짜), 아래 독(건설·땅·손님·마을·장부), 배치 막대, 배율 버튼
 import { sfx } from '../audio/sfx';
 import { pendingSide, pendingWith, runFirstSide, runFirstWith } from '../world/events';
-import { bigNum, vis } from '../world/visual';
+import { bigNum, vis, fsay } from '../world/visual';
 import { unseenDrops } from '../world/decodrop';
 import { canUndo, decorView, entranceWhy, moveEntrance, noteMove, rememberDungeonHome, undo } from '../world/decor';
 import { notePlace, takeOut } from '../world/store';
@@ -232,7 +232,7 @@ export function startTakeOut(s: StoredObj) {
   const near = nearViewSpot(pl, viewCenterTile(), 14);
   if (near) [pl.tx, pl.ty] = near;
   else suggestSpot(pl);
-  if (pl.tx == null) return toast('놓을 자리가 없어요 · 땅을 넓히거나 다른 걸 넣어 두세요');
+  if (pl.tx == null) return toast(fsay('놓을 자리가 없어요 · 땅을 넓히거나 다른 걸 넣어 두세요', '놓아 드릴 자리가 없어요 · 땅을 넓히거나 다른 걸 넣어 두세요'));
   openPlace(pl);
 }
 
@@ -377,7 +377,7 @@ function confirmPlace() {
     if (why) return toast(why);
     sfx('build');
     cancelPlace();
-    toast('마을 입구를 옮겼어요 · 손님이 여기로 드나들어요');
+    toast(fsay('마을 입구를 옮겼어요 · 손님이 여기로 드나들어요', '마을 입구를 옮겨 뒀어요 · 손님들이 여기로 드나드실 거예요'));
     return;
   }
   // FEEDBACK23 §4: 던전을 처음 옮기면 숲속 원래 자리를 기억 (그 자리로 되돌릴 수 있게)
@@ -552,7 +552,7 @@ export function initHud() {
   drawIcons();
   zoomLabel();
   $('#bBuild').onclick = () => {
-    if (S.visiting) return toast('이웃 마을에선 지을 수 없어요');
+    if (S.visiting) return toast(fsay('이웃 마을에선 지을 수 없어요', '이웃 마을에선 지어 드릴 수 없어요'));
     cancelPlace();
     openBuild();
   };

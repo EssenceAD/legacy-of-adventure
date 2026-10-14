@@ -164,7 +164,7 @@ else {
   ok((await card()) && (await dlgOn()), '배지 누르면 바로 제안 대화');
 }
 // 고르면 끝 (대기열에서 사라짐)
-await p.evaluate(() => [...document.querySelectorAll('#dChoice button')].find((b) => /보내 주기/.test(b.textContent))?.click());
+await p.evaluate(() => [...document.querySelectorAll('#dChoice button')].find((b) => /보내 주기|배웅해 드리기/.test(b.textContent))?.click());
 await W(400);
 await settle();
 ok((await pending()) === 0 && !(await card()), '고르면 대기열·카드 정리');

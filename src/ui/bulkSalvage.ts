@@ -7,7 +7,7 @@ import { markDirty, P } from '../world/state';
 import { $, $$, fmt } from './common';
 import { openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
-import { vis } from '../world/visual';
+import { fsay, vis } from '../world/visual';
 
 const GRADES: Grade[] = ['n', 'r', 'e', 'l', 'a'];
 let armed = false;
@@ -64,7 +64,7 @@ export function openBulkSalvage(back: () => void) {
     armed = false;
     const r = salvageBulk(sel, opts);
     const parts = GRADES.filter((g) => r.dust[g]).map((g) => `${DUST_NAME[g].replace(' 가루', '')} +${fmt(r.dust[g]!)}`);
-    toast(r.count ? `${r.count}개 분해 · ${parts.join(' · ')}` : '분해할 장비가 없어요');
+    toast(r.count ? `${r.count}개 ${fsay('분해', '분해해 드렸어요')} · ${parts.join(' · ')}` : '분해할 장비가 없어요');
     back();
   };
 }
@@ -123,7 +123,7 @@ export function openTidyConfirm(back: () => void) {
   $('#tdGo').onclick = () => {
     const r = salvageBulk(TIDY, tidyOpts());
     const parts = GRADES.filter((g) => r.dust[g]).map((g) => `${DUST_NAME[g].replace(' 가루', '')} +${fmt(r.dust[g]!)}`);
-    toast(r.count ? `${r.count}개 분해 · ${parts.join(' · ')}` : '분해할 장비가 없어요');
+    toast(r.count ? `${r.count}개 ${fsay('분해', '분해해 드렸어요')} · ${parts.join(' · ')}` : '분해할 장비가 없어요');
     back();
   };
 }

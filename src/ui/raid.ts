@@ -32,7 +32,7 @@ import { closeCombat, startCombat } from '../combat/ui';
 import { recButton, roleRow, slotRow, synRow } from './partyUi';
 import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
 import { partyBlock, partyPool, recommendFor, rulesV2 } from '../world/partyRules';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
@@ -167,7 +167,7 @@ export function openRaidPrep(t: RaidTarget) {
   if (rr)
     rr.onclick = () => {
       const best = recommendFor('raid', { power: b.power, region: b.region, min: 1, max }, crew);
-      if (!best) return toast('토벌에 갈 단골이 없어요');
+      if (!best) return toast(fsay('토벌에 갈 단골이 없어요', '토벌 보내드릴 단골이 없어요'));
       picked = best.members.sort((x, y) => powerOf(y) - powerOf(x)).map((m) => m.id);
       raidWhy = { k: b.id, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 권장 ${fmt(b.power)}` };
       trackEv('party_recommend', { where: 'raid', action: 'use', n: picked.length });
@@ -178,7 +178,7 @@ export function openRaidPrep(t: RaidTarget) {
   // HOTFIX17 §2: 판마다 시작할 때 도전 1 차감 (연타·이중 정산 막기)
   const go = (): number | null => {
     const run = beginRaid();
-    if (run == null) toast('오늘 남은 도전이 없어요');
+    if (run == null) toast(fsay('오늘 남은 도전이 없어요', '오늘 도전은 다 쓰셨어요 · 내일 또 오세요'));
     else $$('#rgMan, #rgAuto, #rgSweep').forEach((b) => ((b as HTMLButtonElement).disabled = true));
     return run;
   };
@@ -489,7 +489,7 @@ export const _raidAdvance = (sec: number) => active?.advance(sec);
 /** 옛 토벌 전투 화면 — 1차 동안 쓰지 않는다 (2차에 새 토벌전으로 바꾼다) */
 export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex: RaidExpect) {
   const run0 = beginRaid();
-  if (run0 == null) return toast('오늘 남은 도전이 없어요');
+  if (run0 == null) return toast(fsay('오늘 남은 도전이 없어요', '오늘 도전은 다 쓰셨어요 · 내일 또 오세요'));
   const run: number = run0;
   notePrep('raid', ex.power);
   active?.stop();
@@ -877,7 +877,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     box.innerHTML = html;
     document.getElementById('rResult')!.hidden = false;
   } else openWin('토벌 결과', `<div class="res">${html}</div>`);
-  if (out.firstKill) toast(`트로피 「${b.trophy}」 획득! 건설 목록에서 무료로 놓을 수 있어요`);
+  if (out.firstKill) toast(fsay(`트로피 「${b.trophy}」 획득! 건설 목록에서 무료로 놓을 수 있어요`, `트로피 「${b.trophy}」 받아 뒀어요! 건설 목록에서 무료로 놓아 드릴게요`));
   dropFanfare(out.items);
   if (rec?.online && rec.ok)
     void mine('raidWeek', P.raid.week).then(({ row, total }) => {
@@ -891,7 +891,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
   document.getElementById('rAgain')!.onclick = () => {
     active?.stop();
     const alive = members.filter((m) => m.hp >= CONFIG.expedition.minHp);
-    if (!alive.length) return toast('파티가 너무 지쳤어요 · 쉬고 와요');
+    if (!alive.length) return toast(fsay('파티가 너무 지쳤어요 · 쉬고 와요', '파티가 많이 지쳤어요 · 쉬고 오세요'));
     const next = t.kind === 'weekly' ? weeklyTarget() : wanderTarget();
     if (!next) return toast('떠돌이 보스가 떠났어요');
     openRaidPrep(next);

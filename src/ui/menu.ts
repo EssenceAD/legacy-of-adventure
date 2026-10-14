@@ -33,6 +33,8 @@ import { openBoard } from './expedition';
 import { openBag, openGuests } from './guests';
 import { openHunt } from './hunt';
 import { iconSrc, type IconKey } from './kit';
+import { fxOn, stampFx } from './checkin';
+import { today } from '../world/progress';
 import { openPlace } from './nav';
 import { openVillage } from './neighbors';
 import { openNotices } from './notice';
@@ -49,7 +51,7 @@ import { getPref, setPref, writeSave } from '../save/save';
 import { enterSaver, setSsAutoMin, setSsWake, SS_AUTO_OPTS, ssAutoMin, ssWakeOn } from './screenSaver';
 import { bindDeleteRow, deleteRowHtml } from './accountDelete';
 import { APP_VERSION, openPatchNotes } from './update';
-import { labOn, setLab, vis } from '../world/visual';
+import { labOn, setLab, vis, fsay } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
 
@@ -210,7 +212,7 @@ export function openAchieve() {
         gold += r?.gold ?? 0;
         dust += r?.dust ?? 0;
       }
-      toast(`업적 보상 ${readyIds.length}개 · ${[gold ? `금화 +${fmt(gold)}` : '', dust ? `가루 +${dust}` : ''].filter(Boolean).join(' · ') || '칭호'}`);
+      toast(`업적 보상 ${readyIds.length}개${fsay('', ' 챙겨 드렸어요')} · ${[gold ? `금화 +${fmt(gold)}` : '', dust ? `가루 +${dust}` : ''].filter(Boolean).join(' · ') || '칭호'}`);
       keepScroll(openAchieve);
     };
   $$('[data-a]').forEach(
@@ -218,7 +220,7 @@ export function openAchieve() {
       (b.onclick = () => {
         const r = claimAch(b.dataset.a!);
         if (!r) return;
-        toast(`업적 보상 · ${[r.gold ? `금화 +${fmt(r.gold)}` : '', r.dust ? `가루 +${r.dust}` : '', r.title ? `칭호 「${r.title}」` : ''].filter(Boolean).join(' · ')}`);
+        toast(`업적 보상${fsay('', ' 챙겨 드렸어요')} · ${[r.gold ? `금화 +${fmt(r.gold)}` : '', r.dust ? `가루 +${r.dust}` : '', r.title ? `칭호 「${r.title}」` : ''].filter(Boolean).join(' · ')}`);
         keepScroll(openAchieve);
       }),
   );
@@ -257,19 +259,29 @@ export function openAttend() {
   const a = P.meta.attend;
   const day7 = a.total ? ((a.total - 1) % 7) + 1 : 0;
   const day28 = a.total ? ((a.total - 1) % 28) + 1 : 0;
-  const cells = ATTEND7.map((r, i) => `<div class="atc ${i < day7 ? 'got' : ''}"><b>${i + 1}일</b><small>${esc(rewardLine(r))}</small>${i < day7 ? '<i>✓</i>' : ''}</div>`).join('');
+  // CHECKIN §E 숙박부 도장 (checkinFx): 받은 칸은 ✓ 대신 도장 · 오늘 처음 연 출석 창이면 오늘 칸에 「쿵」
+  const fx = fxOn();
+  const mark = fx ? `<img class="atst" src="${iconSrc('stamp_checkin', true)}" alt="✓">` : '<i>✓</i>';
+  const fresh = fx && a.last === today() && attendStamped !== a.total && day7 > 0;
+  const cells = ATTEND7.map((r, i) => `<div class="atc ${i < day7 ? 'got' : ''}" data-atc="${i + 1}"><b>${i + 1}일</b><small>${esc(rewardLine(r))}</small>${i < day7 && !(fresh && i === day7 - 1) ? mark : ''}</div>`).join('');
   const big = Object.entries(ATTEND28)
     .map(([d, r]) => `<div class="atc big ${+d <= day28 ? 'got' : ''}"><b>${d}일</b><small>${esc(rewardLine(r))}</small>${+d <= day28 ? '<i>✓</i>' : ''}</div>`)
     .join('');
   openWin(
     '출석',
-    `<p class="sub">매일 첫 접속 때 도장이 찍혀요 · 보상은 우편함으로 · 누적 ${a.total}일</p>
+    `<p class="sub">${fsay('매일 첫 접속 때 도장이 찍혀요 · 보상은 우편함으로', '매일 첫 접속 때 도장 찍어 드려요 · 보상은 우편함에 넣어 둘게요')} · 누적 ${a.total}일</p>
     <div class="qhd"><b class="g">7일 보상판</b></div><div class="attend">${cells}</div>
     <div class="qhd"><b class="g">28일 누적</b><span class="note">${day28}/28</span></div><div class="attend big">${big}</div>
     <button class="bigbtn" id="atMail">우편함 열기${mailWaiting() ? ` (${mailWaiting()})` : ''}</button>`,
   );
   $('#atMail').onclick = () => openMail();
+  if (fresh) {
+    attendStamped = a.total;
+    stampFx('checkin', document.querySelector<HTMLElement>(`.atc[data-atc="${day7}"]`));
+  }
 }
+/** 오늘 출석 도장을 「쿵」 찍었나 (접속마다 한 번) */
+let attendStamped = 0;
 
 // ───────── 우편함 ─────────
 
@@ -287,7 +299,7 @@ export function openMail() {
     (b) =>
       (b.onclick = () => {
         const r = claimMail(+b.dataset.ml!);
-        if (r && rewardLine(r)) toast(`받았어요 · ${rewardLine(r)}`);
+        if (r && rewardLine(r)) toast(`${fsay('받았어요', '챙겨 드렸어요')} · ${rewardLine(r)}`);
         openMail();
       }),
   );
@@ -309,14 +321,14 @@ export function openMail() {
       }
       mailDelArmed = false;
       const n = deleteReadMail();
-      toast(`읽은 편지 ${n}통을 지웠어요`);
+      toast(fsay(`읽은 편지 ${n}통을 지웠어요`, `읽은 편지 ${n}통 정리해 뒀어요`));
       openMail();
     };
   const all = document.getElementById('mlAll');
   if (all)
     all.onclick = () => {
       const n = claimAllMail();
-      toast(`${n}통을 받았어요`);
+      toast(fsay(`${n}통을 받았어요`, `편지 ${n}통 다 챙겨 드렸어요`));
       openMail();
     };
 }

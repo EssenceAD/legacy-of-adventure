@@ -2163,3 +2163,79 @@ html:not([data-size="phone"]) .smo-slot .ic{width:calc(28px * var(--k));height:c
 /* J6 다듬기 R6: 정보 한 줄을 막대 줄 안으로 (위 판 ≤ 1/3) */
 .hdk-pw span small{color:#9aa6d8}
 .sortb.gsort1{flex-wrap:wrap}.sortb.gsort1 button{white-space:nowrap}
+/* ───────── CHECKIN §E 여관다운 보상 순간 (checkinFx) · §J3 글 대신 카드 (uiCards) — src/ui/checkin.ts ───────── */
+/* 체크아웃 영수증: 종이(receipt_9 · 9-slice 8 · 가운데 반복) 위에 한 줄씩 · 희귀 이상 줄은 금빛 띠 */
+.rcpt{margin:8px auto 6px;max-width:320px;padding:2px 4px 6px;color:var(--ink);border:0 solid transparent;border-image:var(--ui-receipt-9) 8 fill / calc(8px * var(--k1)) / 0 repeat;font-size:var(--f-ui);line-height:1.5;text-shadow:none}
+.rcpt .rc-h{display:flex;align-items:center;justify-content:center;gap:4px;margin:0 0 2px;font-weight:700;letter-spacing:1px}
+.rcpt .rc-h img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+.rcpt .rc-l{display:flex;align-items:center;gap:4px;margin:0;padding:0 2px;min-width:0}
+.rcpt .rc-l span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rcpt .rc-l i{flex:1;min-width:8px;border-bottom:1px dotted rgba(28,16,24,.45);margin-bottom:4px}
+.rcpt .rc-l em{font-style:normal;font-weight:700;white-space:nowrap}
+.rcpt .rc-ic{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated;flex:none}
+.rcpt .rc-g{color:#8a5200;font-weight:700;background:linear-gradient(transparent 52%,rgba(242,196,71,.6) 52%)}
+.rcpt .rc-wait{visibility:hidden}
+.rcpt.rc-play .rc-l:not(.rc-wait){animation:rcIn .08s steps(2)}
+@keyframes rcIn{0%{opacity:0;transform:translateY(-3px)}100%{opacity:1;transform:none}}
+/* 도장 「쿵」 0.4초 (조용하면 크기 변화 없이 나타나기만) */
+.stamped{position:relative}
+.stampfx{pointer-events:none;image-rendering:pixelated;z-index:9100;animation:stampIn var(--sd,.4s) cubic-bezier(.5,0,.75,0) both}
+.stampfx.mid{position:fixed;left:50%;top:40%;width:calc(48px * var(--k));height:calc(48px * var(--k));margin:calc(-24px * var(--k)) 0 0 calc(-24px * var(--k));--rot:-12deg}
+.stampfx.on-el{position:absolute;right:-4px;top:-4px;width:calc(24px * var(--k));height:calc(24px * var(--k));--rot:-14deg}
+.stampfx.calm{animation:stampCalm var(--sd,.3s) steps(2) both}
+@keyframes stampIn{0%{opacity:0;transform:rotate(var(--rot)) scale(2.2)}75%{opacity:1;transform:rotate(var(--rot)) scale(.9)}100%{opacity:1;transform:rotate(var(--rot)) scale(1)}}
+@keyframes stampCalm{0%{opacity:0;transform:rotate(var(--rot))}100%{opacity:1;transform:rotate(var(--rot))}}
+/* 첫 원정 열쇠 건네기 0.6초 */
+.keyfx{position:fixed;left:50%;top:42%;z-index:9100;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translate(-50%,-50%);animation:keyIn var(--kd,.6s) ease-out both}
+.keyfx img{width:calc(24px * var(--k) * 2);height:calc(24px * var(--k) * 2);image-rendering:pixelated}
+.keyfx small{background:var(--navy);color:var(--cream);padding:2px 8px;box-shadow:0 0 0 2px var(--ink);font-size:var(--f-small);white-space:nowrap}
+.keyfx.calm{animation:keyCalm var(--kd,.3s) steps(2) both}
+@keyframes keyIn{0%{opacity:0;transform:translate(10%,-50%) rotate(30deg)}55%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg)}100%{opacity:1;transform:translate(-50%,-50%) rotate(0)}}
+@keyframes keyCalm{0%{opacity:0}100%{opacity:1}}
+/* 단골 되면: 숙박 카드 + 도장 */
+.regfx{position:fixed;left:50%;top:40%;z-index:9050;pointer-events:none;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px}
+.regfx .hcd{width:120px}
+.regfx>small{background:var(--navy);color:var(--gold);padding:2px 8px;box-shadow:0 0 0 2px var(--ink);font-size:var(--f-ui);font-weight:700}
+/* §J3 레벨업·해금 배너: 가운데 · 반짝 · 1초 */
+.lvban{position:fixed;left:0;right:0;top:34%;z-index:9050;pointer-events:none;display:flex;flex-direction:column;align-items:center;padding:8px 16px;background:linear-gradient(90deg,transparent,rgba(20,26,58,.94) 18%,rgba(20,26,58,.94) 82%,transparent);box-shadow:0 2px 0 var(--gold),0 -2px 0 var(--gold);animation:lvIn .25s steps(3) both;overflow:hidden}
+.lvban small{color:var(--gold);font-size:var(--f-small);font-weight:700}
+.lvban b{color:var(--cream);font-size:var(--f-big);line-height:1.2;text-shadow:1px 1px 0 var(--ink);text-align:center}
+.lvban::after{content:"";position:absolute;top:0;bottom:0;width:40px;left:-60px;background:linear-gradient(90deg,transparent,rgba(255,243,214,.55),transparent);animation:lvShine .6s .1s linear both}
+.lvban.calm{animation:none}.lvban.calm::after{display:none}
+@keyframes lvIn{0%{opacity:0;transform:scaleY(.3)}100%{opacity:1;transform:none}}
+@keyframes lvShine{0%{left:-60px}100%{left:calc(100% + 20px)}}
+/* §J3 전투 결과: 별 · MVP · 드랍 칸 */
+.bstars{display:flex;flex-direction:column;align-items:center;gap:4px;margin:4px 0 8px}
+.bstars .bst{display:flex;gap:6px}.bstars .bst img{width:calc(16px * var(--k));height:calc(16px * var(--k));image-rendering:pixelated}
+.bstars .bwhy{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 10px}.bstars .bwhy i{font-style:normal;font-size:var(--f-small);color:#8a96c8}.bstars .bwhy i.on{color:var(--gold)}
+.bmvp{display:flex;align-items:center;gap:8px;margin:6px auto;max-width:320px;padding:4px 8px 4px 4px;background:#0e1430;box-shadow:0 0 0 2px var(--ink),inset 0 0 0 1px var(--gold2)}
+.bmvp img{width:48px;height:48px;object-fit:cover;object-position:50% 30%;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink);flex:none;background:var(--navy2)}
+.bmvp span{display:flex;flex-direction:column;min-width:0}.bmvp small{color:var(--gold);font-weight:700}.bmvp b{color:var(--cream)}.bmvp q{font-size:var(--f-small);color:#c9d6ff;quotes:"「" "」"}
+.bdrops{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:6px 0}
+.cgrade.sm{margin:2px 0 6px}.cgrade.sm b{display:inline;font-size:var(--f-big)}.cgrade.sm span{margin-left:6px}
+/* §J3 한 줄 카드 (의뢰 · 부탁): 아이콘 + 진행 막대 + 보상 칸 + 버튼 */
+.j3row{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px;margin:6px 0;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);text-align:left;width:100%;border:0;color:inherit;cursor:default}
+button.j3row{cursor:pointer}
+.j3row .lc-ic{width:calc(16px * var(--k));height:calc(16px * var(--k));image-rendering:pixelated}
+.j3row .lc-main{display:flex;flex-direction:column;gap:2px;min-width:0}.j3row .lc-main small{color:#9aa6d8;font-size:var(--f-small)}
+.j3row .lc-bar{display:block;height:5px;background:#2a2340;box-shadow:0 0 0 1px var(--ink)}.j3row .lc-bar u{display:block;height:100%;background:#6fd04b}
+.j3row .lc-rw{display:flex;flex-direction:column;align-items:center;min-width:44px;max-width:84px;text-align:center}
+.j3row .lc-rw img{width:calc(24px * var(--k1));height:calc(24px * var(--k1));image-rendering:pixelated}
+.j3row .lc-rw small{color:var(--gold);font-size:var(--f-small);line-height:1.2;white-space:nowrap}
+.j3row.ready{box-shadow:0 0 0 2px var(--ink),inset 0 0 0 2px #6fd04b}.j3row.got{opacity:.55}
+.j3row>em{font-style:normal;color:var(--gold)}
+/* §J3 건설 그림 타일: 그림 크게 · 못 지으면 어둡게 · 모자란 금화만 빨간 숫자 */
+.cat.j3 img{height:72px}
+.cat.j3 button.poor[disabled]{opacity:1}.cat.j3 button.poor img{filter:brightness(.4)}.cat.j3 button.poor b{color:#8a8fa8}
+.cat.j3 small.miss{color:#ff7a6a;font-weight:700}.cat.j3 small.miss u{text-decoration:none;font-weight:400;opacity:.9}
+html .j3row.quest,html .j3row.run{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px;margin:0;box-shadow:none;background:none}
+html .j3row.run.done{background:#2a2440;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold)}
+html .j3row.quest .qreg{color:var(--rc);font-weight:700}
+.j3row .lc-go{font-style:normal;font-weight:700;color:var(--gold)}
+html .j3row.fvrow{display:grid;grid-template-columns:auto 1fr auto;row-gap:4px;margin:6px 0}
+html .j3row.fvrow>.lc-ic,html .j3row.fvrow>.lc-main{grid-row:1/3}html .j3row.fvrow>.lc-rw{grid-column:3;grid-row:1}html .j3row.fvrow>button{grid-column:3;grid-row:2;white-space:nowrap}
+html .j3row.fvrow i.lc-bar{height:5px}
+#mission .lc-bar{display:block;height:4px;margin-top:2px;background:#2a2340;box-shadow:0 0 0 1px var(--ink)}#mission .lc-bar u{display:block;height:100%;background:#6fd04b}
+.atc .atst{position:absolute;right:2px;top:2px;width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated;transform:rotate(-14deg)}
+.atc .stampfx.on-el{width:calc(24px * var(--k1));height:calc(24px * var(--k1));right:-2px;top:-4px}
+html .j3row.fvrow .lc-rw small{white-space:normal}

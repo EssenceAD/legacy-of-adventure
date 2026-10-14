@@ -1,5 +1,5 @@
 // 아래에서 올라오는 창: 건설·땅·손님·건물·캐릭터·장부·메뉴·계정·제보
-import { bigNum, vis } from '../world/visual';
+import { bigNum, vis, fsay } from '../world/visual';
 import { CATALOG, def, INSIDE_TEXT, ROOFS, type Kind } from '../data/catalog';
 import { flag } from '../world/flags';
 import { orderBuildKinds } from '../world/firstFlow';
@@ -32,6 +32,7 @@ import { cheerCon, cheerReady, clock, conLeft, conProgress } from '../world/cons
 import { canRemove, isNoRemove, refundOf, removeEffects } from '../world/demolish';
 import { confirmSheet } from './confirmSheet';
 import { initPressFeel } from './pressFeel';
+import { cardsOn } from './checkin';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -430,7 +431,7 @@ function appendRemoveButton(o: Building) {
     const name = def(o.kind).name;
     if (putAway([o])) {
       closeWin();
-      toast(`📦 ${name}을(를) 보관함에 넣었어요 · 꾸미기 모드 「보관함」에서 꺼내요`);
+      toast(`📦 ${name}을(를) 보관함에 ${fsay('넣었어요', '넣어 뒀어요')} · 꾸미기 모드 「보관함」에서 꺼내요`);
     }
   };
   $('#winB').appendChild(b);
@@ -545,9 +546,11 @@ export function openBuild(target?: Kind) {
       const poor = S.gold < cost;
       // 5단계: 잠긴 건 회색 + 무엇을 하면 열리는지 한 줄
       const why = full ? `${cap}/${cap}채${cap < capMax ? ' · 땅을 넓히면 더' : ''}` : dl ? dl : noGuide ? `장부 ${featureChapter(gate!)}장에 열려요` : d.unlock > S.land ? `땅 ${d.unlock}단계에 열려요` : noStar ? `평판 ★${d.stars}에 열려요` : '';
-      const sub = why ? `<small class="lock">${why}</small>` : `<small>${fmt(cost)} G</small>`;
+      // CHECKIN §J3 (uiCards): 그림 타일 — 금화가 모자라면 어둡게 + 그 숫자만 빨갛게 (모자란 만큼 −n)
+      const j3 = cardsOn() && poor && !locked;
+      const sub = why ? `<small class="lock">${why}</small>` : j3 ? `<small class="miss">${fmt(cost)} G <u>−${fmt(cost - S.gold)}</u></small>` : `<small>${fmt(cost)} G</small>`;
       const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
-      return `<button data-k="${k}" class="${locked ? 'locked' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
+      return `<button data-k="${k}" class="${locked ? 'locked' : j3 ? 'poor' : ''}" ${poor && !locked ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
   // DECO_DROP §2: 뽐내기 장식은 「특별 장식」 탭에
   const kinds = buildableKinds().filter((k) => decoLock(k) !== 'hide' && !def(k).luxury);
@@ -567,7 +570,8 @@ export function openBuild(target?: Kind) {
   const gtabs = `<div class="dgrp">${['전체', ...GROUPS()].filter((n) => n === '전체' || decoKinds.some((k) => groupOf(k) === n)).map((n) => `<button data-dg="${n}" class="${n === g ? 'on' : ''}">${n}${n !== '전체' && gcount(n) ? ` <i class="newb">${gcount(n)}</i>` : ''}</button>`).join('')}</div>`;
   const decoCard = (k: Kind) => card(k).replace('<button data-k=', `<button data-g="${groupOf(k)}" ${g !== '전체' && groupOf(k) !== g ? 'hidden' : ''} data-k=`).replace('</b>', unseen.has(k) ? '</b><i class="newb">NEW</i>' : '</b>');
   const items = (ord ? ord.rest : kinds).filter((k) => !def(k).deco || k === 'board').map(card).join('') + `</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요${unseen.size ? ` · <b class="g">새 장식 ${unseen.size}</b>` : ''}</p>${gtabs}<div class="cat deco">` + decoKinds.map(decoCard).join('');
-  openWin('건설', `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${topRow}${recentRow}<div class="cat">${items}</div>`);
+  const html = `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${topRow}${recentRow}<div class="cat">${items}</div>`;
+  openWin('건설', cardsOn() ? html.replace(/<div class="cat/g, '<div class="cat j3') : html);
   if (top) glowOnce(document.querySelector<HTMLElement>('.cat.mtarget button'), CONFIG.firstFlow.glowMs);
   $('#toLand').onclick = openLand;
   $('#toDecor').onclick = () => buildHooks.decor();
@@ -594,11 +598,11 @@ export function openBuild(target?: Kind) {
         }
         const gate = GATED[k];
         if (gate && !feature(gate)) {
-          toast(`버나드의 장부 ${featureChapter(gate)}장을 마치면 지을 수 있어요`);
+          toast(`버나드의 장부 ${featureChapter(gate)}장을 마치면 ${fsay('지을 수 있어요', '지어 드릴게요')}`);
           return;
         }
         if (def(k).unlock > S.land) {
-          toast(`땅을 ${def(k).unlock}단계까지 넓히면 지을 수 있어요`);
+          toast(`땅을 ${def(k).unlock}단계까지 넓히면 ${fsay('지을 수 있어요', '지어 드릴게요')}`);
           return;
         }
         // TOWN T3: 이미 최대 채수
@@ -607,7 +611,7 @@ export function openBuild(target?: Kind) {
           return;
         }
         if ((def(k).stars ?? 0) > stars()) {
-          toast(`평판 ★${def(k).stars}이 되면 지을 수 있어요`);
+          toast(`평판 ★${def(k).stars}이 되면 ${fsay('지을 수 있어요', '지어 드릴게요')}`);
           return;
         }
         closeWin();

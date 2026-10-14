@@ -29,6 +29,7 @@ import { astar, blockedAt, capacity, doorOf, entrance, findKind, landBounds, lay
 import { bfx, hfx, incMult } from './harmony';
 import { dailyAdd } from './daily';
 import { windMoodDecay, windPasser, windRegularCut } from './wind';
+import { fsay } from './visual';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -534,7 +535,7 @@ export function arrive(a?: Actor): Actor | null {
       // FEEDBACK: 방이 꽉 찼다고 알려 준다 (게임 하루 한 번)
       if (fullToastDay !== S.day && S.started && !S.visiting) {
         fullToastDay = S.day;
-        uiHooks.toast(CONFIG.fullRoomToast);
+        uiHooks.toast(fsay(CONFIG.fullRoomToast, '빈방이 없어요 — 체크아웃을 도와드리거나 별채를 더 지어 주세요'));
       }
       const h = hourNow();
       const passers = guestsOf().filter((x) => x.status === 'passer').length;
@@ -704,12 +705,15 @@ export function weakestRegular(): Actor | null {
   if (!regs.length) return null;
   return regs.reduce((m, x) => (powerOf(x) < powerOf(m) ? x : m));
 }
+/** CHECKIN §E: 단골이 된 순간 (ui/checkin이 숙박 카드 + 도장을 붙인다 · checkinFx 꺼지면 아무것도 안 함) */
+export const regularHooks = { made: (_a: Actor) => {} };
 function accept(a: Actor, fast: boolean) {
   a.status = 'regular';
   if (fast) P.fastSlots = Math.max(0, P.fastSlots - 1);
   addRep(CONFIG.reputation.newRegular);
   ownerGain('regular');
-  floatW(a.x, a.y, 40, '단골 등록!', 'big');
+  floatW(a.x, a.y, 40, fsay('단골 등록!', '단골 되셨어요!'), 'big');
+  regularHooks.made(a);
   markDirty();
 }
 /** HOTFIX16 §1: 가장 약한 단골 대신 받기 — 바뀐 단골은 대기 명단 맨 앞으로 (꽉 찼으면 가장 오래 기다린 사람이 빠진다) */
@@ -732,20 +736,20 @@ export function proposeTalk(a: Actor, fast = false) {
     ['narr', `단골이 되면 원정에 보낼 수 있어요. (단골 ${regs}/${capacity()})`],
   ];
   const choices: TalkChoice[] = weak
-    ? [{ label: `${weak.name} 대신 받기`, fn: () => swapRegular(a, weak, fast) }]
+    ? [{ label: fsay(`${weak.name} 대신 받기`, `${weak.name} 대신 모시기`), fn: () => swapRegular(a, weak, fast) }]
     : [
         {
-          label: '단골로 받기',
+          label: fsay('단골로 받기', '열쇠 드릴게요'),
           fn: () => {
             if (regularsCount() >= capacity()) {
-              uiHooks.toast('단골 자리가 없어요 · 여관 레벨업이나 별채로 늘려요');
+              uiHooks.toast(fsay('단골 자리가 없어요 · 여관 레벨업이나 별채로 늘려요', '단골 방이 다 찼어요 · 여관 레벨업이나 별채로 늘려 주세요'));
               return toWaitlist(a);
             }
             accept(a, fast);
           },
         },
       ];
-  choices.push({ label: '보내 주기', fn: () => sendAway(a, true) });
+  choices.push({ label: fsay('보내 주기', '배웅해 드리기'), fn: () => sendAway(a, true) });
   proposeUi.show(a, lines, choices, () => proposeTalk(a, fast), weak ? { weak, ok: () => swapRegular(a, weak, fast) } : undefined);
 }
 

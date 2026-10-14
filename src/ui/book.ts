@@ -1,5 +1,5 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { CHEM_PAIRS } from '../data/chem';
 import { visitText } from '../world/legends';
 import { diaryList, diaryOpen } from '../world/diary';
@@ -312,7 +312,7 @@ export function openGoals() {
       let gold = 0;
       for (const i of ready) gold += claimGoal(i)?.gold ?? 0;
       markDirty();
-      toast(`목표 ${ready.length}개 달성 · 금화 +${fmt(gold)}`);
+      toast(`목표 ${ready.length}개 달성 · 금화 +${fmt(gold)}${fsay('', ' 챙겨 드렸어요')}`);
       keepScroll(openGoals);
     };
   $$('[data-go]').forEach((b) => (b.onclick = () => openPlace(b.dataset.go as Place)));
@@ -322,7 +322,7 @@ export function openGoals() {
         const r = claimGoal(+b.dataset.g!);
         if (!r) return;
         markDirty();
-        toast(`목표 달성 · 금화 +${fmt(r.gold)}`);
+        toast(`목표 달성 · 금화 +${fmt(r.gold)}${fsay('', ' 챙겨 드렸어요')}`);
         keepScroll(openGoals);
       }),
   );

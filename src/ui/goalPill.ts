@@ -9,6 +9,7 @@ import { isTalking } from './dialogue';
 import { openPlace, type Place } from './nav';
 import { isWinOpen, toast } from './windows';
 import { bindTodayPicks, todayPicksHtml } from './wayfind';
+import { fsay } from '../world/visual';
 
 export const goalPillOn = () => !getPref<boolean>('goalPillOff', false);
 export const setGoalPill = (on: boolean) => (setPref('goalPillOff', !on), syncGoalPill());
@@ -66,7 +67,7 @@ function drawPanel() {
         const r = claimGoal(+b.dataset.gc!);
         if (!r) return;
         markDirty();
-        toast(`목표 달성 · 금화 +${fmt(r.gold)}`);
+        toast(`목표 달성 · 금화 +${fmt(r.gold)}${fsay('', ' 챙겨 드렸어요')}`);
         drawPanel();
         syncGoalPill();
       }),

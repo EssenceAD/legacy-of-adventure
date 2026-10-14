@@ -7,6 +7,7 @@ import { openBoard } from './expedition';
 import { openGuests } from './guests';
 import { openGarden, openSmith } from './smith';
 import { closeWin, openBuild, openLand, showObj, toast } from './windows';
+import { fsay } from '../world/visual';
 
 export type Place =
   | 'board' | 'build' | 'land' | 'guests' | 'village' | 'owner' | 'goals' | 'hunt' | 'raid' | 'bag' | 'dex' | 'menu'
@@ -33,12 +34,12 @@ export const navHooks = {
 
 /** target = CHECKIN §B-1 장부 임무의 건설 대상 (건설 창 맨 위 + 반짝 · 플래그 firstFlowFix는 openBuild가 본다) */
 export function openPlace(p: Place, target?: Kind) {
-  if (S.visiting) return toast('이웃 마을에서 돌아온 뒤에 해요');
+  if (S.visiting) return toast(fsay('이웃 마을에서 돌아온 뒤에 해요', '이웃 마을에서 돌아오시면 해 드릴게요'));
   closeWin();
   const building = (k: Kind, then: (o: Building) => void) => {
     const o = obj(k);
     if (!o) {
-      toast(`${def(k).name}을(를) 먼저 지어요 (건설)`);
+      toast(fsay(`${def(k).name}을(를) 먼저 지어요 (건설)`, `${def(k).name}부터 지어 주세요 (건설)`));
       return openBuild(k);
     }
     focusTile(o.tx + o.fw / 2, o.ty + o.fh / 2);

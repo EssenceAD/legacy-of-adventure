@@ -1,7 +1,7 @@
 // GOLDSINK §7 끝없는 심연 창 · 층 오르기 (전투는 사냥 전투 그대로 · 접기 없음 · 맡겨 두기 없음)
 import { CONFIG } from '../data/config';
 import { REGIONS } from '../data/items';
-import { closeCombat, showCombatResult, startCombat } from '../combat/ui';
+import { closeCombat, showCombatResult, startCombat, type CombatResult } from '../combat/ui';
 import { abyssOpen, abyssRec, checkpoints, clearFloor, contCost, dropContinue, enterFloor, floorRec, floorStage, isBossFloor, isRestFloor, loseFloor, payContinue, pickBoss, resumeFloor, resumeOn, startAt, type FloorReward } from '../world/abyss';
 import { markAdventured } from '../world/actors';
 import { powerOf } from '../world/adventurers';
@@ -11,10 +11,11 @@ import { huntPartyMax } from '../world/party4';
 import { markDirty, P, S, type Actor } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
 import { $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
+import { cardsOn, dropsHtml, mvpHtml, starsHtml } from './checkin';
 import { recButton } from './partyUi';
 import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
 import { partyBlock, partyNote, partyPool, recommendFor, rulesV2 } from '../world/partyRules';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { talk } from './dialogue';
 import { dropFanfare } from './fanfare';
 import { closeWin, openWin, toast } from './windows';
@@ -136,7 +137,7 @@ export function openAbyss() {
   if (ar)
     ar.onclick = () => {
       const best = recommendFor('abyss', { power: rec1, region: 'deep', min: 1, max: huntPartyMax() }, crew);
-      if (!best) return toast('데려갈 단골이 없어요');
+      if (!best) return toast(fsay('데려갈 단골이 없어요', '함께 보내드릴 단골이 없어요'));
       picked = best.members.sort((x, y) => powerOf(y) - powerOf(x)).map((m) => m.id);
       manual = true;
       abWhy = best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(rec1)}`;
@@ -188,7 +189,7 @@ function doContinue(ms: Actor[]) {
 export function climb(f: number, ms: Actor[]) {
   clearTimeout(timer);
   const live = ms.filter((m) => huntCrew().includes(m));
-  if (!live.length) return toast('데려갈 단골이 없어요');
+  if (!live.length) return toast(fsay('데려갈 단골이 없어요', '함께 보내드릴 단골이 없어요'));
   enterFloor(f);
   const boss = isBossFloor(f) ? pickBoss() : null;
   if (f === 1) trackEv('abyss_start', { power: Math.round(partyPower(live)) });
@@ -203,7 +204,7 @@ export function climb(f: number, ms: Actor[]) {
       if (res.win) {
         const out = clearFloor(f, boss?.region ?? null);
         out.items.push(...res.items);
-        showCombatResult(winHtml(out, res.autoUsed), (card) => bindWin(card, f, live, res.autoUsed));
+        showCombatResult(winHtml(out, res.autoUsed, res, live), (card) => bindWin(card, f, live, res.autoUsed));
         dropFanfare(out.items);
       } else if (res.quit && resumeOn()) {
         // v0.24.5: ✕로 나왔다 = 진 게 아님 → 그 층부터 무료로 이어가기 (cur 그대로)
@@ -221,7 +222,9 @@ export function climb(f: number, ms: Actor[]) {
   );
 }
 
-function winHtml(o: FloorReward, auto: boolean): string {
+function winHtml(o: FloorReward, auto: boolean, res?: CombatResult, ms: Actor[] = []): string {
+  // CHECKIN §J3 (uiCards): 별 1~3 · MVP 초상 + 한 마디 · 드랍 칸 (버튼 [계속 오르기 · 다음 층]은 그대로)
+  const cards = cardsOn() && !!res;
   const loot = [
     `잿빛 가루 +${o.dustN}`,
     `희귀 가루 +${o.dustR}`,
@@ -229,12 +232,13 @@ function winHtml(o: FloorReward, auto: boolean): string {
     `${esc(deepMat())} ×${o.mats}`,
     o.bossMats ? `<span class="g">${esc(o.bossMat)} ×${o.bossMats}</span>` : '',
   ].filter(Boolean);
-  const items = o.items.map((it) => itemCell(it)).join('');
+  const items = cards ? '' : o.items.map((it) => itemCell(it)).join('');
   const next = o.floor + 1;
   return `<h2>끝없는 심연 ${o.floor}층 돌파!</h2>
     ${o.record ? '<p class="cen good">새 기록!</p>' : ''}${o.bragged ? `<p class="cen g">[알림] ${o.bragged}층 자랑을 했어요</p>` : ''}
+    ${cards ? `${starsHtml(res!, CONFIG.combat.timeLimit)}${mvpHtml(ms.find((a) => a.id === res!.mvp))}` : ''}
     ${o.rest ? `<p class="cen good">쉼터 — 예배당 축복 +${C().restMin}분</p>` : ''}
-    <div class="loot">${loot.map((x) => (x.startsWith('<') ? x : `<span>${x}</span>`)).join('')}</div>${items ? `<div class="loot">${items}</div>` : ''}
+    <div class="loot">${loot.map((x) => (x.startsWith('<') ? x : `<span>${x}</span>`)).join('')}</div>${items ? `<div class="loot">${items}</div>` : ''}${cards ? dropsHtml(o.items) : ''}
     <p class="note cen">다음 ${next}층${isBossFloor(next) ? ' · 보스' : isRestFloor(next) ? ' · 쉼터' : ''} · 추천 ${fmt(floorRec(next))}</p>
     ${auto && autoClimb ? `<p class="cen abcount" id="abCount">${C().autoNextSec}초 뒤 계속 올라요</p>` : ''}
     <div class="go"><button class="a" id="abNext">계속 오르기 · ${next}층</button><button class="b" id="abHome">그만 · 마을로</button></div>

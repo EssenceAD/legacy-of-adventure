@@ -8,7 +8,7 @@ import { idleFor } from '../engine/fps';
 import { getPref, setPref } from '../save/save';
 import { claimAllMail, mailWaiting } from '../world/meta';
 import { P, S, world } from '../world/state';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 import { $, esc, fmt } from './common';
 import { closeWin, openWin, toast } from './windows';
@@ -180,7 +180,10 @@ function showSummary(s: ReturnType<typeof ssStats>) {
     <button class="bigbtn" id="ssOk">${mail ? '모두 받기' : '확인'}</button>`,
   );
   $('#ssOk').onclick = () => {
-    if (mail) toast(`${claimAllMail()}통을 받았어요`);
+    if (mail) {
+      const n = claimAllMail();
+      toast(fsay(`${n}통을 받았어요`, `편지 ${n}통 다 챙겨 드렸어요`));
+    }
     closeWin();
   };
 }
