@@ -2353,3 +2353,6 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 .hcd-me{position:absolute;right:4px;bottom:4px;z-index:3}
 /* 컷신·대사 중엔 마을 말풍선(손님 · 건물 안 대사) · 떠다니는 글씨(케미 +1 등) · 「!」 숨김 — 대사가 끝나면 다시 보임 (건물 상태 말풍선은 bldStatus.sceneTalking) */
 .talking #over .bub,.talking #over .flt,.talking #over .wfbub{visibility:hidden}
+/* 다섯 별 장부 장 제목은 한 줄 (머리 한 줄은 아래로) · 아주 좁으면 글자만 한 단계 작게 */
+.qhd.five{flex-wrap:wrap;gap:2px 8px}.qhd.five>b{white-space:nowrap}
+@media (max-width:340px){.qhd.five>b{font-size:var(--f-small)}}

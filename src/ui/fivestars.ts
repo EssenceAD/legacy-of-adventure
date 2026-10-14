@@ -80,10 +80,10 @@ export function fiveLedgerHtml(): string {
       const r = STAR_LINES[c.id].request;
       const prog = c.goals.map((g) => `${g.cur}/${g.need}`).join(' · ');
       // 칸을 누르면 그 개척자의 부탁 대사 (request.lines) 다시 듣기
-      return `<div class="mrow ${c.joined ? 'done' : ''}" data-five="${c.id}" role="button"><span>${c.joined ? '✦' : '·'}</span><b>${i + 1}. ${esc(c.name)}<small class="note"> ${esc(r.text)}${c.joined ? '' : ` — ${c.goals.map((g) => esc(g.label)).join(' + ')}`}</small></b><em>${c.joined ? '합류' : prog}</em></div>`;
+      return `<div class="mrow ${c.joined ? 'done' : ''}" data-five="${c.id}" role="button"><span>${c.joined ? '✦' : '·'}</span><b>${i + 1}. ${esc(c.name)}<small class="note"> ${esc(r.text)}</small></b><em>${c.joined ? '합류' : prog}</em></div>`;
     })
     .join('');
-  return `<div class="qhd"><b class="g">3막 「${esc(FIVE_CHAPTER.name)}」</b><span class="note">${esc(FIVE_CHAPTER.intro)}</span></div><div class="mlist">${rows}</div>`;
+  return `<div class="qhd five"><b class="g">3막 「${esc(FIVE_CHAPTER.name)}」</b><span class="note">${esc(FIVE_CHAPTER.intro)}</span></div><div class="mlist">${rows}</div>`;
 }
 /** 장부 칸 누르기 (menu.ts가 장부를 그린 뒤) */
 export function bindFiveLedger(root: ParentNode = document) {
