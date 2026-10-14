@@ -229,7 +229,10 @@ if (BEFORE) {
 }
 
 // ───────── 끔 = 예전 그대로 ─────────
-{
+// v0.25.10부터 flags.json에서 welcomeBack·redDots·resendRun·bulkTidy 등을 켬 → 그 빌드에선 「끔」 검사를 건너뛴다
+const C2ON = await (async () => { const c = await b.newContext(); try { const j = await (await c.request.get(URL + 'flags.json?x=' + Date.now())).json(); return ['welcomeBack', 'redDots', 'resendRun', 'bulkTidy'].some((k) => j[k] === true); } catch { return false; } finally { await c.close(); } })();
+if (C2ON) console.error('· 끔 검사 건너뜀 (flags.json에서 켬)');
+else {
   const { p, ctx } = await open(URL, false);
   await p.evaluate(() => window.__offline(8 * 86400));
   await W(p, 800);
