@@ -261,6 +261,7 @@ export function fiveTick(): FiveEvent | null {
   if (!f.open) {
     if (!fiveLetterDue()) return null;
     f.open = true;
+    f.chSeen = 0;
     base();
     track('five_open', { day: S.day });
     markDirty();
@@ -396,4 +397,24 @@ export function fiveLedger(): FiveCell[] | null {
   const f = fiveState();
   if (!f.open) return null;
   return STAR_IDS.map((id) => ({ id, name: STARS[id].name, goals: starGoals(id), done: f.done.includes(id), joined: f.joined.includes(id) }));
+}
+
+// ───────── 새 장 알림 (빨간 점 · 「새 장이 열렸어요」 1번 · 장부를 열면 3막으로) ─────────
+
+/** 장이 열렸는데 장부에서 아직 못 봤나 (빨간 점 · 장부 열면 3막으로 스크롤) */
+export const fiveChapterNew = (): boolean => fiveOn() && !!P.five?.open && fiveState().chSeen < 2;
+/** 「새 장이 열렸어요」 알림을 지금 띄울 차례면 true + 표시 (1번만) */
+export function fiveNoticeTake(): boolean {
+  if (!fiveOn() || !P.five?.open || S.visiting || world.home) return false;
+  const f = fiveState();
+  if (f.chSeen > 0) return false;
+  f.chSeen = 1;
+  markDirty();
+  return true;
+}
+/** 장부에서 3막을 봤다 (점 끔) */
+export function fiveChapterViewed() {
+  if (!fiveChapterNew()) return;
+  fiveState().chSeen = 2;
+  markDirty();
 }

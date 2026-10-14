@@ -18,6 +18,8 @@ export interface DotInput {
   unseenDeco: number;
   /** LUXE §4 방명록: 확인 안 한 새 좋아요 (guestbook 끔이면 0) */
   gbNew?: number;
+  /** 다섯 별: 장부 3막 「다섯 별의 원정대」가 열렸는데 아직 못 봄 (fiveStars 끔이면 0) */
+  fiveNew?: number;
 }
 /** 버튼마다 점 하나 켤지 */
 export interface DotPlan {
@@ -37,10 +39,10 @@ export interface DotPlan {
 export function dotPlan(i: DotInput): DotPlan {
   return {
     exp: i.runsDone > 0,
-    menu: i.mailUnread > 0 || i.achReady > 0 || i.smithReady || i.ripe > 0 || (i.gbNew ?? 0) > 0,
+    menu: i.mailUnread > 0 || i.achReady > 0 || i.smithReady || i.ripe > 0 || (i.gbNew ?? 0) > 0 || (i.fiveNew ?? 0) > 0,
     build: i.unseenDeco > 0,
     mission: i.missionReady,
-    tiles: { mail: i.mailUnread > 0, exp: i.runsDone > 0, smith: i.smithReady, garden: i.ripe > 0, quest: i.missionReady, ach: i.achReady > 0, goals: i.goalsReady, neighbor: (i.gbNew ?? 0) > 0 },
+    tiles: { mail: i.mailUnread > 0, exp: i.runsDone > 0, smith: i.smithReady, garden: i.ripe > 0, quest: i.missionReady || (i.fiveNew ?? 0) > 0, ach: i.achReady > 0, goals: i.goalsReady, neighbor: (i.gbNew ?? 0) > 0 },
     village: (i.gbNew ?? 0) > 0,
   };
 }

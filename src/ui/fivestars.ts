@@ -13,7 +13,7 @@ import { myPioneer } from '../net/server';
 import { arrive } from '../world/actors';
 import { decorView } from '../world/decor';
 import { say } from '../world/fx';
-import { constellationOn, fiveHeart, fiveHooks, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
+import { constellationOn, fiveChapterNew, fiveChapterViewed, fiveHeart, fiveHooks, fiveNoticeTake, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
 import { S, world, type Actor } from '../world/state';
 import { entrance } from '../world/town';
 import { esc } from './common';
@@ -84,6 +84,20 @@ export function fiveLedgerHtml(): string {
     })
     .join('');
   return `<div class="qhd five"><b class="g">3막 「${esc(FIVE_CHAPTER.name)}」</b><span class="note">${esc(FIVE_CHAPTER.intro)}</span></div><div class="mlist">${rows}</div>`;
+}
+/** 새 장을 아직 못 봤으면: 장부를 연 뒤 3막 머리(.qhd.five)로 스크롤 + 점 끔 (menu.ts openGuideList) */
+export function focusFiveLedger(root: ParentNode = document) {
+  if (!fiveChapterNew()) return;
+  const hd = root.querySelector<HTMLElement>('.qhd.five');
+  if (!hd) return;
+  const b = hd.closest<HTMLElement>('#winB');
+  if (b) b.scrollTop += hd.getBoundingClientRect().top - b.getBoundingClientRect().top - 4;
+  else hd.scrollIntoView({ block: 'start' });
+  fiveChapterViewed();
+}
+/** 「새 장이 열렸어요」 1번 (편지 뒤 · 옛 저장은 처음 한가할 때) */
+function fiveNotice() {
+  if (S.started && fiveNoticeTake()) toastHtml(`<span>📖 새 장이 열렸어요 · 장부 3막 「<b class="g">${esc(FIVE_CHAPTER.name)}</b>」</span>`, 6000);
 }
 /** 장부 칸 누르기 (menu.ts가 장부를 그린 뒤) */
 export function bindFiveLedger(root: ParentNode = document) {
@@ -156,9 +170,9 @@ export function initFiveStars() {
     syncSky();
     if (document.hidden || storyBusy() || decorView.on || document.getElementById('fiveCut')) return;
     const ev = fiveTick();
-    if (!ev) return;
+    if (!ev) return fiveNotice();
     portraitFallbacks();
-    if (ev.kind === 'letter') playStory(FIVE_LETTER, () => toastHtml(`<span>📖 장부에 3막 「<b class="g">${esc(FIVE_CHAPTER.name)}</b>」이 열렸어요</span>`, 5000));
+    if (ev.kind === 'letter') playStory(FIVE_LETTER, fiveNotice);
     else if (ev.kind === 'join') playJoin(ev.id, ev.actor);
     else playStory(FIVE_FINALE, () => toastHtml(`<span>✦ 별지기의 열쇠 조각 「<b class="g">${esc(FIVE_SHARD)}</b>」 · 장식 「다섯 별 깃발」(보관함) · 칭호 「<b class="g">${esc(FIVE_TITLE)}</b>」</span>`, 7000));
   }, 1000);

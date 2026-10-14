@@ -6,6 +6,7 @@ import { achReady } from '../world/meta';
 import { unseenDrops } from '../world/decodrop';
 import { dotPlan, mailUnread, ripe, runsDone, smithReady, type DotPlan } from '../world/redDots';
 import { P as PG, S } from '../world/state';
+import { fiveChapterNew } from '../world/fivestars';
 import { vis } from '../world/visual';
 import { gbHasNew } from './guestbook';
 
@@ -30,6 +31,7 @@ export function planNow(): DotPlan {
     goalsReady: live && goalsReady(),
     unseenDeco: live ? unseenDrops().length : 0,
     gbNew: live && gbHasNew() ? 1 : 0,
+    fiveNew: live && fiveChapterNew() ? 1 : 0,
   });
 }
 
