@@ -8,6 +8,7 @@ import * as game from '../game';
 import { makeAdventurer } from '../world/adventurers';
 import { goTo, proposeTalk } from '../world/actors';
 import { floatW, say } from '../world/fx';
+import { PRI } from '../world/quiet';
 import { currentMission, guideHooks } from '../world/guide';
 import { addMail } from '../world/meta';
 import { today } from '../world/progress';
@@ -44,7 +45,7 @@ export function startFirstGuest() {
     goTo(a, dx + 1, dy + 1, () => {
       a.st = 'idle';
       a.t = 1e9;
-      say(a, '방 있나요?', 99);
+      say(a, '방 있나요?', 99, '', PRI.guide);
     });
     // 대상이 화면 밖이면 카메라를 옮겨 준다
     game.focusTile(dx + 0.5, dy + 1);
@@ -60,7 +61,7 @@ export function tapFirstGuest(a: Actor): boolean {
   P.counters.checkins = (P.counters.checkins ?? 0) + 1;
   floatW(a.x, a.y, 40, `체크인! +${OB().checkinGold}G`, 'big');
   sfx('coin');
-  say(a, '잘 부탁해요!', 2);
+  say(a, '잘 부탁해요!', 2, '', PRI.guide);
   funnel('first_guest');
   markDirty();
   hideHand();
@@ -78,7 +79,7 @@ function syncHand() {
   // 「방 있나요?」 말풍선은 체크인할 때까지 다시
   if (!guest!.bub && performance.now() - lastAsk > 4000) {
     lastAsk = performance.now();
-    say(guest!, '방 있나요?', 1);
+    say(guest!, '방 있나요?', 1, '', PRI.guide);
   }
   if (!hand) {
     hand = document.createElement('img');

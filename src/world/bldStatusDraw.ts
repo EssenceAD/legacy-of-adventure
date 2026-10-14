@@ -8,6 +8,7 @@ import { scr, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { av } from '../engine/ver';
 import { bubblesHidden, collectCands, dismissBubble, selectBubbles, type BldCand, type BldIcon } from './bldStatus';
+import { qb, quietOn } from './quiet';
 import { decorView } from './decor';
 import { S, type Actor, type Building } from './state';
 import { placing } from './town';
@@ -63,7 +64,8 @@ function refresh(now: number) {
   at = now;
   const t0 = performance.now();
   try {
-    shown = selectBubbles(collectCands());
+    // FIRSTLOOK §2-1 화면 조용히: 건물 상태는 한 번에 1개 (원래 3)
+    shown = selectBubbles(collectCands(), quietOn() ? CONFIG.firstLook.quiet.bldMax : CONFIG.bldStatus.max);
   } catch {
     shown = [];
   }
@@ -135,7 +137,8 @@ const active = () => !bubblesHidden() && !decorView.on && !placing.pl && !docume
 export const hasBubble = (o: Building) => active() && spots.some((s) => s.c.o === o);
 
 export function drawBldStatus(ctx: CanvasRenderingContext2D, nt: number) {
-  if (!active()) {
+  // FIRSTLOOK §2-1 화면 조용히: 건물 상태는 꼴찌 — 다른 말풍선이 떠 있거나 기다리거나 간격(2.5초) 안이면 쉰다
+  if (!active() || (quietOn() && !qb.idle(performance.now()))) {
     spots = [];
     return;
   }

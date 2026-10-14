@@ -13,6 +13,7 @@ import { myPioneer } from '../net/server';
 import { arrive } from '../world/actors';
 import { decorView } from '../world/decor';
 import { say } from '../world/fx';
+import { PRI } from '../world/quiet';
 import { constellationOn, fiveHeart, fiveHooks, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
 import { S, world, type Actor } from '../world/state';
 import { entrance } from '../world/town';
@@ -147,7 +148,7 @@ export function initFiveStars() {
     });
   fiveHooks.entrance = () => entrance();
   fiveHooks.place = (a) => void arrive(a);
-  fiveHooks.say = (a, s) => say(a, s);
+  fiveHooks.say = (a, s) => say(a, s, 1, '', PRI.story);
   fiveHooks.setLine = (s) => toastHtml(`<span>✦ ${esc(s)}</span>`, 5000);
   void myPioneer().then(setSelfStar);
   setInterval(() => {

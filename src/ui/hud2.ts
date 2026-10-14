@@ -122,6 +122,12 @@ let shownKey = '';
 let flipAt = 0;
 let cur: News | null = null;
 const ROTATE_MS = 4000;
+/** FIRSTLOOK §2-2: 이 소식(key)을 지금 띠에 (다음 번갈아 시각까지 그대로) — 목표 알약 깜빡 대신 */
+export function bandFocus(key: string) {
+  shownKey = key;
+  flipAt = performance.now() + ROTATE_MS;
+  drawBand(performance.now());
+}
 
 function drawBand(now: number) {
   if (!band) return;

@@ -19,6 +19,7 @@ import { openVillage } from './neighbors';
 import { enterPhoto } from './photo';
 import { isWinOpen, openBuild, openWin, showObj, toast } from './windows';
 import { fsay } from '../world/visual';
+import { PRI, qb, quietOn } from '../world/quiet';
 
 export const wfBubblesOn = () => !getPref<boolean>('wfBubOff', false);
 export const setWfBubbles = (on: boolean) => {
@@ -49,10 +50,19 @@ let bub: WfBub | null = null;
 function dropBubble() {
   bub?.remove();
   bub = null;
+  // FIRSTLOOK §2-1: 「!」가 잡고 있던 말풍선 자리를 놓는다
+  qb.release('wf', performance.now());
 }
 function showBubble(f: FirstDef, a: Actor) {
+  // FIRSTLOOK §2-1 화면 조용히: 「!」(안내)도 말풍선 자리 하나를 잡아야 뜬다 — 다른 말풍선이 떠 있으면 끝나고 간격 뒤에 (가장 먼저)
+  if (quietOn() && !qb.wantHold('wf', PRI.guide, performance.now())) {
+    bub?.remove();
+    bub = null;
+    return;
+  }
   if (bub && bub._id === f.id && bub._a === a && bub.isConnected) return;
-  dropBubble();
+  bub?.remove();
+  bub = null;
   const over = document.getElementById('over');
   if (!over) return;
   const b = document.createElement('button') as WfBub;
@@ -182,6 +192,8 @@ export function tickWayfind() {
   checkFirsts();
   if (busy()) {
     if (bub && document.body.classList.contains('photo')) dropBubble();
+    // 창·대화 동안 숨어 있는 「!」는 자리를 그대로 잡고 있는다 (닫으면 그대로 보이게)
+    else if (bub && quietOn()) qb.wantHold('wf', PRI.guide, performance.now());
     return;
   }
   if (wfState().pend.length && deliverReact()) return dropBubble();

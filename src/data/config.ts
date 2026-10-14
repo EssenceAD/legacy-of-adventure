@@ -1296,6 +1296,30 @@ export const CONFIG = {
   /** CHECKIN §J8 건물 말풍선(플래그 bldStatus): 한 번에 최대 수 · 상태 다시 보기 간격(ms) · 위아래 1px 살랑 주기(초) · 글 한 줄이 붙는 화면 배율(CSS px / 도트) · 누르는 칸 최소(CSS px) */
   bldStatus: { max: 3, everyMs: 500, bobSec: 2.5, textZoom: 2, hitCss: 44 },
   /**
+   * FIRSTLOOK 첫인상 패스 — 숫자는 여기 한 곳 (섹션마다 플래그 하나)
+   *  §2 화면 조용히 (플래그 flQuiet · 설정 「화면 조용히」 · world/quiet.ts):
+   *   bubbleGapMs = 마을 말풍선 사이 최소 간격 · bubbleStaleMs = 줄 서서 이만큼 못 뜬 대사는 버림 · bubbleQueueMax = 줄 길이 ·
+   *   bldMax = 건물 상태 말풍선 최대(원래 bldStatus.max) · goalBlinkMs = 목표 알약 깜빡 · goalTagMs = 「받기!」 꼬리표 최대 ·
+   *   tagTapSec = 사람을 누르면 이름표 · tagZoom = 단골 이상 이름표가 연하게 보이는 배율 · tagAlpha = 그 투명도 ·
+   *   floatMs = 떠다니는 글씨 시간 · floatMergeMs = 이 시간 안에 같은 자리면 합침 · bandHideMs = 마을을 연 뒤 아래 소문·채팅 띠 숨김
+   */
+  firstLook: {
+    quiet: {
+      bubbleGapMs: 2500,
+      bubbleStaleMs: 9000,
+      bubbleQueueMax: 6,
+      bldMax: 1,
+      goalBlinkMs: 1200,
+      goalTagMs: 12000,
+      tagTapSec: 3,
+      tagZoom: 3,
+      tagAlpha: 0.6,
+      floatMs: 900,
+      floatMergeMs: 900,
+      bandHideMs: 10000,
+    },
+  },
+  /**
    * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식
    *  부탁 숫자는 reports/fivestars/pace.md (라이트 유저 하루 10분 · 3막 진입 뒤 현실 3일 안) 기준
    *  woongs: +enh 이상 장비 items개를 낀 파티로 토벌 보스 kills번 · gonu: 구경거리 사건 events번 + 숨은 어울림 hidden개 새로

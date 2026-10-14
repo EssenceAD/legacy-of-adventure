@@ -12,6 +12,7 @@ import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './stat
 import { heroFirst } from './wind';
 import { fsay } from './visual';
 import { dbCount } from './hvLite';
+import { quietHooks, quietOn } from './quiet';
 
 // ───────── 평판 ★ ─────────
 
@@ -156,7 +157,9 @@ export function track(event: GoalEvent, n = 1) {
     const t = GOAL_TEMPLATES.find((x) => x.id === g.id);
     if (!t || t.event !== event || g.progress >= g.target) continue;
     g.progress = Math.min(g.target, g.progress + n);
-    if (g.progress >= g.target) uiHooks.toast(`오늘의 목표 달성! 「${t.text(g.target)}」 · 메뉴 → 오늘의 목표에서 ${fsay('받아요', '챙겨 가세요')}`);
+    // FIRSTLOOK §2-2 화면 조용히: 가운데 안내 상자 대신 목표 알약 깜빡 + 「받기!」
+    if (g.progress >= g.target && quietOn()) quietHooks.goalNudge();
+    else if (g.progress >= g.target) uiHooks.toast(`오늘의 목표 달성! 「${t.text(g.target)}」 · 메뉴 → 오늘의 목표에서 ${fsay('받아요', '챙겨 가세요')}`);
   }
 }
 
