@@ -1,4 +1,5 @@
 // STORY_V1 화면: 막 컷(연출 fx) + 배너 · 3막 모모 편지 → 갈림길 고르기 · 은퇴 목표(장부 「갈림길」) · 유안 · 엔딩 컷 → 엔딩 카드 · 새 여관 열기 · 앨범 「이야기」·「기억」
+import { flag } from '../world/flags';
 import { CONFIG } from '../data/config';
 import { diaryTick } from '../world/diary';
 import { mythicEndLines, mythicTick } from '../world/mythic';
@@ -19,7 +20,7 @@ import { blankActor } from '../world/adventurers';
 import { tour } from '../world/evalTour';
 import { markDirty, P, S, world } from '../world/state';
 import {
-  actUp, cycleLines, fill, finishStory, nextAct, openingCycle, pickRoute, rethink, retireGoals, routeChoices, storyEndCount, storyHooks, storyLines, storyTick, storyWaitDay,
+  actUp, cycleLines, fill, finishStory, nextAct, openingCycle, pickRoute, rethink, retireGoals, routeChoices, storyEndCount, storyHooks, storyLines, storyTick, storyWaitDay, storyWaitText as storyWaitWhen,
 } from '../world/story';
 import { doorOf, findKind, placing } from '../world/town';
 import { onNightFlip } from '../world/clock';
@@ -312,6 +313,7 @@ export function storyCard(): { label: string; title: string; em: string; done: b
 /** 장부 카드 작은 글씨 뒤: 「🌙 ○일차에 다음 이야기」 */
 export function storyWaitNote(): string {
   const d = storyWaitDay();
+  if (d && flag('storyClock')) return ` · 🌙 다음 이야기 ${storyWaitWhen()}`;
   return d ? ` · 🌙 ${d}일차에 다음 이야기` : '';
 }
 

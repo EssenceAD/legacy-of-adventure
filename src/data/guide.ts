@@ -156,7 +156,7 @@ export const CHAPTERS: Chapter[] = [
       { id: 'c7_star4', title: '평판 ★4 달성', check: (c) => n(c.rep, c.repFor(4)), place: 'goals', reward: { gold: 600 }, line: '별 넷이면 전설의 문턱이지.' },
       { id: 'c7_land5', title: '땅 5단계로 넓히기', check: (c) => n(c.land, 5), place: 'land', reward: { gold: 600 }, line: '여기까지 넓힌 사람은 자네가 처음일세.' },
       { id: 'c7_bath', title: '온천 짓기', check: (c) => b(c.has('bath')), build: 'bath', place: 'build', reward: { gold: 500 }, line: '따뜻한 물에 몸을 담그면 늙은이 허리도 낫겠군.' },
-      { id: 'c7_kill', title: '주간 보스 처치하기', check: (c) => n(c.raidKills, 1), place: 'raid', reward: { gold: 800, tokens: 2 }, line: '숲의 왕을 쓰러뜨렸다고?! 이 장부, 이제 자네 것이야.' },
+      { id: 'c7_kill', title: '토벌 보스 처치하기', check: (c) => n(c.raidKills, 1), place: 'raid', reward: { gold: 800, tokens: 2 }, line: '숲의 왕을 쓰러뜨렸다고?! 이 장부, 이제 자네 것이야.' },
       { id: 'c7_heroes', title: '영웅 3명 모으기', check: (c) => n(c.heroes, 3), place: 'dex', reward: { gold: 800, dust: 150 }, line: '…이제 내가 가르칠 건 없네. 자네의 여관을, 자네의 이야기로 채우게.' },
     ],
   },

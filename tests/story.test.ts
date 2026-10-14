@@ -5,6 +5,7 @@ import { MISSIONS } from '../src/data/guide';
 import { MEMORIES, OPENING_CYCLE } from '../src/data/story/v1';
 import { endingById } from '../src/data/endings';
 import { resetProgress, P, S } from '../src/world/state';
+import { setFlag } from '../src/world/flags';
 import {
   actNeeds, actUp, cond, cycleLines, finishStory, grantLegacy, initStory, nextAct, openingCycle, pickRoute, rethink, retireGoals, retireReady, routeChoices, startCycle, storyDay, storyLines, storyWaitDay,
 } from '../src/world/story';
@@ -100,8 +101,12 @@ describe('갈림길 · 조용한 은퇴', () => {
   it('목표: 운영 일수(남은 날로) · 기분 최고인 날 · 수확 100 → 다 차면 유안', () => {
     pickRoute('retire');
     S.day = 20;
+    // PACE §3-1: 이야기 시계를 켜면 3막에 들어선 날이 「40일째」라 남은 날은 60 − 40 (끄면 예전 — 게임 일수만)
+    setFlag('storyClock', false);
     const g = retireGoals();
     expect(g[0].text).toContain(`${A.retireDays - 20}일 남음`);
+    setFlag('storyClock', true);
+    expect(retireGoals()[0].text).toContain(`${A.retireDays - A.act3.day}일 남음`);
     expect(retireReady()).toBe(false);
     S.day = A.retireDays;
     P.story.goodDays = A.retireGoodDays;

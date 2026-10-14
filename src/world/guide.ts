@@ -12,6 +12,8 @@ import { HARMONIES } from '../data/harmony';
 export let evalScoreHook = () => 0;
 export const setEvalScoreHook = (f: () => number) => (evalScoreHook = f);
 import { markDirty, P, S, uiHooks, world, type TalkLine } from './state';
+import { flag } from './flags';
+import { evalBestScore } from './paceGates';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -41,7 +43,8 @@ export function guideCtx(): GuideCtx {
     enhanceMax: C.enhanceMax,
     crafted: Object.values(C.crafted).reduce((s, v) => s + v, 0),
     raidTries: P.raid.personalBest > 0 || P.raid.tries > 0 || Object.keys(P.raid.kills).length ? 1 : 0,
-    raidKills: P.raid.weeksKilled,
+    // PACE §1-3: 떠돌이 보스 처치도 「토벌 보스 처치하기」로 (raidPace)
+    raidKills: P.raid.weeksKilled + (flag('raidPace') ? P.raid.wanderKills ?? 0 : 0),
     heroes: HEROES.filter((h) => P.dex.heroes[h.id]?.recruited).length + LEGENDS.filter((l) => P.legends[l.key]?.st === 'joined').length,
     chem: P.dex.chem.length,
     rumors: Object.keys(P.legends).length,
@@ -50,7 +53,8 @@ export function guideCtx(): GuideCtx {
     itemDex: P.dex.items.length,
     harmonies: P.harmony.found.length,
     hiddenHarmonies: P.harmony.found.filter((id) => !HARMONIES.find((h) => h.id === id)?.open).length,
-    evalScore: Math.max(evalScoreHook(), P.evaluation.best >= 3 ? 800 : P.evaluation.best >= 1 ? 300 : 0),
+    // PACE R17: 이번 주 점수 대신 「지금까지 최고 점수」로도 (paceGates)
+    evalScore: Math.max(evalBestScore(evalScoreHook()), P.evaluation.best >= 3 ? 800 : P.evaluation.best >= 1 ? 300 : 0),
   };
 }
 

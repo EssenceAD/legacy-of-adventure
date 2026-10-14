@@ -407,6 +407,15 @@ export function freshProgress() {
       prevWeek: '',
       rankChecked: '',
       rank1Week: '',
+      /**
+       * PACE §1 raidPace (옛 저장엔 없음 → world/raid.ts가 기본값으로 읽는다): 이번 주 몇 번째 보스(1부터) · 이번 주 잡은 보스
+       *  · 주 후반 약해짐 단계(0~2) · 「보스가 지쳐 보여요」 알렸나 · 떠돌이 보스 처치 수 (장부 「토벌 보스 처치하기」)
+       */
+      chainN: 1 as number | undefined,
+      chainKilled: [] as string[] | undefined,
+      weak: 0 as number | undefined,
+      tiredSaid: false as boolean | undefined,
+      wanderKills: 0 as number | undefined,
     },
     /** 보스 전용 재료 */
     bossMats: {} as Record<string, number>,
@@ -569,6 +578,8 @@ export function freshProgress() {
       base: {} as Record<string, number>,
       flags: {} as Record<string, number>,
       mythic: {} as Record<string, { prog?: number; done?: boolean; met?: boolean; heart?: boolean }>,
+      /** PACE §3-1 storyClock: 그 막에 들어간 현실 시각(ms) — 막 번호 → 시각 · 옛 저장은 backfillActAt가 한 번 추정 */
+      actAt: {} as Record<string, number> | undefined,
       /** DIRECTION §1-2: 이번 회차의 바람 ('' = 없음 · 1회차) */
       wind: '',
     },
@@ -626,6 +637,25 @@ export function freshProgress() {
     daybook: freshDaybook(),
     /** CHECKIN §D2 여관 연감 (world/almanac.ts) */
     almanac: freshAlmanac(),
+    /** PACE R17: 천장·대안 카운터 (world/paceGates.ts pg()가 빈 칸을 채운다) */
+    pg: freshPaceGates(),
+  };
+}
+
+/** PACE R17: 천장·대안 카운터 — 현실 하루 기분(은퇴 95↑ · 아리아 90↑) · 판정 실패 밤 · 원정 판 수(증표) · 바엘 2시간 성공 · 지역별 원정 승리(떠돌이) · 지역별 x-10 처치(고유) · 평가 최고 점수 · 순위 확인 못 한 주 */
+export function freshPaceGates() {
+  return {
+    goodReal: 0,
+    goodDay: '',
+    topReal: 0,
+    topDay: '',
+    judgeFail: {} as Record<string, number>,
+    tokenRuns: 0,
+    bael2h: 0,
+    wanderWins: {} as Record<string, number>,
+    huntBoss: {} as Record<string, number>,
+    evalBest: 0,
+    rankPending: [] as string[],
   };
 }
 
@@ -808,6 +838,8 @@ export interface TieState {
   /** 본 단계 (1 = 낯섦). 수치가 다음 단계에 닿으면 이벤트를 보고 오른다 */
   stage: number;
   talkDay: string;
+  /** PACE R17: 오늘 말 건 횟수 (옛 저장엔 없음 = 1) */
+  talkN?: number;
   giftDay: string;
   /** 알아낸 취향 */
   knowLike: boolean;

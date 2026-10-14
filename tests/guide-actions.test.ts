@@ -50,7 +50,7 @@ const TABLE: Record<string, Row> = {
   c4_wins: { act: () => void (C().regionWins = { forest: 10, swamp: 0, mine: 0, ice: 0, abyss: 0 } as never), sites: [['src/world/expeditions.ts', /regionWins\[/]] },
   c4_hunt2: { act: huntBest('swamp', 1) },
   c4_eval: { act: () => void (P.evaluation.best = 1) },
-  c5_raid: { act: () => void (P.raid.tries = 1), sites: [['src/world/raid.ts', /P\.raid\.tries = Math\.min\(R\.triesPerDay, P\.raid\.tries \+ 1\)/]] },
+  c5_raid: { act: () => void (P.raid.tries = 1), sites: [['src/world/raid.ts', /P\.raid\.tries = Math\.min\(triesMax\(\), P\.raid\.tries \+ 1\)/]] },
   c5_swamp: { act: huntBest('swamp', 5) },
   c5_hero: { act: () => void (P.dex.heroes.kael = { recruited: true } as never) },
   c5_reglv: { act: () => void world.actors.push({ id: 77, status: 'regular', lvl: 10 } as never) },

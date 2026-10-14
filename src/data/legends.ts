@@ -15,6 +15,9 @@ export interface LegendCtx {
   enhanceMax: number;
   forestSends: number;
   moodTopDays: number;
+  /** PACE R17: 아리아 소문 「기분 최고」 일수 (30 · paceGates면 10) · 주간 보스를 잡은 주 (진 대안 · 끄면 0) */
+  ariaMoodDays: number;
+  bossWeeks: number;
   goldTotal: number;
   itemDexRatio: number;
   relicEver: boolean;
@@ -128,7 +131,7 @@ export const LEGENDS: LegendDef[] = [
   {
     key: 'aria', name: '아리아', title: '성녀', charm: '금발 화관의 온화한 성녀', kind: 'cleric', race: 'human', hair: '#f6e0a0',
     hint: '손님들이 오래 웃는 온천 마을에 성녀가 머문대', rumor: '한 달 내내 손님이 웃는 온천 마을에 화관 쓴 성녀가 온대…',
-    rumorWhen: (c) => c.bathLvl >= c.need(5) && c.moodTopDays >= c.need(30), rumorText: '온천 Lv5 + 손님 기분 최고 누적 30일',
+    rumorWhen: (c) => c.bathLvl >= c.need(5) && c.moodTopDays >= c.need(c.ariaMoodDays), rumorText: '온천 Lv5 + 손님 기분 최고 누적 10일 (현실 하루에 한 번이라도 최고면 그날도)',
     bond: ['bathUse'], bondText: '온천 이용 손님 수',
     request: { text: '모험에서 지쳐 돌아온 손님(체력 60 미만)이 방이나 온천에서 쉬고 일어나기 10번', event: 'tiredRecovered', need: 10 },
     intro: ['따뜻한 물 냄새… 이곳 사람들은 참 편안해 보여요.', '지친 분들을 함께 돌봐 주시겠어요?'],
@@ -198,7 +201,7 @@ export const LEGENDS: LegendDef[] = [
   {
     key: 'jin', name: '진', title: '떠돌이 검객', charm: '흑발 상투 동양 검객 미남', kind: 'knight', race: 'human', hair: '#1c1c24',
     hint: '보스 앞에서 물러서지 않는 여관을 찾는 검객이 있대', rumor: '보스를 세 번 쓰러뜨린 여관에 떠돌이 검객이 들른다는데…',
-    rumorWhen: (c) => c.topRankWeeks >= c.need(3), rumorText: '주간 토벌 랭킹 상위 30% 3회 (로그인 필요)',
+    rumorWhen: (c) => c.topRankWeeks >= c.need(3) || (c.bossWeeks > 0 && c.bossWeeks >= c.need(3)), rumorText: '주간 토벌 랭킹 상위 30% 3회 (로그인 필요) 또는 주간 보스 처치 3주',
     bond: ['blockSuccess'], bondText: '직접 조작 막기 성공',
     request: { text: '토벌 직접 조작에서 막기 5번 연속 성공', event: 'blockStreak5', need: 1 },
     intro: ['…검이 부딪히는 소리를 따라왔소.', '막는 법을 아는지 보여 주시오. 다섯 번, 연달아.'],

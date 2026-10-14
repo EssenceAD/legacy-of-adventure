@@ -7,6 +7,7 @@ import { MEMORIES } from '../data/story/v1';
 import { musicFlags } from './sound';
 import type { ClassDef } from '../data/classes';
 import { CONFIG } from '../data/config';
+import { gatesOn } from '../world/paceGates';
 import { ENDINGS, endingById, type EndingDef } from '../data/endings';
 import { josa } from '../data/josa';
 import { JOBS, LEGACY_ORIGINS, mcPortrait, ORIGINS, OSTAT_DESC, OSTAT_NAME, OSTATS, type Gender, type Job } from '../data/origins';
@@ -306,7 +307,7 @@ export function openTie(id: string) {
     <div class="bar"><span>인연</span><i><b style="width:${t.pts}%;background:#e86a8a"></b></i><em>${Math.floor(t.pts)}</em></div>
     <div class="acc"><div>좋아하는 것<b>${t.knowLike ? GIFTS[d.likes].name : '???'}</b></div><div>싫어하는 것<b>${t.knowHate ? GIFTS[d.hates].name : '???'}</b></div></div>
     <div class="menu grid"><button id="tTalk">말 걸기</button>${v2 ? '<button id="tGift">선물하기</button>' : ''}<button id="tShop">선물 가게</button>${id === 'baker' && harvestShopOn() ? '<button id="tHv">🌾 수확제 교환소</button>' : ''}</div>
-    ${v2 ? `<p class="note">하루 한 번씩 · 행동력 ${energyLeft()}/${energyMax()}${t.talkDay === today() ? ' · 오늘 이야기 함' : ''}${t.giftDay === today() ? ' · 오늘 선물 함' : ''}</p>` : tieGifts}
+    ${v2 ? `<p class="note">${gatesOn() ? `말 걸기 하루 ${CONFIG.owner.talkPerDay}번 · 선물 하루 한 번` : '하루 한 번씩'} · 행동력 ${energyLeft()}/${energyMax()}${t.talkDay === today() ? (gatesOn() ? ` · 오늘 이야기 ${t.talkN ?? 1}번` : ' · 오늘 이야기 함') : ''}${t.giftDay === today() ? ' · 오늘 선물 함' : ''}</p>` : tieGifts}
     <button class="bigbtn ghost" id="tBack">목록으로</button>`,
     'tie1',
   );

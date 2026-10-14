@@ -7,8 +7,8 @@ import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { GRADE_INFO, GRADES, REGIONS, regionById, type Grade } from '../data/items';
 import { talk } from './dialogue';
-import { bossPic, openRaidPrep } from './raid';
-import { triesLeft, wanderTarget, weeklyTarget, type RaidTarget } from '../world/raid';
+import { bindChallenge, bossPic, challengeHtml, openRaidPrep } from './raid';
+import { chainLine, triesLeft, triesMax, wanderTarget, weeklyTarget, type RaidTarget } from '../world/raid';
 import { powerOf } from '../world/adventurers';
 import { addEmber } from '../world/owner';
 import { feature, featureChapter } from '../world/guide';
@@ -140,8 +140,8 @@ export function openBoard(tab?: number) {
     ? `<div class="qhd"><b class="g">사냥</b><span class="note">${activeAutos().length ? '자동 사냥 중' : '스테이지 돌파 · 자동 반복'}</span></div><button class="raidcard hunt" id="rHunt"><img src="${iconSrc('m_hunt')}" alt=""><span><b>사냥터</b><small>${huntBest.join(' · ')}</small></span><em>사냥 ›</em></button>`
     : `<div class="qlock">🔒 사냥터 — 장부 ${featureChapter('hunt')}장을 마치면 열려요</div>`;
   const raidHtml = feature('raid')
-    ? `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${CONFIG.raid.triesPerDay} · 증표 ${P.tokens}</span></div>
-    <div class="raids">${wk.hpLeft > 0 || !P.raid.killed ? raidCard(wk, 'rWeek') : `<div class="raidcard done"><img src="${bossPic(wk.boss)}" alt=""><span><b>주간 보스 · ${wk.boss.name}</b><small>이번 주 처치 완료! 월요일에 새 보스가 와요</small></span></div>`}${wd ? raidCard(wd, 'rWander') : ''}</div>`
+    ? `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${triesMax()} · 증표 ${P.tokens}</span></div>
+    ${chainLine() ? `<p class="sub chainline">${esc(chainLine())}</p>` : ''}<div class="raids">${wk.hpLeft > 0 || !P.raid.killed ? raidCard(wk, 'rWeek') : `<div class="raidcard done"><img src="${bossPic(wk.boss)}" alt=""><span><b>주간 보스 · ${wk.boss.name}</b><small>이번 주 처치 완료! 월요일에 새 보스가 와요</small></span></div>`}${wd ? raidCard(wd, 'rWander') : ''}</div>${challengeHtml(false)}`
     : `<div class="qlock">🔒 토벌전 — 장부 ${featureChapter('raid')}장을 마치면 열려요</div>`;
   openWin(
     '원정 · 의뢰 게시판',
@@ -160,6 +160,8 @@ export function openBoard(tab?: number) {
   if (rw) rw.onclick = () => openRaidPrep(weeklyTarget());
   const rd = document.getElementById('rWander');
   if (rd) rd.onclick = () => wanderTarget() && openRaidPrep(wanderTarget()!);
+  // PACE §1: 도전장 고르기 → 그 보스 토벌 창
+  bindChallenge();
   $$('.run.done').forEach(
     (b) =>
       (b.onclick = () => {

@@ -15,16 +15,93 @@ import { CHAPTERS } from '../data/guide';
 import { markDirty, P, S, world, type Actor, type TalkLine } from './state';
 import { ensureWind, rollWind, windRetire } from './wind';
 import { addChronicle, backfillChronicle, keepMythicMet } from './chronicle';
+import { flag } from './flags';
+import { goodDaysNow, pg } from './paceGates';
 
 const A = CONFIG.story;
 const st = () => P.story;
+const DAY_MS = 864e5;
 
 // ───────── 날짜 · 막 ─────────
 
-/** 이 회차 운영 며칠째 (1부터) */
+/** 이 회차 운영 며칠째 (1부터) — 켜 둔 게임 일수 */
 export const storyDay = () => Math.max(1, S.day - st().day0 + 1);
 /** 이 회차의 n일차 = 화면 위 몇 일차 */
 export const absDay = (n: number) => n + st().day0 - 1;
+
+// ───────── PACE §3-1 이야기 시계 (storyClock) ─────────
+
+const clockOn = () => flag('storyClock');
+/**
+ * 지금 막의 시계 출발점 (이 회차 며칠째) · 1막 = 1일 · 2막·3막은 그 막의 문턱(12·40일) 이상
+ *  (라이트 유저는 이야기 시계로 게임 2일차쯤 2막에 들어가도 「12일째」에서 센다 → 2막→3막이 누구나 현실 (40−12)÷8 = 3.5일)
+ */
+function actStartDay(a: number): number {
+  if (a <= 1) return 1;
+  const d = st().actDay?.[a];
+  const g = d ? Math.max(1, d - st().day0 + 1) : 1;
+  return Math.max(g, a === 2 ? A.act2.day : A.act3.day);
+}
+/** 지금 막에 들어간 현실 시각 (없으면 0) */
+const actAtOf = (a: number) => Number(st().actAt?.[a]) || 0;
+/**
+ * 이야기 「며칠째」(막 전환·은퇴 판정용) = max(켜 둔 게임 일수, 그 막에 들어간 날 + 현실 경과일 × realDayAs)
+ *  · 오프라인 동안 게임 시계(낮밤·손님)는 그대로 — 이 계산에만 현실 날짜를 쓴다
+ */
+export function storyClockDay(now = Date.now()): number {
+  const g = storyDay();
+  const a = st().act || 1;
+  const t = actAtOf(a);
+  if (!clockOn() || !t) return g;
+  const real = Math.max(0, (now - t) / DAY_MS);
+  return Math.max(g, Math.floor(actStartDay(a) + real * A.realDayAs + 1e-9));
+}
+/** 「며칠째」가 day에 닿기까지 남은 현실 일수 (올림 · 시계 꺼짐/기록 없음이면 Infinity) */
+export function realDaysTo(day: number, now = Date.now()): number {
+  const a = st().act || 1;
+  const t = actAtOf(a);
+  if (!clockOn() || !t) return Infinity;
+  const at = t + ((day - actStartDay(a)) / A.realDayAs) * DAY_MS;
+  return Math.max(0, Math.ceil((at - now) / DAY_MS));
+}
+/** 「며칠째」가 day에 닿는 현실 시각 (시험·보고용 · 없으면 Infinity) */
+export function realAtFor(day: number): number {
+  const a = st().act || 1;
+  const t = actAtOf(a);
+  return !clockOn() || !t ? Infinity : t + ((day - actStartDay(a)) / A.realDayAs) * DAY_MS;
+}
+
+/**
+ * 막에 들어간 현실 시각 채우기 (불러온 뒤 한 번 · 새 게임) — 옛 저장엔 없다.
+ *  추정: 이 회차가 시작된 현실 시각 t0(주인 born · 건물 builtAt · 우편 at 중 가장 이른 것, 2회차부터는 직전 엔딩 이후)과
+ *  마지막 저장 시각 t1 사이를 「게임 일수 비율」로 나눈 자리 = 그 막에 들어간 날. 증거가 없으면 지금(보수적 — 시계가 지금부터).
+ */
+export function backfillActAt(now = Date.now()): boolean {
+  const s = st();
+  if (!s.actAt || typeof s.actAt !== 'object') s.actAt = {};
+  const a = s.act || 0;
+  if (a < 1 || actAtOf(a)) return false;
+  const ok = (v: unknown): v is number => typeof v === 'number' && v > 1.7e12 && v <= now;
+  const ev: number[] = [];
+  if (ok(P.owner?.born)) ev.push(P.owner!.born);
+  for (const o of world.home?.objs ?? world.objs) if (ok(o.builtAt)) ev.push(o.builtAt);
+  for (const m of P.meta.mail ?? []) if (ok(m.at)) ev.push(m.at);
+  let t0 = ev.length ? Math.min(...ev) : 0;
+  // 2회차부터: 이 회차는 직전 엔딩 뒤에 시작했다
+  const ends = Object.values(P.legacy.cards ?? {}).map((c) => c.at).filter(ok);
+  if (t0 && ends.length) t0 = Math.max(t0, Math.max(...ends));
+  const t1 = ok(P.lastSeen) ? P.lastSeen : now;
+  let at = now;
+  if (t0 && t0 <= t1) {
+    const span = Math.max(1, S.day - s.day0);
+    const frac = a <= 1 || A.backfillAtStart ? 0 : Math.min(1, Math.max(0, ((s.actDay?.[a] ?? S.day) - s.day0) / span));
+    at = Math.round(t0 + frac * (t1 - t0));
+  }
+  s.actAt[a] = at;
+  track('story_clock_backfill', { act: a, at, est: at !== now, day: storyDay() });
+  markDirty();
+  return true;
+}
 
 /** 막 전환 조건: 진행(장부 장 수 · 영웅) · 날짜 */
 export function actNeeds(to: 2 | 3): { prog: boolean; day: number } {
@@ -34,14 +111,28 @@ export function actNeeds(to: 2 | 3): { prog: boolean; day: number } {
 }
 export const actReady = (to: 2 | 3) => {
   const n = actNeeds(to);
-  return n.prog && storyDay() >= n.day;
+  return n.prog && storyClockDay() >= n.day;
 };
 /** 진행은 채웠는데 날짜가 모자라면: 다음 이야기가 오는 날(화면 일차) · 아니면 0 */
 export function storyWaitDay(): number {
   const a = st().act;
   if (a < 1 || a >= 3) return 0;
   const n = actNeeds((a + 1) as 2 | 3);
-  return n.prog && storyDay() < n.day ? absDay(n.day) : 0;
+  return n.prog && storyClockDay() < n.day ? absDay(n.day) : 0;
+}
+/**
+ * 「다음 이야기」 문구 (진행은 채웠는데 날짜가 모자랄 때 · 아니면 '')
+ *  · 시계 켬: 더 빠른 쪽을 앞에 — 「○일 뒤 (또는 ○일차)」 / 「○일차 (또는 ○일 뒤)」 (남은 게임 일수 ≤ 남은 현실 일수면 일차가 앞)
+ */
+export function storyWaitText(): string {
+  const d = storyWaitDay();
+  if (!d) return '';
+  const n = actNeeds((st().act + 1) as 2 | 3);
+  const real = realDaysTo(n.day);
+  if (!Number.isFinite(real)) return `${d}일차`;
+  const gameLeft = n.day - storyDay();
+  const r = real <= 0 ? '곧' : `${real}일 뒤`;
+  return gameLeft <= real ? `${d}일차 (또는 ${r})` : `${r} (또는 ${d}일차)`;
 }
 /** 다음 막으로 넘어갈 차례면 그 막 (ui가 컷을 틀고 actUp) */
 export function nextAct(): 2 | 3 | null {
@@ -54,6 +145,8 @@ export function actUp(to: 2 | 3) {
   const s = st();
   s.act = to;
   s.actDay[to] = S.day;
+  // PACE §3-1: 이 막에 들어간 현실 시각 (이야기 시계)
+  s.actAt = { ...(s.actAt ?? {}), [to]: Date.now() };
   if (to === 3 && !s.letter) s.letter = 1;
   s.seen.push('tele:act' + to);
   track('act_up', { act: to, day: storyDay(), playMin: s.playMin });
@@ -79,6 +172,9 @@ export function initStory(fresh: boolean) {
     if (!fresh && !s.playMin) s.playMin = Math.round(S.day * 24);
     markDirty();
   }
+  // PACE §3-1: 막에 들어간 현실 시각 (새 게임 = 지금 · 옛 저장 = 한 번 추정)
+  if (fresh) s.actAt = { [s.act]: Date.now() };
+  backfillActAt();
   // HOTFIX18 §2: 추정으로 올린 막도 한 번 기록 (예전엔 조용히 올려서 act_up이 0건이었다)
   if (s.act >= 2 && !s.seen.includes('tele:act' + s.act)) {
     s.seen.push('tele:act' + s.act);
@@ -162,7 +258,8 @@ export interface Goal {
 export function retireGoals(): Goal[] {
   const s = st();
   const g = ROUTES.retire.goals!;
-  const day = storyDay();
+  // PACE §3-1: 은퇴 「며칠째」도 이야기 시계 (켜 둔 게임 일수와 3막 뒤 현실 경과일 × 8 중 큰 값)
+  const day = storyClockDay();
   const harv = P.counters.harvests ?? 0;
   // DIRECTION §1-2 고요한 해: 은퇴 목표 −10%
   const days = windRetire(A.retireDays);
@@ -171,7 +268,8 @@ export function retireGoals(): Goal[] {
   const mk = (i: number, cur: number, need: number, text: string): Goal => ({ id: g[i].id, title: fill(g[i].title), cur: Math.min(cur, need), need, done: cur >= need, text });
   return [
     mk(0, day, days, day >= days ? '완료' : `${days - day}일 남음 (${day}/${days}일)`),
-    mk(1, s.goodDays, good, `${Math.min(s.goodDays, good)}/${good}일 · 평균 기분 ${A.goodMood} 이상인 날`),
+    // PACE R17: 현실 하루에 한 번이라도 평균 기분 95↑면 그날도 1일 (게임 날 수와 큰 쪽 · paceGates)
+    mk(1, goodDaysNow(), good, `${Math.min(goodDaysNow(), good)}/${good}일 · 평균 기분 ${A.goodMood} 이상인 날`),
     mk(2, harv, harvN, `${Math.min(harv, harvN)}/${harvN}`),
     mk(3, s.heir >= 2 ? 1 : 0, 1, s.heir === 1 ? '유안에게 말 걸기' : s.readyDay ? '내일 아침, 누군가 찾아올 것 같아요' : '앞의 목표 셋을 마치면'),
   ];
@@ -397,9 +495,11 @@ export function startCycle(gifts: string[]): string[] {
   keepMythicMet();
   Object.assign(s, {
     act: 1, route: null, score: { hero: 0, legend: 0, town: 0, love: 0, retire: 0 }, seen: [], day0: S.day, actDay: {},
-    letter: 0, changed: false, goodDays: 0, goodLast: P.daily.log[P.daily.log.length - 1]?.day ?? 0, heir: 0, readyDay: 0, playMin: 0,
+    letter: 0, changed: false, goodDays: 0, goodLast: P.daily.log[P.daily.log.length - 1]?.day ?? 0, heir: 0, readyDay: 0, playMin: 0, actAt: { 1: Date.now() },
     base: {}, flags: {}, mythic: {},
   });
+  // PACE R17: 현실 하루 기분도 이 회차부터 다시
+  Object.assign(pg(), { goodReal: 0, goodDay: '' });
   const done: string[] = [];
   const L = P.legacy;
   for (const id of gifts) {

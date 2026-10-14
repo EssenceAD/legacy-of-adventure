@@ -12,6 +12,7 @@ import { onNightFlip } from './clock';
 import { queueEvent } from './events';
 import { dexBonus, dexRatio, heroCtx, stars, today } from './progress';
 import { legendHooks, markDirty, P, S, uiHooks, world, type Actor, type LegendState } from './state';
+import { ariaMoodNeed, gatesOn, judgeAfter, judgePityPick, moodTopNow } from './paceGates';
 import { entrance, bestOf } from './town';
 import { towerStars } from './facilities';
 import { addMail } from './meta';
@@ -42,7 +43,10 @@ export function legendCtx(scale = 1): LegendCtx {
     gardenLvl: lvlOf('garden'),
     enhanceMax: P.counters.enhanceMax,
     forestSends: P.counters.forestSends,
-    moodTopDays: P.counters.moodTopDays,
+    // PACE R17: 현실 하루도 같이 셈 · 아리아 조건 일수 30 → 10 (paceGates)
+    moodTopDays: moodTopNow(),
+    ariaMoodDays: ariaMoodNeed(),
+    bossWeeks: gatesOn() ? P.raid.weeksKilled : 0,
     goldTotal: P.counters.goldTotal,
     itemDexRatio: dexRatio('items'),
     relicEver: P.counters.relicEver > 0 || P.bag.some((it) => it.grade === 'a'),
@@ -128,8 +132,12 @@ export function judgeNight() {
     slots--;
   }
   if (slots > 0) {
-    const pickd = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor' && P.legends[d.key].gauge < 100).find((d) => Math.random() * 100 < P.legends[d.key].gauge / L.judgeDiv);
-    if (pickd) visit(pickd.key);
+    const cand = LEGENDS.filter((d) => P.legends[d.key]?.st === 'rumor' && P.legends[d.key].gauge < 100);
+    // PACE R17 판정 천장: 게이지 n% 이상인데 m밤 연속 실패한 전설은 확정 (paceGates)
+    const pity = judgePityPick(cand.map((d) => d.key));
+    const pickd = pity ?? cand.find((d) => Math.random() * 100 < P.legends[d.key].gauge / L.judgeDiv)?.key ?? null;
+    judgeAfter(cand.map((d) => d.key), pickd);
+    if (pickd) visit(pickd);
   }
   // 자리가 없어 기다리는 전설이 있으면 모모 편지 한 줄
   //  (내일 밤 자리가 날 때만 = 머무는 전설 중 24시간 안에 떠나는 사람이 있을 때 · 전설마다 한 번)

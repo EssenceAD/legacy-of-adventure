@@ -545,22 +545,58 @@ export const CONFIG = {
    */
   story: {
     /** STORY v2/v3 루트 숫자: 전설 루트 전설 수 · 연회 요리 · 결혼식 금화·요리 · 「꽃길」 어울림 번호 · 진 엔딩 열쇠 조각 수 */
-    routes: { legendCount: 8, feastMeals: 30, wedGold: 100000, wedMeals: 20, loveHarmony: 45, trueShards: 5 },
+    routes: { legendCount: 6, feastMeals: 30, wedGold: 100000, wedMeals: 20, loveHarmony: 45, trueShards: 5 },
     /** 막 전환: 장부 몇 장 · 이 회차 운영 며칠째 이상 · 영웅 수 */
     act2: { chapters: 3, day: 12 },
     act3: { chapters: 7, day: 40, heroes: 1 },
+    /**
+     * PACE §3-1 storyClock: 막 전환·은퇴의 「며칠째」 = max(켜 둔 게임 일수, 그 막에 들어간 날 + 현실 경과일 × realDayAs)
+     *  · 옛 저장(막 들어간 현실 시각 없음)은 처음 불러올 때 추정 (world/story.ts backfillActAt)
+     */
+    realDayAs: 10,
+    /** 옛 저장 추정을 「회차 시작 시각」으로 (true = 너그럽게: 막에 들어간 날을 회차 첫날로 봄 · false = 게임 일수 비율로 나눈 자리 — 기본) */
+    backfillAtStart: false,
     /** 은퇴: 이 회차 운영 일수 목표 (3막 40일차 진입 → 20일 ≈ 실제 8시간) */
     retireDays: 60,
     /** 손님 기분 최고인 날 = 그날 평균 기분 이 값 이상 · 모을 날 수 */
     goodMood: 95,
     retireGoodDays: 10,
-    retireHarvests: 100,
+    retireHarvests: 50,
     /** 유산 포인트: 엔딩마다 · 처음 보는 엔딩 더 */
     legacyPts: 100,
     legacyFirst: 50,
     /** 시작 선물: 비상금 금화 · 옛 단골 레벨 */
     giftGold: 3000,
     giftFavLv: 10,
+  },
+  /**
+   * PACE R17 판정 「지금 고칠 것」 (플래그 paceGates — 끄면 대안·천장·시계만 꺼지고 위 숫자는 그대로)
+   *  · 숫자 바꿈: story.realDayAs 8→10 · routes.legendCount 8→6 · retireHarvests 100→50 · legends.tokenNeeds [1,2,3,4]→[1,1,2,3]
+   *    owner.actionCapPerDay 0.6→1.5 · owner.talkPerDay 1→2 · ember.decideDays 56→21 · askAgainDays 14→5 · growth.unique.exp 0.003→0.05 · goldsink.favor.weekGoal 15→12
+   */
+  paceGates: {
+    /** 불씨 결심: 현실 일수 또는 (이 회차 게임 일수 ÷ 이 값) 중 큰 쪽 */
+    decideGameDiv: 8,
+    /** 아리아 소문: 손님 기분 최고(평균 90↑) 누적 일수 30 → 10 · 현실 하루에 한 번이라도 90↑면 그날도 1일 · 신화 7일 연속은 끊기면 −2 */
+    ariaMoodDays: 10,
+    ariaMood: 90,
+    ariaStreakBreak: 2,
+    /** 바엘 부탁 대안: 이 단계 이상(2시간)~8시간 미만 의뢰 성공 n번 = 8시간 1번 · 바엘이 머무는 동안 게시판에 8시간 칸 1개 보장 */
+    baelShortTier: 4,
+    baelShortNeed: 2,
+    baelLongTier: 6,
+    /** 미미 대안: 아이템 도감 남은 칸이 이 수 이하면 강화 +n 성공·고유 장비도 「새 칸」으로 */
+    mimiDexLeft: 5,
+    mimiEnhance: 5,
+    /** 전설 판정 천장: 게이지 n% 이상인 전설이 판정 밤 m번 연속 실패 → 다음 판정 밤 확정 */
+    judgePityGauge: 50,
+    judgePityNights: 3,
+    /** 인연의 증표 천장: 원정 n판마다 확정 1 (확률로 나오면 다시 0부터) */
+    tokenPityRuns: 150,
+    /** 떠돌이 천장: 같은 지역 원정 승리 n번째엔 떠돌이 확정 */
+    wanderPityWins: 10,
+    /** 사냥 고유 장비 천장: 같은 지역 x-10 처치 n번째엔 확정 */
+    huntUniquePity: 100,
   },
   /** HOTFIX14 §1·§5: 사라진 건물 사과 금화 */
   gifts: { sorryGold: 1000, /** HOTFIX18 §1: 이 시각(v0.11.3 배포) 전에 지은 중복만 사과 */ sorryBefore: 1791729000000, /** 서버 저장에서 이미 하나를 잃은 게 확인된 여관 (지금 저장엔 중복이 없어도 사과 편지) */ sorryInns: ['롯데캐슬 여관', '머리박고힐 여관'] as string[] },
@@ -673,8 +709,8 @@ export const CONFIG = {
     /** 한 판 시간(초), 파티 인원 (영웅 1 + 동료 2) */
     seconds: 60,
     partySize: 3,
-    /** 하루 도전 (실제 날짜) */
-    triesPerDay: 3,
+    /** 하루 도전 (실제 날짜) · PACE §1 raidPace: 3 → 4 (연속 보스와 같이 쓴다) */
+    triesPerDay: 4,
     /** 권장의 이 비율 미만이면 시작 전 경고 */
     warnRatio: 0.6,
     /** 피해량 = 전투력 × 초 × dmgPerPowerSec × 상성 × 케미 (자동은 ±autoSpread 흔들림) */
@@ -697,12 +733,23 @@ export const CONFIG = {
     /** 한 판 뒤 파티 체력 감소 */
     hpCost: 20,
     /** 원정 승리 때 떠돌이 보스와 마주칠 확률 · 도전 가능 시간 · 체력 비율 */
-    wanderChance: 0.08,
-    wanderHours: 24,
+    /** PACE §1-3 raidPace: 0.08 → 0.15 · 24 → 48시간 (플래그 끄면 paceOff 값 — 하루 도전 3 포함) */
+    wanderChance: 0.15,
+    wanderHours: 48,
+    paceOff: { wanderChance: 0.08, wanderHours: 24, triesPerDay: 3 },
     wanderHpShare: 0.4,
     /** 처치 보너스: 금화 = 보스 기준 금화 × 이 값, 전용 재료 */
     killGoldMult: 3,
     killMats: 5,
+    /**
+     * PACE §1 raidPace: 한 주 최대 보스 수 (첫 보스는 순환 · 2·3번째는 「도전장」으로 고름)
+     *  · n번째 보스 보상 배수(금화·재료, 0번 = 첫 보스) — 명세 0.7·0.5 → 시뮬(reports/pace/raid.md) 헤비 주당 토벌 금화가 하루 자동 사냥의 1.5배를 넘어 0.5·0.3으로 낮춤 · 첫 보스가 살아 있으면 목·토 0시(한국 시간)에 남은 체력 −weakStep
+     */
+    chainMax: 3,
+    chainMult: [1, 0.5, 0.3],
+    weakStep: 0.25,
+    /** 약해지는 요일 (0=일 … 4=목 · 6=토) */
+    weakDays: [4, 6],
   },
   legends: {
     /** 인연 활동 한 번에 게이지 +min~max% */
@@ -725,7 +772,7 @@ export const CONFIG = {
     /** STARFALL §2: 유성우 밤에 잡을 수 있는 별 수 */
     showerCatches: 3,
     /** ★1→2, 2→3, 3→4, 4→5 에 필요한 인연의 증표 */
-    tokenNeeds: [1, 2, 3, 4],
+    tokenNeeds: [1, 1, 2, 3],
     /** ★ 하나당 전투력 + */
     starPowerPct: 0.08,
     /** 원정에서 증표가 나올 확률 */
@@ -815,7 +862,9 @@ export const CONFIG = {
     /** 매일 첫 접속(실제 날짜) 능력치 전체 + */
     dailyAll: 0.2,
     /** 행동으로 오르는 능력치: 한 능력치당 하루 최대 */
-    actionCapPerDay: 0.6,
+    actionCapPerDay: 1.5,
+    /** R17: 인연 말 걸기 하루 몇 번 (사람마다) */
+    talkPerDay: 2,
     /** 행동별 상승량 */
     gain: {
       expedition: { hp: 0.1 }, dangerRun: { nerve: 0.15 }, meal: { cook: 0.02 }, harvest: { cook: 0.1 },
@@ -873,10 +922,10 @@ export const CONFIG = {
     actionCapPerDay: 3,
     marks: [30, 60, 90],
     /** 2년 차(실제 56일) 이후 + 불씨 100 → 선택 */
-    decideDays: 56,
+    decideDays: 21,
     /** 「아직은 아니야」 → 불씨 · 다시 묻기까지 (일) */
     notYet: 70,
-    askAgainDays: 14,
+    askAgainDays: 5,
     /** 후계자: 버나드 인연 이 단계 이상 또는 이 레벨 이상 단골 */
     heirBernard: 3,
     heirLevel: 15,
@@ -1134,7 +1183,7 @@ export const CONFIG = {
     /** §3-3 강화 보호 부적: 고지역(지역 번호 이상, 0부터) · 이 시간 단계 이상 원정 성공 때 확률 · 증표 상점 값(인연의 증표) */
     charm: { highRegion: 3, expTier: 4, expChance: 0.1, tokenCost: 1 },
     /** §3-4 고유 장비: 사냥 보스(x-10) · 토벌 보스 처치 · 고지역(지역 번호 이상) 8시간 원정 · 두 번째부터 분해 가루 배수 */
-    unique: { hunt: 0.005, raid: 0.01, exp: 0.003, expTier: 6, expRegion: 3, dupDustMult: 2 },
+    unique: { hunt: 0.005, raid: 0.01, exp: 0.05, expTier: 6, expRegion: 3, dupDustMult: 2 },
     /** §3-4 재련: 그 등급 가루 · 금화 · 옵션 하나 잠그면 비용 × */
     reforge: { dust: { r: 30, e: 60, l: 120, a: 200 } as Record<string, number>, gold: { r: 500, e: 1500, l: 4000, a: 8000 } as Record<string, number>, lockMult: 2 },
     /** §3-5 [알림] 자랑: 같은 사람 간격(ms) · 같은 종류 하루 최대 */
@@ -1208,7 +1257,7 @@ export const CONFIG = {
     /** §4 자동 사냥 금화: 오늘(현실) 자동 판 수 구간별 비율 · exemptBossStage = x-10 자동 반복은 줄이지 않기 */
     taper: { steps: [[120, 1], [300, 0.5], [Infinity, 0.25]] as [number, number][], exemptBossStage: false },
     /** §5 마을 부탁: 하루 몇 개 · 바꾸기(무료 1번 뒤 base × m × 2^(n−1)) · 주간 목표 · 보너스 상자 고유 장비 확률 배수 */
-    favor: { perDay: 3, swapFree: 1, swapBase: 500, weekGoal: 15, weekBossMats: 3, weekTokens: 1, uniqueMult: 2, tavernBoost: 0.1, blessMin: 30 },
+    favor: { perDay: 3, swapFree: 1, swapBase: 500, weekGoal: 12, weekBossMats: 3, weekTokens: 1, uniqueMult: 2, tavernBoost: 0.1, blessMin: 30 },
   },
   /** GOLDSINK §7 끝없는 심연: 층마다 강함 ×grow (복리, 1층 = 심연의 바닥 10 추천 전투력) · bossEvery층마다 보스 · restEvery층마다 쉼터(축복 restMin분)
    *  보상(금화 없음): 잿빛 가루 dustN[0] + dustN[1]×층 · 희귀 가루 1 + 층/dustREvery · 심연 재료 matBase + 층/matEvery · 보스 층: 보스 재료 bossMats · 영웅 가루 1 + 층/dustEEvery · 고유 장비 확률 ×uniqueMult

@@ -5,6 +5,7 @@ import { UNIQUES, type UniqueDef } from '../data/story/uniques';
 import { addToBag, makeItem } from './items';
 import { brag } from './growth';
 import { markDirty, P, pick, type Actor, type Item, type ItemOpt } from './state';
+import { mimiAlt } from './paceGates';
 
 export const uniqueById = (id: string | undefined) => (id ? UNIQUES.find((u) => u.id === id) : undefined);
 export const uniquesOf = (r: RegionId) => UNIQUES.filter((u) => u.region === r);
@@ -38,6 +39,8 @@ export function grantUnique(d: UniqueDef): Item {
   P.growth.uniques[d.id] = n;
   markDirty();
   if (n === 1) brag('unique', it);
+  // PACE R17: 도감이 거의 다 찼으면 고유 장비도 미미의 「새 칸」
+  mimiAlt('unique');
   return it;
 }
 
