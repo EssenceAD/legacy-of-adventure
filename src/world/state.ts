@@ -138,6 +138,8 @@ export interface Actor {
   heroId?: string;
   /** 전설 영웅 (3단계) */
   legendId?: string;
+  /** FIVESTARS: 신화 영웅 「다섯 별」 (개척자 다섯 · data/fivestars STAR_IDS) — heroId·legendId와 따로 */
+  starId?: string;
   /** 영웅·전설 별 (1~5) */
   stars?: number;
   /** 금빛 발자국이 남는 남은 시간 (전설 방문) */
@@ -639,8 +641,40 @@ export function freshProgress() {
     almanac: freshAlmanac(),
     /** PACE R17: 천장·대안 카운터 (world/paceGates.ts pg()가 빈 칸을 채운다) */
     pg: freshPaceGates(),
+    /** FIVESTARS 「다섯 별의 원정대」 (world/fivestars.ts fiveState()가 칸을 바로잡는다 · 플래그를 꺼도 지운 것 없이 그대로) */
+    five: freshFive(),
   };
 }
+
+/**
+ * FIVESTARS: open = 3막 모모 편지를 봐서 장(5칸)이 열림 · base = 부탁을 받은 순간 기준값 · done = 칸을 채움 · joined = 합류함(컷 시작)
+ *  woongsKills/walwalNights = 부탁을 받은 뒤 직접 센 것 (조건 장비 토벌 처치 · 체력 지킨 밤 원정) · final = 마지막 컷·보상(1번만) · cut4 = 세트 4명 첫 전투 컷 · dream = 꿈 한 줄을 들은 개척자
+ */
+export function freshFive() {
+  return {
+    open: false,
+    base: null as null | FiveBase,
+    done: [] as string[],
+    joined: [] as string[],
+    woongsKills: 0,
+    walwalNights: 0,
+    final: false,
+    cut4: false,
+    dream: [] as string[],
+  };
+}
+export interface FiveBase {
+  at: number;
+  events: number;
+  hidden: number[];
+  setFirst: number;
+  wins: number;
+  regionWins: Record<string, number>;
+  firstLen: number;
+  talks: number;
+  harvests: number;
+}
+export type FiveState = ReturnType<typeof freshFive>;
 
 /** PACE R17: 천장·대안 카운터 — 현실 하루 기분(은퇴 95↑ · 아리아 90↑) · 판정 실패 밤 · 원정 판 수(증표) · 바엘 2시간 성공 · 지역별 원정 승리(떠돌이) · 지역별 x-10 처치(고유) · 평가 최고 점수 · 순위 확인 못 한 주 */
 export function freshPaceGates() {

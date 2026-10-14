@@ -635,7 +635,7 @@ function propCtx(a: Actor) {
   const weak = weakestRegular();
   const plain = regs.filter((x) => x.status === 'regular');
   const weakest = weak ? powerOf(weak) : plain.length ? Math.min(...plain.map((x) => powerOf(x))) : null;
-  return { rarity: a.rarity, power: powerOf(a), role: roleOf(a), special: !!(a.heroId || a.legendId || a.cameo), regRoles: regs.map((x) => roleOf(x)), weakest, regulars: regs.length, capacity: capacity() };
+  return { rarity: a.rarity, power: powerOf(a), role: roleOf(a), special: !!(a.heroId || a.legendId || a.cameo || a.starId), regRoles: regs.map((x) => roleOf(x)), weakest, regulars: regs.length, capacity: capacity() };
 }
 /** CHECKIN §A1: 걸러진 손님 — 제안 대화 없이 「다음에 또 올게요!」 한 줄로 떠난다 (대기 명단 X) */
 function quietBye(a: Actor, count = true) {

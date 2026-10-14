@@ -5,6 +5,7 @@ import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
 import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
+import { fiveHpMult, fiveNightSuccess, fiveNightWin, fiveStealth, fiveWanderMult, flagDepart } from './fivestars';
 import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
 import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
@@ -260,6 +261,8 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   P.quests.list = P.quests.list.filter((x) => x.id !== q.id);
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
+  // FIVESTARS: 다섯 별 깃발 근처에서 출발하면 기분 +
+  flagDepart(members);
   // PARTY §2: 켜 본 조합 → 도감 「파티」
   recordSynergies(members);
   P.counters.expeditions++;
@@ -290,7 +293,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const members = run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[];
   const info = partyInfo(members, q);
   // 첫 원정(튜토리얼)은 늘 성공
-  const win = q.tutorial || Math.random() < info.success;
+  // FIVESTARS: 왈왈콩선생 밤 출발 성공률 +
+  const win = q.tutorial || Math.random() < info.success + fiveNightSuccess(members, nightStart(run.start));
   const r = ri(q.region);
   const tierR = E.tierReward[q.tier];
   const tg = E.tierGrade[q.tier] ?? q.tier;
@@ -311,11 +315,13 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   for (const m of members) {
     // 핫픽스 12 §2-3: 파티 최고 레벨 −5 이하는 경험치 ×1.5 · §2-2: 탱·힐·딜이면 체력 소모 −20%
     if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
-    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members) * (1 - expHpCut(syn));
+    const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members) * (1 - expHpCut(syn)) * fiveHpMult(members);
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));
   }
   markAdventured(members);
+  // FIVESTARS 왈왈콩선생 부탁: 밤 출발 성공 · 모두 체력 지켜 귀환
+  if (win && nightStart(run.start)) fiveNightWin(members);
   const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
   P.mats[q.region] += mats;
   const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
@@ -341,7 +347,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   }
   const rogue = members.find((m) => m.kind === 'rogue');
   // 은밀: 도적이 있으면 30% · 닉스 본인이 함께면 60%
-  const stealth = members.some((m) => m.legendId === 'nyx') ? CONFIG.legends.stealthNyx : CONFIG.legends.stealth;
+  // FIVESTARS: 고느끼 +20% (닉스와 같이 쌓임 · 상한 0.8)
+  const stealth = fiveStealth(members, members.some((m) => m.legendId === 'nyx') ? CONFIG.legends.stealthNyx : CONFIG.legends.stealth);
   if (rogue && Math.random() < stealth) {
     extra.push(['narr', win ? `${rogue.name}${josa(rogue.name, '가')} 그림자처럼 숨어들어 경비를 따돌렸다! (은밀 성공)` : `${rogue.name}${josa(rogue.name, '가')} 몰래 지나가다 깡통을 찼다… (은밀 실패)`]);
     if (win) legendHooks.req('stealthSuccess');
@@ -367,7 +374,7 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     }
   }
   if (win) {
-    const wb = maybeWander(q.region);
+    const wb = maybeWander(q.region, fiveWanderMult(members));
     if (wb) extra.push(['narr', `돌아오는 길에 떠돌이 보스 「${wb.name}」과 마주쳤다! (${Math.round(((P.raid.wander?.until ?? Date.now()) - Date.now()) / 36e5)}시간 동안 토벌 가능)`]);
   }
   if (win) {

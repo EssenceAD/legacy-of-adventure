@@ -1,5 +1,6 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
+import { fiveLedgerHtml } from './fivestars';
 import { almanacDot, almanacOn } from '../world/almanac';
 import { daybookDot, daybookOn } from '../world/daybook';
 import { harvestShopOn, hvNow, hvPhase, launched, shopDot } from '../world/harvest';
@@ -190,7 +191,7 @@ export function openGuideList() {
             return `<div class="mrow ${done ? 'done' : now ? 'now' : ''}"><span>${done ? '✓' : now ? '▶' : '·'}</span><b>${now || done ? esc(m.title) : c.no <= (cur?.ch ?? 8) ? esc(m.title) : '???'}</b><em>${done ? '완료' : pr ? `${pr.cur}/${pr.need}` : ''}</em></div>`;
           })
           .join('')}</div>`,
-    ).join('')}`,
+    ).join('')}${fiveLedgerHtml()}`,
   );
 }
 

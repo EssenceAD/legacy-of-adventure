@@ -4,6 +4,7 @@ import { blankActor } from './adventurers';
 import type { ClassDef } from '../data/classes';
 import { hourNow } from './clock';
 import { markDirty, P, S, world, type Actor, type Building } from './state';
+import { dreamLine, starJoined } from './fivestars';
 
 export const PIONEER_IDS = Object.keys(PIONEERS) as PioneerId[];
 export const isPioneer = (v: unknown): v is PioneerId => typeof v === 'string' && (PIONEER_IDS as string[]).includes(v);
@@ -74,7 +75,8 @@ export function makeCameo(id: PioneerId, x: number, y: number): Actor {
 }
 /** 오늘 들를 개척자 (본인 마을이면 자기 빼고 나머지 셋) */
 export function cameoPick(mine: PioneerId | null): PioneerId | null {
-  const pool = PIONEER_IDS.filter((x) => x !== mine && !world.actors.some((a) => a.cameo === x));
+  // FIVESTARS: 신화로 합류한 개척자는 카메오로 지나가지 않는다
+  const pool = PIONEER_IDS.filter((x) => x !== mine && !starJoined(x) && !world.actors.some((a) => a.cameo === x));
   return pool.length ? pool[(Math.random() * pool.length) | 0] : null;
 }
 /** 게임 하루 1~2번: 낮 10~17시에 가끔 · 오늘 몇 번 왔는지 */
@@ -100,7 +102,9 @@ export function noteMet(id: PioneerId) {
 /** 누를 때마다 다음 대사 · 다 말하면 선물 (그 방문에 한 번) */
 export function cameoNext(a: Actor): { line: string; gift?: string } {
   const id = a.cameo as PioneerId;
-  const lines = CAMEO[id];
+  // FIVESTARS §1-1: 2막부터 끝에 꿈 한 줄 (복선 · 플래그 fiveStars)
+  const dream = dreamLine(id);
+  const lines = dream ? [...CAMEO[id], dream] : CAMEO[id];
   const i = a.cameoI ?? 0;
   a.cameoI = i + 1;
   if (i < lines.length) return { line: lines[i] };

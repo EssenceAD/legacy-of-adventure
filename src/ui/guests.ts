@@ -1,4 +1,5 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
+import { starOf } from '../world/fivestars';
 import { bindPersonActions, personActionsHtml } from './personActions';
 import { tagTap } from '../world/render';
 import { vis as visOn, fsay } from '../world/visual';
@@ -215,7 +216,7 @@ export function showActor(a: Actor) {
   }
   const st = totalStats(a);
   const status =
-    a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
+    starOf(a) ? '신화 「다섯 별」 동료' : a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
   const slots = SLOTS.map((s) => {
     const it = P.bag.find((x) => x.id === a.equip[s]);
     return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small>${it ? fitTag(a, it) : ''}</button>`;
@@ -236,7 +237,7 @@ export function showActor(a: Actor) {
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
     ${a.legendId ? legendPanel(a) : ''}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
-    ${a.status === 'hero' && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
+    ${a.status === 'hero' && !a.starId && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
     <div class="btnrow">${personActionsHtml(a, { talk: true })}${byeBtn(a)}</div>`,
   );
   bindPersonActions(a, talkGuest);

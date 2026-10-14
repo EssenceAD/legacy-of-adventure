@@ -83,3 +83,5 @@ export const CAMEO_NO_REGULAR = '아, 저는 제 여관이 있어서요! 대신 
 
 // §3 엔딩 크레딧 한 줄
 export const PIONEER_CREDIT = '이 여관 마을은 개척자 웅스 · 고느끼 · 따뜻한밤 · 이카몰리와 함께 지어졌습니다.';
+/** 엔딩 컷에서 개척자 크레딧 줄인가 (FIVESTARS: 다섯 이름 줄도) */
+export const isPioneerCredit = (s: string) => s === PIONEER_CREDIT;

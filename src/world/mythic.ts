@@ -10,6 +10,7 @@ import { markDirty, P, S, world, type Actor } from './state';
 import { gatesOn } from './paceGates';
 import { CONFIG } from '../data/config';
 import { bestOf } from './town';
+import { fiveAtk, fiveGold, fiveStat, fiveTimeCut, isStar } from './fivestars';
 
 export const mythicOf = (key: string | undefined): MythicDef | undefined => (key ? MYTHIC.find((m) => m.key === key) : undefined);
 const seeds = (): string[] => (P.legacy.mythicSeeds ??= []);
@@ -18,8 +19,9 @@ const homeActors = (): Actor[] => world.home?.actors ?? world.actors;
 const regulars = () => homeActors().filter((a) => !a.role && a.id && (a.status === 'regular' || a.status === 'hero'));
 const nameOf = (key: string) => LEGENDS.find((l) => l.key === key)?.name ?? key;
 
-/** 신화인가: 씨앗이 있고 이번 회차에 각성 대사를 봤다 (디버그 ?mythic=key 도) */
+/** 신화인가: 씨앗이 있고 이번 회차에 각성 대사를 봤다 (디버그 ?mythic=key 도) · FIVESTARS: 다섯 별 신화 영웅 (플래그 fiveStars) */
 export function isMythic(a: Actor | undefined): boolean {
+  if (isStar(a)) return true;
   const k = a?.legendId;
   return !!k && !!mythicOf(k) && seeds().includes(k) && !!P.story.mythic?.[k]?.met;
 }
@@ -158,7 +160,8 @@ export function mythicAtk(members: Actor[], region?: RegionId, boss = false): nu
   if (inParty(members, 'vael') && region === 'abyss') k *= 1.4;
   if (inParty(members, 'vael') && boss) k *= 1.05;
   if (inParty(members, 'leon') && members.length > 1 && members.every((m) => m.legendId === 'leon' || bondsOf(m).some((x) => x.lv >= 3 && members.includes(x.other)))) k *= 1.12;
-  return k;
+  // FIVESTARS: 웅스 무기 강화 · 따뜻한밤 · 세트 「다섯 별」 2명
+  return k * fiveAtk(members);
 }
 /** 파티가 받는 피해 배율 */
 export function mythicDef(members: Actor[], a?: Actor): number {
@@ -170,15 +173,15 @@ export function mythicDef(members: Actor[], a?: Actor): number {
 /** 파티 회복 배율 */
 export const mythicHeal = (members: Actor[]) => (inParty(members, 'aria') ? 1.4 : 1);
 /** 의뢰: 시간 −20% (루나) */
-export const mythicTimeCut = (members: Actor[]) => (inParty(members, 'luna') ? 0.2 : 0);
+export const mythicTimeCut = (members: Actor[]) => (inParty(members, 'luna') ? 0.2 : 0) + fiveTimeCut(members);
 /** 의뢰: 금화 (닉스 +25% · 루나 밤 출발 +15%) */
 export function mythicQuestGold(members: Actor[], night: boolean): number {
-  return (inParty(members, 'nyx') ? 1.25 : 1) * (night && inParty(members, 'luna') ? 1.15 : 1);
+  return (inParty(members, 'nyx') ? 1.25 : 1) * (night && inParty(members, 'luna') ? 1.15 : 1) * fiveGold(members);
 }
 /** 케미 상승 (레온 +30%) */
 export const mythicChemXp = (members: Actor[]) => (inParty(members, 'leon') ? 1.3 : 1);
 /** 개인 능력치 ×1.15 */
-export const mythicStat = (a: Actor) => (isMythic(a) ? 1.15 : 1);
+export const mythicStat = (a: Actor) => (isStar(a) ? fiveStat(a) : isMythic(a) ? 1.15 : 1);
 
 /** 디버그: ?mythic=elysia → 씨앗 심기 (DEV) */
 export function debugMythic(key: string) {

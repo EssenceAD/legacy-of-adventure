@@ -19,6 +19,7 @@ import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
 import { partySpecial, rollUnique } from './uniques';
 import { partySynMult, synergyFx } from './synergy';
+import { fiveGold } from './fivestars';
 import { autoGoldMult, blessFx, gsState } from './goldsink';
 import { takeUniqueBoost } from './favors';
 import { fsay, vis } from './visual';
@@ -96,7 +97,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const ri = regionIdx(r);
   // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
   const EC = CONFIG.economy;
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult);
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult * fiveGold(members));
   // GOLDSINK §3: 축복 — 사냥 경험치 +
   const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult * (1 + blessFx('xp')));
   // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
