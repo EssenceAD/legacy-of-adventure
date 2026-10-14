@@ -94,9 +94,17 @@ export function canBrew(id: string): string | null {
   if (!r) return '없는 물약이에요';
   if (!fLv('alchemy')) return '연금술 공방이 필요해요';
   if (id !== 'rest' && potionCount() >= potionSlots()) return `물약 칸이 가득 찼어요 (${potionSlots()}칸)`;
-  for (const [c, n] of Object.entries(r.need)) if ((P.crops[c] ?? 0) < n) return `${CONFIG.garden.crops[c]?.name ?? c}이(가) 모자라요`;
+  // 「회색 버튼엔 이유」: 가장 많이 모자란 작물 「호박 2개 부족 · 얻는 곳: 텃밭」 (오늘 주점이 먹었으면 그것도)
+  let worst: [string, number] | null = null;
+  for (const [c, n] of Object.entries(r.need)) {
+    const s = n - (P.crops[c] ?? 0);
+    if (s > 0 && (!worst || s > worst[1])) worst = [c, s];
+  }
+  if (worst) return `${cropShortLabel(worst[0], worst[1])} · ${tavernAteToday(worst[0]) > 0 ? '주점 손님이 먹었어요 · ' : ''}얻는 곳: 텃밭`;
   return null;
 }
+/** 「호박 2개 부족」 (연금술 버튼 글) */
+export const cropShortLabel = (c: string, n: number) => `${CONFIG.garden.crops[c]?.name ?? c} ${n}개 부족`;
 /** 만들기 — 휴식의 물약은 바로 효과(손님 기분), 나머지는 칸에 넣는다 */
 export function brew(id: string): string | null {
   const why = canBrew(id);

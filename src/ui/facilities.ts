@@ -1,9 +1,10 @@
 // BUILDINGS_SPEC: 새 기능 건물 창의 한 줄 효과 숫자 + 연금술 공방(물약 만들기·마시기) — 건물 창(objExtra)에 덧붙인다
 import { CONFIG } from '../data/config';
 import { bestOf } from '../world/town';
-import { alchReserve, brew, canBrew, chapelHeal, drink, fLv, tavernAteToday, guildGold, guildSlot, guildSpecial, libraryXp, passerExtraHours, postMailMult, potionBoost, potionCount, potionSlots, stableTimeCut, towerEnhance } from '../world/facilities';
+import { alchReserve, brew, canBrew, cropShortLabel, chapelHeal, drink, fLv, tavernAteToday, guildGold, guildSlot, guildSpecial, libraryXp, passerExtraHours, postMailMult, potionBoost, potionCount, potionSlots, stableTimeCut, towerEnhance } from '../world/facilities';
 import { markDirty, P, S } from '../world/state';
 import { esc } from './common';
+import { lockAttr, lockNote } from './lockBtn';
 import { objExtra, showObj, toast } from './windows';
 import { track as trackEv } from '../net/telemetry';
 
@@ -30,11 +31,20 @@ function alchemyHtml(): string {
       const why = canBrew(id);
       // 모자란 재료가 오늘 주점 손님 식사로 줄었으면 그 재료는 아래 줄에 이유와 함께 (「당근 0/2 · 주점 손님이 먹었어요」)
       const eaten = (c: string, n: number) => (P.crops[c] ?? 0) < n && tavernAteToday(c) > 0;
-      const cnt = (c: string, n: number) => `${CONFIG.garden.crops[c]?.name ?? c} ${P.crops[c] ?? 0}/${n}`;
+      // 「회색 버튼엔 이유」: 모자란 작물은 빨강 + −n
+      const cnt = (c: string, n: number) => {
+        const h = P.crops[c] ?? 0;
+        const t = `${esc(CONFIG.garden.crops[c]?.name ?? c)} ${h}/${n}`;
+        return h < n ? `<span class="bad">${t}<b class="sh">−${n - h}</b></span>` : t;
+      };
+      const short = Object.entries(r.need)
+        .map(([c, n]) => [c, n - (P.crops[c] ?? 0)] as const)
+        .filter(([, s]) => s > 0)
+        .sort((a, b) => b[1] - a[1])[0];
       const need = Object.entries(r.need).filter(([c, n]) => !eaten(c, n)).map(([c, n]) => cnt(c, n)).join(' · ');
       const ate = Object.entries(r.need).filter(([c, n]) => eaten(c, n)).map(([c, n]) => `${cnt(c, n)} · 주점 손님이 먹었어요`);
       const have = P.potions[id] ?? 0;
-      return `<div class="irow potion"><span><b>${esc(r.name)}</b><small>${esc(r.desc)}${need ? ` · ${need}` : ''}</small>${ate.length ? `<small class="bad alate">${ate.map(esc).join('<br>')}</small>` : ''}</span><button data-brew="${id}" ${why ? 'disabled' : ''}>만들기</button>${have ? `<button data-drink="${id}">마시기 (${have})</button>` : ''}</div>`;
+      return `<div class="irow potion"><span><b>${esc(r.name)}</b><small>${esc(r.desc)}${need ? ` · ${need}` : ''}</small>${ate.length ? `<small class="bad alate">${ate.join('<br>')}</small>` : ''}${lockNote(why)}</span><button data-brew="${id}" ${lockAttr(why)}>${short ? cropShortLabel(short[0], short[1]) : '만들기'}</button>${have ? `<button data-drink="${id}">마시기 (${have})</button>` : ''}</div>`;
     })
     .join('');
   return `<div class="alch">${keepRow()}<b class="g">물약</b> <small>칸 ${potionCount()}/${potionSlots()} · 30분 · 한 번에 하나</small>${b ? `<p class="sub good">지금: ${esc(PO.list[b.id]?.name ?? '')} · ${Math.ceil((b.until - Date.now()) / 60000)}분 남음</p>` : ''}${rows}</div>`;
