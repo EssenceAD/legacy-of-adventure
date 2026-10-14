@@ -59,5 +59,14 @@
   "heroCards": true,
   "partyRulesV2": true,
   "heroDotV2": true,
-  "smithOne": true
+  "smithOne": true,
+  "checkinFx": false,
+  "uiCards": false,
+  "harvestFest": true,
+  "sunset": false,
+  "ledgerDaily": false,
+  "almanac": false,
+  "leftIcons": false,
+  "legendFrame": true,
+  "huntSlots": true
 }
