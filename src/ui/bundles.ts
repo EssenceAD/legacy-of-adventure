@@ -1,31 +1,30 @@
 // LUXE §3 마을 회관 꾸러미 화면 (플래그 bundles · 실험실 vis) — 게시판 「마을 회관」 탭
 //  위: 회관 그림(★ 임시 — 그림이 오기 전까지 6조각 블록 · 방이 완성될 때마다 한 조각씩 복원) · 방 6개 카드 → 방 안: 꾸러미마다 칸 줄 · [바치기]
-//  처음 열면 버나드 한마디 (data/story/bundles.ts) · 방 완성 = 담당 한 줄 · 6방 다 = 회관 복원 컷
-import { BUNDLE_FINAL, BUNDLE_FIRST, BUNDLE_ROOM, type BLine } from '../data/story/bundles';
-import type { BundleDef, RoomDef } from '../data/luxe_cfg';
+//  대사(data/story/bundles.ts): 처음 열면 HALL_FIRST · 꾸러미 완성 = BUNDLE_DONE 한 줄(토스트) · 방 완성 = 담당 대사(영입 안 됐으면 버나드 fallback) · 6방 다 = HALL_RESTORED 컷
+import { LUXE, type BundleDef, type RoomDef } from '../data/luxe_cfg';
+import type { SLine } from '../data/story/v1';
 import {
-  bdState, bundleDone, bundleRewardText, donate, filledN, haveOf, putOf, readySlots, recValue, reservedOf, ROOMS, roomById, roomDone, roomDoneN, roomOpen, roomsDoneN, slotFull, slotName, slotWhere,
+  bdState, bundleDone, bundleDoneLine, hallFirstLines, hallRestoredLines, bundleRewardText, donate, filledN, haveOf, putOf, readySlots, recValue, reservedOf, ROOMS, roomById, roomDone, roomDoneLines, roomDoneN, roomOpen, roomsDoneN, slotFull, slotName, slotWhere,
 } from '../world/bundles';
-import { markDirty } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
 import { esc, fmt } from './common';
-import { talk } from './dialogue';
 import { fishImg } from './fishing';
+import { playStory } from './story';
 import { toast } from './windows';
 
 /** 지금 보고 있는 방 ('' = 방 목록) */
 let cur = '';
 export const resetBundleView = () => void (cur = '');
-const toTalk = (ls: BLine[]) => ls.map(([w, t, tag]) => [w, t, undefined, tag] as [string, string, undefined, string | undefined]);
+/** 대사 파일의 연출 키 → 기존 컷 연출 (cam_hall = 저녁 햇살 → dawn · fireworks는 ui/story에 있음) */
+const FX_ALIAS: Record<string, string> = { cam_hall: 'dawn' };
+const withFx = (ls: SLine[]): SLine[] => ls.map(([w, t, o]) => (o?.fx && FX_ALIAS[o.fx] ? [w, t, { ...o, fx: FX_ALIAS[o.fx] }] : [w, t, o]));
 
-/** 처음 열기: 버나드 한마디 (1번) — 다 보면 done */
+/** 처음 열기: HALL_FIRST (1번) — 다 보면 done */
 export function bundleIntro(done: () => void) {
-  const st = bdState();
-  if (st.seen) return done();
-  st.seen = true;
-  markDirty();
+  const lines = hallFirstLines();
+  if (!lines) return done();
   trackEv('bundle_open', {});
-  talk(toTalk(BUNDLE_FIRST) as never, done);
+  playStory(lines, done);
 }
 
 /** 회관 그림 자리 (★ 임시: 6조각 블록 · 완성한 방 조각만 색이 돌아온다) */
@@ -114,13 +113,17 @@ export function bindBundles(redraw: () => void) {
         const r = donate(id, +i);
         if (typeof r === 'string') return toast(r);
         if (r.room) {
-          const lines = [...(BUNDLE_ROOM[r.room.id] ?? []), ...(r.room.id === 'kitchen' ? ([['narr', '배부른 강아지가 회관 주방 앞에서 꼬리를 흔들어요. (펫은 곧 마을에 와요)']] as BLine[]) : [])];
           toast(`🏛 ${r.room.name} 완성! ${r.room.perk}`);
           const fin = r.final;
-          talk(toTalk(lines) as never, () => (fin ? talk(toTalk(BUNDLE_FINAL) as never, redraw) : redraw()));
+          const B = LUXE.bundles;
+          const finale = () => {
+            toast(`칭호 「${B.finalTitle}」 · 「이번 주 명품」 쿠폰 ${B.finalCoupon}장 · 「마을 회관」 건물은 꾸미기 보관함에`);
+            redraw();
+          };
+          playStory(roomDoneLines(r.room.id), () => (fin ? playStory(withFx(hallRestoredLines()), finale) : redraw()));
           return;
         }
-        toast(r.bundle ? `꾸러미 완성! ${r.bundle}` : `${r.gave}개 바쳤어요`);
+        toast(r.bundle ? `${bundleDoneLine()} (${r.bundle})` : `${r.gave}개 바쳤어요`);
         redraw();
       }),
   );

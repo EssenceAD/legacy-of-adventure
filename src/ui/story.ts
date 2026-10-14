@@ -29,6 +29,7 @@ import { holdLine, isTalking, talkStory } from './dialogue';
 import { iconSrc } from './kit';
 import { capture } from './photo';
 import { startLanterns } from '../world/harvestDraw';
+import { fireworks } from '../world/luxury';
 import { mountSky } from './skyStars';
 import { closeWin, isWinOpen, openWin, setWinLock, toast } from './windows';
 
@@ -111,6 +112,11 @@ function fx(k: string) {
   }
   // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
   else if (k === 'lanterns') startLanterns();
+  // LUXE §3 회관 복원 컷: 장식 불꽃놀이(world/luxury)를 금화 없이 10초
+  else if (k === 'fireworks') {
+    fireworks.until = Date.now() + 10000;
+    fireworks.next = 0;
+  }
   // STORY v2·v3 연출: 심연 · 별 · 부케 · 기둥 · 노래 · 셔터 · 별바다 · 접힘 · 반짝 글씨
   else if (['abyss', 'stars', 'bouquet', 'pillar', 'song', 'shutter', 'starsea', 'fold', 'sparkle', 'heat', 'lighthouse', 'ember', 'sky', 'deep', 'hush'].includes(k)) {
     b.className = 'sfx-' + k;
