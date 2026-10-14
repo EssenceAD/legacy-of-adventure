@@ -1,5 +1,6 @@
 // GROWTH §4 낚시 창: 미끼 · [던지기] → 5초 찌 미니게임(「!」가 뜬 순간 누르기 · 판정 창 0.5초~) · 결과 · 가방(팔기 · 박제 · 놓아주기)
 //  연못(잉어·연꽃 연못 건물 창 [낚시]) · 해안(사냥터 지역 탭 옆 🎣, 등대 해안이 열린 뒤). 누르기는 pointerdown(폰에서 빠르게).
+import { flag } from '../world/flags';
 import { CONFIG } from '../data/config';
 import { FISH, FISH_LINES, type FishDef } from '../data/story/fish';
 import { josa } from '../data/josa';
@@ -139,7 +140,8 @@ function finish(ok: boolean, why: 'early' | 'late') {
   st?.classList.remove('cast', 'bite');
   if (!ok) {
     st?.classList.add('miss');
-    sfx('fail');
+    // 왈왈콩선생 건의: 강화 실패 「쾅」 대신 물소리 「퐁당」
+    sfx(flag('fishSfx') ? 'fish_miss' : 'fail');
     trackEv('fish_end', { ok: false, why });
     setMsg(`<b>${why === 'early' ? '너무 일렀어요… ' : ''}${esc(missLine())}</b>`);
     afterRound();
@@ -147,7 +149,12 @@ function finish(ok: boolean, why: 'early' | 'late') {
   }
   const c = land(run.c);
   st?.classList.add('got');
-  sfx(c.fish.grade === 'l' ? 'legend' : c.fish.grade === 'e' ? 'rare' : 'coin');
+  const gradeSfx = c.fish.grade === 'l' ? 'legend' : c.fish.grade === 'e' ? 'rare' : 'coin';
+  // 성공: 먼저 물을 가르는 「촤악」 → 0.25초 뒤 등급 소리
+  if (flag('fishSfx')) {
+    sfx('fish_catch');
+    setTimeout(() => sfx(gradeSfx), 250);
+  } else sfx(gradeSfx);
   trackEv('fish_end', { ok: true, id: c.fish.id, size: c.size });
   setMsg(catchHtml(c.fish, c.size, c.first, c.record));
   afterRound();

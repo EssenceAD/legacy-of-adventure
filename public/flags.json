@@ -68,5 +68,6 @@
   "almanac": false,
   "leftIcons": false,
   "legendFrame": true,
-  "huntSlots": true
+  "huntSlots": true,
+  "fishSfx": true
 }

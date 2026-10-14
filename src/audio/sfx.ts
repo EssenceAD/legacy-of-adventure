@@ -3,11 +3,12 @@
 import { ctx, duck, onUnlock, sfxBus } from './engine';
 import { holdSfx, setScenePlayer } from './scene';
 import { COMBAT_SYNTH, combatSynth } from './combatSfx';
+import { FISH_SFX, fishSamples, type FishSfx } from './fishSynth';
 
 export type SfxName =
   | 'tap' | 'open' | 'close' | 'coin' | 'build' | 'place_bad' | 'levelup' | 'fail' | 'item' | 'rare' | 'harmony' | 'mission' | 'chapter' | 'grade_up'
   | 'hit' | 'crit' | 'skill' | 'block' | 'perfect' | 'win' | 'lose' | 'event' | 'heart' | 'eval_bronze' | 'eval_silver' | 'eval_gold' | 'eval_legend'
-  | 'record' | 'night' | 'legend';
+  | 'record' | 'night' | 'legend' | 'fish_miss' | 'fish_catch';
 
 const BASE = 'audio/';
 const FILE_SFX = ['tap', 'open', 'close', 'coin', 'build', 'place_bad', 'mission', 'event', 'heart', 'night', 'item', 'rare', 'fail', 'hit', 'crit', 'skill', 'block', 'perfect'] as const;
@@ -102,6 +103,14 @@ export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean
   perSec[name] = hist;
   last[name] = now;
   const v0 = opt.vol ?? 1;
+  // 낚시 「퐁당」·「촤악」: 파일 없이 합성 (매번 물방울 자리가 조금씩 다르다) · sfxBus라 소리 설정·음소거 그대로
+  if (FISH_SFX.has(name)) {
+    const d = fishSamples(name as FishSfx, ctx.sampleRate);
+    const b = ctx.createBuffer(1, d.length, ctx.sampleRate);
+    b.getChannelData(0).set(d);
+    playBuffer(b, v0, now);
+    return;
+  }
   // 핫픽스 8 (2-8): 전투 효과음은 코드 합성음 (Suno 파일은 남겨 둠)
   if (COMBAT_SYNTH.has(name) && combatSynth(name, v0)) return;
   const n = name as SfxName;
