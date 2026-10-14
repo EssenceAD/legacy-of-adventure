@@ -5,6 +5,7 @@ import { craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, t
 import { bagSize, itemPower } from './items';
 import { P, S, world, type Item } from './state';
 import { favRank } from './growth';
+import { perkBulkBudget } from './bundlePerks';
 
 const favOf = (it: Item) => {
   const o = it.owner == null ? null : (world.home?.actors ?? world.actors).find((a) => a.id === it.owner);
@@ -110,8 +111,10 @@ export interface BulkRun {
   log: { name: string; to: number; ok: boolean }[];
 }
 const dustTotal = () => Object.values(P.dust).reduce((s, v) => s + v, 0);
+/** 예산 비율 (LUXE §3 대장간 완성: +10%p · 최대 100%) */
+export const budgetOf = (o: BulkOpts) => Math.min(1, o.budget + perkBulkBudget());
 export function startBulk(o: BulkOpts): BulkRun {
-  return { o, queue: bulkItems(o), limGold: Math.floor(S.gold * o.budget), limDust: Math.floor(dustTotal() * o.budget), spentGold: 0, spentDust: 0, savedDust: 0, tries: 0, fails: 0, ups: 0, reached: 0, stopped: '', log: [] };
+  return { o, queue: bulkItems(o), limGold: Math.floor(S.gold * budgetOf(o)), limDust: Math.floor(dustTotal() * budgetOf(o)), spentGold: 0, spentDust: 0, savedDust: 0, tries: 0, fails: 0, ups: 0, reached: 0, stopped: '', log: [] };
 }
 /** 한 번 두드린다 · 끝났으면 false */
 export function bulkTick(r: BulkRun): boolean {

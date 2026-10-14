@@ -31,6 +31,7 @@ import { bfx, hfx, incMult } from './harmony';
 import { dailyAdd } from './daily';
 import { windMoodDecay, windPasser, windRegularCut } from './wind';
 import { fsay } from './visual';
+import { perkMealMult } from './bundlePerks';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -338,8 +339,9 @@ function fillNeeds(a: Actor, act: Act | undefined) {
   } else if (act === 'drink') {
     if (!S.visiting && a.id && takeMeal()) {
       // 텃밭 채소가 있으면 더 든든한 식사 (BUILDINGS_SPEC §3: 옛 채소 → 창고의 먹을 수 있는 작물)
-      a.food = clamp(a.food + NE.mealWithProduce);
-      a.mood = clamp(a.mood + NE.mealProduceMood * moodMult());
+      // LUXE §3 주방 완성: 식사 품질 +5%
+      a.food = clamp(a.food + NE.mealWithProduce * perkMealMult());
+      a.mood = clamp(a.mood + NE.mealProduceMood * moodMult() * perkMealMult());
     } else a.food = clamp(a.food + NE.meal);
     // HARVEST §1-6: 기간 중 주점 한정 메뉴 호박 수프 (포만 +10 · 기분 +5)
     const soup = !S.visiting && a.id ? soupBonus() : null;

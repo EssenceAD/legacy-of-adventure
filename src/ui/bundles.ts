@@ -1,0 +1,127 @@
+// LUXE §3 마을 회관 꾸러미 화면 (플래그 bundles · 실험실 vis) — 게시판 「마을 회관」 탭
+//  위: 회관 그림(★ 임시 — 그림이 오기 전까지 6조각 블록 · 방이 완성될 때마다 한 조각씩 복원) · 방 6개 카드 → 방 안: 꾸러미마다 칸 줄 · [바치기]
+//  처음 열면 버나드 한마디 (data/story/bundles.ts) · 방 완성 = 담당 한 줄 · 6방 다 = 회관 복원 컷
+import { BUNDLE_FINAL, BUNDLE_FIRST, BUNDLE_ROOM, type BLine } from '../data/story/bundles';
+import type { BundleDef, RoomDef } from '../data/luxe_cfg';
+import {
+  bdState, bundleDone, bundleRewardText, donate, filledN, haveOf, putOf, readySlots, recValue, reservedOf, ROOMS, roomById, roomDone, roomDoneN, roomOpen, roomsDoneN, slotFull, slotName, slotWhere,
+} from '../world/bundles';
+import { markDirty } from '../world/state';
+import { track as trackEv } from '../net/telemetry';
+import { esc, fmt } from './common';
+import { talk } from './dialogue';
+import { fishImg } from './fishing';
+import { toast } from './windows';
+
+/** 지금 보고 있는 방 ('' = 방 목록) */
+let cur = '';
+export const resetBundleView = () => void (cur = '');
+const toTalk = (ls: BLine[]) => ls.map(([w, t, tag]) => [w, t, undefined, tag] as [string, string, undefined, string | undefined]);
+
+/** 처음 열기: 버나드 한마디 (1번) — 다 보면 done */
+export function bundleIntro(done: () => void) {
+  const st = bdState();
+  if (st.seen) return done();
+  st.seen = true;
+  markDirty();
+  trackEv('bundle_open', {});
+  talk(toTalk(BUNDLE_FIRST) as never, done);
+}
+
+/** 회관 그림 자리 (★ 임시: 6조각 블록 · 완성한 방 조각만 색이 돌아온다) */
+function hallArt(): string {
+  const pieces = ROOMS()
+    .map((r) => `<i class="bd-pc ${roomDone(r) ? 'on' : ''}" title="${esc(r.name)}"><em>${esc(r.name)}</em></i>`)
+    .join('');
+  const n = roomsDoneN();
+  return `<div class="bd-hall ${n >= ROOMS().length ? 'full' : ''}" aria-label="마을 회관 그림 (임시)"><div class="bd-roof"></div><div class="bd-pcs">${pieces}</div><small class="bd-tmp">임시 그림 · 회관 그림이 오면 바뀌어요</small></div>
+  <p class="sub">${n >= ROOMS().length ? '마을 회관이 다 고쳐졌어요!' : `무너진 마을 회관 · 고친 방 ${n}/${ROOMS().length}`}</p>`;
+}
+
+/** 탭 내용 */
+export function bundlesHtml(): string {
+  const room = cur ? roomById(cur) : null;
+  if (room && roomOpen(room)) return roomHtml(room);
+  cur = '';
+  const cards = ROOMS()
+    .map((r) => {
+      if (!roomOpen(r)) return `<div class="bd-room lock"><b>🔒 ${esc(r.name)}</b><small>장부 ${r.chapter}장을 마치면 열려요</small></div>`;
+      const done = roomDone(r);
+      const ready = !done && readySlots(r) > 0;
+      return `<button class="bd-room ${done ? 'done' : ''} ${ready ? 'ready' : ''}" data-bdroom="${r.id}"><b>${done ? '✓ ' : ''}${esc(r.name)}</b><small>꾸러미 ${roomDoneN(r)}/${r.bundles.length}${ready ? ' · 바칠 수 있어요' : ''}</small><small class="bd-perk">${esc(r.perk)}</small></button>`;
+    })
+    .join('');
+  const st = bdState();
+  return `${hallArt()}<div class="bd-rooms">${cards}</div><p class="note">바친 재료는 사라져요 · 꾸러미는 칸을 다 채우지 않아도 정해진 수만 채우면 완성 · 연금술 예약분은 빼고 바쳐요${st.final ? ' · 「마을 회관」 건물은 꾸미기 보관함에 있어요' : ''}</p>`;
+}
+
+function slotRow(b: BundleDef, i: number, done: boolean): string {
+  const s = b.slots[i];
+  const put = putOf(b, i);
+  const full = slotFull(b, i);
+  const rec = s.k === 'rec';
+  const have = haveOf(s);
+  const rsv = reservedOf(s);
+  const ic = s.k === 'fish' ? fishImg(s.id, 'fishic bd-ic') : '';
+  const state = rec ? `지금 ${fmt(recValue(s.id))}` : `가진 수 ${fmt(have)}${rsv ? ` <span class="bd-rsv">(연금 예약 ${fmt(rsv)} 빼고)</span>` : ''}`;
+  const btn = full
+    ? '<em class="bd-ok">✓</em>'
+    : done
+      ? ''
+      : rec
+        ? `<button data-bdgive="${b.id}:${i}" ${recValue(s.id) >= s.n ? '' : 'disabled'}>기록 바치기</button>`
+        : `<button data-bdgive="${b.id}:${i}" ${have > 0 ? '' : 'disabled'}>바치기</button>`;
+  return `<div class="bd-slot ${full ? 'full' : ''}">${ic}<span><b>${esc(slotName(s))} ${rec ? '' : `${fmt(put)}/`}${fmt(s.n)}</b><i><u style="width:${Math.round((Math.min(s.n, rec ? recValue(s.id) : put) / s.n) * 100)}%"></u></i><small>${full ? '채웠어요' : state} · ${esc(slotWhere(s))}</small></span>${btn}</div>`;
+}
+
+function roomHtml(r: RoomDef): string {
+  const bundles = r.bundles
+    .map((b) => {
+      const done = bundleDone(b);
+      const n = filledN(b);
+      return `<div class="bd-bundle ${done ? 'done' : ''}"><div class="bd-bh"><b>${done ? '✓ ' : ''}${esc(b.name)} 꾸러미</b><small>${done ? '완성!' : `${b.slots.length}칸 중 ${b.need}칸 · 지금 ${n}/${b.need}`}</small></div>${b.slots.map((_, i) => slotRow(b, i, done)).join('')}</div>`;
+    })
+    .join('');
+  return `<div class="bd-top"><button class="ghost" id="bdBack">‹ 방 목록</button><b>${esc(r.name)}</b></div>
+  <p class="sub">${roomDone(r) ? '✓ 완성한 방 · ' : ''}방 완성 보상: ${esc(r.perk)}<br><small>꾸러미 하나 완성: ${esc(bundleRewardText(r))}</small></p>${bundles}`;
+}
+
+const top = () => {
+  const w = document.getElementById('winB');
+  if (w) w.scrollTop = 0;
+};
+/** 버튼 묶기 (다시 그리기는 redraw) */
+export function bindBundles(redraw: () => void) {
+  document.querySelectorAll<HTMLElement>('[data-bdroom]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        cur = b.dataset.bdroom!;
+        redraw();
+        top();
+      }),
+  );
+  const back = document.getElementById('bdBack');
+  if (back)
+    back.onclick = () => {
+      cur = '';
+      redraw();
+      top();
+    };
+  document.querySelectorAll<HTMLElement>('[data-bdgive]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const [id, i] = b.dataset.bdgive!.split(':');
+        const r = donate(id, +i);
+        if (typeof r === 'string') return toast(r);
+        if (r.room) {
+          const lines = [...(BUNDLE_ROOM[r.room.id] ?? []), ...(r.room.id === 'kitchen' ? ([['narr', '배부른 강아지가 회관 주방 앞에서 꼬리를 흔들어요. (펫은 곧 마을에 와요)']] as BLine[]) : [])];
+          toast(`🏛 ${r.room.name} 완성! ${r.room.perk}`);
+          const fin = r.final;
+          talk(toTalk(lines) as never, () => (fin ? talk(toTalk(BUNDLE_FINAL) as never, redraw) : redraw()));
+          return;
+        }
+        toast(r.bundle ? `꾸러미 완성! ${r.bundle}` : `${r.gave}개 바쳤어요`);
+        redraw();
+      }),
+  );
+}

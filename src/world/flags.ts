@@ -155,6 +155,8 @@ export const FLAG_DEFAULTS = {
   enhTransfer: false,
   /** FIVESTARS 「다섯 별의 원정대」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 3막 모모 편지 → 장부 3막 장 5칸(개척자 다섯의 부탁) → 칸을 채우면 그 개척자가 신화 영웅으로 합류(starId · 내보내기·거절 자동화 제외 · 원정·사냥·토벌·심연 출전) · 세트 「다섯 별」 2/3/4 · 다섯 다 모이면 마지막 컷 · 밤하늘 별자리 · 열쇠 조각 · 「다섯 별 깃발」 · 칭호 「다섯 별의 주인」 · 2막 카메오 꿈 한 줄 · 다섯 번째 개척자 왈왈콩선생(카메오 · 편지 · 「밤길 방울」 · 「밤길의 선생님」 · 크레딧 다섯 이름) — 끄면 아무것도 안 보임 */
   fiveStars: false,
+  /** LUXE §3 마을 회관 꾸러미 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 게시판 「마을 회관」 탭 · 6방 × 꾸러미(N/칸) · 바친 건 사라짐(연금 예약분은 빼고) · 꾸러미 완성 금화·가루 · 방 완성 영구 보상 · 6방 다 = 컷 · 「마을 회관」 건물 · 칭호 · 명품 쿠폰 (숫자 data/luxe_cfg.ts) — 끄면 탭·보상 효과 모두 멈춤 (바친 것·받은 것은 그대로) */
+  bundles: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

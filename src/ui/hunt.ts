@@ -111,7 +111,8 @@ function slotCards(): string {
   const open = slotsOpen();
   const slots = autoSlots();
   const used = slots.filter(Boolean).length;
-  const cards = Array.from({ length: H.slotsMax }, (_, i) => {
+  // LUXE §3 쉼터 완성: 칸이 slotsMax 위로 하나 더 열리면 그 칸까지 보인다
+  const cards = Array.from({ length: Math.max(H.slotsMax, open) }, (_, i) => {
     if (i >= open) {
       const ch = slotChapter(i);
       return `<div class="hslot lock"><b>${i + 1}칸</b><small>${ch ? `장부 ${ch}장에 열려요` : '곧 열려요'}</small></div>`;

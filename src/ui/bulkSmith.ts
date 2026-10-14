@@ -1,8 +1,9 @@
 // SMITH §2·§3 화면: 일괄 강화(초월 포함) 창 — 대상 · 목표 +N · 예산 한도 · 미리보기 · [시작]/[멈춤] · 요약 / 일괄 제작 요약 카드
 import { CONFIG } from '../data/config';
 import { GRADE_INFO, REGIONS, SLOT_NAME, type RegionId, type Slot } from '../data/items';
-import { bulkItems, bulkPlan, bulkTick, craftMany, maxGoal, startBulk, type BulkOpts, type BulkRun, type CraftBatch } from '../world/bulk';
+import { budgetOf, bulkItems, bulkPlan, bulkTick, craftMany, maxGoal, startBulk, type BulkOpts, type BulkRun, type CraftBatch } from '../world/bulk';
 import { salvage } from '../world/craft';
+import { perkBulkBudget } from '../world/bundlePerks';
 import { P, type Item } from '../world/state';
 import { $, $$, esc, fmt, itemCell } from './common';
 import { closeWin, openWin, toast } from './windows';
@@ -65,7 +66,7 @@ function draw(back: () => void, trans: boolean) {
       ${pickList}
       <p class="sub">목표 <b class="g">+${opts.goal}</b>까지${!trans && opts.goal >= 7 ? ' <small>(+7부터 실패하면 30% 확률로 1단계 하락)</small>' : ''}</p>
       <input type="range" id="bGoal" min="${lo}" max="${hi}" value="${opts.goal}">
-      <p class="sub">예산: 가진 금화·가루의 <b class="g">${Math.round(opts.budget * 100)}%</b>까지만</p>
+      <p class="sub">예산: 가진 금화·가루의 <b class="g">${Math.round(opts.budget * 100)}%</b>까지만${perkBulkBudget() ? ` <small class="g">(마을 회관 +${Math.round(perkBulkBudget() * 100)}%p → ${Math.round(budgetOf(opts) * 100)}%)</small>` : ''}</p>
       <input type="range" id="bBud" min="10" max="100" step="10" value="${Math.round(opts.budget * 100)}">
       <label class="chk"><input type="checkbox" id="bLock" ${opts.skipLocked ? 'checked' : ''}> 🔒 잠금 장비 빼기</label>
       ${trans ? '' : `<label class="chk"><input type="checkbox" id="bCharm" ${opts.charm ? 'checked' : ''} ${P.growth.charm > 0 ? '' : 'disabled'}> 🧿 부적 자동 사용 <small>(${P.growth.charm}개 · +7~+10 하락을 막을 때만 1개)</small></label>`}

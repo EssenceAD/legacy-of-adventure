@@ -24,6 +24,7 @@ import { autoGoldMult, blessFx, gsState } from './goldsink';
 import { takeUniqueBoost } from './favors';
 import { fsay, vis } from './visual';
 import { settleAuto } from './harvest';
+import { perkHuntSlot, perkHuntSlotMax } from './bundlePerks';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -216,7 +217,8 @@ export function syncAutos(h: { auto: HuntAuto | null; autos?: (HuntAuto | null)[
 export function slotsOpen(): number {
   if (!slotsOn()) return 1;
   const ch = chaptersDone();
-  return Math.min(H.slotsMax, 1 + H.slotChapters.filter((c) => ch >= c).length);
+  // LUXE §3 쉼터 완성: 칸 최대 위로 +1 (perkHuntSlotMax까지)
+  return Math.min(perkHuntSlotMax(), Math.min(H.slotsMax, 1 + H.slotChapters.filter((c) => ch >= c).length) + perkHuntSlot());
 }
 /** i번 칸(0부터)이 열리는 장부 장 (0번 칸·장이 정해지지 않은 칸은 null) */
 export const slotChapter = (i: number): number | null => (i > 0 ? (H.slotChapters[i - 1] ?? null) : null);

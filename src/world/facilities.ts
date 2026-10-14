@@ -3,6 +3,7 @@
 import { CONFIG } from '../data/config';
 import { markDirty, P, world, type Building } from './state';
 import { bestOf } from './town';
+import { perkKeepAlch, perkPotionMult } from './bundlePerks';
 
 const NB = CONFIG.newBuildings;
 const PO = CONFIG.potions;
@@ -45,7 +46,8 @@ export function addCrop(id: string, n: number) {
  *  · 공방이 없으면(칸 0) 0 — 예전처럼 다 먹는다 · 끄면 0
  */
 export function alchReserve(id: string): number {
-  if (P.keepAlch === false) return 0;
+  // LUXE §3 주방 완성: 「남겨 두기」를 꺼도 주점이 예약분은 안 먹는다
+  if (P.keepAlch === false && !perkKeepAlch()) return 0;
   const slots = potionSlots();
   if (!slots) return 0;
   let need = 0;
@@ -121,7 +123,8 @@ export function brew(id: string): string | null {
 export function drink(id: string, now = Date.now()): string | null {
   if (!(P.potions[id] > 0)) return '물약이 없어요';
   P.potions[id]--;
-  P.buff = { id, until: now + PO.minutes * 60000 };
+  // LUXE §3 약방 완성: 지속 시간 +20%
+  P.buff = { id, until: now + PO.minutes * 60000 * perkPotionMult() };
   markDirty();
   return null;
 }

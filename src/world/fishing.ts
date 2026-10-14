@@ -10,6 +10,7 @@ import { today } from './progress';
 import { bestOf } from './town';
 import { gotGold, markDirty, P, S, uiHooks, world } from './state';
 import { windMealGrade } from './wind';
+import { perkBait, perkFishWin } from './bundlePerks';
 
 const F = () => CONFIG.growth.fish;
 export type FishWhere = 'pond' | 'sea';
@@ -27,7 +28,8 @@ export const TROPHY_FISH = FISH.filter((f) => f.use.includes('trophy'));
 // ───────── 미끼 ─────────
 
 const innLv = () => bestOf('inn', world.home?.objs ?? world.objs)?.lvl ?? 1;
-export const baitMax = () => F().baitDaily + Math.floor(innLv() / F().baitPerInnLv);
+/** LUXE §3 물가 완성: +1 */
+export const baitMax = () => F().baitDaily + Math.floor(innLv() / F().baitPerInnLv) + perkBait();
 function rollDay() {
   const f = P.growth.fish;
   if (f.day !== today()) {
@@ -99,7 +101,7 @@ export function cast(where: FishWhere, rng: () => number = Math.random): Cast | 
   const fish = (fishForce.id && fishById(fishForce.id)) || pickFish(where, rng);
   fishForce.id = '';
   const bite = F().biteFrom + rng() * (F().biteTo - F().biteFrom);
-  return { where, fish, size: rollSize(fish, rng), bite, win: fish.win, len: F().seconds };
+  return { where, fish, size: rollSize(fish, rng), bite, win: fish.win + perkFishWin(), len: F().seconds };
 }
 /** 판정: 입질 뒤 판정 창 안에 눌렀나 (t = 던진 뒤 누른 시각 · 초) */
 export const judge = (c: Pick<Cast, 'bite' | 'win'>, t: number) => t >= c.bite && t <= c.bite + c.win;

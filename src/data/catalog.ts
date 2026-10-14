@@ -134,6 +134,8 @@ export const CATALOG = {
   // FIVESTARS (플래그 fiveStars): 다섯 별 깃발(마지막 보상) · 왈왈콩선생 「밤길 방울」(다섯 번째 개척자) — 그림은 임시로 깃발·가로등 (도트는 다음 단계)
   five_flag: { name: '다섯 별 깃발', sprite: 'banner', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '다섯 별의 원정대 · 근처에서 파티가 출발하면 기분 ↑' },
   night_bell: { name: '밤길 방울', sprite: 'lamppost', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '밤길의 선생님 · 근처 손님 기분 ↑ · 밤 출발 원정 시간 −3%' },
+  // LUXE §3 (플래그 bundles): 마을 회관 — 6방 꾸러미를 다 채우면 보관함에 (놓을 자리는 직접) · ★ 그림은 임시로 서재(library) 그림 — 형철 그림 오면 sprite만 바꾼다
+  town_hall: { name: '마을 회관', sprite: 'library', size: [2, 3], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '마을 회관 꾸러미를 다 채운 마을 · 예전엔 여기서 마을 잔치가 열렸대요 (임시 그림)' },
   // GROWTH §4: 물고기 박제 (낚시 창 「박제하기」로 받아 무료로 놓기)
   fish_firefly: { name: '반딧불 물고기 박제', sprite: 'fish_firefly', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 물속의 반딧불' },
   fish_kingkoi: { name: '왕관 쓴 황금 잉어 박제', sprite: 'fish_kingkoi', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 연못의 왕' },

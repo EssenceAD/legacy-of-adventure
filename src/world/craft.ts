@@ -19,6 +19,7 @@ import { bfx, hfx } from './harmony';
 import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
 import { brag, uniqueSalvageMult } from './growth';
 import { windHarvest } from './wind';
+import { perkEnhDust } from './bundlePerks';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -126,7 +127,8 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
 
 // ───────── 강화 ─────────
 
-export const enhanceCost = (it: Item) => (it.enh + 1) * (it.enh + 1) * SM.enhanceCost;
+/** LUXE §3 대장간 완성: 가루 −5% (perkEnhDust · 끄면 그대로) */
+export const enhanceCost = (it: Item) => perkEnhDust((it.enh + 1) * (it.enh + 1) * SM.enhanceCost);
 /** 강화 성공 보너스 합 (주인 손재주 · 어울림 · 마법사의 탑 · 불꽃 대장장이 세트) */
 export const enhanceBonusAll = () => enhanceBonus() + hfx('enhance') + towerEnhance() + setEnhance();
 /** GROWTH §3-2: 강화 가루는 그 장비 등급의 가루로 낸다. +1만 확정, 그다음은 목표별 확률 + 보너스 + 그 장비 천장 (+ 숫돌) */

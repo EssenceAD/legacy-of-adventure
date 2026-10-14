@@ -25,6 +25,7 @@ import type { Item } from './state';
 import { stripWind, windRaid } from './wind';
 import { flag } from './flags';
 import { gatesOn, queueRankWeek, wanderMet, wanderPity } from './paceGates';
+import { perkRaidMats, perkRaidTries } from './bundlePerks';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -71,7 +72,8 @@ export function ensureWeek(): boolean {
 
 export const pace = () => flag('raidPace');
 /** 하루 도전 (플래그 끄면 예전 3) */
-export const triesMax = () => (pace() ? R.triesPerDay : R.paceOff.triesPerDay);
+/** LUXE §3 토벌 전리품 완성: +1 */
+export const triesMax = () => (pace() ? R.triesPerDay : R.paceOff.triesPerDay) + perkRaidTries();
 /** 이번 주 몇 번째 보스 (1부터 · 옛 저장 = 1) */
 export const chainN = () => Math.max(1, P.raid.chainN || 1);
 /** 이번 주 잡은 보스 (옛 저장: 지금 보스를 잡았으면 그것 하나) */
@@ -372,7 +374,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   // PACE §1: 도전장 보스는 금화·재료 ×chainMult (고유 장비 확률·장부·업적·전설 카운트는 그대로)
   const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold) * cm * fiveGold(members));
   const mats0 = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
-  const mats = cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm));
+  // LUXE §3 토벌 전리품 완성: 재료 +10% (소수점 이월)
+  const mats = perkRaidMats(cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm)));
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));
   S.gold += gold;
   S.ledger.dungeon += gold;

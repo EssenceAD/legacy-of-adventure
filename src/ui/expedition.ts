@@ -41,6 +41,8 @@ import * as game from '../game';
 import { showWelcome } from './welcome';
 import { bannerFx, boxFor, cardsOn, fxOn, itemLine, keyFx, lineCard, playReceipt, shortG, receiptHtml, type RcLine } from './checkin';
 import { def } from '../data/catalog';
+import { bdOn } from '../world/bundlePerks';
+import { bindBundles, bundleIntro, bundlesHtml, resetBundleView } from './bundles';
 import { afterPaidRefresh, bindFavors, favorIntro, favorsHtml, refreshBtn, refreshHint } from './goldsink';
 
 const TIER = CONFIG.expedition.tierNames;
@@ -93,10 +95,10 @@ addEventListener('click', (e) => {
   if ((e.target as HTMLElement)?.closest?.('[data-goboard]')) openBoard();
 });
 
-/** GOLDSINK §5: 게시판 탭 (0 의뢰 · 1 마을 부탁) */
+/** GOLDSINK §5: 게시판 탭 (0 의뢰 · 1 마을 부탁 · 2 마을 회관 — LUXE §3 플래그 bundles) */
 let boardTab = 0;
 const boardTabs = () =>
-  `<div class="tabs" id="bdT"><button class="tab ${boardTab ? '' : 'on'}" data-bt="0">오늘의 의뢰</button><button class="tab ${boardTab ? 'on' : ''}" data-bt="1">📜 마을 부탁</button></div>`;
+  `<div class="tabs" id="bdT"><button class="tab ${boardTab === 0 ? 'on' : ''}" data-bt="0">오늘의 의뢰</button><button class="tab ${boardTab === 1 ? 'on' : ''}" data-bt="1">📜 마을 부탁</button>${bdOn() ? `<button class="tab ${boardTab === 2 ? 'on' : ''}" data-bt="2">마을 회관</button>` : ''}</div>`;
 function bindBoardTabs() {
   $$('[data-bt]').forEach(
     (b) =>
@@ -104,7 +106,11 @@ function bindBoardTabs() {
         const t = +b.dataset.bt!;
         if (t === boardTab) return;
         if (t === 1) favorIntro(() => openBoard(1));
-        else openBoard(0);
+        else if (t === 2) {
+          resetBundleView();
+          openBoard(2);
+          bundleIntro(() => {});
+        } else openBoard(0);
       }),
   );
 }
@@ -114,6 +120,13 @@ export function openBoard(tab?: number) {
   checkSlot5();
   if (S.visiting) return toast(fsay('이웃 마을에선 원정을 못 보내요', '이웃 마을에선 원정을 보내드릴 수 없어요'));
   if (tab != null) boardTab = tab;
+  if (boardTab === 2 && !bdOn()) boardTab = 0;
+  if (boardTab === 2) {
+    openWin('원정 · 의뢰 게시판', `${boardTabs()}${bundlesHtml()}`);
+    bindBoardTabs();
+    bindBundles(() => keepScroll(() => openBoard(2)));
+    return;
+  }
   if (boardTab === 1) {
     openWin('원정 · 의뢰 게시판', `${boardTabs()}${favorsHtml()}`);
     bindBoardTabs();

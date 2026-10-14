@@ -649,8 +649,20 @@ export function freshProgress() {
     pg: freshPaceGates(),
     /** FIVESTARS 「다섯 별의 원정대」 (world/fivestars.ts fiveState()가 칸을 바로잡는다 · 플래그를 꺼도 지운 것 없이 그대로) */
     five: freshFive(),
+    /** LUXE §3 마을 회관 꾸러미 (world/bundles.ts bdState()가 칸을 바로잡는다 · 플래그를 꺼도 바친 것·받은 것은 그대로) */
+    bundles: freshBundles(),
   };
 }
+
+/**
+ * LUXE §3: seen = 처음 열기(무너진 회관 + 버나드)를 봤나 · put = 칸에 바친 수 ("꾸러미id:칸번호" → 개수) · done = 완성한 꾸러미(보상 받음)
+ *  · rooms = 완성한 방(영구 보상 켜짐 · 대사 봄) · final = 6방 전부 보상(1번만) · petGrant = §2 펫이 생기면 줄 첫 펫('dog' = 배부른 강아지 · '' = 없음)
+ *  · petGiven = §2가 그 펫을 실제로 줬나 · coupon = §1 「이번 주 명품」 무료 쿠폰 남은 수 · hall = 마을 회관 건물을 보관함에 넣었나 · carry = 토벌 재료 +10%의 소수점 이월
+ */
+export function freshBundles() {
+  return { seen: false, put: {} as Record<string, number>, done: [] as string[], rooms: [] as string[], final: false, petGrant: '' as string, petGiven: false, coupon: 0, hall: false, carry: 0 };
+}
+export type BundleState = ReturnType<typeof freshBundles>;
 
 /**
  * FIVESTARS: open = 3막 모모 편지를 봐서 장(5칸)이 열림 · base = 부탁을 받은 순간 기준값 · done = 칸을 채움 · joined = 합류함(컷 시작)
