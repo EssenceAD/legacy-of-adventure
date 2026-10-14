@@ -22,7 +22,7 @@ const row = (r: RankRow, f: (n: number) => string, mineRow = false) =>
   `<button class="rkrow ${mineRow ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${r.user_id}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${mineRow && myTitle() ? `「${esc(myTitle())}」 ` : ''}${esc(r.nickname)}</small></span><i>${f(r.score)}</i></button>`;
 
 /** LUXE §4: 탭 이름 (guestbook 켰으면 맨 끝에 「이번 주 인기 마을」) */
-const tabNames = () => [...BOARDS.map((b) => b[1]), ...(gbOn() ? ['이번 주 인기 마을'] : [])];
+const tabNames = () => [...BOARDS.map((b) => b[1]), ...(gbOn() ? ['인기 마을'] : [])];
 const bindRows = () =>
   $$('.rkrow').forEach(
     (b) =>
@@ -45,6 +45,9 @@ export async function openRank(i = cur) {
     openWin('랭킹', tabs(tabNames(), i, 'rkT') + html);
     bindTabs('rkT', (k) => void openRank(k));
     bindRows();
+    // 폰: 탭 줄이 넘치면 지금 탭이 보이게
+    const on = document.querySelector<HTMLElement>('#rkT .tab.on');
+    if (on?.parentElement) on.parentElement.scrollLeft = on.offsetLeft;
     return;
   }
   const [board, name, f] = BOARDS[i];

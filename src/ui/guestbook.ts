@@ -5,7 +5,7 @@ import { GB } from '../data/guestbook_cfg';
 import type { Neighbor } from '../data/neighbors';
 import { PORTRAITS } from '../engine/assets';
 import { gbServer, lastWeekTop, likeWithStamp, myGuestbook, weeklyPopular, type GbBook } from '../net/guestbook';
-import { gbCache, pollGuestbook } from '../net/gbSync';
+import { applyTotal, gbCache, pollGuestbook } from '../net/gbSync';
 import { me, online, sb } from '../net/server';
 import { track } from '../net/telemetry';
 import { getPref, setPref } from '../save/save';
@@ -113,7 +113,7 @@ export async function loadGuestbook(draw: (html: string) => void, visit: (uid: s
   if (!sb || !online()) return;
   const b = await myGuestbook();
   if (b) {
-    gbCache.total = b.total;
+    applyTotal(b.total);
     const g = gbState();
     if (g.seen !== b.total) {
       g.seen = b.total;

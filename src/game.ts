@@ -45,6 +45,7 @@ import { sanitizeRegions2 } from './world/regions2';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
 import { gbOn, openStampSheet } from './ui/guestbook';
+import { gbServer } from './net/guestbook';
 import { mythicHeart } from './world/mythic';
 import { refreshNoticeDot } from './ui/notice';
 import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
@@ -667,7 +668,7 @@ export function updateLike() {
   const v = S.visiting;
   if (!v) return;
   const liked = !v.uid && likedSet().has(v.id);
-  $('#vLike').textContent = `${v.uid && gbOn() ? '👍' : '♥'} ${fmt(v.like + (liked ? 1 : 0))}`;
+  $('#vLike').textContent = `${v.uid && gbOn() && !gbServer.missing ? '👍' : '♥'} ${fmt(v.like + (liked ? 1 : 0))}`;
 }
 
 export async function likeNeighbor() {

@@ -10,7 +10,7 @@ import { CONFIG } from '../data/config';
 import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
-import { gbHasNew, gbOn, lastTopHtml, loadGuestbook } from './guestbook';
+import { gbHasNew, gbOn, lastTopHtml, loadGuestbook, pollGuestbook } from './guestbook';
 import { isWinOpen, openWin, toast } from './windows';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
@@ -115,7 +115,8 @@ export async function openVillage(tab = 0) {
   };
   const load = async (n: number) => {
     page = n;
-    const [rows, mine, , top] = await Promise.all([listVillages(n), myVillage(), pioneers(), lastTopHtml()]);
+    // LUXE §4: 방명록 새 좋아요(탭 빨간 점) — pollMin분에 한 번만 실제로 묻는다
+    const [rows, mine, , top] = await Promise.all([listVillages(n), myVillage(), pioneers(), lastTopHtml(), gbOn() ? pollGuestbook() : null]);
     topRow = top;
     more = rows.length > n;
     real = rows.slice(0, n).map(toNeighbor).filter((x): x is Neighbor => !!x);

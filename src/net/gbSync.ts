@@ -17,9 +17,13 @@ export async function pollGuestbook(now = Date.now(), force = false): Promise<vo
   if (!force && now - gbCache.at < GB.pollMin * 60000) return;
   gbCache.at = now;
   const b = await myGuestbook(1);
-  if (!b) return;
-  gbCache.total = b.total;
-  const gifts = takeGifts(gbState(), b.total, kstWeekKey(now));
+  if (b) applyTotal(b.total, now);
+}
+
+/** 서버 누적 좋아요 수를 받았다 (확인할 때 · 방명록 탭을 열 때): 빨간 점 기준 + 10개마다 선물 */
+export function applyTotal(total: number, now = Date.now()) {
+  gbCache.total = total;
+  const gifts = takeGifts(gbState(), total, kstWeekKey(now));
   if (!gifts.length) return;
   for (const r of gifts)
     addMail({
@@ -28,6 +32,6 @@ export async function pollGuestbook(now = Date.now(), force = false): Promise<vo
       body: `이웃들이 내 마을에 좋아요를 ${GB.giftEvery}개 더 남겼어요! 고마운 마음을 담은 작은 선물이에요.`,
       reward: r.deco ? { deco: r.deco } : { dust: r.dust ?? 0 },
     });
-  track('gb_gift', { n: gifts.length, total: b.total });
+  track('gb_gift', { n: gifts.length, total });
   markDirty();
 }
