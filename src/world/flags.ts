@@ -161,6 +161,8 @@ export const FLAG_DEFAULTS = {
   guestbook: false,
   /** FIRSTLOOK §2 화면 조용히 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 마을 말풍선 한 번에 1개(우선순위 줄: 안내 > 이야기·사건 > 손님 대사 > 건물 상태 · 2.5초 간격 · 건물 상태 최대 1) · 「오늘의 목표 달성」 안내 상자 대신 목표 알약 깜빡 + 「받기!」 꼬리표 · 이름표는 평소 없음(전설·신화·영웅은 머리 위 등급색 점 · 누르면 3초 · 배율 3에서 단골 이상 연하게) · 떠다니는 글씨 같은 자리 합침(작게 · 0.9초) · 마을을 연 뒤 10초 아래 소문·채팅 띠 숨김 · 설정 「화면 조용히」(기본 켬, 끄면 예전 그대로 · 「손님 이름 항상 보기」를 켠 사람은 이름 그대로) — 숫자 CONFIG.firstLook.quiet */
   flQuiet: false,
+  /** FIRSTLOOK §3 폰에서 키보드 안내 숨기기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 터치 기기(pointer: coarse)면 대화창 「Z NEXT」「X SKIP」 대신 「탭: 다음」 + [건너뛰기] 버튼 · 건너뛰기는 열린 뒤 0.35초 동안 안 먹음(티저 건너뛰기도) · PC는 그대로 (숫자·글자 CONFIG.firstLook.touch) */
+  flTouchHints: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

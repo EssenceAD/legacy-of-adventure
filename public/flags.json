@@ -77,5 +77,6 @@
   "fiveStars": true,
   "bundles": false,
   "guestbook": false,
-  "flQuiet": false
+  "flQuiet": false,
+  "flTouchHints": false
 }

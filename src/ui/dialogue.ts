@@ -6,6 +6,7 @@ import { CONFIG } from '../data/config';
 import { PORTRAITS } from '../engine/assets';
 import { mcPortrait } from '../data/origins';
 import { P, S, world, type Actor, type TalkChoice, type TalkLine } from '../world/state';
+import { applyDlgHints, skipTapOk } from './touchHints';
 
 /** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기, 이름표] — 누가: narr(해설)·hero·keeper·post·직업 */
 export type Line = TalkLine;
@@ -38,6 +39,8 @@ const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender
 const isMe = (who: string) => who === 'me' || (who === 'hero' && !!P.owner);
 
 let DQ: Talk | null = null;
+/** FIRSTLOOK §3: 대화가 열린 때 (터치 [건너뛰기] 막이) */
+let dlgOpenedAt = 0;
 export const isTalking = () => DQ !== null;
 /** 핫픽스 11: 글자가 찍히는 중 (타자 효과) — 이때는 마을 그리기를 늦추지 않는다 */
 export const isTyping = () => !!DQ?.typing;
@@ -57,6 +60,9 @@ export function talk(lines: Line[], done?: () => void, choices?: TalkChoice[]) {
   if (DQ) clearInterval(DQ.iv);
   DQ = { lines, i: 0, done, choices, typing: false, wait: false, named: false, full: '', iv: 0 };
   $('#dChoice').hidden = true;
+  // FIRSTLOOK §3: 폰이면 「탭: 다음」 + [건너뛰기] (끄면 그대로) · 건너뛰기 0.35초 막이 시작
+  dlgOpenedAt = performance.now();
+  applyDlgHints(document.querySelector<HTMLElement>('#dlg .keys'));
   $('#dlg').hidden = false;
   $('#view').classList.add('talking');
   showLine();
@@ -308,6 +314,7 @@ export function initDialogue() {
   };
   $('#dSkip').onclick = (e) => {
     e.stopPropagation();
+    if (!skipTapOk(dlgOpenedAt)) return;
     skipTalk();
   };
   // ONBOARDING §1: 길게 누르면 빨리 넘기기 (고르기·이름 칸에선 멈춤)

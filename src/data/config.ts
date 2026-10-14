@@ -1314,6 +1314,8 @@ export const CONFIG = {
    *   floatMs = 떠다니는 글씨 시간 · floatMergeMs = 이 시간 안에 같은 자리면 합침 · bandHideMs = 마을을 연 뒤 아래 소문·채팅 띠 숨김
    */
   firstLook: {
+    /** §3 flTouchHints: 터치 기기 대화창 안내 글자 · 건너뛰기가 열린 뒤 안 먹는 시간(ms · 확인 시트와 같은 350) */
+    touch: { nextLabel: '탭: 다음', skipLabel: '건너뛰기', guardMs: 350 },
     quiet: {
       bubbleGapMs: 2500,
       bubbleStaleMs: 9000,
