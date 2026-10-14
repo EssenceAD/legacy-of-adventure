@@ -7,6 +7,8 @@ import { fillNames } from '../data/josa';
 import { HEROES } from '../data/heroes';
 import { LEGENDS } from '../data/legends';
 import { REGIONS } from '../data/items';
+import { PIONEERS, type PioneerId } from '../data/story/easter';
+import { STARS as STAR_LINES, type StarId } from '../data/story/fivestars';
 import { CYCLE_LINES, LEGACY_GIFTS, MEMORIES, OPENING_CYCLE, RETIRE_TICKS, ROUTES, type RouteId, type SLine } from '../data/story/v1';
 import { track } from '../net/telemetry';
 import { onNewDay } from './clock';
@@ -406,6 +408,9 @@ export function storyLines(src: SLine[]): StoryLine[] {
     else if (who.startsWith('legend_')) line = [who, t, undefined, LEGENDS.find((l) => 'legend_' + l.key === who)?.name ?? ''];
     else if (who === 'editor') line = ['editor', t, undefined, '여행자 안내서 편집장'];
     else if (who === 'star') line = ['star', t, undefined, '별지기'];
+    // FIVESTARS: 개척자 카메오 모습 pioneer_<id> → 초상 p_<id> · 신화 모습 star_<id> → 초상 star_<id> (이름표는 그 사람 이름)
+    else if (who.startsWith('pioneer_') && who.slice(8) in PIONEERS) line = ['p_' + who.slice(8), t, undefined, PIONEERS[who.slice(8) as PioneerId].name];
+    else if (who.startsWith('star_') && who.slice(5) in STAR_LINES) line = [who, t, undefined, STAR_LINES[who.slice(5) as StarId].name];
     // HARVEST §1-2: 인연 인물(빵집 도라 아줌마 등)은 그 초상·이름 그대로
     else if (bondById(who) && !(who in CLASSES)) line = [bondById(who)!.port, t, undefined, bondById(who)!.name];
     else if (who === '@fav') {

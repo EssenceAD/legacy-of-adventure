@@ -9,7 +9,7 @@ import { powerOf } from '../world/adventurers';
 import { bondOf } from '../world/chem';
 import { isFav } from '../world/growth';
 import { isMythic } from '../world/mythic';
-import { isSelfStar } from '../world/fivestars';
+import { isSelfStar, starOf } from '../world/fivestars';
 import { ROLE_ICON, ROLE_NAME, roleOf, type Role } from '../world/party';
 import { awayText, resting, type PartyWhere } from '../world/partyRules';
 import { companionText, isCompanion } from '../world/expeditions';
@@ -95,7 +95,7 @@ export function heroCardData(a: Actor, o: CardOpts = {}) {
     why: why ?? null,
     src,
     /** 일러스트 초상화가 없으면 도트 얼굴 확대 */
-    dot: !!src && src === pic(a) && !a.role && !a.legendId && !a.heroId && !a.cameo,
+    dot: !!src && src === pic(a) && !a.role && !a.legendId && !a.heroId && !a.cameo && !starOf(a),
   };
 }
 

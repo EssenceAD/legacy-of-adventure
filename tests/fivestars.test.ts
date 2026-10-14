@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/data/config';
 import { STAR_IDS, STARS } from '../src/data/fivestars';
-import { FIVE_DREAM, FIVE_SHARD, FIVE_TITLE } from '../src/data/story/fivestars';
+import { FIVE_FINALE, FIVE_LETTER, FIVE_SET_LINE, OSWIN_TALE, STAR_ORDER, STARS as STAR_LINES, WALWAL_CAMEO, WALWAL_CAMEO_GIFT, WALWAL_LETTER, WALWAL_PIONEER } from '../src/data/story/fivestars';
+import { FIVE_SHARD, FIVE_TITLE } from '../src/data/story/fivestars_extra';
+import { storyLines } from '../src/world/story';
 import { makeAdventurer, makeLegend, powerOf } from '../src/world/adventurers';
 import { dismissWhy } from '../src/world/dismiss';
 import { cameoNext, makeCameo } from '../src/world/easter';
 import { partyEligible } from '../src/world/expeditions';
 import {
-  constellationOn, fiveAtk, fiveGold, fiveHpMult, fiveLedger, fiveNightWin, fiveRaidKill, fiveSetCutDue, fiveState, fiveStealth, fiveTick, fiveTimeCut, fiveWanderMult, isSelfStar, makeStar, setSelfStar, starGoals,
+  constellationOn, fiveAtk, fiveDepart, fiveHeart, fiveHooks, fiveOswinTale, fiveSetLineDue, fiveGold, fiveHpMult, fiveLedger, fiveNightWin, fiveRaidKill, fiveSetCutDue, fiveState, fiveStealth, fiveTick, fiveTimeCut, fiveWanderMult, isSelfStar, makeStar, setSelfStar, starGoals,
 } from '../src/world/fivestars';
 import { FLAG_DEFAULTS, setFlag } from '../src/world/flags';
 import { optSum } from '../src/world/items';
@@ -78,7 +80,7 @@ describe('플래그', () => {
     expect(fiveLedger()).toBeNull();
     const c = makeCameo('woongs', 5, 5);
     const lines = Array.from({ length: 6 }, () => cameoNext(c).line);
-    expect(lines).not.toContain(FIVE_DREAM.woongs);
+    expect(lines).not.toContain(STAR_LINES.woongs.dream);
     const a = makeStar('woongs', 5, 5);
     expect(isMythic(a)).toBe(false);
     expect(fiveAtk([a, a])).toBe(1);
@@ -274,10 +276,10 @@ describe('다섯 다 모이면', () => {
     P.story.act = 2;
     const c = makeCameo('gonu', 5, 5);
     const lines = Array.from({ length: 6 }, () => cameoNext(c).line);
-    expect(lines).toContain(FIVE_DREAM.gonu);
+    expect(lines).toContain(STAR_LINES.gonu.dream);
     P.story.act = 1;
     const c1 = makeCameo('gonu', 5, 5);
-    expect(Array.from({ length: 6 }, () => cameoNext(c1).line)).not.toContain(FIVE_DREAM.gonu);
+    expect(Array.from({ length: 6 }, () => cameoNext(c1).line)).not.toContain(STAR_LINES.gonu.dream);
   });
 });
 
@@ -356,6 +358,93 @@ describe('§5 다섯 번째 개척자 왈왈콩선생', () => {
     bellAura(10);
     expect(a.mood).toBeGreaterThan(50);
     setFlag('fiveStars', false);
+    expect(pioneerExpCut()).toBe(0);
+  });
+});
+
+describe('대사 파일 모양 (data/story/fivestars.ts)', () => {
+  it('다섯 별: 순서 · 직업 · 스킬 이름/설명은 대사 파일 · 숫자 효과는 설정', () => {
+    expect(STAR_ORDER).toEqual(STAR_IDS);
+    for (const id of STAR_IDS) {
+      const L = STAR_LINES[id];
+      expect(STARS[id].kind).toBe(L.cls);
+      expect(STARS[id].name).toBe(L.name);
+      expect(STARS[id].skill.name).toBe(L.skill.name);
+      expect(STARS[id].skill.desc).toBe(L.skill.desc);
+      expect(STARS[id].title).toBe(L.title);
+      expect(L.request.lines.length).toBeGreaterThan(0);
+      expect(L.awaken.some((l) => l[2]?.fx === 'mythic')).toBe(true);
+      expect(L.depart.length).toBeGreaterThan(0);
+      expect(L.heart.length).toBeGreaterThan(0);
+    }
+    expect(FIVE_LETTER.length).toBeGreaterThan(0);
+    expect(FIVE_FINALE.some((l) => l[2]?.fx === 'constellation')).toBe(true);
+  });
+  it('화자 키: star_<id> · pioneer_<id> · hero_oswin · keeper · {inn} 채움', () => {
+    S.innName = '테스트';
+    const sl = storyLines([['star_gonu', 'a'], ['pioneer_walwal', 'b'], ['keeper', '{inn}에'], ...OSWIN_TALE.slice(0, 1)]).map((x) => x.line);
+    expect(sl[0]).toEqual(['star_gonu', 'a', undefined, '고느끼']);
+    expect(sl[1]).toEqual(['p_walwal', 'b', undefined, '왈왈콩선생']);
+    expect(sl[2][1]).toBe('테스트에');
+    expect(sl[3][0]).toBe('hero_oswin');
+    expect(sl[3][3]).toBeTruthy();
+    // 피날레의 {inn}도 채워진다
+    expect(storyLines(FIVE_FINALE).some((x) => x.line[1].includes('테스트'))).toBe(true);
+  });
+  it('왈왈콩선생 개척자 데이터는 대사 파일 그대로 (여 · 솔바람 여관)', async () => {
+    const { PIONEERS, CAMEO, CAMEO_GIFT, LETTERS, PIONEER_CREDIT5 } = await import('../src/data/story/easter');
+    expect(PIONEERS.walwal).toEqual(WALWAL_PIONEER);
+    expect(PIONEERS.walwal.gender).toBe('f');
+    expect(CAMEO.walwal).toBe(WALWAL_CAMEO);
+    expect(CAMEO_GIFT.walwal).toBe(WALWAL_CAMEO_GIFT);
+    expect(LETTERS.walwal).toBe(WALWAL_LETTER);
+    expect(PIONEER_CREDIT5).toContain('왈왈콩선생');
+  });
+});
+
+describe('대사 파일: 출발 말풍선 · 세트 한마디 · 밤 대화 · 오스윈', () => {
+  it('세트 한마디: 2 → 3 → 4 처음 닿을 때 한 번씩 · 꺼짐이면 없음', () => {
+    const [a, b, c, d] = (['woongs', 'gonu', 'ikamolly', 'walwal'] as const).map((id) => makeStar(id, 5, 5));
+    expect(fiveSetLineDue([a])).toBeNull();
+    expect(fiveSetLineDue([a, b])).toBe(2);
+    expect(fiveSetLineDue([a, b])).toBeNull();
+    expect(fiveSetLineDue([a, b, c, d])).toBe(4);
+    expect(fiveSetLineDue([a, b, c])).toBeNull();
+    const got: string[] = [];
+    fiveHooks.setLine = (s) => got.push(s);
+    P.five.setSeen = [];
+    fiveDepart([a, b, c]);
+    expect(got).toEqual([FIVE_SET_LINE[3]]);
+    setFlag('fiveStars', false);
+    P.five.setSeen = [];
+    expect(fiveSetLineDue([a, b])).toBeNull();
+  });
+  it('밤 단골 대화: 밤에만 · 별마다 한 번', () => {
+    const a = makeStar('warmnight', 5, 5);
+    S.night = false;
+    expect(fiveHeart(a)).toBeNull();
+    S.night = true;
+    expect(fiveHeart(a)).toBe(STAR_LINES.warmnight.heart);
+    expect(fiveHeart(a)).toBeNull();
+    expect(fiveHeart(makeAdventurer(5, 5, { status: 'regular' }))).toBeNull();
+  });
+  it('오스윈 이야기: 장이 열린 뒤 한 번 · 오스윈만', () => {
+    const o = makeAdventurer(5, 5, { status: 'hero' });
+    o.heroId = 'oswin';
+    expect(fiveOswinTale(o)).toBeNull();
+    P.five.open = true;
+    expect(fiveOswinTale(makeAdventurer(5, 5, { status: 'hero' }))).toBeNull();
+    expect(fiveOswinTale(o)).toBe(OSWIN_TALE);
+    expect(fiveOswinTale(o)).toBeNull();
+  });
+  it('왈왈콩선생 선물: 그날 밤 출발 원정 시간 −10% · 낮이나 다음 날은 없음', async () => {
+    const { pioneerExpCut } = await import('../src/world/easter');
+    P.meta.easter.nightCoupon = S.day;
+    S.night = false;
+    expect(pioneerExpCut()).toBe(0);
+    S.night = true;
+    expect(pioneerExpCut()).toBeCloseTo(F.walwalGiftCut);
+    S.day += 2;
     expect(pioneerExpCut()).toBe(0);
   });
 });

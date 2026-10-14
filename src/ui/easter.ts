@@ -134,7 +134,11 @@ function giveGift(id: PioneerId, a: Actor) {
   } else if (id === 'gonu') {
     E().decoCoupon = true;
     toast('장식 10% 할인 쿠폰을 받았어요 (다음 장식 하나)');
-  } else if (id === 'warmnight' || id === 'walwal') {
+  } else if (id === 'walwal') {
+    // FIVESTARS §5: 왈왈콩선생 선물 = 오늘 밤 출발 원정 시간 −10% (대사 WALWAL_CAMEO_GIFT)
+    E().nightCoupon = S.day;
+    toast('오늘 밤 출발하는 원정 시간 −10%');
+  } else if (id === 'warmnight') {
     for (const g of world.actors) if (!g.role && !g.hidden) g.mood = Math.min(100, g.mood + 10);
     toast('손님들 기분 +10');
   } else {

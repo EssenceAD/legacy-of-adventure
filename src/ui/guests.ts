@@ -1,5 +1,6 @@
 // 손님 목록(단골·방문 탭, 정렬) · 손님 상세(능력치·장비 3칸·케미) · 가방 · 아이템 상세(끼우기·강화·분해)
 import { starOf } from '../world/fivestars';
+import { fiveTalk } from './fivestars';
 import { bindPersonActions, personActionsHtml } from './personActions';
 import { tagTap } from '../world/render';
 import { vis as visOn, fsay } from '../world/visual';
@@ -176,6 +177,12 @@ export function openGuests() {
 const talkedDay = new Map<number, number>();
 export function talkGuest(a: Actor) {
   closeWin();
+  // FIVESTARS (플래그 fiveStars): 다섯 별 밤 단골 대화 · 오스윈 첫 원정대 이야기 (한 번씩)
+  if (fiveTalk(a)) {
+    P.counters.guestTalks++;
+    markDirty();
+    return;
+  }
   const fresh = talkedDay.get(a.id) !== S.day;
   talkedDay.set(a.id, S.day);
   if (fresh) a.mood = Math.min(100, a.mood + 5);

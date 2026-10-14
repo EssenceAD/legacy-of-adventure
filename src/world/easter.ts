@@ -21,7 +21,13 @@ const homeObjs = (): Building[] => world.home?.objs ?? world.objs;
 const has = (k: string) => homeObjs().some((o) => o.kind === k);
 
 /** 바람개비 등대: 의뢰 시간 −3% · 이카몰리 선물 쿠폰(다음 의뢰 −10%) */
-export const pioneerExpCut = () => (has('pinwheel_light') ? 0.03 : 0) + (P.meta.easter?.expCoupon ? 0.1 : 0) + bellNightCut();
+export const pioneerExpCut = () => (has('pinwheel_light') ? 0.03 : 0) + (P.meta.easter?.expCoupon ? 0.1 : 0) + bellNightCut() + walwalGiftCut();
+/** FIVESTARS §5 왈왈콩선생 선물: 받은 날 밤(그 밤 새벽 4시까지) 출발하는 원정 시간 −10% */
+export function walwalGiftCut(): number {
+  const d = P.meta.easter?.nightCoupon;
+  if (d == null || !fiveOn() || !S.night) return 0;
+  return d === S.day || (d === S.day - 1 && hourNow() < 4) ? CONFIG.fiveStars.walwalGiftCut : 0;
+}
 /** FIVESTARS §5 밤길 방울: 밤에 출발하는 원정 시간 −3% */
 export const bellNightCut = () => (S.night && fiveOn() && has('night_bell') ? CONFIG.fiveStars.bellNightCut : 0);
 /** 밤길 방울: 근처(3칸) 손님 기분 + (1초마다 · ui/easter) */

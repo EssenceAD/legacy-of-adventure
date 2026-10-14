@@ -1334,6 +1334,10 @@ export const CONFIG = {
     bellNear: 3,
     bellMoodPerSec: 0.3,
     bellNightCut: 0.03,
+    /** 왈왈콩선생 카메오 선물: 그날 밤 출발 원정 시간 − */
+    walwalGiftCut: 0.1,
+    /** 파티 출발 때 다섯 별 하나가 출발 말풍선(대사 파일 depart)을 띄울 확률 */
+    departBubble: 0.5,
   },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {

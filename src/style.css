@@ -2325,11 +2325,17 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 #fiveCut .fc-a{animation:fcOut .9s ease forwards}#fiveCut .fc-b{opacity:0;animation:fcIn .9s ease forwards}
 #fiveCut .fc-frame b{position:absolute;left:0;right:0;bottom:4px;color:#ffd36b}
 #fiveCut .fc-dust{position:absolute;inset:0;background:radial-gradient(circle,#fff3c0 1px,transparent 2px) 0 0/14px 14px;opacity:.5;animation:fcDust .9s linear}
-#fiveCut .fc-set b{font-size:28px;color:#ffd36b;text-shadow:0 0 8px #ffd36b;letter-spacing:4px}
+#fiveCut .fc-set{max-width:300px;padding:0 16px;text-align:center}
+#fiveCut .fc-set b{display:block;font-size:18px;line-height:1.5;color:#ffd36b;text-shadow:0 0 8px #ffd36b}
+#fiveCut .fc-set small{display:block;margin-top:6px;color:#e8e0ff;font-size:12px}
 @keyframes fcOut{to{opacity:0}}@keyframes fcIn{to{opacity:1}}@keyframes fcDust{from{transform:translateY(8px)}to{transform:translateY(-8px)}}
 #storyFx.sfx-fivestar{box-shadow:inset 0 0 0 4px #ffd36b,inset 0 0 0 8px rgba(122,200,255,.6),inset 0 0 0 12px rgba(192,138,255,.4);background:radial-gradient(ellipse at 50% 40%,rgba(255,240,180,.18),rgba(10,8,40,.6))}
-#fiveSky{position:absolute;right:18px;top:64px;width:90px;height:50px;z-index:5;pointer-events:none;transition:opacity 2s}
+#fiveSky{position:absolute;right:18px;top:64px;width:50px;height:50px;z-index:5;pointer-events:none;transition:opacity 2s}
 #fiveSky i{position:absolute;width:3px;height:3px;background:#fff3c0;box-shadow:0 0 6px #ffd36b;border-radius:50%}
-#fiveSky i:nth-child(1){left:0;top:30px}#fiveSky i:nth-child(2){left:22px;top:12px}#fiveSky i:nth-child(3){left:44px;top:22px}#fiveSky i:nth-child(4){left:66px;top:4px}#fiveSky i:nth-child(5){left:86px;top:26px}
+/* 형철 피날레: 북쪽 하늘에 별 다섯 개가 오각형으로 */
+#fiveSky i:nth-child(1),#storyFx.sfx-constellation i:nth-child(1){left:24px;top:0}#fiveSky i:nth-child(2),#storyFx.sfx-constellation i:nth-child(2){left:47px;top:17px}#fiveSky i:nth-child(3),#storyFx.sfx-constellation i:nth-child(3){left:38px;top:45px}#fiveSky i:nth-child(4),#storyFx.sfx-constellation i:nth-child(4){left:10px;top:45px}#fiveSky i:nth-child(5),#storyFx.sfx-constellation i:nth-child(5){left:1px;top:17px}
+#storyFx.sfx-constellation{background:radial-gradient(ellipse at 50% 20%,rgba(255,240,180,.16),rgba(10,8,40,.7))}
+#storyFx.sfx-constellation i{position:absolute;width:4px;height:4px;margin-left:calc(50% - 26px);margin-top:40px;background:#fff3c0;box-shadow:0 0 8px #ffd36b;border-radius:50%;animation:fcIn 1.2s ease both}
+#storyFx.sfx-constellation i:nth-child(2){animation-delay:.2s}#storyFx.sfx-constellation i:nth-child(3){animation-delay:.4s}#storyFx.sfx-constellation i:nth-child(4){animation-delay:.6s}#storyFx.sfx-constellation i:nth-child(5){animation-delay:.8s}
 .pstar.me,.hcd-me{font-style:normal;font-size:10px;color:#1c1018;background:#ffd36b;border-radius:3px;padding:0 3px;margin-left:3px}
 .hcd-me{position:absolute;right:4px;bottom:4px;z-index:3}

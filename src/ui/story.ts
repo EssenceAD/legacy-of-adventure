@@ -63,9 +63,13 @@ function fx(k: string) {
   } else if (k === 'photo' || k === 'photo_mine') photoThumb();
   else if (k === 'drop') storyFx.drop();
   // FIVESTARS: 무지갯빛 테두리 · 별가루 (흔들림 없음)
-  else if (k === 'fivestar') {
+  //  대사 fx: 'mythic' = 카메오 → 신화 모습 (같은 테두리) · 'constellation' = 북쪽 하늘 오각형 별 다섯
+  else if (k === 'fivestar' || k === 'mythic') {
     b.className = 'sfx-fivestar';
     b.innerHTML = '<i class="st1"></i><i class="st2"></i><i class="st3"></i>';
+  } else if (k === 'constellation') {
+    b.className = 'sfx-constellation';
+    b.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
   }
   // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
   else if (k === 'lanterns') startLanterns();

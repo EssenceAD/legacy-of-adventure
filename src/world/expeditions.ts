@@ -5,7 +5,7 @@ import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
 import { mythicAtk, mythicQuestGold, mythicTimeCut } from './mythic';
 import { pioneerExpCut, useExpCoupon } from './easter';
-import { fiveHpMult, fiveNightSuccess, fiveNightWin, fiveStealth, fiveWanderMult, flagDepart } from './fivestars';
+import { fiveHpMult, fiveNightSuccess, fiveNightWin, fiveStealth, fiveWanderMult, fiveDepart } from './fivestars';
 import { funnel } from '../net/funnel';
 import { BOSSES } from '../data/bosses';
 import { buffOf, guildGold, guildSlot, guildSpecial, stableTimeCut } from './facilities';
@@ -262,7 +262,7 @@ export function sendParty(q: Quest, members: Actor[]): Run | string {
   ensureQuick(P.quests.list);
   for (const m of members) m.runId = run.id;
   // FIVESTARS: 다섯 별 깃발 근처에서 출발하면 기분 +
-  flagDepart(members);
+  fiveDepart(members);
   // PARTY §2: 켜 본 조합 → 도감 「파티」
   recordSynergies(members);
   P.counters.expeditions++;

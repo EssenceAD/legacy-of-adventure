@@ -3,7 +3,7 @@
 //  스킬은 전설과 같은 { name, k, v } (optSum이 그 사람에게 더한다) + 덧효과(also · 코드가 따로: 파티 배율 등)
 import type { Face, GuestKind, Race } from './classes';
 import type { OptKey } from './items';
-import type { StarId } from './story/fivestars';
+import { STARS as STORY, type StarId } from './story/fivestars';
 
 export type { StarId };
 /** 장부 칸 순서 (§2 표) */
@@ -22,16 +22,22 @@ export interface StarDef {
   /** 공격 궤적 색 (§4 · 도트 단계에서 씀) */
   trail: string;
   skill: { name: string; k: OptKey; v: number; desc: string };
+  /** 신화 칭호 · 무기 이름 (대사 파일) */
+  title: string;
+  weaponName: string;
 }
 
+/** 스킬 이름·설명은 대사 파일 그대로 · 숫자 효과(k·v)는 명세/설정 */
+const sk = (id: StarId, k: OptKey, v: number) => ({ name: STORY[id].skill.name, k, v, desc: STORY[id].skill.desc });
+const story = (id: StarId) => ({ title: STORY[id].title, weaponName: STORY[id].weapon });
 export const STARS: Record<StarId, StarDef> = {
   // 웅스: dwarf 클래스 능력치 · 외형만 인간 (대검 전사)
-  woongs: { id: 'woongs', name: '웅스', kind: 'dwarf', race: 'human', hair: '#1e1a1a', face: { eyes: 'dot', mouth: 'grin', brow: 'up' }, weapon: 'greatsword', trail: '#ffd36b', skill: { name: '딸깍 일격', k: 'atkPct', v: 15, desc: '공격 +15% · 무기 강화 단계 × 1% 추가 (최대 +20%)' } },
-  gonu: { id: 'gonu', name: '고느끼', kind: 'rogue', race: 'halfling', hair: '#ef6f9a', face: { eyes: 'sparkle', mouth: 'o', blush: true }, weapon: 'dagger', trail: '#f4a3be', skill: { name: '그림자 붓질', k: 'critPct', v: 12, desc: '치명 +12% · 은밀 사건 확률 +20% (닉스와 같이 쌓임 · 최대 80%)' } },
-  ikamolly: { id: 'ikamolly', name: '이카몰리', kind: 'mage', race: 'human', hair: '#8a4a2e', face: { eyes: 'calm', mouth: 'tiny', glasses: true }, weapon: 'staff', trail: '#8fc6e0', skill: { name: '첫 바람의 주문', k: 'atkPct', v: 12, desc: '공격 +12% · 의뢰 시간 −10%' } },
-  walwal: { id: 'walwal', name: '왈왈콩선생', kind: 'cleric', race: 'human', hair: '#6b4a2e', face: { eyes: 'happy', mouth: 'grin', blush: true }, weapon: 'holy', trail: '#ffffff', skill: { name: '왈왈 응원', k: 'hpSave', v: 30, desc: '체력 소모 −30% · 밤 출발 원정 성공률 +10%' } },
-  warmnight: { id: 'warmnight', name: '따뜻한밤', kind: 'hunter', race: 'human', hair: '#7a3f24', face: { eyes: 'happy', blush: true }, weapon: 'bow', trail: '#ffa040', skill: { name: '등불 화살', k: 'anyDmg', v: 10, desc: '공격 +10% · 모든 지역 피해 +10% · 떠돌이 보스 만날 확률 ×1.5' } },
+  woongs: { id: 'woongs', name: '웅스', kind: 'dwarf', race: 'human', hair: '#1e1a1a', face: { eyes: 'dot', mouth: 'grin', brow: 'up' }, weapon: 'greatsword', trail: '#ffd36b', skill: sk('woongs', 'atkPct', 15), ...story('woongs') },
+  gonu: { id: 'gonu', name: '고느끼', kind: 'rogue', race: 'halfling', hair: '#ef6f9a', face: { eyes: 'sparkle', mouth: 'o', blush: true }, weapon: 'dagger', trail: '#f4a3be', skill: sk('gonu', 'critPct', 12), ...story('gonu') },
+  ikamolly: { id: 'ikamolly', name: '이카몰리', kind: 'mage', race: 'human', hair: '#8a4a2e', face: { eyes: 'calm', mouth: 'tiny', glasses: true }, weapon: 'staff', trail: '#8fc6e0', skill: sk('ikamolly', 'atkPct', 12), ...story('ikamolly') },
+  walwal: { id: 'walwal', name: '왈왈콩선생', kind: 'cleric', race: 'human', hair: '#6b4a2e', face: { eyes: 'happy', mouth: 'grin', blush: true }, weapon: 'holy', trail: '#ffffff', skill: sk('walwal', 'hpSave', 30), ...story('walwal') },
+  warmnight: { id: 'warmnight', name: '따뜻한밤', kind: 'hunter', race: 'human', hair: '#7a3f24', face: { eyes: 'happy', blush: true }, weapon: 'bow', trail: '#ffa040', skill: sk('warmnight', 'anyDmg', 10), ...story('warmnight') },
 };
 export const isStarId = (v: unknown): v is StarId => typeof v === 'string' && (STAR_IDS as string[]).includes(v);
-/** 초상화 키: 신화 모습 star_<id> (형철 그림 asset_raw/fivestars/star_<id>.png → public/portraits/) · 카메오 p_<id> */
+/** 초상화 키: 신화 모습 star_<id> (형철 그림 asset_raw/fivestars/s_<id>.png → public/assets/portraits/star_<id>.png) · 카메오 p_<id> */
 export const starPortraitKey = (id: StarId) => 'star_' + id;

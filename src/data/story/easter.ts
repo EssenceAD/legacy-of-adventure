@@ -1,15 +1,16 @@
 // EASTER 대사 — 베타 개척자 4인 — src/data/story/easter.ts
 import type { SLine } from './v1';
+import { PIONEER_CREDIT_5, WALWAL_CAMEO, WALWAL_CAMEO_GIFT, WALWAL_LETTER, WALWAL_PIONEER } from './fivestars';
 
 // FIVESTARS §5: 다섯 번째 개척자 왈왈콩선생 (walwal) — 플래그 fiveStars 켰을 때만 보인다 (world/easter.ts pioneerIds)
-//  ★ walwal 줄의 대사·여관 이름·성별은 임시 「(임시)」 — 형철이 바꿔 넣는다
+//  walwal 줄의 대사·여관 이름·성별은 대사 파일(story/fivestars.ts WALWAL_*)에서 그대로 가져온다
 export type PioneerId = 'woongs' | 'gonu' | 'warmnight' | 'ikamolly' | 'walwal';
 
 export const PIONEERS: Record<PioneerId, { name: string; gender: 'm' | 'f'; inn: string; title: string; deco: string; decoName: string; intro: string }> = {
   woongs: { name: '웅스', gender: 'm', inn: '롯데캐슬 여관', title: '온천을 두 번 지은 사냥왕', deco: 'duck_spa', decoName: '온천 오리상', intro: '별의 심연까지 제일 먼저 내려간 사냥왕. 온천을 무척 사랑한다.' },
   gonu: { name: '고느끼', gender: 'f', inn: '꾸무적 여관', title: '마을의 붓', deco: 'gold_brush', decoName: '황금 붓', intro: '길 한 칸에도 진심인 마을 화가. 그녀가 지나간 골목은 예뻐진다.' },
   warmnight: { name: '따뜻한밤', gender: 'm', inn: '머리박고힐 여관', title: '붉은 밤의 무사', deco: 'red_helmet', decoName: '붉은 무사의 투구', intro: '붉은 무사를 쓰러뜨린 밤의 무사. 등불 하나 들고 온 마을을 지킨다.' },
-  walwal: { name: '왈왈콩선생', gender: 'm', inn: '(임시) 왈왈콩 여관', title: '밤길의 선생님', deco: 'night_bell', decoName: '밤길 방울', intro: '(임시) 밤길 원정대를 끝까지 데려오는 다정한 선생님. 낚시를 즐긴다.' },
+  walwal: WALWAL_PIONEER,
   ikamolly: { name: '이카몰리', gender: 'f', inn: '윈드 여관', title: '첫 바람', deco: 'pinwheel_light', decoName: '바람개비 등대', intro: '이 세계에 가장 먼저 도착한 바람. 그녀의 편지가 첫 번째로 길을 고쳤다.' },
 };
 
@@ -47,13 +48,7 @@ export const LETTERS: Record<PioneerId, SLine[]> = {
     ['narr', '언덕 위에 알록달록한 바람개비 등대가 섰다. 바람이 불자, 날개가 빙글빙글 돌기 시작했다.', { fx: 'drop' }],
     ['post', '처음 와 주셔서, 그리고 끝까지 함께 와 주셔서 고마워요.'],
   ],
-  walwal: [
-    ['post', '(임시) 밤길의 선생님께. 모모가 조금 늦게, 하지만 아주 반갑게 편지를 들고 왔어요!'],
-    ['post', '(임시) 늦게 오셨는데도 금방 모두를 따라잡으셨죠. 밤마다 원정대를 무사히 데려와 주셔서 고마워요.'],
-    ['post', '(임시) 그래서 밤길을 밝혀 줄 방울을 드릴게요. 딸랑, 하면 다들 길을 잃지 않을 거예요.'],
-    ['narr', '(임시) 여관 앞에 작은 방울이 달린 등이 놓였다. 밤이 되자 은은하게 빛났다.', { fx: 'drop' }],
-    ['post', '(임시) 앞으로도 정중한 편지, 언제든 환영이에요. 꾸벅!'],
-  ],
+  walwal: WALWAL_LETTER,
 };
 
 // §2 다른 마을에 놀러 오는 카메오 (누를 때마다 순서대로 하나씩, 마지막엔 선물)
@@ -82,24 +77,19 @@ export const CAMEO: Record<PioneerId, string[]> = {
     '편지 한 통이 세상을 바꿀 수 있어요. 모모한테 뭐든 말해 보세요!',
     '바람개비 등대 보셨어요? 바람 불면 돌아가요. 저희 마을에 있어요~',
   ],
-  walwal: [
-    '(임시) 안녕하세요! 잠깐 쉬어 가도 될까요? 낚싯대는 밖에 세워 둘게요.',
-    '(임시) 밤 원정은 서두르지 않는 게 비결이에요. 다 같이 돌아오는 게 제일 중요하거든요.',
-    '(임시) 손님들한테 말 한마디 건네 보세요. 생각보다 많이 웃어 주세요.',
-    '(임시) 저 늦게 왔지만, 열심히 따라가는 중이에요! 꾸벅.',
-  ],
+  walwal: WALWAL_CAMEO,
 };
 export const CAMEO_GIFT: Record<PioneerId, string> = {
   woongs: '온천 이용료는 제가 낼게요! (금화 +500)',
   gonu: '이거 받으세요, 장식 하나 10% 할인 쿠폰!',
   warmnight: '따뜻한 밤 되세요. (오늘 밤 손님 기분 +10)',
   ikamolly: '바람이 길을 알려 줄 거예요. (다음 의뢰 시간 −10%)',
-  walwal: '(임시) 오늘 낚은 물고기예요. 손님들이랑 나눠 드세요! (오늘 밤 손님 기분 +10)',
+  walwal: WALWAL_CAMEO_GIFT,
 };
 export const CAMEO_NO_REGULAR = '아, 저는 제 여관이 있어서요! 대신 자주 놀러 올게요~';
 
 // §3 엔딩 크레딧 한 줄
 export const PIONEER_CREDIT = '이 여관 마을은 개척자 웅스 · 고느끼 · 따뜻한밤 · 이카몰리와 함께 지어졌습니다.';
 /** 엔딩 컷에서 개척자 크레딧 줄인가 (FIVESTARS: 다섯 이름 줄도) */
-export const PIONEER_CREDIT5 = '이 여관 마을은 개척자 웅스 · 고느끼 · 따뜻한밤 · 이카몰리 · 왈왈콩선생과 함께 지어졌습니다.';
+export const PIONEER_CREDIT5 = PIONEER_CREDIT_5;
 export const isPioneerCredit = (s: string) => s === PIONEER_CREDIT || s === PIONEER_CREDIT5;

@@ -106,7 +106,9 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     // 초상화 작업: 손님 초상화 20장 (직업 5 × 종족 4) — PARTY §1: 사냥꾼은 아직 일러스트가 없다 → 도트 얼굴 (portrait()가 알아서)
     ...BASE_GUEST_KINDS.flatMap((k) => RACES.map((r) => `g_${k}_${r}`)),
     // EASTER §5: 베타 개척자 4인 초상화
-    'p_woongs', 'p_gonu', 'p_warmnight', 'p_ikamolly'];
+    'p_woongs', 'p_gonu', 'p_warmnight', 'p_ikamolly',
+    // FIVESTARS: 왈왈콩선생 카메오 · 다섯 별 신화 모습 (asset_raw/fivestars → public/assets/portraits 그대로 복사 · 64×64)
+    'p_walwal', 'star_woongs', 'star_gonu', 'star_ikamolly', 'star_walwal', 'star_warmnight'];
   let done = 0;
   const total = keys.length + ports.length + 1;
   const tick = () => onProgress?.(++done / total);

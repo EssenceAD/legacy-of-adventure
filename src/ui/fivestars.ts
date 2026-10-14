@@ -1,21 +1,24 @@
 // FIVESTARS 화면 (플래그 fiveStars · 실험실 vis) — 모모 편지 · 합류 컷(카메오 → 신화 모습 · 별가루 · 무지갯빛 테두리 · 흔들림 없음 · 탭하면 넘김 · 1초 안)
 //  · 마지막 「다섯 별」 컷 · 장부 3막 장 5칸 · 세트 4명 첫 전투 1초 컷 · 밤하늘 별자리 · 본인 배지
-//  초상화: 신화 모습 star_<id> (형철 그림 asset_raw/fivestars/star_<id>.png → public/portraits/ · engine/assets.ts ports에 키 추가) 이 없으면 카메오 초상 p_<id>
+//  초상화: 신화 모습 star_<id> (asset_raw/fivestars/s_<id>.png → public/assets/portraits/star_<id>.png · engine/assets.ts ports) 이 없으면 카메오 초상 p_<id>
 //          왈왈콩선생 카메오 p_walwal (asset_raw/fivestars/p_walwal.png) 이 없으면 사제 손님 초상
+//  대사: data/story/fivestars.ts (STARS[id].request · awaken · self · FIVE_LETTER · FIVE_FINALE · FIVE_SET_LINE) · 없는 조각은 story/fivestars_extra.ts
 import { CONFIG } from '../data/config';
 import { STAR_IDS, STARS, type StarId } from '../data/fivestars';
-import { FIVE_CHAPTER, FIVE_FINAL, FIVE_JOIN, FIVE_LETTER, FIVE_REQUEST, FIVE_SELF, FIVE_SET_CUT, FIVE_SHARD, FIVE_TITLE } from '../data/story/fivestars';
+import { FIVE_FINALE, FIVE_LETTER, FIVE_SET_LINE, STARS as STAR_LINES } from '../data/story/fivestars';
+import { FIVE_CHAPTER, FIVE_SHARD, FIVE_TITLE } from '../data/story/fivestars_extra';
 import type { SLine } from '../data/story/v1';
 import { PORTRAITS } from '../engine/assets';
 import { myPioneer } from '../net/server';
 import { arrive } from '../world/actors';
 import { decorView } from '../world/decor';
-import { constellationOn, fiveHooks, fiveLedger, fiveOn, fiveSetCutDue, fiveTick, selfStarId, setSelfStar } from '../world/fivestars';
-import { S, type Actor } from '../world/state';
+import { say } from '../world/fx';
+import { constellationOn, fiveHeart, fiveHooks, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
+import { S, world, type Actor } from '../world/state';
 import { entrance } from '../world/town';
 import { esc } from './common';
 import { playStory, storyBusy } from './story';
-import { toastHtml } from './windows';
+import { closeWin, toastHtml } from './windows';
 
 /** 그림이 아직 없을 때 대신 보일 초상 (형철 그림이 오면 저절로 그 그림) */
 function portraitFallbacks() {
@@ -47,8 +50,10 @@ function playJoin(id: StarId, a: Actor) {
   const d = STARS[id];
   const html = `<div class="fc-frame"><img class="fc-a" src="${PORTRAITS['p_' + id] ?? ''}" alt=""><img class="fc-b" src="${PORTRAITS['star_' + id] ?? ''}" alt=""><i class="fc-dust"></i><b>${esc(d.name)}</b></div>`;
   quickCut(html, CONFIG.fiveStars.joinCutMs, () => {
-    const self: SLine[] = selfStarId() === id ? [[`star_${id}`, FIVE_SELF[id]]] : [];
-    playStory([...FIVE_JOIN[id], ...self, ['narr', `${d.name} 합류 — 신화 「다섯 별」 · 스킬 「${d.skill.name}」: ${d.skill.desc}`]], () => {
+    const L = STAR_LINES[id];
+    // 부탁을 채운 순간(done) → 찾아옴 · 신화 모습(awaken) → 본인 계정이면 한 줄(self) → 합류 안내
+    const self: SLine[] = selfStarId() === id ? [L.self] : [];
+    playStory([...L.request.done, ...L.awaken, ...self, ['narr', `${d.name} 합류 — 신화 「다섯 별」 · 「${d.title}」 · 스킬 「${d.skill.name}」: ${d.skill.desc}`]], () => {
       void a;
       toastHtml(`<span>✦ <b class="g">${esc(d.name)}</b> 신화 영웅으로 합류!</span>`, 4000);
     });
@@ -57,7 +62,12 @@ function playJoin(id: StarId, a: Actor) {
 /** 세트 4명 첫 전투 (combat/ui.ts startCombat): 「다섯 별」 1초 */
 export function fiveSetCut(ms: Actor[]) {
   if (!fiveSetCutDue(ms)) return;
-  quickCut(`<div class="fc-set"><b>${esc(FIVE_SET_CUT)}</b></div>`, CONFIG.fiveStars.set4CutMs, () => {});
+  quickCut(setLineHtml(FIVE_SET_LINE[4]), CONFIG.fiveStars.set4CutMs, () => {});
+}
+/** 「…」 한마디는 크게 · 뒤의 효과 글은 작게 */
+function setLineHtml(s: string) {
+  const k = s.indexOf('」');
+  return k < 0 ? `<div class="fc-set"><b>${esc(s)}</b></div>` : `<div class="fc-set"><b>${esc(s.slice(0, k + 1))}</b><small>${esc(s.slice(k + 1).trim())}</small></div>`;
 }
 
 // ───────── 장부 3막 장 (menu.ts openGuideList 아래) ─────────
@@ -67,12 +77,33 @@ export function fiveLedgerHtml(): string {
   if (!cells) return '';
   const rows = cells
     .map((c, i) => {
-      const r = FIVE_REQUEST[c.id];
+      const r = STAR_LINES[c.id].request;
       const prog = c.goals.map((g) => `${g.cur}/${g.need}`).join(' · ');
-      return `<div class="mrow ${c.joined ? 'done' : ''}"><span>${c.joined ? '✦' : '·'}</span><b>${i + 1}. ${esc(c.name)} 「${esc(r.title)}」<small class="note"> ${esc(r.text)}${c.joined ? '' : ` — ${c.goals.map((g) => esc(g.label)).join(' + ')}`}</small></b><em>${c.joined ? '합류' : prog}</em></div>`;
+      // 칸을 누르면 그 개척자의 부탁 대사 (request.lines) 다시 듣기
+      return `<div class="mrow ${c.joined ? 'done' : ''}" data-five="${c.id}" role="button"><span>${c.joined ? '✦' : '·'}</span><b>${i + 1}. ${esc(c.name)}<small class="note"> ${esc(r.text)}${c.joined ? '' : ` — ${c.goals.map((g) => esc(g.label)).join(' + ')}`}</small></b><em>${c.joined ? '합류' : prog}</em></div>`;
     })
     .join('');
   return `<div class="qhd"><b class="g">3막 「${esc(FIVE_CHAPTER.name)}」</b><span class="note">${esc(FIVE_CHAPTER.intro)}</span></div><div class="mlist">${rows}</div>`;
+}
+/** 장부 칸 누르기 (menu.ts가 장부를 그린 뒤) */
+export function bindFiveLedger(root: ParentNode = document) {
+  root.querySelectorAll<HTMLElement>('[data-five]').forEach((el) => {
+    el.onclick = () => {
+      const id = el.dataset.five as StarId;
+      if (!STAR_LINES[id] || storyBusy()) return;
+      closeWin();
+      portraitFallbacks();
+      playStory(STAR_LINES[id].request.lines);
+    };
+  });
+}
+/** 다섯 별 단골 대화 (ui/guests.ts talkGuest): 밤 한 번 heart · 장이 열린 뒤 오스윈 첫 원정대 이야기 */
+export function fiveTalk(a: Actor): boolean {
+  const l = fiveHeart(a) ?? fiveOswinTale(a);
+  if (!l) return false;
+  portraitFallbacks();
+  playStory(l);
+  return true;
 }
 
 // ───────── 밤하늘 별자리 ─────────
@@ -96,8 +127,28 @@ function syncSky() {
 }
 
 export function initFiveStars() {
+  // 개발·봇 빌드: 합류 컷 · 마지막 컷 · 세트 컷 바로 보기 (비교 시트용)
+  if (import.meta.env.DEV)
+    Object.assign(window, {
+      __five: {
+        join: (id: StarId) => {
+          const [x, y] = entrance();
+          const a = makeStar(id, x, y);
+          arrive(a);
+          playJoin(id, a);
+          return a;
+        },
+        star: (id: StarId) => (S.visiting ? null : (world.home?.actors ?? world.actors).find((a) => a.starId === id) ?? null),
+        finale: () => playStory(FIVE_FINALE),
+        letter: () => playStory(FIVE_LETTER),
+        set4: () => quickCut(setLineHtml(FIVE_SET_LINE[4]), 60000, () => {}),
+        ask: (id: StarId) => playStory(STAR_LINES[id].request.lines),
+      },
+    });
   fiveHooks.entrance = () => entrance();
   fiveHooks.place = (a) => void arrive(a);
+  fiveHooks.say = (a, s) => say(a, s);
+  fiveHooks.setLine = (s) => toastHtml(`<span>✦ ${esc(s)}</span>`, 5000);
   void myPioneer().then(setSelfStar);
   setInterval(() => {
     if (!fiveOn()) return syncSky();
@@ -109,6 +160,6 @@ export function initFiveStars() {
     portraitFallbacks();
     if (ev.kind === 'letter') playStory(FIVE_LETTER, () => toastHtml(`<span>📖 장부에 3막 「<b class="g">${esc(FIVE_CHAPTER.name)}</b>」이 열렸어요</span>`, 5000));
     else if (ev.kind === 'join') playJoin(ev.id, ev.actor);
-    else playStory(FIVE_FINAL, () => toastHtml(`<span>✦ 별지기의 열쇠 조각 「<b class="g">${esc(FIVE_SHARD)}</b>」 · 장식 「다섯 별 깃발」(보관함) · 칭호 「<b class="g">${esc(FIVE_TITLE)}</b>」</span>`, 7000));
+    else playStory(FIVE_FINALE, () => toastHtml(`<span>✦ 별지기의 열쇠 조각 「<b class="g">${esc(FIVE_SHARD)}</b>」 · 장식 「다섯 별 깃발」(보관함) · 칭호 「<b class="g">${esc(FIVE_TITLE)}</b>」</span>`, 7000));
   }, 1000);
 }

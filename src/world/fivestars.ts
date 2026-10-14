@@ -7,7 +7,9 @@ import { CONFIG } from '../data/config';
 import { HARMONIES } from '../data/harmony';
 import { REGIONS, type OptKey } from '../data/items';
 import { isStarId, STAR_IDS, STARS, type StarId } from '../data/fivestars';
-import { FIVE_DREAM, FIVE_SHARD, FIVE_TITLE } from '../data/story/fivestars';
+import { FIVE_SET_LINE, OSWIN_TALE, STARS as STAR_LINES } from '../data/story/fivestars';
+import { FIVE_SHARD, FIVE_TITLE } from '../data/story/fivestars_extra';
+import type { SLine } from '../data/story/v1';
 import { track } from '../net/telemetry';
 import { makeAdventurer } from './adventurers';
 import { equippedItems } from './items';
@@ -29,7 +31,7 @@ export function fiveState(): FiveState {
     const b = d[k] as unknown;
     if (Array.isArray(b) ? !Array.isArray(v) : k === 'base' ? !(v === null || (typeof v === 'object' && !Array.isArray(v))) : typeof v !== typeof b) (f as Record<string, unknown>)[k] = b;
   }
-  for (const k of ['done', 'joined', 'dream'] as const) f[k] = f[k].filter((x, i, a) => isStarId(x) && a.indexOf(x) === i);
+  for (const k of ['done', 'joined', 'dream', 'heart'] as const) f[k] = f[k].filter((x, i, a) => isStarId(x) && a.indexOf(x) === i);
   return f;
 }
 
@@ -206,6 +208,10 @@ export function makeStar(id: StarId, x: number, y: number): Actor {
 /** 마을에 들이기 (ui가 걸어 들어오는 연출로 바꾼다) */
 export const fiveHooks = {
   place: (a: Actor) => void homeActors().push(a),
+  /** 세트 한마디 (ui가 알림으로) */
+  setLine: (_s: string) => {},
+  /** 출발 말풍선 (ui가 world/fx say로) */
+  say: (_a: Actor, _s: string) => {},
   entrance: (): [number, number] => [7, 7],
 };
 export type FiveEvent = { kind: 'letter' } | { kind: 'join'; id: StarId; actor: Actor } | { kind: 'final' };
@@ -274,7 +280,53 @@ export const constellationOn = () => fiveOn() && fiveState().final;
 export function dreamLine(id: string): string | null {
   if (!fiveOn() || !isStarId(id) || (P.story?.act ?? 0) < 2) return null;
   if (fiveState().joined.includes(id)) return null;
-  return FIVE_DREAM[id];
+  return STAR_LINES[id].dream;
+}
+
+// ───────── 대사 파일: 출발 말풍선 · 세트 한마디 · 밤 단골 대화 · 오스윈 이야기 ─────────
+
+/** 파티 출발 (world/expeditions.ts sendParty): 다섯 별 깃발 기분 + · 별 하나가 가끔 출발 말풍선 · 세트 「다섯 별」 인원이 처음 닿으면 한마디 */
+export function fiveDepart(ms: Actor[]) {
+  flagDepart(ms);
+  if (!fiveOn()) return;
+  const st = ms.filter((m) => starOf(m));
+  if (st.length) {
+    const m = st[(Math.random() * st.length) | 0];
+    const pool = STAR_LINES[starOf(m)!].depart;
+    if (Math.random() < C().departBubble) fiveHooks.say(m, pool[(Math.random() * pool.length) | 0]);
+  }
+  const n = fiveSetLineDue(ms);
+  if (n) fiveHooks.setLine(FIVE_SET_LINE[n]);
+}
+/** 세트 「다섯 별」 인원(2·3·4) 중 처음 닿은 가장 큰 것 (한 번씩만) */
+export function fiveSetLineDue(ms: Actor[]): 2 | 3 | 4 | null {
+  if (!fiveOn()) return null;
+  const n = Math.min(4, starsIn(ms));
+  if (n < 2) return null;
+  const f = fiveState();
+  if (f.setSeen.includes(n)) return null;
+  for (let k = 2; k <= n; k++) if (!f.setSeen.includes(k)) f.setSeen.push(k);
+  markDirty();
+  return n as 2 | 3 | 4;
+}
+/** 밤에 다섯 별 단골에게 말 걸면 한 번 (heart) */
+export function fiveHeart(a: Actor): SLine[] | null {
+  const id = starOf(a);
+  if (!id || !S.night) return null;
+  const f = fiveState();
+  if (f.heart.includes(id)) return null;
+  f.heart.push(id);
+  markDirty();
+  return STAR_LINES[id].heart;
+}
+/** 장이 열린 뒤 오스윈에게 말 걸면 한 번: 첫 원정대 이야기 */
+export function fiveOswinTale(a: Actor): SLine[] | null {
+  if (!fiveOn() || a.heroId !== 'oswin') return null;
+  const f = fiveState();
+  if (!f.open || f.oswin) return null;
+  f.oswin = true;
+  markDirty();
+  return OSWIN_TALE;
 }
 /** 이미 합류한 개척자는 카메오로 지나가지 않는다 */
 export const starJoined = (id: string) => fiveOn() && fiveState().joined.includes(id);

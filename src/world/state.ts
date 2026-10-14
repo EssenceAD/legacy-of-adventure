@@ -527,7 +527,7 @@ export function freshProgress() {
       /** EASTER: 금빛 편지(보냄·받음) · 카메오 일정 · 만난 개척자 · 선물 쿠폰 */
       /** HARVEST §2 노을: 업데이트 뒤 첫 노을 한 번 (DUSK_FIRST) */
       duskFirst: false,
-      easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean },
+      easter: {} as { mail?: string; got?: string; cameoDay?: number; cameoN?: number; cameoPlan?: number; met?: string[]; expCoupon?: boolean; decoCoupon?: boolean; nightCoupon?: number },
     },
     /** 5단계 사냥: 지역별 최고 돌파 스테이지 · 첫 돌파 · 자동 사냥 · 방치 정산 시각 */
     /** REGIONS2: 지역 6~10 — 흩어진 별 컷 · 길잡이 별 · 첫 입장 · 보스 한 줄 · 편지 · 심연의 바닥 · 별을 삼킨 것 처치 수 (world/regions2.ts) */
@@ -665,6 +665,10 @@ export function freshFive() {
     final: false,
     cut4: false,
     dream: [] as string[],
+    /** 대사 파일: 세트 「다섯 별」 한마디를 이미 본 인원(2·3·4) · 밤 단골 대화(heart)를 들은 별 · 오스윈 첫 원정대 이야기 */
+    setSeen: [] as number[],
+    heart: [] as string[],
+    oswin: false,
   };
 }
 export interface FiveBase {
