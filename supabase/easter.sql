@@ -11,3 +11,10 @@ update public.profiles set pioneer = 'ikamolly'  where id = '44ba0160-10e9-479a-
 
 -- 확인: 4줄이 나와야 한다
 select nickname, inn_name, pioneer from public.profiles where pioneer is not null order by nickname;
+
+-- ───────── FIVESTARS §5 (2026-10-14 · 형철이 SQL Editor에서 실행 완료 · 기록용) ─────────
+-- 다섯 번째 개척자 왈왈콩선생: pioneer 값 제약에 'walwal' 추가
+alter table public.profiles drop constraint if exists profiles_pioneer_check;
+alter table public.profiles add constraint profiles_pioneer_check
+  check (pioneer is null or pioneer in ('woongs', 'gonu', 'warmnight', 'ikamolly', 'walwal'));
+update public.profiles set pioneer = 'walwal' where id = '26a970ea-b762-4b4e-9051-1b78c2c64212' and nickname = '왈왈콩선생';  -- 왈왈콩선생
