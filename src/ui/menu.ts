@@ -15,6 +15,7 @@ import { communityLink, openCommunity } from './community';
 import { goalPillOn, setGoalPill } from './goalPill';
 import { openFirstsList, setWfBubbles, wfBubblesOn } from './wayfind';
 import { bldBubblesOn, setBldBubbles } from '../world/bldStatus';
+import { guestNamesOn, setGuestNames } from '../world/guestNames';
 import { PROP_CARD_NAME, propCardMode, setPropCardMode, type PropCardMode } from './propCard';
 import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
 import { enterPhoto } from './photo';
@@ -409,6 +410,8 @@ function bindSaverRows() {
   const g = document.getElementById('mSsGo');
   if (g) g.onclick = () => enterSaver();
 }
+/** 형철 판정: 「손님 이름 항상 보기」 (기본 끔 · 예전 창·3탭 기본 칸 같이) */
+const guestNamesRowHtml = () => `<label class="tog"><input type="checkbox" id="mGuestNames" ${guestNamesOn() ? 'checked' : ''}> 손님 이름 항상 보기 <small>(마을 손님 머리 위에 이름 · 전설·영웅 이름표는 그대로)</small></label>`;
 /** 진동 (J4 누르는 느낌이 읽는다: getPref('haptics', true)) */
 export const hapticsOn = () => getPref<boolean>('haptics', true);
 
@@ -424,7 +427,7 @@ export function openSettings(tab?: SettingsTab) {
   if (sTab === 'base')
     body = `${soundSettingsHtml()}<div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약 <small>(화면을 조금 덜 자주 그려서 덜 뜨거워져요)</small></label>
-    <label class="tog"><input type="checkbox" id="mHaptic" ${hapticsOn() ? 'checked' : ''}> 진동 <small>(버튼을 누를 때 짧게 · 안드로이드)</small></label>${saverRowsHtml()}${labRowHtml()}</div>
+    <label class="tog"><input type="checkbox" id="mHaptic" ${hapticsOn() ? 'checked' : ''}> 진동 <small>(버튼을 누를 때 짧게 · 안드로이드)</small></label>${guestNamesRowHtml()}${saverRowsHtml()}${labRowHtml()}</div>
     <div class="menu">${autoSalvageHtml('mAuto')}<button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button></div>`;
   else if (sTab === 'noti')
     body = `<div class="menu">${checkinRowsHtml()}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label></div>`;
@@ -446,7 +449,7 @@ export function openSettings(tab?: SettingsTab) {
 function openSettingsClassic() {
   openWin(
     '설정',
-    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${saverRowsHtml()}${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
+    `${soundSettingsHtml()}<div class="menu saverrow"><label class="tog"><input type="checkbox" id="mSaver" ${saverOn() ? 'checked' : ''}> 배터리 절약</label><p class="note">화면을 조금 덜 자주 그려서 덜 뜨거워져요</p>${guestNamesRowHtml()}${saverRowsHtml()}${labRowHtml()}</div><div class="fsrow">글자 크기 ${CONFIG.UI_SCALE.userLabels.map((l, i) => `<button class="tab ${i === screen.fontStep ? 'on' : ''}" data-fs="${i}">${l}</button>`).join('')}</div>
     <div class="menu">${autoSalvageHtml('mAuto')}<label class="tog"><input type="checkbox" id="mRumor" ${rumorEnabled() ? 'checked' : ''}> 채팅에 [소문](마을 사람 수다) 보기</label><label class="tog"><input type="checkbox" id="mBrag" ${P.growth.bragOff ? 'checked' : ''}> 내 자랑 알림 끄기 <small>(득템·강화를 [알림]에 안 올려요)</small></label><label class="tog">케미 알림 <select id="mChem">${(['all', 'important', 'off'] as const).map((k) => `<option value="${k}" ${chemNoticeMode() === k ? 'selected' : ''}>${CHEM_NOTICE_NAME[k]}</option>`).join('')}</select></label>${checkinRowsHtml()}<label class="tog">화면 흔들림 <select id="mShake">${(['off', 'low', 'normal'] as const).map((k) => `<option value="${k}" ${shakeLv() === k ? 'selected' : ''}>${SHAKE_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mSettle" ${settleOn() ? 'checked' : ''}> 하루 마감 정산 카드 보기</label><label class="tog"><input type="checkbox" id="mGoalPill" ${goalPillOn() ? 'checked' : ''}> 「🎯 오늘」 목표 알약 보기</label><label class="tog"><input type="checkbox" id="mWfBub" ${wfBubblesOn() ? 'checked' : ''}> 길잡이 말풍선 (안 해 본 것 「!」)</label><label class="tog">단골 제안 카드 <select id="mPropCard">${(['full', 'simple'] as const).map((k) => `<option value="${k}" ${propCardMode() === k ? 'selected' : ''}>${PROP_CARD_NAME[k]}</option>`).join('')}</select></label><label class="tog"><input type="checkbox" id="mTele" ${telemetryOn() ? 'checked' : ''}> 플레이 기록 보내기 (개인정보 없이 · 게임 개선용)</label>
     <button id="mKeys">⌨ 단축키 바꾸기 (PC)</button><button id="mIntro">오프닝 다시 보기</button><button id="mHints">전투 안내 다시 보기</button><button id="mLetter">모모에게 편지 (버그 제보)</button><button id="mTitle">타이틀로</button></div>
     ${online() ? `<p class="note">로그인: ${esc(me.profile!.nickname)}</p>` : ''}`,
@@ -518,6 +521,12 @@ function bindSettings() {
   (el('mWfBub') as HTMLInputElement).onchange = (e) => setWfBubbles((e.target as HTMLInputElement).checked);
   const bb = document.getElementById('mBldBub') as HTMLInputElement | null;
   if (bb) bb.onchange = () => setBldBubbles(bb.checked);
+  const gn = document.getElementById('mGuestNames') as HTMLInputElement | null;
+  if (gn)
+    gn.onchange = () => {
+      setGuestNames(gn.checked);
+      trackEv('guest_names', { on: gn.checked });
+    };
   (el('mPropCard') as HTMLSelectElement).onchange = (e) => setPropCardMode((e.target as HTMLSelectElement).value as PropCardMode);
   (el('mTele') as HTMLInputElement).onchange = (e) => setTelemetry((e.target as HTMLInputElement).checked);
   el('mHints').onclick = () => {
