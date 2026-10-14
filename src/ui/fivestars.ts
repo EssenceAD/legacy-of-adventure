@@ -101,6 +101,7 @@ export function initFiveStars() {
   void myPioneer().then(setSelfStar);
   setInterval(() => {
     if (!fiveOn()) return syncSky();
+    portraitFallbacks();
     syncSky();
     if (document.hidden || storyBusy() || decorView.on || document.getElementById('fiveCut')) return;
     const ev = fiveTick();

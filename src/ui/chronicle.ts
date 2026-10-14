@@ -1,7 +1,8 @@
 // DIRECTION §1-3 「여관 연대기」(도감 탭 · 책처럼 넘겨 보기) · §2-2 「함께 만든 사람들」(도감 탭 · 엔딩 크레딧 줄)
 import { CONFIG } from '../data/config';
 import { endingById } from '../data/endings';
-import { PIONEER_CREDIT, PIONEERS, type PioneerId } from '../data/story/easter';
+import { PIONEERS } from '../data/story/easter';
+import { pioneerCredit, pioneerIds } from '../world/easter';
 import { PORTRAITS } from '../engine/assets';
 import { contributors, contributorsCached, type Contributor } from '../net/direction';
 import { getPref, setPref } from '../save/save';
@@ -68,10 +69,9 @@ export function chronPageHtml(n: number): string {
 
 // ───────── 함께 만든 사람들 ─────────
 
-const PIONEER_ORDER = Object.keys(PIONEERS) as PioneerId[];
 /** 도감 탭: 개척자 넷(금테 · 맨 위) + 반영 3건 이상 테스터 (서버에서 받아 채운다) */
 export function contribHtml(): string {
-  const pion = PIONEER_ORDER.map((id) => `<div class="ctb gold"><img src="${PORTRAITS['p_' + id] ?? ''}" alt=""><span><b>${esc(PIONEERS[id].name)}</b><small>개척자 · 「${esc(PIONEERS[id].title)}」</small></span></div>`).join('');
+  const pion = pioneerIds().map((id) => `<div class="ctb gold"><img src="${PORTRAITS['p_' + id] ?? ''}" alt=""><span><b>${esc(PIONEERS[id].name)}</b><small>개척자 · 「${esc(PIONEERS[id].title)}」</small></span></div>`).join('');
   return `<p class="sub">함께 만든 사람들</p><p class="note">베타 개척자와, 보내 준 제보가 ${CONFIG.direction.contributorMin}건 이상 게임에 반영된 분들이에요. 한 줄은 운영자가 썼어요.</p><div class="ctbs">${pion}</div><div class="ctbs" id="ctbList">${contribRows(contributorsCached())}</div>`;
 }
 function contribRows(list: Contributor[]): string {
@@ -97,5 +97,5 @@ export function contribCreditLine(): string | null {
 /** 엔딩 컷 마지막 줄들: 개척자 → 함께 만든 사람들 */
 export function endCredits(): [string, string][] {
   const c = contribCreditLine();
-  return [['narr', PIONEER_CREDIT], ...(c ? ([['narr', c]] as [string, string][]) : [])];
+  return [['narr', pioneerCredit()], ...(c ? ([['narr', c]] as [string, string][]) : [])];
 }

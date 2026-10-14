@@ -319,3 +319,43 @@ describe.skipIf(!REAL.length)('실제 저장 리플레이', () => {
         }
       });
 });
+
+describe('§5 다섯 번째 개척자 왈왈콩선생', () => {
+  it('꺼짐: 개척자 넷 그대로 · 크레딧 넷 · 왈왈 편지 없음', async () => {
+    const { pioneerIds, isPioneer, pioneerCredit, cameoPick } = await import('../src/world/easter');
+    const { PIONEER_CREDIT } = await import('../src/data/story/easter');
+    setFlag('fiveStars', false);
+    expect(pioneerIds()).toEqual(['woongs', 'gonu', 'warmnight', 'ikamolly']);
+    expect(isPioneer('walwal')).toBe(false);
+    expect(pioneerCredit()).toBe(PIONEER_CREDIT);
+    for (let i = 0; i < 50; i++) expect(cameoPick(null)).not.toBe('walwal');
+  });
+  it('켬: 다섯 · 크레딧 다섯 이름 · 칭호·장식 데이터 · 카메오 대사', async () => {
+    const { pioneerIds, isPioneer, pioneerCredit, PIONEER_DECO } = await import('../src/world/easter');
+    const { PIONEERS, CAMEO, LETTERS, isPioneerCredit } = await import('../src/data/story/easter');
+    expect(pioneerIds()).toContain('walwal');
+    expect(isPioneer('walwal')).toBe(true);
+    expect(pioneerCredit()).toContain('왈왈콩선생');
+    expect(isPioneerCredit(pioneerCredit())).toBe(true);
+    expect(PIONEERS.walwal).toMatchObject({ title: '밤길의 선생님', deco: 'night_bell', decoName: '밤길 방울' });
+    expect(PIONEER_DECO.night_bell).toBe('walwal');
+    expect(CAMEO.walwal.length).toBeGreaterThan(0);
+    expect(LETTERS.walwal.some((l) => l[2]?.fx === 'drop')).toBe(true);
+  });
+  it('밤길 방울: 밤에만 원정 시간 −3% · 근처 손님 기분 +', async () => {
+    const { pioneerExpCut, bellAura } = await import('../src/world/easter');
+    world.objs.push({ kind: 'night_bell', tx: 5, ty: 5, fw: 1, fh: 1, inside: [] } as never);
+    S.night = false;
+    expect(pioneerExpCut()).toBe(0);
+    S.night = true;
+    expect(pioneerExpCut()).toBeCloseTo(F.bellNightCut);
+    const a = reg();
+    a.x = 5.5;
+    a.y = 5.5;
+    a.mood = 50;
+    bellAura(10);
+    expect(a.mood).toBeGreaterThan(50);
+    setFlag('fiveStars', false);
+    expect(pioneerExpCut()).toBe(0);
+  });
+});

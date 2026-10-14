@@ -9,7 +9,7 @@ import { myPioneer, online, pioneers } from '../net/server';
 import { track as trackEv } from '../net/telemetry';
 import { entrance, blocksDoor, canPlace, addObj, rebuildPaths } from '../world/town';
 import { addMail } from '../world/meta';
-import { cameoDue, cameoNext, cameoPick, duckAura, isPioneer, makeCameo, noteCameo, noteMet } from '../world/easter';
+import { bellAura, cameoDue, cameoNext, cameoPick, duckAura, isPioneer, makeCameo, noteCameo, noteMet } from '../world/easter';
 import { arrive } from '../world/actors';
 import { floatW } from '../world/fx';
 import { markDirty, P, S, world, type Actor } from '../world/state';
@@ -134,7 +134,7 @@ function giveGift(id: PioneerId, a: Actor) {
   } else if (id === 'gonu') {
     E().decoCoupon = true;
     toast('장식 10% 할인 쿠폰을 받았어요 (다음 장식 하나)');
-  } else if (id === 'warmnight') {
+  } else if (id === 'warmnight' || id === 'walwal') {
     for (const g of world.actors) if (!g.role && !g.hidden) g.mood = Math.min(100, g.mood + 10);
     toast('손님들 기분 +10');
   } else {
@@ -154,6 +154,7 @@ export function initEaster() {
   setInterval(() => {
     spawnCameo();
     const r = duckAura(1);
+    bellAura(1);
     if (r?.twin && Date.now() - twinT > 90000 && !document.hidden) {
       twinT = Date.now();
       floatW(r.duck.tx + 1, r.duck.ty + 1, 50, '♨ 쌍둥이 온천', 'big');
