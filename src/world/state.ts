@@ -616,6 +616,25 @@ export function freshProgress() {
     },
     /** CHECKIN §A2 모아 보기: 오늘(현실 날짜) 저절로 띄운 곁이야기 수 */
     inbox: { day: '', shown: 0 },
+    /** PACE R17: 천장·대안 카운터 (world/paceGates.ts pg()가 빈 칸을 채운다) */
+    pg: freshPaceGates(),
+  };
+}
+
+/** PACE R17: 천장·대안 카운터 — 현실 하루 기분(은퇴 95↑ · 아리아 90↑) · 판정 실패 밤 · 원정 판 수(증표) · 바엘 2시간 성공 · 지역별 원정 승리(떠돌이) · 지역별 x-10 처치(고유) · 평가 최고 점수 · 순위 확인 못 한 주 */
+export function freshPaceGates() {
+  return {
+    goodReal: 0,
+    goodDay: '',
+    topReal: 0,
+    topDay: '',
+    judgeFail: {} as Record<string, number>,
+    tokenRuns: 0,
+    bael2h: 0,
+    wanderWins: {} as Record<string, number>,
+    huntBoss: {} as Record<string, number>,
+    evalBest: 0,
+    rankPending: [] as string[],
   };
 }
 
@@ -798,6 +817,8 @@ export interface TieState {
   /** 본 단계 (1 = 낯섦). 수치가 다음 단계에 닿으면 이벤트를 보고 오른다 */
   stage: number;
   talkDay: string;
+  /** PACE R17: 오늘 말 건 횟수 (옛 저장엔 없음 = 1) */
+  talkN?: number;
   giftDay: string;
   /** 알아낸 취향 */
   knowLike: boolean;

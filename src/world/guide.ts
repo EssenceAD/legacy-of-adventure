@@ -13,6 +13,7 @@ export let evalScoreHook = () => 0;
 export const setEvalScoreHook = (f: () => number) => (evalScoreHook = f);
 import { markDirty, P, S, uiHooks, world, type TalkLine } from './state';
 import { flag } from './flags';
+import { evalBestScore } from './paceGates';
 
 const homeObjs = () => world.home?.objs ?? world.objs;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -52,7 +53,8 @@ export function guideCtx(): GuideCtx {
     itemDex: P.dex.items.length,
     harmonies: P.harmony.found.length,
     hiddenHarmonies: P.harmony.found.filter((id) => !HARMONIES.find((h) => h.id === id)?.open).length,
-    evalScore: Math.max(evalScoreHook(), P.evaluation.best >= 3 ? 800 : P.evaluation.best >= 1 ? 300 : 0),
+    // PACE R17: 이번 주 점수 대신 「지금까지 최고 점수」로도 (paceGates)
+    evalScore: Math.max(evalBestScore(evalScoreHook()), P.evaluation.best >= 3 ? 800 : P.evaluation.best >= 1 ? 300 : 0),
   };
 }
 

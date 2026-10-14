@@ -92,7 +92,7 @@ export const ROUTES: Record<RouteId, { name: string; pick: string; teaser: strin
     goals: [
       { id: 'r_days', title: '{inn}을 오래 지키기 (운영 일수)', done: '계절이 또 한 번 돌았다. 간판의 칠이 조금 바랬다.' },
       { id: 'r_mood', title: '손님 기분 최고인 날 모으기', done: '「여기 오면 이상하게 잠이 잘 와요.」 단골들이 입을 모아 말했다.' },
-      { id: 'r_harvest', title: '텃밭 수확 100번', done: '주점 스튜에 들어가는 채소는 이제 전부 {inn} 텃밭에서 난다.' },
+      { id: 'r_harvest', title: '텃밭 수확 50번', done: '주점 스튜에 들어가는 채소는 이제 전부 {inn} 텃밭에서 난다.' },
       { id: 'r_heir', title: '후계자 맞이하기', done: '' },
     ],
   },

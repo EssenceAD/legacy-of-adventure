@@ -13,6 +13,7 @@ import { feature } from './guide';
 import { addRep } from './progress';
 import { addToBag, makeItem, rollGrade } from './items';
 import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type Item } from './state';
+import { huntUniqueChance, huntUniqueGot } from './paceGates';
 import { track } from '../net/telemetry';
 import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
@@ -161,8 +162,12 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
 function bossUnique(r: RegionId, s: number, out: HuntReward) {
   if (!isBoss(s)) return;
   // GOLDSINK §5: 마을 부탁 보너스 상자 — 다음 지역 보스 한 번 고유 장비 확률 ×2
-  const u = rollUnique(r, CONFIG.growth.unique.hunt * takeUniqueBoost());
-  if (u) out.items.push(u);
+  // PACE R17: 같은 지역 x-10 n번째 처치는 확정 (paceGates)
+  const u = rollUnique(r, huntUniqueChance(r, CONFIG.growth.unique.hunt * takeUniqueBoost()));
+  if (u) {
+    out.items.push(u);
+    huntUniqueGot(r);
+  }
 }
 /** 소탕: 깬 스테이지만 · 전투 없이 기본 70% · 첫 돌파 보상 없음 */
 export function sweepStage(r: RegionId, s: number, members: Actor[]): HuntReward | null {

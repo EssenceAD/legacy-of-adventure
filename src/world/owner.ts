@@ -21,6 +21,7 @@ import { tavernBoost } from './goldsink';
 import { markDirty, P, S, uiHooks, world, type Actor, type OwnerState, type TalkChoice, type TalkLine, type TieState } from './state';
 import { windTavern } from './wind';
 import { addChronicle } from './chronicle';
+import { gatesOn } from './paceGates';
 
 const O = CONFIG.owner;
 const T = CONFIG.ties;
@@ -367,9 +368,12 @@ export function talkTo(id: string): string | null {
   const d = bondById(id);
   if (!d || !tieAvailable(id)) return '아직 인연을 쌓을 수 없어요';
   const t = tie(id);
-  if (t.talkDay === today()) return '오늘은 이미 이야기했어요 (내일 또)';
+  // PACE R17: 하루 talkPerDay번 (paceGates · 끄면 1번)
+  const talkMax = gatesOn() ? O.talkPerDay : 1;
+  if (t.talkDay === today() && (t.talkN ?? 1) >= talkMax) return talkMax > 1 ? `오늘은 ${talkMax}번 다 이야기했어요 (내일 또)` : '오늘은 이미 이야기했어요 (내일 또)';
   if (energyLeft() <= 0) return '오늘은 기운이 없어요 (내일 또 · 체력이 오르면 더 많이)';
   useEnergy();
+  t.talkN = t.talkDay === today() ? (t.talkN ?? 1) + 1 : 1;
   t.talkDay = today();
   ownerGain('talk');
   markDirty();
@@ -536,7 +540,14 @@ export const canSolo = () => stat('nerve') >= E.soloNerve;
 
 export function canDecide(): boolean {
   const o = P.owner;
-  return !!o && !o.ended && calendar().days >= E.decideDays && o.ember >= 100 && Date.now() >= o.askAt;
+  return !!o && !o.ended && decideDaysNow() >= E.decideDays && o.ember >= 100 && Date.now() >= o.askAt;
+}
+/** 불씨 결심 「며칠째」: 현실 일수 · PACE R17 시계(paceGates) — 이 회차 게임 일수 ÷ 8도 같이 세서 큰 쪽 */
+export function decideDaysNow(): number {
+  const real = calendar().days;
+  if (!gatesOn()) return real;
+  const game = Math.max(0, S.day - (P.story?.day0 ?? 1) + 1);
+  return Math.max(real, Math.floor(game / CONFIG.paceGates.decideGameDiv));
 }
 
 const LEGACY_EMBERS = ['다락의 옛 장비가 달빛에 반짝인다. 앞 주인이 두고 간 것이다.', '앞 주인이 남긴 지도를 펼쳐 본다. 빈칸이 많다.', '꿈에서 앞 주인이 불렀다. "이제 네 차례다."'];

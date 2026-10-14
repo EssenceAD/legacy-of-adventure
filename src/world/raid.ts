@@ -23,6 +23,7 @@ import { roleMult } from './party';
 import type { Item } from './state';
 import { stripWind, windRaid } from './wind';
 import { flag } from './flags';
+import { gatesOn, queueRankWeek, wanderMet, wanderPity } from './paceGates';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -55,7 +56,11 @@ export function ensureWeek(): boolean {
   const wk = mondayKey();
   if (P.raid.week === wk && bossById(P.raid.bossId)) return false;
   const b = pickWeekly();
-  if (P.raid.week && P.raid.week !== wk) P.raid.prevWeek = P.raid.week;
+  if (P.raid.week && P.raid.week !== wk) {
+    P.raid.prevWeek = P.raid.week;
+    // PACE R17: 기록을 낸 주는 순위 확인 목록에 (온라인일 때 놓친 주까지 확인 · 진 소문)
+    if (P.raid.best > 0) queueRankWeek(P.raid.week);
+  }
   Object.assign(P.raid, { week: wk, bossId: b.id, hpLeft: b.hp, killed: false, best: 0, joined: false, alarmed: false, chainN: 1, chainKilled: [], weak: 0, tiredSaid: false });
   markDirty();
   return true;
@@ -220,9 +225,12 @@ export function wanderTarget(): RaidTarget | null {
 export function maybeWander(region: RegionId): BossDef | null {
   // PACE §1-3: 0.08 → 0.15 · 24 → 48시간 (플래그 끄면 예전 값)
   const W = pace() ? R : R.paceOff;
-  if (wanderTarget() || Math.random() >= W.wanderChance) return null;
+  // PACE R17 떠돌이 천장: 같은 지역 원정 승리 n번째엔 확정 (paceGates · 떠돌이가 이미 있으면 다음 기회로)
+  const sure = wanderPity(region);
+  if (wanderTarget() || (!sure && Math.random() >= W.wanderChance)) return null;
   const b = RAID_BOSSES.find((x) => x.region === region);
   if (!b) return null;
+  wanderMet(region);
   const max = Math.round(b.hp * R.wanderHpShare);
   P.raid.wander = { bossId: b.id, until: Date.now() + W.wanderHours * 36e5, hpLeft: max, max };
   markDirty();
@@ -341,6 +349,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
       P.raid.wander = null;
       // PACE §1-3: 떠돌이 처치도 장부 「토벌 보스 처치하기」로 센다
       P.raid.wanderKills = (P.raid.wanderKills ?? 0) + 1;
+      // PACE R17: 신화 엘리시아 「토벌 보스 3」에도 떠돌이 처치를 셈 (paceGates)
+      if (gatesOn()) P.counters.raidKills = (P.counters.raidKills ?? 0) + 1;
     }
   }
   const firstKill = killed && !P.raid.firstKills.includes(b.id);
@@ -382,7 +392,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   const items: Item[] = [];
   if (killed) {
-    const u = rollUnique(b.region, CONFIG.growth.unique.raid);
+    // PACE R17: 같은 보스 첫 처치는 고유 장비 확정 (paceGates)
+    const u = rollUnique(b.region, firstKill && gatesOn() ? 1 : CONFIG.growth.unique.raid);
     if (u) items.push(u);
   }
   let personalBest = false;

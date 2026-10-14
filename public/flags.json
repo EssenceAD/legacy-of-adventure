@@ -17,6 +17,7 @@
   "raidNoWind": true,
   "raidPace": true,
   "storyClock": true,
+  "paceGates": true,
   "accountDelete": true,
   "innDecoObj": true,
   "aiBossTarget": true,

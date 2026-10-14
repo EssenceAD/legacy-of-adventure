@@ -24,7 +24,8 @@ import { expHpCut, hunterRegionPct, hunterTimeCut, partySynMult, recordSynergies
 import { addBond, bondOf, pairOf, partyChemMult, type BondGain } from './chem';
 import { addToBag, equippedItems, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { addRep, dexBonus, ITEM_DEX_TOTAL, stars, today, track } from './progress';
-import { gotGold, legendHooks, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
+import { gotGold, legendHooks, markDirty, P, S, pick, world, type Actor, type Quest, type Run, type RunResult } from './state';
+import { baelNeedsLong, baelShortWin, tokenPity } from './paceGates';
 import { expTimeCut, ownerGain, questGoldMult, tieRun } from './owner';
 import { addCharm, mealGold } from './growth';
 import { partySpecial, rollUniqueAny } from './uniques';
@@ -122,7 +123,10 @@ function rollQuests(): Quest[] {
 /** 매일(현실 날짜) 아침 갱신 */
 export function ensureQuests() {
   migrateTiers();
-  if (P.quests.day === today()) return ensureQuick(P.quests.list);
+  if (P.quests.day === today()) {
+    baelLongSlot(P.quests.list);
+    return ensureQuick(P.quests.list);
+  }
   P.quests.day = today();
   P.quests.refreshUsed = 0;
   P.quests.list = rollQuests();
@@ -134,6 +138,18 @@ export function ensureQuests() {
     q.name = '길드 특별 의뢰';
     P.quests.list.unshift(q);
   }
+  baelLongSlot(P.quests.list);
+}
+/** PACE R17: 바엘이 머무는 동안 게시판에 8시간 의뢰 1개 보장 (가장 높은 지역) */
+function baelLongSlot(list: Quest[]) {
+  if (!baelNeedsLong()) return;
+  const T = CONFIG.paceGates.baelLongTier;
+  if (list.some((q) => q.tier >= T && !q.tutorial)) return;
+  const open = REGIONS.filter((_, i) => regionUnlocked(i));
+  const q = makeQuest(open[open.length - 1].id, T);
+  q.name = '바엘이 가져온 긴 의뢰';
+  list.push(q);
+  markDirty();
 }
 
 /** 새로고침: 하루 무료 1번 → GOLDSINK §1 그 뒤는 금화로 (진행 중인 원정은 그대로, 안 받은 의뢰만 바뀐다) */
@@ -316,7 +332,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const extra: [string, string, string?][] = [];
   if (items.some((it) => 'ela'.includes(it.grade))) legendHooks.bond('treasure');
   if (items.some((it) => it.grade === 'a')) P.counters.relicEver = 1;
-  if (Math.random() < CONFIG.legends.tokenRunChance) {
+  // PACE R17: 증표 천장 — 원정 n판마다 확정 1 (paceGates)
+  const tokenHit = Math.random() < CONFIG.legends.tokenRunChance;
+  if (tokenPity(tokenHit) || tokenHit) {
     P.tokens++;
     extra.push(['narr', '보물 더미 속에서 「인연의 증표」가 반짝였다!']);
   }
@@ -332,6 +350,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     legendHooks.req('lunaTreasure');
   }
   if (win && tg >= 3) legendHooks.req('longRunWin');
+  // PACE R17 바엘 대안: 바엘이 머무는 동안 2시간 이상 의뢰 2번 = 8시간 1번
+  if (win) baelShortWin(q.tier);
   // GROWTH §3-3·§3-4: 고지역 2시간 이상 원정 → 강화 보호 부적 10% · 고지역 8시간 원정 → 고유 장비 0.3%
   const GG = CONFIG.growth;
   if (win && !q.tutorial && r >= GG.charm.highRegion && q.tier >= GG.charm.expTier && Math.random() < GG.charm.expChance) {

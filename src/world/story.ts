@@ -14,6 +14,7 @@ import { markDirty, P, S, world, type Actor, type TalkLine } from './state';
 import { ensureWind, rollWind, windRetire } from './wind';
 import { addChronicle, backfillChronicle, keepMythicMet } from './chronicle';
 import { flag } from './flags';
+import { goodDaysNow, pg } from './paceGates';
 
 const A = CONFIG.story;
 const st = () => P.story;
@@ -265,7 +266,8 @@ export function retireGoals(): Goal[] {
   const mk = (i: number, cur: number, need: number, text: string): Goal => ({ id: g[i].id, title: fill(g[i].title), cur: Math.min(cur, need), need, done: cur >= need, text });
   return [
     mk(0, day, days, day >= days ? '완료' : `${days - day}일 남음 (${day}/${days}일)`),
-    mk(1, s.goodDays, good, `${Math.min(s.goodDays, good)}/${good}일 · 평균 기분 ${A.goodMood} 이상인 날`),
+    // PACE R17: 현실 하루에 한 번이라도 평균 기분 95↑면 그날도 1일 (게임 날 수와 큰 쪽 · paceGates)
+    mk(1, goodDaysNow(), good, `${Math.min(goodDaysNow(), good)}/${good}일 · 평균 기분 ${A.goodMood} 이상인 날`),
     mk(2, harv, harvN, `${Math.min(harv, harvN)}/${harvN}`),
     mk(3, s.heir >= 2 ? 1 : 0, 1, s.heir === 1 ? '유안에게 말 걸기' : s.readyDay ? '내일 아침, 누군가 찾아올 것 같아요' : '앞의 목표 셋을 마치면'),
   ];
@@ -492,6 +494,8 @@ export function startCycle(gifts: string[]): string[] {
     letter: 0, changed: false, goodDays: 0, goodLast: P.daily.log[P.daily.log.length - 1]?.day ?? 0, heir: 0, readyDay: 0, playMin: 0, actAt: { 1: Date.now() },
     base: {}, flags: {}, mythic: {},
   });
+  // PACE R17: 현실 하루 기분도 이 회차부터 다시
+  Object.assign(pg(), { goodReal: 0, goodDay: '' });
   const done: string[] = [];
   const L = P.legacy;
   for (const id of gifts) {

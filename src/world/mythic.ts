@@ -7,6 +7,8 @@ import type { RegionId } from '../data/items';
 import { track } from '../net/telemetry';
 import { bondsOf } from './chem';
 import { markDirty, P, S, world, type Actor } from './state';
+import { gatesOn } from './paceGates';
+import { CONFIG } from '../data/config';
 import { bestOf } from './town';
 
 export const mythicOf = (key: string | undefined): MythicDef | undefined => (key ? MYTHIC.find((m) => m.key === key) : undefined);
@@ -70,11 +72,12 @@ export function mythicProgress(key: string): [number, number] {
   return [0, 1];
 }
 /** 하루가 바뀔 때: 아리아 「기분 최고인 날 연속」 */
-function moodStreak(key: string) {
+export function moodStreak(key: string) {
   const b = base(key);
   if (S.day === b.moodDay) return;
   const got = P.counters.moodTopDays > b.moodTop;
-  b.streak = got ? b.streak + (S.day - b.moodDay) : 0;
+  // PACE R17: 끊기면 0이 아니라 −2 (paceGates)
+  b.streak = got ? b.streak + (S.day - b.moodDay) : gatesOn() ? Math.max(0, b.streak - CONFIG.paceGates.ariaStreakBreak) : 0;
   b.moodDay = S.day;
   b.moodTop = P.counters.moodTopDays;
 }

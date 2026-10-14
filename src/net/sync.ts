@@ -5,6 +5,7 @@ import { baseDexGuests, GUEST_DEX_TOTAL, ITEM_DEX_TOTAL, today } from '../world/
 import { HEROES } from '../data/heroes';
 import { powerOf } from '../world/adventurers';
 import { markDirty, P, S, world, type RaidRecord } from '../world/state';
+import { gatesOn, pg } from '../world/paceGates';
 import { getPref, readSave, setPref, snapshot, writeSave } from '../save/save';
 import { validRecord } from './local';
 import { chaptersDone, townGrade } from '../world/guide';
@@ -233,8 +234,18 @@ async function checkRank1(week: string) {
 
 /** 지난주 내 순위가 상위 30%였나 (진의 소문 조건). 주마다 한 번만 센다 */
 export async function checkLastWeek() {
-  const wk = P.raid.prevWeek;
-  if (!online() || !wk || P.raid.rankChecked === wk) return;
+  // PACE R17: 확인 못 한 주가 여럿이면 모두 (예전엔 바로 지난주 하나만 — 그 주에 접속을 못 하면 그 전 주를 놓쳤다)
+  const pend = gatesOn() ? pg().rankPending : [];
+  const weeks = [...pend.filter((w) => w !== P.raid.week), ...(P.raid.prevWeek && P.raid.rankChecked !== P.raid.prevWeek && !pend.includes(P.raid.prevWeek) ? [P.raid.prevWeek] : [])];
+  if (!online()) return;
+  for (const wk of weeks) {
+    await checkWeek(wk);
+    const i = pend.indexOf(wk);
+    if (i >= 0) pend.splice(i, 1);
+  }
+}
+async function checkWeek(wk: string) {
+  if (!wk || P.raid.rankChecked === wk) return;
   const { row, total } = await mine('raidWeek', wk);
   P.raid.rankChecked = wk;
   if (row && total > 0 && row.rank / total <= CONFIG.cloud.topRankShare) {

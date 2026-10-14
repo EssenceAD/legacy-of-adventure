@@ -2,6 +2,7 @@
 //  (☀ 버튼으로 아침까지 건너뛰어 자정을 놓쳤으면 아침 6시에 마감한다)
 import { hourNow, onNewDay } from './clock';
 import { P, S, world, type DayLog } from './state';
+import { moodSample } from './paceGates';
 
 /** 이번 날 모으기 시작 */
 function open() {
@@ -52,7 +53,10 @@ export function tickDaily() {
     moodHour = ah;
     const g = world.actors.filter((a) => !a.role && a.id && !a.hidden && a.runId == null);
     if (g.length) {
-      P.daily.cur.moodSum += g.reduce((s, a) => s + a.mood, 0) / g.length;
+      const avg = g.reduce((s, a) => s + a.mood, 0) / g.length;
+      P.daily.cur.moodSum += avg;
+      // PACE R17: 현실 하루에 한 번이라도 평균 기분 95↑(은퇴) · 90↑(아리아)면 그날도 1일
+      moodSample(avg);
       P.daily.cur.moodN++;
     }
   }

@@ -13,6 +13,7 @@ import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, wfHit, world, type Building, type Item } from './state';
+import { mimiAlt } from './paceGates';
 import { enhanceBonus, ownerGain, stat } from './owner';
 import { bfx, hfx } from './harmony';
 import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
@@ -179,6 +180,8 @@ export function enhance(it: Item, o: EnhOpts = {}): 'ok' | 'fail' | 'max' | 'poo
   }
   sfx(r.great ? 'rare' : 'levelup');
   P.counters.enhanceMax = Math.max(P.counters.enhanceMax, it.enh);
+  // PACE R17: 아이템 도감이 거의 다 찼으면 강화 +n 성공도 미미의 「새 칸」
+  mimiAlt('enhance', it.enh);
   if (before < SM.maxEnhance && it.enh >= SM.maxEnhance) brag('enh10', it);
   return 'ok';
 }

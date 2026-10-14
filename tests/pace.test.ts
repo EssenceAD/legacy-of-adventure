@@ -232,7 +232,8 @@ function ledgerTo(ch: number) {
 }
 
 describe('PACE §3-1 이야기 시계', () => {
-  it('며칠째 = max(게임 일수, 막 들어간 날 + 현실 경과일 × 8)', () => {
+  it('며칠째 = max(게임 일수, 막 문턱 + 현실 경과일 × realDayAs)', () => {
+    const D = A.realDayAs;
     vi.useFakeTimers({ toFake: ['Date'] });
     const t0 = KST0(2026, 10, 10, 10);
     vi.setSystemTime(t0);
@@ -241,23 +242,24 @@ describe('PACE §3-1 이야기 시계', () => {
     ledgerTo(3);
     S.day = 2;
     expect(nextAct()).toBeNull();
-    // 1막 → 2막: 1 + 1.375일 × 8 = 12일째
-    vi.setSystemTime(t0 + 1.375 * DAY);
+    // 1막 → 2막: 1 + 현실 11/D일 × D = 12일째
+    const at2 = t0 + (11 / D) * DAY;
+    vi.setSystemTime(at2);
     expect(storyClockDay()).toBe(12);
     expect(nextAct()).toBe(2);
     actUp(2);
-    expect(P.story.actAt![2]).toBe(t0 + 1.375 * DAY);
-    // 2막 → 3막: 게임 2일차에 2막에 들었어도 시계는 12일째에서 → 12 + 현실 3.5일 × 8 = 40
+    expect(P.story.actAt![2]).toBe(at2);
+    // 2막 → 3막: 게임 2일차에 2막에 들었어도 시계는 12일째에서 → 12 + 현실 28/D일 × D = 40
     for (const h of ['alric', 'oswin', 'mira']) P.dex.heroes[h] = { recruited: true } as never;
     ledgerTo(7);
-    const at2 = t0 + 1.375 * DAY;
-    vi.setSystemTime(at2 + 3.45 * DAY);
-    expect(storyClockDay()).toBe(12 + Math.floor(3.45 * 8));
+    const need = 28 / D;
+    vi.setSystemTime(at2 + (need - 0.05) * DAY);
+    expect(storyClockDay()).toBe(12 + Math.floor((need - 0.05) * D));
     expect(nextAct()).toBeNull();
     expect(storyWaitDay()).toBe(40);
     expect(realDaysTo(40)).toBe(1);
     expect(storyWaitText()).toBe('1일 뒤 (또는 40일차)');
-    vi.setSystemTime(at2 + 3.5 * DAY);
+    vi.setSystemTime(at2 + need * DAY);
     expect(storyClockDay()).toBe(40);
     expect(nextAct()).toBe(3);
   });
@@ -268,7 +270,7 @@ describe('PACE §3-1 이야기 시계', () => {
     S.day = 30;
     expect(storyClockDay()).toBe(30);
     vi.setSystemTime(KST0(2026, 10, 15, 10));
-    expect(storyClockDay()).toBe(41);
+    expect(storyClockDay()).toBe(1 + 5 * A.realDayAs);
     setFlag('storyClock', false);
     expect(storyClockDay()).toBe(30);
     expect(storyClockDay()).toBe(storyDay());
@@ -280,12 +282,13 @@ describe('PACE §3-1 이야기 시계', () => {
     initStory(true);
     ledgerTo(3);
     S.day = 11;
-    // 남은 게임 1일 · 현실 1.25일 → 2일 뒤
-    expect(storyWaitText()).toBe('12일차 (또는 2일 뒤)');
-    S.day = 3;
-    expect(storyWaitText()).toBe('2일 뒤 (또는 12일차)');
+    // 남은 게임 1일 · 현실 11/D일 → 올림
+    const r = Math.ceil(11 / A.realDayAs);
+    expect(storyWaitText()).toBe(`12일차 (또는 ${r}일 뒤)`);
+    S.day = 1;
+    expect(storyWaitText()).toBe(`${r}일 뒤 (또는 12일차)`);
   });
-  it('은퇴(60일)도 3막 들어간 뒤 현실 일수 × 8', () => {
+  it('은퇴(60일)도 3막 들어간 뒤 현실 일수 × realDayAs', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const t0 = KST0(2026, 10, 10, 10);
     vi.setSystemTime(t0);
@@ -293,7 +296,7 @@ describe('PACE §3-1 이야기 시계', () => {
     Object.assign(P.story, { act: 3, actDay: { 2: 12, 3: 40 }, actAt: { 3: t0 } });
     S.day = 41;
     expect(retireGoals()[0].done).toBe(false);
-    vi.setSystemTime(t0 + 2.5 * DAY);
+    vi.setSystemTime(t0 + (20 / A.realDayAs) * DAY);
     expect(storyClockDay()).toBe(60);
     expect(retireGoals()[0].done).toBe(true);
   });

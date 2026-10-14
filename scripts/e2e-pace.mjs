@@ -67,12 +67,15 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
   await settle(p, 4);
   const after = await p.evaluate(() => ({ act: window.__P.story.act, wait: document.getElementById('storyWait')?.textContent ?? '', note: document.getElementById('mission')?.textContent ?? '' }));
   ok(st.at > 0 && st.at < LOGIN, `${name}: 2막 시각 채움 ${st.at ? fmtK(st.at) : '없음'}`);
-  // 3막이 오는 시각 = 2막 시각 + (40 − 2막 들어간 날) ÷ 8 일
+  // 3막이 오는 시각 = 2막 시각 + (40 − 2막 들어간 날) ÷ realDayAs 일 (REAL_DAY_AS · 기본 10 = CONFIG.story.realDayAs)
   const startDay = Math.max(1, st.actDay - st.day0 + 1);
-  const when = st.at + ((40 - startDay) / 8) * 864e5;
+  const when = st.at + ((40 - startDay) / Number(process.env.REAL_DAY_AS ?? 10)) * 864e5;
   const gameLeft = 40 - (st.day - st.day0 + 1);
   out.push(`  ${name}: ${fmtK(LOGIN)} 접속 → ${after.act === 3 ? '3막 컷!' : `2막 그대로 · 띠 「${after.wait || after.note.slice(0, 60)}」 · 3막 ${fmtK(when)} (현실 ${((when - LOGIN) / 864e5).toFixed(2)}일 뒤) 또는 게임 ${gameLeft}일 더`}`);
   ok(errs.length === 0, `${name}: 오류 없음 ${errs.join(' | ')}`);
+  await ctx.close();
+  // 2) 도전장은 이야기 컷이 끼어들지 않게 따로 연다 (저장한 주 · 3막 시각 전: RAID_AT · 기본 10/14 12:00)
+  ({ p, ctx, errs } = await open(raw, kst(process.env.RAID_AT ?? '2026-10-14T12:00')));
   // 2) 도전장: 이번 주 첫 보스를 이미 잡은 저장 → 게시판에 도전장 · 고르면 2번째 보스 토벌 창 맨 위 「이번 주 2/3」
   const raid = await p.evaluate(async () => {
     const P = window.__P;
@@ -80,15 +83,20 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
     P.runs.length = 0;
     return { killed: P.raid.killed, boss: P.raid.bossId, week: P.raid.week };
   });
-  await p.evaluate(() => document.getElementById('bExp').click());
-  await p.waitForTimeout(900);
+  // 3막 컷·편지가 끝날 때까지 넘기고 게시판을 연다 (게시판 토벌 칸이 보일 때까지 몇 번)
+  for (let i = 0; i < 6; i++) {
+    await settle(p, 3);
+    await p.evaluate(() => document.getElementById('bExp').click());
+    await p.waitForTimeout(900);
+    if (await p.evaluate(() => !!document.querySelector('#win .raids') && document.querySelector('#dlg').hidden)) break;
+  }
   const chal = await p.locator('[data-chal]').count();
   const line = await p.locator('.chainline, #rChalLine').first().textContent().catch(() => '');
   out.push(`  ${name}: 이번 주 ${raid.boss} 처치=${raid.killed} · 게시판 도전장 ${chal}개 · 「${line}」`);
   if (raid.killed && raid.week) {
     ok(chal > 0 || /모두 처치|지역을 더/.test(line ?? ''), `${name}: 잡은 주엔 도전장(또는 이유 한 줄)`);
     if (chal > 0) {
-      await p.locator('[data-chal]').first().click();
+      await p.evaluate(() => document.querySelector('[data-chal]').click());
       await p.waitForTimeout(900);
       const top = await p.locator('#rChain').textContent().catch(() => '');
       ok(/이번 주 2\/3/.test(top ?? ''), `${name}: 도전장 → 토벌 창 맨 위 「${top}」`);
@@ -97,7 +105,7 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
       const before = await p.evaluate(() => window.__S.gold);
       const btn = p.locator('#rgAuto');
       if (await btn.count()) {
-        await btn.click();
+        await p.evaluate(() => document.getElementById('rgAuto').click());
         await p.waitForTimeout(1200);
         const res = await p.evaluate(() => document.querySelector('#win .res')?.textContent ?? '');
         ok(/도전장 보스는 주간 랭킹에 안 들어가요/.test(res), `${name}: 결과 「랭킹은 첫 보스만」`);
@@ -108,6 +116,7 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
   }
   await ctx.close();
   // 3) 3막이 오는 시각 + 1분에 접속 → 컷 (이미 넘었으면 생략)
+  ok(after.act === 3 || when > LOGIN, `${name}: 아직 3막이 아니면 3막 시각이 접속 뒤`);
   if (after.act !== 3 && Number.isFinite(when)) {
     ({ p, ctx, errs } = await open(raw, Math.max(LOGIN, when + 60e3)));
     await settle(p, 6);
