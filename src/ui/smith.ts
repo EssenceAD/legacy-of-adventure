@@ -10,6 +10,7 @@ import { craftWhet, gardenLevelState, gardenPlots, whetCost } from '../world/cra
 import { vis, fsay } from '../world/visual';
 import { def } from '../data/catalog';
 import { maxLevel } from '../world/town';
+import { fLv, tavernAteToday } from '../world/facilities';
 import { favActors, favRank } from '../world/growth';
 import { openReforge, reforgeTab } from './reforge';
 import type { Item } from '../world/state';
@@ -291,7 +292,7 @@ export function openGarden(o: Building) {
   const head = (vis('actionsTidy') ? `<p class="sub objinfo">${esc(def('garden').desc)} · ${esc(def('garden').levelText ?? '')}</p>` : '') + (vis('gardenLevelUp') ? gardenLine(o) : '');
   openWin(
     '텃밭',
-    `${head}<p class="sub">창고: ${Object.entries(P.crops).filter(([, n]) => n > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로 · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
+    `${head}<p class="sub">창고: ${Object.entries(P.crops).filter(([k, n]) => n > 0 || tavernAteToday(k) > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>${tavernAteToday(k) ? ` <small class="tate">오늘 주점 −${tavernAteToday(k)}</small>` : ''}`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로${fLv('alchemy') && P.keepAlch !== false ? ' (물약 재료 몫은 남겨요)' : ''} · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
   );
   $$('[data-c]').forEach(
     (b) =>

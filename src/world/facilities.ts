@@ -40,15 +40,49 @@ export function addCrop(id: string, n: number) {
   P.crops[id] = (P.crops[id] ?? 0) + n;
   markDirty();
 }
-/** 주점 식사: 옛 채소(pantry) 먼저, 없으면 먹을 수 있는 작물 중 가장 많은 것 하나 */
+/**
+ * 물약 재료 남겨 두기 (P.keepAlch · 기본 켬): 작물마다 「물약 하나에 드는 가장 많은 개수 × 물약 칸(공방 레벨)」은 남긴다
+ *  · 공방이 없으면(칸 0) 0 — 예전처럼 다 먹는다 · 끄면 0
+ */
+export function alchReserve(id: string): number {
+  if (P.keepAlch === false) return 0;
+  const slots = potionSlots();
+  if (!slots) return 0;
+  let need = 0;
+  for (const r of Object.values(PO.list)) need = Math.max(need, r.need[id] ?? 0);
+  return need * slots;
+}
+/** 남겨 둔 몫 위로 남는 수 (주점·미끼가 가져갈 수 있는 것) */
+export const cropSpare = (id: string) => Math.max(0, (P.crops[id] ?? 0) - alchReserve(id));
+/** 오늘(현실 날짜) 주점 손님이 먹은 작물 수 — 날이 바뀌면 0부터 */
+export function tavernAteToday(id?: string): number {
+  const t = P.tavernAte;
+  if (!t || t.day !== todayKey()) return 0;
+  return id ? (t.n[id] ?? 0) : Object.values(t.n).reduce((a, b) => a + b, 0);
+}
+function noteTavernAte(id: string) {
+  const day = todayKey();
+  if (!P.tavernAte || P.tavernAte.day !== day) P.tavernAte = { day, n: {} };
+  P.tavernAte.n[id] = (P.tavernAte.n[id] ?? 0) + 1;
+}
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+/** 주점 식사: 옛 채소(pantry) 먼저, 없으면 먹을 수 있는 작물 중 (물약 재료로 남겨 둔 몫 위로) 가장 많이 남는 것 하나 */
 export function takeMeal(): boolean {
   if (P.pantry > 0) {
     P.pantry--;
     return true;
   }
-  const edible = Object.entries(P.crops).filter(([id, n]) => n > 0 && CONFIG.garden.crops[id]?.eat !== false).sort((a, b) => b[1] - a[1])[0];
+  const edible = Object.keys(P.crops)
+    .filter((id) => CONFIG.garden.crops[id]?.eat !== false)
+    .map((id) => [id, cropSpare(id)] as const)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])[0];
   if (!edible) return false;
   P.crops[edible[0]]--;
+  noteTavernAte(edible[0]);
   return true;
 }
 /** 물약 칸 = 공방 레벨 · 효과는 Lv마다 +5% */

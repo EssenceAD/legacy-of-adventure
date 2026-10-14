@@ -1218,6 +1218,8 @@ p.qtag.ok{color:#8fe08f}
 .sub.fx{color:#ffd36b}
 .alch{margin-top:6px;display:flex;flex-direction:column;gap:4px}
 .alch .potion button{margin-left:4px}
+.alch .alkeep{margin-top:0}.alch .alkeep small{opacity:.8}.alch .alate{display:block}
+.tate{color:#ffb38a;white-space:nowrap}
 #bVillage{position:relative}
 #bVillage .rbadge{position:absolute;right:2px;top:0;min-width:16px;height:16px;padding:0 3px;background:#6fd04b;color:#1c1018;font-style:normal;font-size:11px;line-height:16px;font-weight:700;box-shadow:0 0 0 2px #1c1018}
 /* HUNT_WORLD §1: 사냥 창 지역 색 띠 (지역 탭 아래 · 스테이지 칸 왼쪽) — 9-slice 판(fill) 위에 그리려고 가상 요소로 */

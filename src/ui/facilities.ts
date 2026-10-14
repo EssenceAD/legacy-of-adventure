@@ -1,8 +1,8 @@
 // BUILDINGS_SPEC: 새 기능 건물 창의 한 줄 효과 숫자 + 연금술 공방(물약 만들기·마시기) — 건물 창(objExtra)에 덧붙인다
 import { CONFIG } from '../data/config';
 import { bestOf } from '../world/town';
-import { brew, canBrew, chapelHeal, drink, fLv, guildGold, guildSlot, guildSpecial, libraryXp, passerExtraHours, postMailMult, potionBoost, potionCount, potionSlots, stableTimeCut, towerEnhance } from '../world/facilities';
-import { P } from '../world/state';
+import { alchReserve, brew, canBrew, chapelHeal, drink, fLv, tavernAteToday, guildGold, guildSlot, guildSpecial, libraryXp, passerExtraHours, postMailMult, potionBoost, potionCount, potionSlots, stableTimeCut, towerEnhance } from '../world/facilities';
+import { markDirty, P, S } from '../world/state';
 import { esc } from './common';
 import { objExtra, showObj, toast } from './windows';
 import { track as trackEv } from '../net/telemetry';
@@ -28,12 +28,29 @@ function alchemyHtml(): string {
   const rows = Object.entries(PO.list)
     .map(([id, r]) => {
       const why = canBrew(id);
-      const need = Object.entries(r.need).map(([c, n]) => `${CONFIG.garden.crops[c]?.name ?? c} ${P.crops[c] ?? 0}/${n}`).join(' · ');
+      // 모자란 재료가 오늘 주점 손님 식사로 줄었으면 그 재료는 아래 줄에 이유와 함께 (「당근 0/2 · 주점 손님이 먹었어요」)
+      const eaten = (c: string, n: number) => (P.crops[c] ?? 0) < n && tavernAteToday(c) > 0;
+      const cnt = (c: string, n: number) => `${CONFIG.garden.crops[c]?.name ?? c} ${P.crops[c] ?? 0}/${n}`;
+      const need = Object.entries(r.need).filter(([c, n]) => !eaten(c, n)).map(([c, n]) => cnt(c, n)).join(' · ');
+      const ate = Object.entries(r.need).filter(([c, n]) => eaten(c, n)).map(([c, n]) => `${cnt(c, n)} · 주점 손님이 먹었어요`);
       const have = P.potions[id] ?? 0;
-      return `<div class="irow potion"><span><b>${esc(r.name)}</b><small>${esc(r.desc)} · ${need}</small></span><button data-brew="${id}" ${why ? 'disabled' : ''}>만들기</button>${have ? `<button data-drink="${id}">마시기 (${have})</button>` : ''}</div>`;
+      return `<div class="irow potion"><span><b>${esc(r.name)}</b><small>${esc(r.desc)}${need ? ` · ${need}` : ''}</small>${ate.length ? `<small class="bad alate">${ate.map(esc).join('<br>')}</small>` : ''}</span><button data-brew="${id}" ${why ? 'disabled' : ''}>만들기</button>${have ? `<button data-drink="${id}">마시기 (${have})</button>` : ''}</div>`;
     })
     .join('');
-  return `<div class="alch"><b class="g">물약</b> <small>칸 ${potionCount()}/${potionSlots()} · 30분 · 한 번에 하나</small>${b ? `<p class="sub good">지금: ${esc(PO.list[b.id]?.name ?? '')} · ${Math.ceil((b.until - Date.now()) / 60000)}분 남음</p>` : ''}${rows}</div>`;
+  return `<div class="alch">${keepRow()}<b class="g">물약</b> <small>칸 ${potionCount()}/${potionSlots()} · 30분 · 한 번에 하나</small>${b ? `<p class="sub good">지금: ${esc(PO.list[b.id]?.name ?? '')} · ${Math.ceil((b.until - Date.now()) / 60000)}분 남음</p>` : ''}${rows}</div>`;
+}
+/** 물약 재료 남겨 두기 줄 (켜면 남겨 두는 수도 한 줄로) */
+function keepRow(): string {
+  if (S.visiting) return '';
+  const on = P.keepAlch !== false;
+  const by = new Map<number, string[]>();
+  for (const c of Object.keys(CONFIG.garden.crops)) {
+    if (CONFIG.garden.crops[c].eat === false) continue;
+    const n = alchReserve(c);
+    if (n > 0) by.set(n, [...(by.get(n) ?? []), CONFIG.garden.crops[c].name]);
+  }
+  const what = [...by].map(([n, names]) => `${names.join('·')} ${n}개`).join(' · ');
+  return `<label class="tog alkeep"><input type="checkbox" id="alKeep" ${on ? 'checked' : ''}> 물약 재료 남겨 두기 <small>(주점 손님이 먹지 않게)</small></label>${on && what ? `<p class="note">${esc(what)}는 남겨요 · 넘는 것만 주점에서 먹어요</p>` : ''}`;
 }
 let prev: ((o: never) => string) | null = null;
 export function initFacilitiesUI() {
@@ -43,6 +60,17 @@ export function initFacilitiesUI() {
     const e = effectLine(o.kind);
     return `${base}${e ? `<p class="sub fx">✨ ${esc(e)}</p>` : ''}${o.kind === 'alchemy' && o.build === undefined ? alchemyHtml() : ''}`;
   };
+  // 물약 재료 남겨 두기 켜고 끄기
+  addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    if (t.id !== 'alKeep') return;
+    P.keepAlch = t.checked;
+    markDirty();
+    trackEv('potion', { id: 'keep', act: t.checked ? 'on' : 'off' });
+    toast(t.checked ? '물약 재료는 남겨 둘게요' : '주점 손님이 작물을 다 먹을 수 있어요');
+    const al = bestOf('alchemy' as never);
+    if (al && document.getElementById('win')?.classList.contains('on')) showObj(al);
+  });
   // 공방 버튼 (건물 창이 어떻게 다시 그려지든)
   addEventListener('click', (e) => {
     const t = e.target as HTMLElement;

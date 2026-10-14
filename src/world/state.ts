@@ -319,6 +319,10 @@ export function freshProgress() {
     crops: {} as Record<string, number>,
     potions: {} as Record<string, number>,
     buff: null as null | { id: string; until: number },
+    /** 물약 재료 남겨 두기 (연금술 공방 창 · 기본 켬 · 옛 저장도 켬) — 주점 손님이 물약 몫은 안 먹는다 */
+    keepAlch: true as boolean,
+    /** 오늘(현실 날짜) 주점 손님이 먹은 작물 수 (작물별 · 날이 바뀌면 새로) */
+    tavernAte: { day: '', n: {} as Record<string, number> },
     quests: { day: '', list: [] as Quest[], refreshUsed: 0, nextId: 1, t7: true as boolean | undefined },
     runs: [] as Run[],
     nextRunId: 1,

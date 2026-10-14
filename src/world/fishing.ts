@@ -3,6 +3,7 @@ import { CONFIG } from '../data/config';
 import { FISH, FISH_LINES, type FishDef } from '../data/story/fish';
 import { josa } from '../data/josa';
 import { hourNow } from './clock';
+import { cropSpare } from './facilities';
 import { brag } from './growth';
 import { addMail } from './meta';
 import { today } from './progress';
@@ -40,9 +41,10 @@ export function baitLeft(): number {
   const f = P.growth.fish;
   return Math.max(0, baitMax() - f.used) + f.extra;
 }
-/** 작물 1개 → 미끼 1개 (가장 많은 작물부터) */
+/** 작물 1개 → 미끼 1개 (가장 많은 작물부터 · 알아서 고를 땐 물약 재료로 남겨 둔 몫은 빼고) */
 export function makeBait(crop?: string): string | null {
-  const id = crop ?? Object.entries(P.crops).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const id = crop ?? Object.keys(P.crops).map((k) => [k, cropSpare(k)] as const).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!crop && !id && Object.values(P.crops).some((n) => n > 0)) return '물약 재료로 남겨 둔 작물뿐이에요 (연금술 공방에서 끌 수 있어요)';
   if (!id || !((P.crops[id] ?? 0) > 0)) return '텃밭 작물이 없어요 (텃밭에서 거둬요)';
   P.crops[id]--;
   P.growth.fish.extra++;
