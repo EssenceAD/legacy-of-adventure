@@ -5,7 +5,8 @@ import { framesFor } from '../engine/sprites';
 import { canvas } from '../engine/pixel';
 import { appearance } from '../world/adventurers';
 import { charInfo, OUTFITS } from '../data/outfits';
-import { charOf, howToGet, outfitsOn, outfitSync, portOfChar, wardrobeCells, wearOutfit } from '../world/outfits';
+import { buyOutfit, charOf, howToGet, outfitShopRows, outfitsOn, outfitSync, portOfChar, wardrobeCells, wearOutfit } from '../world/outfits';
+import type { ShopRow } from './luxeShop';
 import { world, type Actor } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
 import { $$, esc } from './common';
@@ -37,6 +38,23 @@ export function actorOfChar(char: string): Actor | null {
 }
 
 /** 명품관 줄 미리보기: 그 의상 도트 (마을에 없으면 초상화) */
+/** 명품관 「영웅 의상」 칸: 의상실 ② 의상 줄을 명품관 진열 줄 모양으로 (ui/luxeShop.ts luxeShopHooks) */
+export function outfitShopRowsForLuxe(): ShopRow[] {
+  const tier = { hero: '영웅', legend: '전설', star: '다섯 별' } as const;
+  return outfitShopRows().map((r) => ({
+    id: r.id,
+    name: `${r.who} · ${r.name}`,
+    desc: `${tier[r.tier]} 의상 ②`,
+    img: outfitPreview(r.id),
+    price: r.price,
+    owned: r.owned,
+    lock: r.owned ? undefined : r.why || undefined,
+    buy: () => {
+      const x = buyOutfit(r.id);
+      return x.ok ? null : x.msg;
+    },
+  }));
+}
 export function outfitPreview(id: string): string {
   const o = OUTFITS[id];
   if (!o) return '';

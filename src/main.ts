@@ -45,7 +45,8 @@ import { initFiveStars } from './ui/fivestars';
 import { overlayHold } from './ui/overlays';
 import * as decodrop from './world/decodrop';
 import { initLuxury } from './ui/luxury';
-import { initLuxeShop, openLuxeShop } from './ui/luxeShop';
+import { initLuxeShop, luxeShopHooks, openLuxeShop } from './ui/luxeShop';
+import { outfitShopRowsForLuxe } from './ui/wardrobe';
 import { initOnboard, promiseTomorrow, tapFirstGuest } from './ui/onboard';
 import { funnel } from './net/funnel';
 import { dialogueHooks } from './ui/dialogue';
@@ -958,6 +959,7 @@ async function boot() {
   // DECO_DROP §2: 뽐내기 장식 (영웅 동상 · 불꽃놀이 · 시계탑 종) — 건물 창 덧붙이기는 어울림·시설 뒤에
   initLuxury();
   initLuxeShop();
+  luxeShopHooks.outfits = outfitShopRowsForLuxe;
   // EASTER: 베타 개척자 (금빛 편지 · 카메오 · 전용 장식)
   initEaster();
   // FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · 끄면 아무것도 안 함)

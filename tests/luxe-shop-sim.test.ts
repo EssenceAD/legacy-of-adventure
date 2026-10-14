@@ -98,7 +98,7 @@ ${a.md}
 `;
     fs.mkdirSync('reports/luxe', { recursive: true });
     fs.writeFileSync('reports/luxe/shop.md', md);
-    expect(a.middleOne).toBeGreaterThanOrEqual(TARGET.middleOne[0]);
-    expect(a.middleOne).toBeLessThanOrEqual(TARGET.middleOne[1]);
+    // 형철 판정(10/15): 세트 값은 명세 그대로 — 목표(중간 1세트 7~14일)는 표에만 남기고 테스트로 막지 않는다
+    expect(a.middleOne).toBeGreaterThan(0);
   });
 });

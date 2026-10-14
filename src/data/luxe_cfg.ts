@@ -181,7 +181,7 @@ export const LUXE = {
 // ───────── §1 명품관 (플래그 luxeShop · world/luxeShop.ts · ui/luxeShop.ts) ─────────
 //  상점 창 「명품관」 탭 · 장부 chapter장부터 · 산 장식은 꾸미기 보관함으로 (하나씩 · 이웃에게도 보인다)
 //  값은 reports/luxe/shop.md 시뮬을 보고 여기서만 고친다
-//  시뮬 뒤 바꾼 것 (명세 README → 지금): 세트 30만/80만/200만/500만 → 15만/40만/100만/250만 (중간 솔바람 하루 ~42만 · 세트 1개 19일 → 10일)
+//  형철 판정(10/15): 세트 값은 명세 그대로 30만/80만/200만/500만 (시뮬에서 제안했던 15만/40만/100만/250만은 안 씀) (중간 솔바람 하루 ~42만 · 세트 1개 19일 → 10일)
 //   · 헤비(롯데캐슬 하루 ~7,700만) 「세트 전부 25~40일」은 같은 값으로는 못 맞춘다 (중간의 ~185배) — 주간 명품 6주 순환이 헤비 몫 · 주간·작은 사치 값은 그대로
 export type LuxeSetId = 'moon' | 'plaza' | 'flower' | 'study';
 /** 세트 효과 (어울림 효과와 같은 이름 · world/harmony.ts hfx가 더한다) — mood+moodNight = 범위 안 손님 밤 기분 · dmg = 사냥·토벌 피해 · arrive = 새 손님 방문 · xp = 모험가 경험치 */
@@ -208,13 +208,13 @@ export const LUXE_SHOP = {
   setRange: 2,
   sets: [
     { id: 'moon', name: '달빛 정원', fx: { mood: 3, moodNight: true }, text: '밤 기분 +3 (세트 둘레 손님)',
-      items: [{ kind: 'moon_lantern', price: 150000 }, { kind: 'silver_bench', price: 400000 }, { kind: 'moon_pond', price: 1000000 }, { kind: 'moon_gazebo', price: 2500000 }] },
+      items: [{ kind: 'moon_lantern', price: 300000 }, { kind: 'silver_bench', price: 800000 }, { kind: 'moon_pond', price: 2000000 }, { kind: 'moon_gazebo', price: 5000000 }] },
     { id: 'plaza', name: '용사의 광장', fx: { dmg: 0.01 }, text: '전투력 +1% (사냥·토벌 피해)',
-      items: [{ kind: 'flag_pole', price: 150000 }, { kind: 'weapon_rack', price: 400000 }, { kind: 'hero_trainer', price: 1000000 }, { kind: 'victory_arch', price: 2500000 }] },
+      items: [{ kind: 'flag_pole', price: 300000 }, { kind: 'weapon_rack', price: 800000 }, { kind: 'hero_trainer', price: 2000000 }, { kind: 'victory_arch', price: 5000000 }] },
     { id: 'flower', name: '꽃 축제', fx: { arrive: 0.03 }, text: '새 손님 방문 +3%',
-      items: [{ kind: 'flower_tower', price: 150000 }, { kind: 'flower_swing', price: 400000 }, { kind: 'flower_carousel', price: 1000000 }, { kind: 'flower_clock', price: 2500000 }] },
+      items: [{ kind: 'flower_tower', price: 300000 }, { kind: 'flower_swing', price: 800000 }, { kind: 'flower_carousel', price: 2000000 }, { kind: 'flower_clock', price: 5000000 }] },
     { id: 'study', name: '별의 서재', fx: { xp: 0.02 }, text: '모험가 경험치 +2%',
-      items: [{ kind: 'star_telescope', price: 150000 }, { kind: 'float_books', price: 400000 }, { kind: 'armillary', price: 1000000 }, { kind: 'star_library', price: 2500000 }] },
+      items: [{ kind: 'star_telescope', price: 300000 }, { kind: 'float_books', price: 800000 }, { kind: 'armillary', price: 2000000 }, { kind: 'star_library', price: 5000000 }] },
   ] as LuxeSetDef[],
   /**
    * 1-2 이번 주 명품: 한국 시간 월요일 0시에 바뀐다 · 순서대로 돌아서 같은 것이 weekly.length주마다 돌아온다
