@@ -1783,10 +1783,12 @@ body.hud2 #bZoom{top:calc(var(--h2-top) + 3 * var(--h2-hit))}
 body.hud2 :is(#bOwner,#bExp,#bVillage){display:none!important}
 /* 넓은 화면에서 창이 열리면 메뉴줄은 원래처럼 창 왼쪽 빈자리 가운데로 */
 html[data-size="wide"] body.hud2 #view:has(#win.on) nav.dk{transform:translateX(-50%)}
-body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:0 2px env(safe-area-inset-bottom,0px);grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
+body.hud2 nav.dk{left:0;right:0;bottom:0;width:auto;transform:none;height:calc(var(--h2-nav) + env(safe-area-inset-bottom,0px));padding:0 2px env(safe-area-inset-bottom,0px);grid-template-columns:repeat(6,1fr);gap:0;align-items:stretch;border-image:var(--ui-panel) 8 fill / calc(8px * var(--k1)) / 0 stretch}
 body.hud2 .dk button{gap:2px;justify-content:center;min-height:44px;font-size:var(--f-tiny);line-height:1.05}
 body.hud2 .dk .kic{width:calc(24px * var(--k1));height:calc(24px * var(--k1))}
-body.hud2 #bBuild{order:1}body.hud2 #bGuest{order:2}body.hud2 #bAdv{order:3}body.hud2 #bNews{order:4}body.hud2 #bMenu2{order:5}
+body.hud2 #bGuest{order:1}body.hud2 #bAdv{order:2}body.hud2 #bSmith{order:3}body.hud2 #bBuild{order:4}body.hud2 #bNews{order:5}body.hud2 #bMenu2{order:6}
+body.hud2 #bSmith{position:relative}body.hud2 #bSmith.locked{filter:grayscale(1);opacity:.55}
+body.hud2 #bSmith .dot{position:absolute;left:calc(50% + 8px);top:2px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
 body.hud2 #bNews .dot{position:absolute;left:calc(50% + 8px);top:2px;width:calc(4px * var(--k));height:calc(4px * var(--k));background:var(--ui-dot-new) 0 0 / 100% 100%}
 body.hud2 .dk button.ready .kic{animation:rdy 1s steps(2) infinite}
 body.hud2 .dk .ndot{top:2px;right:calc(50% - 18px)}

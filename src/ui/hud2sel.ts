@@ -11,5 +11,6 @@ const MOVED: Record<string, string> = {
   '#mission': '#newsBand',
   '#evalbar': '#newsBand',
   '#goalPill': '#newsBand',
+  '#smithBld': '#bSmith',
 };
 export const hudSel = (sel: string): string => (on() && MOVED[sel]) || sel;

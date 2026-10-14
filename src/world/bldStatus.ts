@@ -103,7 +103,7 @@ export function favEnhanceable(): boolean {
 }
 export const bagFull = () => P.bag.filter((x) => !x.owner).length >= bagSize();
 
-function smithCond(): BldCond | null {
+export function smithCond(): BldCond | null {
   if (bagFull()) return { id: 'bagfull', tier: 1, icon: 'hammer', text: '가방이 꽉 찼어요' };
   if (favEnhanceable()) return { id: 'enhance', tier: 1, icon: 'hammer', text: '강화할 수 있어요' };
   return null;

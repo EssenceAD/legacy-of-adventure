@@ -13,7 +13,9 @@ import { openBoard } from './expedition';
 import { openHunt } from './hunt';
 import { iconSrc, type IconKey } from './kit';
 import { openNotices } from './notice';
-import { openWin, toast } from './windows';
+import { openWin, showObj, toast } from './windows';
+import { smithObj } from '../world/craft';
+import { smithCond } from '../world/bldStatus';
 
 const on = () => document.body.classList.contains('hud2');
 
@@ -159,16 +161,35 @@ function mirror() {
   const nd = el('#bNotice .dot');
   const bd = el('#bNews .dot');
   if (nd && bd && bd.hidden !== nd.hidden) bd.hidden = nd.hidden;
+  // 대장간 칸: 대장간이 없으면 회색 잠금 · 할 일이 있으면 점 (건물 말풍선과 같은 조건)
+  const sb = el('#bSmith');
+  if (sb) {
+    const has = !!smithObj();
+    sb.classList.toggle('locked', !has);
+    const dot = sb.querySelector<HTMLElement>('.dot');
+    const want = has && !!smithCond();
+    if (dot && dot.hidden === want) dot.hidden = !want;
+  }
   const ex = el('#bExp');
   const ad = el('#bAdv');
   if (ex && ad) ad.classList.toggle('ready', ex.classList.contains('ready'));
 }
 
+/** 아래 칸 「대장간」: 가장 높은 레벨 대장간 → 건물을 누른 것과 같은 창 */
+function openSmithTab() {
+  const o = smithObj();
+  if (!o) return toast('대장간을 지으면 열려요');
+  showObj(o);
+}
 /** 부팅 때 (initHud 뒤): 새 HUD를 켰을 때만 버튼·띠를 만든다 */
 export function initHud2() {
   if (!on()) return;
   navBtn('bAdv', 'm_hunt', '모험', el('#bGuest'), openAdventure);
   navBtn('bNews', 'm_notice', '소식', el('#bMenu2'), openNotices, '<i class="dot" hidden></i>');
+  // 아래 6칸 (최근 7일 화면 열기 3위인 대장간에 바로 가는 길) — 대장간 건물을 누른 것과 같은 창 (K9)
+  navBtn('bSmith', 'm_smith', '대장간', el('#bMenu2'), openSmithTab, '<i class="dot" hidden></i>');
+  const bi = el('#bBuild img.kic') as HTMLImageElement | null;
+  if (bi) bi.src = iconSrc('m_neighbor');
   band = document.createElement('button');
   band.id = 'newsBand';
   band.hidden = true;
