@@ -13,6 +13,7 @@ import { canvas, hsl, hslToRgb } from './pixel';
 import { canvasAlive, drawable, Lru } from './lru';
 import { paletteMap } from './palette';
 import { vis } from '../world/visual';
+import { reportLost, setLostSink } from './spriteLost';
 
 export interface SpriteMeta {
   w: number;
@@ -202,7 +203,9 @@ export const EMPTY = (): HTMLCanvasElement => (EMPTY_CV ??= canvas(1, 1));
 const failed = new Set<string>();
 /** 기록 보기 (개발·e2e) */
 export const drawFails = () => [...failed];
-const reloadAt: Record<string, { at: number; n: number }> = {};
+/** 그림마다 다시 불러오기: 마지막 시도 시각 · 「이번에 잃은 뒤」 연속 시도 수 · 포기 기록했나 */
+const reloadAt: Record<string, { at: number; n: number; gave?: boolean }> = {};
+setLostSink(track);
 /** 그리기 실패: 세션에 그림마다 한 번 기록 + 다시 불러오기 예약 */
 export function spriteFailed(name: string) {
   if (!failed.has(name)) {
@@ -215,9 +218,20 @@ export function spriteFailed(name: string) {
 export function drawFailed(d: unknown) {
   spriteFailed((d ? NAME.get(d as object) : undefined) ?? 'unknown');
 }
+/** SPRLOST 안전망: 이번 프레임에 그리려던 그림 수 · 못 그린 수 (takeDrawStats 로 꺼내면 0부터) */
+const drawStat = { n: 0, bad: 0 };
+export function takeDrawStats() {
+  const r = { n: drawStat.n, bad: drawStat.bad };
+  drawStat.n = drawStat.bad = 0;
+  return r;
+}
 /** 그림을 그려도 되나 — 안 되면 기록·다시 불러오기까지 하고 false */
 export function okToDraw(d: Drawable | undefined | null): d is Drawable {
+  // 깨진 그림 대신 넘겨준 빈 1×1 은 세지 않는다 (이미 못 그린 것으로 셌다)
+  if (d && d === EMPTY_CV) return true;
+  drawStat.n++;
   if (d && drawable(d)) return true;
+  drawStat.bad++;
   if (d) drawFailed(d);
   return false;
 }
@@ -228,54 +242,170 @@ const SRC_OF = (name: string): string | null => {
   const k = baseKey(name.startsWith('light:') ? name.slice(6) : name);
   return META[k] || IMG[k] ? `${BASE}sprites/${k}.png` : null;
 };
+/** 시험용: 다시 받기를 일부러 실패시킨다 ('reload' = 그림 하나씩 다시 불러오기만 · 'all' = 원본 모두 다시 받기도) */
+let fetchFailForTest: false | 'reload' | 'all' = false;
+export const setFetchFailForTest = (v: false | 'reload' | 'all') => (fetchFailForTest = v);
+/** 시험용(단위 테스트): 그림 받는 함수 바꾸기 (jsdom은 그림을 받지 않는다) — null이면 원래대로 */
+let loadFn: (src: string) => Promise<HTMLImageElement> = loadOnce;
+export const setImageLoaderForTest = (fn: ((src: string) => Promise<HTMLImageElement>) | null) => (loadFn = fn ?? loadOnce);
+/** 새로 받기 (실패하면 reject · 받았는데 크기 0이면 실패) */
+async function fetchFresh(src: string, bust: string, why: 'reload' | 'refetch'): Promise<HTMLImageElement> {
+  if (fetchFailForTest === 'all' || (fetchFailForTest === 'reload' && why === 'reload')) throw new AssetError(src);
+  const im = await loadFn(bust ? `${av(src)}&${bust}` : av(src));
+  if (!im.naturalWidth) throw new AssetError(src);
+  return im;
+}
+/** 받은 그림을 제자리에 끼운다 (건물: 창문 빛 · 반전까지) */
+function putSprite(name: string, im: HTMLImageElement) {
+  if (name.startsWith('prop:')) PROP_IMG[name.slice(5)] = named(propCanvas(im), name);
+  else if (name.startsWith('mob:')) MOB_IMG[name.slice(4)] = named(mobCanvas(im), name);
+  else {
+    const k = baseKey(name.startsWith('light:') ? name.slice(6) : name);
+    forgetSprite(k);
+    setSprite(k, im);
+  }
+}
+const aliveName = (name: string) => {
+  if (name.startsWith('prop:')) return drawable(PROP_IMG[name.slice(5)]);
+  if (name.startsWith('mob:')) return drawable(MOB_IMG[name.slice(4)]);
+  if (name.startsWith('light:')) return drawable(LIGHTS[name.slice(6)]);
+  return drawable(IMG[name]);
+};
+/** SPRLOST: 다시 불러오기에 성공 → 그 그림 횟수 0 (다음에 또 잃어도 처음부터 다시) */
+function reloadOk(name: string) {
+  const st = reloadAt[name];
+  if (st) {
+    st.n = 0;
+    st.gave = false;
+  }
+  reportLost('reload_ok', name);
+}
 /**
  * 다시 불러오기: 반전 그림·빛 마스크가 잃어버린 캔버스면 원본에서 다시 만들고,
- * 원본 <img>가 깨졌으면 같은 주소 + 캐시 우회(&rb=시각)로 새 Image → 다 받으면 IMG(·PROP_IMG·MOB_IMG)에 바꿔 끼운다.
+ * 원본이 깨졌으면 같은 주소 + 캐시 우회(&rb=시각)로 새 Image → 다 받으면 IMG(·PROP_IMG·MOB_IMG)에 바꿔 끼운다.
+ * SPRLOST: 횟수(reloadMax)는 「한 번 잃은 뒤 연속 실패」 — 성공하면 0 · 앱으로 돌아오면/화면 크기가 바뀌면 모두 0 (resetReloadCounters)
  */
 export function reloadSprite(name: string) {
   if (name === 'unknown') return;
   const R = CONFIG.render;
   const now = performance.now();
   const st = (reloadAt[name] ??= { at: -Infinity, n: 0 });
-  if (now - st.at < R.reloadGapMs || st.n >= R.reloadMax) return;
+  if (now - st.at < R.reloadGapMs) return;
+  if (st.n >= R.reloadMax) {
+    if (!st.gave) {
+      st.gave = true;
+      reportLost('give_up', name);
+    }
+    return;
+  }
+  if (!st.n) reportLost('lost', name);
   st.at = now;
   st.n++;
   const k = baseKey(name.startsWith('light:') ? name.slice(6) : name);
   const own = !name.startsWith('prop:') && !name.startsWith('mob:');
-  // 반전 그림·빛 마스크(우리가 만든 캔버스)만 잃었고 원본이 멀쩡하면 원본에서 다시 만든다
+  // 반전 그림만 잃었고 원본(캔버스든 <img>든)이 멀쩡하면 원본을 뒤집어 다시 만든다
+  if (own && name === k + FLIP && drawable(IMG[k])) {
+    try {
+      makeFlipped(k);
+      if (drawable(IMG[name])) return reloadOk(name);
+    } catch {
+      /* 아래에서 다시 받는다 */
+    }
+  }
+  // 빛 마스크만 잃었고 원본 <img>가 멀쩡하면 원본에서 다시 만든다
   if (own && name !== k && IMG[k] instanceof HTMLImageElement && drawable(IMG[k])) {
     forgetSprite(k);
     try {
       setSprite(k, IMG[k] as HTMLImageElement);
-      return;
+      if (aliveName(name)) return reloadOk(name);
     } catch {
       /* 원본도 못 그리면 아래에서 다시 받는다 */
     }
   }
   const src = SRC_OF(name);
   if (!src) return;
-  const im = new Image();
-  im.onload = () => {
-    if (!im.naturalWidth) return;
-    try {
-      if (name.startsWith('prop:')) PROP_IMG[name.slice(5)] = named(propCanvas(im), name);
-      else if (name.startsWith('mob:')) MOB_IMG[name.slice(4)] = named(mobCanvas(im), name);
-      else {
-        forgetSprite(k);
-        setSprite(k, im);
-      }
-    } catch {
-      /* 다음 실패 때 다시 */
-    }
-  };
-  im.src = `${av(src)}&rb=${Date.now().toString(36)}`;
+  fetchFresh(src, 'rb=' + Date.now().toString(36), 'reload')
+    .then((im) => {
+      putSprite(name, im);
+      if (aliveName(name)) reloadOk(name);
+    })
+    .catch(() => {
+      /* 다음 실패 때 다시 (reloadGapMs 뒤 · 연속 reloadMax번까지) */
+    });
 }
-/** 시험용(개발 전역 __breakSprite): 그 그림을 디코드 실패한 <img>로 바꿔 끼운다 (삼성 인터넷이 그림을 버린 상황 흉내) */
-export function breakSpriteForTest(k: string) {
-  const im = new Image();
-  im.src = 'data:image/png;base64,AAAA';
-  IMG[k] = named(im, k);
-  reloadAt[k] = { at: -Infinity, n: 0 };
+/** SPRLOST: 모든 그림의 다시 불러오기 횟수를 0으로 (앱으로 돌아옴 · 화면 크기 바뀜 · 원본 다시 받기) */
+export function resetReloadCounters() {
+  for (const st of Object.values(reloadAt)) {
+    st.n = 0;
+    st.at = -Infinity;
+    st.gave = false;
+  }
+}
+/** 개발·e2e: 그림마다 지금 횟수 */
+export const reloadCounts = () => Object.fromEntries(Object.entries(reloadAt).map(([k, v]) => [k, v.n]));
+
+/**
+ * SPRLOST 안전망: 원본 그림을 모두 다시 받는다 (새로고침 없이 그림만) — 건물·장식·몬스터
+ *  먼저 같은 주소(브라우저 캐시 — 파일은 멀쩡하고 디코드한 그림만 잃은 경우가 대부분), 안 되면 캐시 우회(&rf=시각)
+ *  다 끝나면 밤 색조·지붕 색·탭 판정 캐시를 비우고 횟수를 0으로. 받은 수 · 실패 수를 돌려준다
+ */
+let refetching: Promise<{ ok: number; fail: number }> | null = null;
+export function refetchAllSprites(): Promise<{ ok: number; fail: number }> {
+  if (refetching) return refetching;
+  const names = [...Object.keys(META).filter((k) => !isFlipKey(k)), ...PROP_KEYS.map((k) => 'prop:' + k), ...MOB_KEYS.map((k) => 'mob:' + k)];
+  const stamp = 'rf=' + Date.now().toString(36);
+  let ok = 0;
+  let fail = 0;
+  refetching = Promise.all(
+    names.map(async (name) => {
+      const src = SRC_OF(name);
+      if (!src) return;
+      try {
+        let im: HTMLImageElement;
+        try {
+          im = await fetchFresh(src, '', 'refetch');
+        } catch {
+          im = await fetchFresh(src, stamp, 'refetch');
+        }
+        putSprite(name, im);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }),
+  ).then(() => {
+    TINT.clear();
+    RECOL.clear();
+    HIT.clear();
+    resetReloadCounters();
+    refetching = null;
+    return { ok, fail };
+  });
+  return refetching;
+}
+
+/** SPRLOST 메모리: 그림 캐시 상한 바꾸기 (폰 · 큰 마을) */
+export function applyCacheCaps(c: { tint: number; recolor: number; hit: number }) {
+  if (TINT.cap !== c.tint) TINT.resize(c.tint);
+  if (RECOL.cap !== c.recolor) RECOL.resize(c.recolor);
+  if (HIT.cap !== c.hit) HIT.resize(c.hit);
+}
+
+/** 시험용(개발 전역 __breakSprite): 그 그림을 디코드 실패한 <img>(img) 또는 폭 0 캔버스(canvas)로 바꿔 끼운다 (삼성 인터넷이 그림을 버린 상황 흉내) */
+export function breakSpriteForTest(k: string, mode: 'img' | 'canvas' = 'img') {
+  let d: Drawable;
+  if (mode === 'canvas') {
+    // 삼성 인터넷이 캔버스를 버린 모습: 폭 0
+    d = canvas(1, 1);
+    d.width = 0;
+  } else {
+    d = new Image();
+    d.src = 'data:image/png;base64,AAAA';
+  }
+  IMG[k] = named(d, k);
+  // SPRLOST: 예전엔 여기서 횟수를 0으로 되돌려서 「같은 그림을 여러 번 잃으면 끝」을 시험이 가렸다 — 이제 횟수는 건드리지 않고 간격만
+  const st = reloadAt[k];
+  if (st) st.at = -Infinity;
 }
 export const spriteOk = (k: string) => drawable(IMG[k]);
 /** 그 그림으로 만든 캐시(지붕 색·탭 판정)를 버린다 (밤 색조는 그림이 바뀌면 키가 달라져 저절로 밀려난다) */

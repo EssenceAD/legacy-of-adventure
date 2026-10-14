@@ -63,7 +63,7 @@ import { initFacilitiesUI } from './ui/facilities';
 import { initGoldsinkUI } from './ui/goldsink';
 import { initWayfindUI, wayfindHooks } from './ui/wayfind';
 import { CONFIG } from './data/config';
-import { alphaAt, assetMem, AssetError, breakSpriteForTest, drawFails, IMG, isFlipKey, loadAssets, spriteOk, META, pumpTintWarmup, recolored, tintWarmPending, warmTintLevel } from './engine/assets';
+import { alphaAt, assetMem, AssetError, breakSpriteForTest, drawFails, isFlipKey, loadAssets, spriteOk, META, pumpTintWarmup, recolored, tintWarmPending, warmTintLevel } from './engine/assets';
 import { idleFor, noteInput, saverOn, takeKick } from './engine/fps';
 import { shakeLv } from './engine/shake';
 import { actionOf, VILLAGE_ACTIONS } from './engine/keys';
@@ -80,7 +80,7 @@ import { hourNow } from './world/clock';
 import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pendingSide, pendingWith, pumpEvents, runFirstSide } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
-import { buildingAt, renderFrame, renderMem, starInfo } from './world/render';
+import { buildingAt, objTL, renderFrame, renderMem, starInfo } from './world/render';
 import { bubbleAt, setBldHover, tapBubble } from './world/bldStatusDraw';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
@@ -104,6 +104,7 @@ import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/direc
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { _fakeNewer, APP_VERSION, giftNote, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
 import { directionStarted, initDirection } from './ui/opsbox';
+import { initSpriteGuard, spriteGuardDebug, spriteGuardFrame } from './engine/spriteGuard';
 import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
 import { hasSave, migrateFailed } from './save/save';
@@ -401,6 +402,7 @@ function tick(dt: number) {
   blendNight(ddt);
   updateOrigin();
   renderFrame(ctx, ddt);
+  spriteGuardFrame();
   t = mark('render', t);
   posBubbles();
   tickHud();
@@ -872,6 +874,8 @@ async function boot() {
   funnel('boot_ok', { loadMs: Math.round(performance.now() - t0) });
   // 렌더 메모리: 밤 색조는 모든 그림 × 10단계를 미리 만들지 않는다 — 그릴 때 만들고, 낮↔밤이 넘어갈 땐 다음 단계만 조금씩 (frame())
   buildThumbs();
+  // SPRLOST: 깨진 그림 다시 불러오기 횟수 되돌리기(앱 복귀·크기 바뀜) · 안전망 · 폰/큰 마을 캐시 상한
+  initSpriteGuard({ button: document.getElementById('bRefetch'), buildings: () => world.objs.length });
 
   // 배율은 기기마다 기억 (1·2·3 중 하나)
   // 화면 크기 구간(폰·태블릿·넓은 화면) · 글자 크기 · 배율
@@ -1122,7 +1126,7 @@ async function boot() {
   if (import.meta.env.DEV) Object.assign(window, { __openBoard: (t?: number) => openBoard(t) });
   if (import.meta.env.DEV) Object.assign(window, { __acctDel: { test: _delTest, open: openDelete, account: openAccount, me: SRV.me, halted: savesHalted, haltCloud: _haltCloud } });
   if (import.meta.env.DEV) Object.assign(window, { __actorXY: (id: number | string) => { const a = world.actors.find((x) => (id === 'momo' ? x.role === 'npc' : x.id === id)); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; } });
-  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __gradeProps: () => gradeProps().map((p) => ({ key: propKey(p), k: p.k, x: p.x, y: p.y })), __openManual: (k?: string) => openManual(k), __openMenu: () => openGridMenu(), __mythic: { seed: debugMythic, prog: mythicProgress }, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices, __abyss: _abyss, __dice: _dice, __pmenu: openPersonMenu,
+  if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __gradeProps: () => gradeProps().map((p) => ({ key: propKey(p), k: p.k, x: p.x, y: p.y })), __openManual: (k?: string) => openManual(k), __openMenu: () => openGridMenu(), __mythic: { seed: debugMythic, prog: mythicProgress }, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __spriteGuard: spriteGuardDebug, __objRect: (o: Parameters<typeof objTL>[0]) => { const [x, y] = objTL(o); const m = o.sprite ? META[o.sprite] : null; return m ? [x, y, m.w, m.h] : null; }, __breakSprite: (key?: string, mode?: 'img' | 'canvas') => { const k = key ?? world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && spriteOk(b.sprite!))?.sprite; if (!k) return null; breakSpriteForTest(k, mode); return k; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices, __abyss: _abyss, __dice: _dice, __pmenu: openPersonMenu,
       // 화면이 숨어 rAF가 멈췄을 때 시험용: sec초를 60fps로 돌린다
       // 문 연출 시험용: 손님 a를 건물 o의 문 앞 칸에 세우고 들어가게 한다
       __enter: (a: (typeof world.actors)[number], o: (typeof world.objs)[number]) => {

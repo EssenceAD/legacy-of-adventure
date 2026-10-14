@@ -74,7 +74,17 @@ export const CONFIG = {
     cullMargin: 48,
     /** 깨진 그림 다시 불러오기: 같은 그림은 이 간격(ms) 안에 또 하지 않는다 · 최대 횟수 */
     reloadGapMs: 4000,
+    /** SPRLOST: 「한 번 잃을 때」 연속 실패 상한 — 다시 불러오기에 성공하면·앱으로 돌아오면(visible)·화면 크기가 바뀌면 0부터 (예전엔 세션 누적이라 5번 잃으면 끝) */
     reloadMax: 5,
+    /** SPRLOST 안전망: 그리려던 그림 중 badRatio 넘게 못 그린 상태가 holdMs 넘게 이어지면 원본 그림을 모두 다시 받는다 · 그래도 그러면 윗줄 「그림 다시 불러오기」 버튼
+     *  minDraws 보다 적게 그린 프레임은 판정하지 않는다 · sprite_lost 기록은 telemetryGapMs에 한 번 · 세션 telemetryMax개까지 · 캐시 상한은 capCheckMs마다 다시 본다 */
+    spriteGuard: { badRatio: 0.3, holdMs: 3000, minDraws: 8, telemetryGapMs: 15000, telemetryMax: 24, capCheckMs: 2000 },
+    /** SPRLOST 메모리: 폰(data-size=phone) 그림 캐시 상한
+     *  측정(웅스 151채 · 412×915 dpr 2.625 · 한밤 · 화면 여섯 곳): 밤 색조 캐시는 상한 900·600·480·360·240 모두 프레임당 버림 ~1장(손님 걸음 프레임이 계속 바뀌는 몫)로 같고,
+     *  160에서 늘기 시작해 100이면 프레임당 ~6장(thrash) → 무릎(~160)의 두 배 넘게 잡은 360. 지붕 색 32 · 탭 판정 24 는 버림 0 */
+    phoneCaps: { tint: 360, recolor: 32, hit: 24 },
+    /** SPRLOST 메모리: 큰 마을(건물 buildings채 넘게) 그림 캐시 상한 — 넓은 화면(1440×900)도 240까지 버림이 늘지 않았다 (폰이면 둘 중 작은 쪽) */
+    bigVillage: { buildings: 100, tint: 480, recolor: 48, hit: 32 },
   },
   loop: {
     /** 게임 규칙 갱신 주기 (초) — 화면은 rAF로 따로 그린다 */

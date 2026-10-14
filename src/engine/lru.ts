@@ -39,6 +39,16 @@ export class Lru<K, V> {
     }
     return v;
   }
+  /** 상한 바꾸기 (SPRLOST: 폰·큰 마을) — 줄이면 오래 안 쓴 것부터 바로 버린다 */
+  resize(cap: number) {
+    this.cap = Math.max(1, cap | 0);
+    while (this.m.size > this.cap) {
+      const [ok, ov] = this.m.entries().next().value as [K, V];
+      this.m.delete(ok);
+      this.evicted++;
+      this.onEvict?.(ov, ok);
+    }
+  }
   delete(k: K) {
     return this.m.delete(k);
   }
