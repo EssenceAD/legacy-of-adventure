@@ -73,16 +73,21 @@ export function drawFolk(ctx: CanvasRenderingContext2D, f: { who: 'merchant' | '
   if (f.who === 'bard' && Math.random() < 0.02) puff(X - view.OX + 6, Y - 30 - view.OY, '#ffd36b', 6, -12, 1, 2);
 }
 
-/** 밤: 가로등 불빛 · 도시는 축제 등불 줄 (더하기로, 모닥불 빛과 같은 자리에서) */
+/**
+ * 밤: 가로등 하나의 불빛 (더하기) — v0.25.23: 맨 위 한 번이 아니라 가로등을 그린 직후에 (앞 건물·나무가 나중에 그려지며 가린다 ·
+ *  예전엔 건물 뒤 가로등 빛이 지붕 위로 비쳤다)
+ */
+export function drawPropLight(ctx: CanvasRenderingContext2D, pr: Prop, nt: number) {
+  if (nt <= 0.01 || pr.k !== 'lamppost') return;
+  const X = view.OX + sx(pr.x + 0.5, pr.y + 0.5);
+  const Y = view.OY + sy(pr.x + 0.5, pr.y + 0.5) + TH / 2 - 58;
+  glow(ctx, X, Y, 26, nt * 0.55);
+}
+
+/** 밤: 도시는 축제 등불 줄 (더하기로, 맨 위에서 — 가로등 하나하나의 빛은 drawPropLight) */
 export function drawGradeLights(ctx: CanvasRenderingContext2D, nt: number) {
   if (nt <= 0.01) return;
   const props = propsNow();
-  for (const pr of props) {
-    if (pr.k !== 'lamppost') continue;
-    const X = view.OX + sx(pr.x + 0.5, pr.y + 0.5);
-    const Y = view.OY + sy(pr.x + 0.5, pr.y + 0.5) + TH / 2 - 58;
-    glow(ctx, X, Y, 26, nt * 0.55);
-  }
   if ((anim.on ? anim.to : gradeNow()) >= 4) {
     // 축제 등불: 정문에서 양쪽 가로등까지 늘어진 색등
     const gate = props.find((p) => p.k === 'gate');

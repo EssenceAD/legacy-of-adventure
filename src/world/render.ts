@@ -2,7 +2,8 @@
 // 1) 바닥 → 화면 전체에 밤 색(multiply) 한 번
 // 2) 깊이 순서대로 건물·나무·캐릭터를 "밤 색으로 미리 물든 그림"으로
 // 3) 건물 하나를 그린 직후 그 건물의 창문 불빛 → 앞 건물이 나중에 그려지며 가린다
-// 4) 모닥불 둥근 빛만 맨 위에 더하기(lighter)로
+// 4) 모닥불·가로등·수확제 등불의 둥근 빛(lighter)은 그 불을 그린 직후에 (앞 건물이 가린다 · v0.25.23 전엔 맨 위라 지붕 위로 비쳤다)
+//    맨 위에 더하는 건 하늘에 걸린 축제 등불 줄만
 import { decoAsObjects } from './levelDeco';
 import { def, SMOKE } from '../data/catalog';
 import { drawFireworks, statueName } from './luxury';
@@ -10,9 +11,9 @@ import { decorView } from './decor';
 import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
 import { CONFIG } from '../data/config';
-import { baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, okToDraw, recolored, spriteFailed, tinted, tintColor, type Drawable } from '../engine/assets';
+import { alphaAt, baseKey, FIRE_FRAMES, FIRE_W, fireFrame, IMG, isFlipKey, META, missingMeta, okToDraw, recolored, spriteFailed, tinted, tintColor, type Drawable } from '../engine/assets';
 import { canvasAlive, Lru } from '../engine/lru';
-import { depthActor, depthBuilding, depthWild, N, sx, sy, TH, view } from '../engine/iso';
+import { depthActor, depthBuilding, depthWild, N, sx, sy, TH, TW, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
 import { idleFor, saverOn } from '../engine/fps';
 import { ssOn } from '../ui/screenSaver';
@@ -28,7 +29,7 @@ import { vis } from './visual';
 import { stars } from './progress';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
-import { drawFolk, drawGradeLights, drawProp, folkNow, propsNow } from './gradeDraw';
+import { drawFolk, drawGradeLights, drawProp, drawPropLight, folkNow, propsNow } from './gradeDraw';
 import { P as P_, S, world, type Actor, type Building } from './state';
 import { doorPose, doorRect, hasDoor, isOpenFront } from './doors';
 import { doorOf, grid, groundVersion, inLand, landBounds, outsideOk, pathT, placing, spriteFor, spriteOrigin, type Placement } from './town';
@@ -39,7 +40,7 @@ import { dotShadow } from '../combat/draw';
 import { drawInspector, drawTourEmotes, tourThings } from './evalTour';
 import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from './spectacle';
 import { drawBldStatus, hasBubble, setBldHooks } from './bldStatusDraw';
-import { drawFestLights, drawFestProp, drawLanterns, drawLeaves, festivalProps, type FestProp } from './harvestDraw';
+import { drawFestLight, drawFestProp, drawLanterns, drawLeaves, festivalProps, type FestProp } from './harvestDraw';
 import { DUSK_ALPHA, DUSK_RGB, duskOf, nightOverlay, sunsetOn } from './sunset';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
@@ -172,6 +173,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const pnt = photoState.on ? PHOTO_NT[photoState.time] : null;
   const nt = pnt ?? S.nightT;
   setPhotoNL(pnt);
+  // 불빛 정도 (그리기 순서 안에서 불마다 쓴다 · 노을 등불은 지난 프레임 값)
+  frameLight = Math.max(nt, duskLight);
   ensureGround(S.visiting ? S.visiting.id : '');
   // 마을 등급 연출이 끝났으면 앞뒤 두 장 중 지금 것만 남긴다
   if (!anim.on) trimGround();
@@ -284,8 +287,13 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
         const ds = atDoor.get(it.o);
         if (ds) drawDoorActors(ctx, it.o, ds);
         if (DEBUG_DOORS) drawDoorDebug(ctx, it.o);
-      } else if ('pr' in it) drawProp(ctx, it.pr);
-      else if ('fp' in it) drawFestProp(ctx, it.fp);
+      } else if ('pr' in it) {
+        drawProp(ctx, it.pr);
+        lit(ctx, () => drawPropLight(ctx, it.pr, frameLight));
+      } else if ('fp' in it) {
+        drawFestProp(ctx, it.fp);
+        lit(ctx, () => drawFestLight(ctx, it.fp, frameLight));
+      }
       else if ('fk' in it) drawFolk(ctx, it.fk);
       else if ('iv' in it) drawInspector(ctx, it.iv);
       else if ('sn' in it) drawSpecNpc(ctx, it.sn);
@@ -312,7 +320,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
     ctx.globalAlpha = 1;
   }
   for (const o of world.objs)
-    if (o.kind === 'fire' && Math.random() < dt * 6) {
+    if (o.kind === 'fire' && Math.random() < dt * 6 && !flameCovered(o, world.objs)) {
       const X = sx(o.tx + 0.5, o.ty + 0.5);
       const Y = sy(o.tx + 0.5, o.ty + 0.5) - FIRE_FLAME_Y;
       puff(X + (Math.random() - 0.5) * 4, Y, '#ffb04a', (Math.random() - 0.5) * 4, -14, 0.6, 1);
@@ -327,14 +335,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   // 4) 모닥불 빛 (더하기) — 노을: 19시부터 가로등·등불이 서서히 (배터리 절약이면 밤에만)
   if (lt > 0.01) {
     ctx.globalCompositeOperation = 'lighter';
-    for (const o of world.objs)
-      if (o.kind === 'fire') {
-        const X = OX + sx(o.tx + 0.5, o.ty + 0.5);
-        const Y = OY + sy(o.tx + 0.5, o.ty + 0.5);
-        glow(ctx, X, Y - FIRE_FLAME_Y, 34, lt * (0.45 + Math.sin(T * 9) * 0.05));
-      }
     drawGradeLights(ctx, lt);
-    drawFestLights(ctx, lt);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
@@ -771,13 +772,51 @@ function drawFire(ctx: CanvasRenderingContext2D, o: { tx: number; ty: number }, 
   ctx.drawImage(im, X - FIRE_W / 2, Y - (im.height - CONFIG.fire.baseFromBottom) + dy);
 }
 
+/** 이번 프레임 불빛 정도 (밤 · 노을 등불) */
+let frameLight = 0;
+/** 더하기(lighter)로 불빛 하나 — 합성·투명도는 원래대로 되돌린다 */
+function lit(ctx: CanvasRenderingContext2D, fn: () => void) {
+  const a = ctx.globalAlpha;
+  ctx.globalCompositeOperation = 'lighter';
+  try {
+    fn();
+  } finally {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = a;
+  }
+}
+type Foot = { tx: number; ty: number; fw: number; fh: number };
+/**
+ * 모닥불 불꽃 자리가 앞 건물 그림(불투명 픽셀)에 가려졌나 — 가려졌으면 불티를 안 띄운다 (지붕 위로 불티가 솟지 않게)
+ *  alpha·meta는 시험용으로 바꿔 끼울 수 있다
+ */
+export function flameCovered(f: Foot, objs: readonly (Foot & { sprite: string | null })[], alpha: (k: string, x: number, y: number) => number = alphaAt, meta: Record<string, { w: number; h: number }> = META): boolean {
+  const X = sx(f.tx + 0.5, f.ty + 0.5);
+  const Y = sy(f.tx + 0.5, f.ty + 0.5) - FIRE_FLAME_Y;
+  for (const b of objs) {
+    if (b === f || !b.sprite || !meta[b.sprite] || behindOf(f, b) !== -1) continue;
+    const m = meta[b.sprite];
+    const X0 = sx(b.tx, b.ty) + ((b.fw - b.fh) * TW) / 4 - m.w / 2; // = spriteOrigin (meta를 바꿔 끼울 수 있게 풀어 씀)
+    const Y0 = sy(b.tx + b.fw, b.ty + b.fh) - m.h + 2;
+    const px = Math.floor(X - Math.round(X0));
+    const py = Math.floor(Y - Math.round(Y0));
+    if (px >= 0 && py >= 0 && px < m.w && py < m.h && alpha(b.sprite, px, py) > 0) return true;
+  }
+  return false;
+}
+
 function baseImage(o: { sprite: string | null; hue: number | null }) {
   const key = o.sprite!;
   return o.hue != null ? recolored(key, o.hue) : IMG[key];
 }
 
 function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
-  if (o.kind === 'fire') return drawFire(ctx, o);
+  if (o.kind === 'fire') {
+    drawFire(ctx, o);
+    // 모닥불 빛: 불을 그린 직후 (뒤 건물 벽은 비추고, 앞 건물은 나중에 그려지며 빛을 가린다)
+    if (frameLight > 0.01) lit(ctx, () => glow(ctx, view.OX + sx(o.tx + 0.5, o.ty + 0.5), view.OY + sy(o.tx + 0.5, o.ty + 0.5) - FIRE_FLAME_Y, 34, frameLight * (0.45 + Math.sin(S.T * 9) * 0.05)));
+    return;
+  }
   if (!o.sprite || !IMG[o.sprite]) return;
   if (!META[o.sprite]) return missingMeta(o.sprite);
   const [x, y] = objTL(o);
