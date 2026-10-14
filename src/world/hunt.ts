@@ -9,10 +9,10 @@ import { REGIONS, type Grade, type RegionId } from '../data/items';
 import { gainXp, powerOf } from './adventurers';
 import { roleMult, xpMultIn } from './party';
 import { partyChemMult } from './chem';
-import { feature } from './guide';
+import { chaptersDone, feature } from './guide';
 import { addRep } from './progress';
 import { addToBag, makeItem, rollGrade } from './items';
-import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type Item } from './state';
+import { gotGold, legendHooks, markDirty, P, S, uiHooks, world, type Actor, type HuntAuto, type Item } from './state';
 import { track } from '../net/telemetry';
 import { newRegionOpen } from './regions2';
 import { BASE_REGIONS } from '../data/items';
@@ -20,7 +20,7 @@ import { partySpecial, rollUnique } from './uniques';
 import { partySynMult, synergyFx } from './synergy';
 import { autoGoldMult, blessFx, gsState } from './goldsink';
 import { takeUniqueBoost } from './favors';
-import { fsay } from './visual';
+import { fsay, vis } from './visual';
 import { settleAuto } from './harvest';
 
 const H = CONFIG.hunt;
@@ -140,8 +140,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   return { gold: g, xp, mats, items, firstDust, shards, token, levelUps, first, bossMats };
 }
 
-/** 스테이지 돌파 (직접·자동 전투 한 판) · auto = 자동 반복(맡겨 두기·접은 판) — GOLDSINK §4 금화 비율 */
-export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true, auto = false): HuntReward {
+/** 스테이지 돌파 (직접·자동 전투 한 판) · auto = 자동 반복(맡겨 두기·접은 판) — GOLDSINK §4 금화 비율 · goldX = 맡긴 칸 금화 배수(PACE §2) */
+export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, dropItem = true, auto = false, goldX = 1): HuntReward {
   // MYTHIC 바엘 부탁: 별의 심연 x-10을 바엘과 함께
   mythicHuntWin(r, s, members);
   const key = `${r}-${s}`;
@@ -153,7 +153,7 @@ export function clearStage(r: RegionId, s: number, members: Actor[], mult = 1, d
   P.counters.huntClears++;
   legendHooks.bond(r === 'forest' ? 'forestRun' : 'raidTry');
   if (isBoss(s)) gsState().cnt.hboss++;
-  const out = reward(r, s, members, first, mult, dropItem, taperFor(s, first, auto));
+  const out = reward(r, s, members, first, mult, dropItem, taperFor(s, first, auto) * goldX);
   bossUnique(r, s, out);
   markDirty();
   return out;
@@ -189,41 +189,109 @@ export function noteAutoUsed() {
   markDirty();
 }
 
-export function setAuto(r: RegionId, s: number, members: Actor[]): string | null {
+// PACE §2 맡겨 둔 사냥 여러 칸 (플래그 huntSlots · 실험실)
+//  저장: P.hunt.autos[] — 0번 칸은 늘 P.hunt.auto 와 같은 것 (auto 가 기준: 옛 앱·옛 코드·테스트·D 코드가 auto 를 그대로 읽고 쓴다)
+//  옛 저장(autos 없음) → 불러온 뒤 처음 읽을 때 autos = [auto] (syncAutos · 세이브 버전은 그대로)
+//  플래그 끔 = 0번 칸만 (예전과 같은 함수·같은 순서) · 1·2번 칸은 저장에 남고 멈춰 있다
+export const slotsOn = () => vis('huntSlots');
+const okSlot = (x: unknown): x is HuntAuto => {
+  const o = x as HuntAuto | null;
+  return !!o && typeof o === 'object' && typeof o.region === 'string' && regionIdx(o.region) >= 0 && Number.isFinite(o.stage) && Array.isArray(o.members);
+};
+/** autos[0] = auto 로 맞추고, 망가진 칸은 비운다 (몇 번을 불러도 같다) */
+export function syncAutos(h: { auto: HuntAuto | null; autos?: (HuntAuto | null)[] } = P.hunt): (HuntAuto | null)[] {
+  if (!Array.isArray(h.autos)) h.autos = [];
+  const list = h.autos;
+  list[0] = h.auto ?? null;
+  for (let i = 1; i < list.length; i++) if (!okSlot(list[i])) list[i] = null;
+  return list;
+}
+/** 열린 칸 수: 기본 1 · 장부 slotChapters[k]장을 마치면 +1 (최대 slotsMax) · 플래그 끔이면 1 */
+export function slotsOpen(): number {
+  if (!slotsOn()) return 1;
+  const ch = chaptersDone();
+  return Math.min(H.slotsMax, 1 + H.slotChapters.filter((c) => ch >= c).length);
+}
+/** i번 칸(0부터)이 열리는 장부 장 (0번 칸·장이 정해지지 않은 칸은 null) */
+export const slotChapter = (i: number): number | null => (i > 0 ? (H.slotChapters[i - 1] ?? null) : null);
+/** 열린 칸들 (빈 칸은 null) */
+export function autoSlots(): (HuntAuto | null)[] {
+  const list = syncAutos();
+  return Array.from({ length: slotsOpen() }, (_, i) => list[i] ?? null);
+}
+/** 맡겨 둔 칸만 (칸 번호와 함께) */
+export const activeAutos = (): { a: HuntAuto; i: number }[] =>
+  autoSlots()
+    .map((a, i) => ({ a, i }))
+    .filter((x): x is { a: HuntAuto; i: number } => !!x.a);
+/** 이 손님이 맡겨 둔 칸 번호 (except 칸은 빼고 · 없으면 -1) — 한 손님은 한 칸에만 */
+export const autoSlotOf = (id: number, except = -1): number => activeAutos().find(({ a, i }) => i !== except && a.members.includes(id))?.i ?? -1;
+/** 칸의 금화 배수: 0번 칸 1 · 그 뒤 칸 slotGold (autoGoldMult 위에 곱) */
+export const slotGoldX = (i: number) => (i > 0 ? H.slotGold : 1);
+/** 첫 빈 칸 (다 찼으면 -1) */
+export const freeSlot = (): number => autoSlots().findIndex((a) => !a);
+
+export function setAuto(r: RegionId, s: number, members: Actor[], slot = 0): string | null {
   if (s > best(r)) return '깬 스테이지만 자동 사냥할 수 있어요';
   if (!members.length) return '파티를 골라요';
+  if (slot < 0 || slot >= slotsOpen()) return '아직 열리지 않은 칸이에요';
   if (partyPower(members) < recPower(r, s) * H.autoRatio) return `전투력이 부족해요 (추천 ${recPower(r, s)})`;
-  P.hunt.auto = { region: r, stage: s, members: members.map((m) => m.id), n: 0, gold: 0 };
-  P.hunt.idleAt = Date.now();
+  if (slotsOn()) {
+    const busy = members.find((m) => autoSlotOf(m.id!, slot) >= 0);
+    if (busy) return `${busy.name}은(는) ${autoSlotOf(busy.id!, slot) + 1}칸에서 사냥 중이에요`;
+  }
+  const others = activeAutos().some((x) => x.i !== slot);
+  const v: HuntAuto = { region: r, stage: s, members: members.map((m) => m.id), n: 0, gold: 0 };
+  if (slot === 0) P.hunt.auto = v;
+  else syncAutos()[slot] = v;
+  syncAutos();
+  // 다른 칸이 돌고 있으면 시계는 그대로 (칸들은 한 시계로 같이 돈다)
+  if (!others) P.hunt.idleAt = Date.now();
   noteAutoUsed();
-  track('hunt_auto_on', { region: r, stage: s, power: Math.round(partyPower(members)) });
+  track('hunt_auto_on', { region: r, stage: s, power: Math.round(partyPower(members)), ...(slotsOn() ? { slot } : {}) });
   return null;
 }
-export function stopAuto(reason = 'user') {
-  const a = P.hunt.auto;
-  if (a) track('hunt_auto_off', { reason, region: a.region, stage: a.stage, n: a.n ?? 0, gold: a.gold ?? 0 });
-  P.hunt.auto = null;
+export function stopAuto(reason = 'user', slot = 0) {
+  const a = slot === 0 ? P.hunt.auto : (syncAutos()[slot] ?? null);
+  if (a) track('hunt_auto_off', { reason, region: a.region, stage: a.stage, n: a.n ?? 0, gold: a.gold ?? 0, ...(slotsOn() ? { slot } : {}) });
+  if (slot === 0) P.hunt.auto = null;
+  else syncAutos()[slot] = null;
+  syncAutos();
   markDirty();
 }
-const autoMembers = () => (P.hunt.auto ? (P.hunt.auto.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[]) : []);
+const autoMembers = (a: HuntAuto | null) => (a ? (a.members.map((id) => homeActors().find((x) => x.id === id)).filter(Boolean) as Actor[]) : []);
+/** 맡겨 둔 칸 파티 (원정 중인 사람 포함) */
+export const slotMembers = (a: HuntAuto | null) => autoMembers(a);
 
-/** 켜 있는 동안: autoSeconds마다 한 판 (원정 나간 손님은 빠진다) */
+/** 켜 있는 동안: autoSeconds마다 칸마다 한 판 (원정 나간 손님은 빠진다) · 돌려주는 값 = 이번 판들을 합친 것 */
 export function autoTick(now = Date.now()): HuntReward | null {
-  const a = P.hunt.auto;
-  if (!a || S.visiting || !S.started) return null;
+  const list = activeAutos();
+  if (!list.length || S.visiting || !S.started) return null;
   if (now - P.hunt.idleAt < H.autoSeconds * 1000) return null;
   P.hunt.idleAt = now;
-  const ms = autoMembers().filter((m) => m.runId == null);
+  const outs = list.map(({ a, i }) => autoRun(a, i)).filter((o): o is HuntReward => !!o);
+  if (!outs.length) return null;
+  if (outs.length === 1) return outs[0];
+  return { ...outs[0], gold: outs.reduce((t, o) => t + o.gold, 0), mats: outs.reduce((t, o) => t + o.mats, 0), items: outs.flatMap((o) => o.items), levelUps: outs.flatMap((o) => o.levelUps) };
+}
+/**
+ * 맡겨 둔 칸 한 판 (켜 있는 동안) — 판마다 훅은 여기 한 곳에서만 부른다
+ *  (HARVEST 호박 settleAuto(a.region, a.stage) 같은 판마다 셈은 clearStage 바로 뒤에 둔다 · 방치 판은 idleHunt 의 판 루프 한 곳)
+ */
+function autoRun(a: HuntAuto, slot: number): HuntReward | null {
+  const ms = autoMembers(a).filter((m) => m.runId == null);
   if (!ms.length || partyPower(ms) < recPower(a.region, a.stage) * H.autoRatio) {
-    stopAuto(ms.length ? 'power' : 'party');
-    uiHooks.toast(fsay('맡겨 둔 사냥이 멈췄어요 (파티가 없거나 전투력이 부족해요)', '맡아 둔 사냥을 멈췄어요 (파티가 없거나 전투력이 부족해요)'));
+    stopAuto(ms.length ? 'power' : 'party', slot);
+    const at = slotsOn() && slot > 0 ? `${slot + 1}칸 ` : '';
+    uiHooks.toast(fsay(`맡겨 둔 사냥${at ? ` ${at.trim()}` : ''}이 멈췄어요 (파티가 없거나 전투력이 부족해요)`, `맡아 둔 사냥${at ? ` ${at.trim()}` : ''}을 멈췄어요 (파티가 없거나 전투력이 부족해요)`));
     return null;
   }
-  const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true);
-  // HARVEST §1-4: 맡겨 둔 사냥도 호박 도깨비를 센다 (판마다 한 마리 확률 · 대왕 차례면 같이)
+  const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true, slotGoldX(slot));
+  // HARVEST §1-4: 맡겨 둔 사냥도 호박 도깨비를 센다 (칸마다 판마다 한 번 · 대왕 차례면 같이)
   settleAuto(a.region, a.stage);
   a.n = (a.n ?? 0) + 1;
   a.gold = (a.gold ?? 0) + out.gold;
+  if (slotsOn()) a.mats = (a.mats ?? 0) + out.mats;
   return out;
 }
 
@@ -234,43 +302,70 @@ export interface IdleHunt {
   mats: number;
   items: Partial<Record<Grade, number>>;
   label: string;
+  /** huntSlots: 칸이 둘 이상이면 칸마다 한 줄 (방치 결과 창 · 다녀오셨어요 카드) */
+  slots?: IdleHunt[];
+  /** 그 칸의 지역 (칸별 줄에만) */
+  region?: string;
 }
-/** 꺼져 있던 동안: 자동 사냥 중이었으면 그 스테이지, 아니면 가장 높은 스테이지 기준으로 · idleRate만큼 */
+/** 방치 결과 줄들: 칸이 여럿이면 칸마다, 아니면 하나 */
+export const idleLines = (h: IdleHunt): IdleHunt[] => h.slots ?? [h];
+const idleLabel = (r: string, s: number) => `${REGIONS[regionIdx(r)].name} ${regionIdx(r) + 1}-${s}`;
+
+/**
+ * 꺼져 있던 동안: 자동 사냥 중이었으면 그 스테이지(칸마다), 아니면 가장 높은 스테이지 기준으로 · idleRate만큼
+ *  huntSlots: 칸마다 같은 판 수를 번갈아 돈다 · 2·3칸 금화 ×slotGold · 방치 장비(idleItemsMax)·금화 상한(goldCap)은 칸 전체 하나
+ */
 export function idleHunt(seconds: number, goldCap: number): IdleHunt | null {
-  const a = P.hunt.auto;
-  let r: string | null = a?.region ?? null;
-  let s = a?.stage ?? 0;
-  if (!r) {
+  type Job = { r: RegionId; s: number; ms: Actor[]; gx: number };
+  let jobs: Job[];
+  const list = activeAutos();
+  if (list.length) jobs = list.map(({ a, i }) => ({ r: a.region as RegionId, s: a.stage, ms: autoMembers(a), gx: slotGoldX(i) }));
+  else {
+    let r: string | null = null;
+    let s = 0;
     for (const reg of REGIONS) if (best(reg.id) > 0) [r, s] = [reg.id, best(reg.id)];
+    if (!r || !s) return null;
+    jobs = [{ r: r as RegionId, s, ms: huntCrew().sort((x, y) => powerOf(y) - powerOf(x)).slice(0, 3), gx: 1 }];
   }
-  if (!r || !s) return null;
-  const ms = a ? autoMembers() : huntCrew().sort((x, y) => powerOf(y) - powerOf(x)).slice(0, 3);
-  if (!ms.length) return null;
+  jobs = jobs.filter((j) => j.ms.length);
+  if (!jobs.length) return null;
   const clears = Math.floor((seconds / H.autoSeconds) * H.idleRate);
   if (clears < 1) return null;
-  const items: Partial<Record<Grade, number>> = {};
-  let gold = 0;
-  let xp = 0;
-  let mats = 0;
+  const per: IdleHunt[] = jobs.map((j) => ({ clears: 0, gold: 0, xp: 0, mats: 0, items: {}, label: idleLabel(j.r, j.s), region: j.r }));
   let nItems = 0;
-  for (let i = 0; i < clears; i++) {
-    const out = reward(r as RegionId, s, ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(s, false, true));
-    gold += out.gold;
-    xp += out.xp;
-    mats += out.mats;
-    for (const it of out.items) {
-      items[it.grade] = (items[it.grade] ?? 0) + 1;
-      nItems++;
-    }
-  }
-  // 방치 상한은 금화에만 (손님·원정 금화와 합산해서 넘지 않게): 넘친 금화는 돌려놓는다. 경험치·재료·장비는 그대로
+  for (let c = 0; c < clears; c++)
+    jobs.forEach((j, k) => {
+      // 방치 판 하나 (판마다 셈은 여기 한 곳)
+      const out = reward(j.r, j.s, j.ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(j.s, false, true) * j.gx);
+      const o = per[k];
+      o.clears++;
+      o.gold += out.gold;
+      o.xp += out.xp;
+      o.mats += out.mats;
+      for (const it of out.items) {
+        o.items[it.grade] = (o.items[it.grade] ?? 0) + 1;
+        nItems++;
+      }
+    });
+  let gold = per.reduce((t, o) => t + o.gold, 0);
+  // 방치 상한은 금화에만 (손님·원정 금화와 합산해서 넘지 않게 · 칸 전체 하나): 넘친 금화는 돌려놓는다. 경험치·재료·장비는 그대로
   if (gold > goldCap) {
     const over = gold - goldCap;
     S.gold -= over;
     S.ledger.dungeon -= over;
+    // 칸별 줄은 비율대로 줄여 보여 준다 (합 = 상한)
+    let left = goldCap;
+    per.forEach((o, k) => {
+      o.gold = k === per.length - 1 ? left : Math.floor((o.gold * goldCap) / gold);
+      left -= o.gold;
+    });
     gold = goldCap;
   }
   P.hunt.idleAt = Date.now();
   markDirty();
-  return { clears, gold, xp, mats, items, label: `${REGIONS[regionIdx(r)].name} ${regionIdx(r) + 1}-${s}` };
+  const items: Partial<Record<Grade, number>> = {};
+  for (const o of per) for (const [g, n] of Object.entries(o.items) as [Grade, number][]) items[g] = (items[g] ?? 0) + n;
+  const sum = (k: 'clears' | 'xp' | 'mats') => per.reduce((t, o) => t + o[k], 0);
+  if (per.length === 1) return { clears: per[0].clears, gold, xp: per[0].xp, mats: per[0].mats, items, label: per[0].label };
+  return { clears: sum('clears'), gold, xp: sum('xp'), mats: sum('mats'), items, label: per.map((o) => o.label).join(' · '), slots: per };
 }

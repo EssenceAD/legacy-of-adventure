@@ -9,6 +9,16 @@ import type { Neighbor } from '../data/neighbors';
 import { freshAlmanac, freshDaybook, freshHarvest } from './hvState';
 
 /** BUILDUX §2-3: 보관함에 넣어 둔 건물·장식 (레벨·색·방향 그대로) */
+/** 맡겨 둔 사냥 한 칸 · n/gold = 맡긴 뒤 판 수·금화 · mats = 맡긴 뒤 지역 재료 (huntSlots 켬일 때만 센다) */
+export interface HuntAuto {
+  region: string;
+  stage: number;
+  members: number[];
+  n?: number;
+  gold?: number;
+  next?: boolean;
+  mats?: number;
+}
 export interface StoredObj {
   kind: Kind;
   lvl: number;
@@ -511,7 +521,9 @@ export function freshProgress() {
       best: {} as Record<string, number>,
       firstClear: [] as string[],
       /** 맡겨 둔 사냥 · n/gold = 맡긴 뒤 판 수·금화 (핫픽스 10 마을 줄) */
-      auto: null as null | { region: string; stage: number; members: number[]; n?: number; gold?: number; next?: boolean },
+      auto: null as null | HuntAuto,
+      /** PACE §2 (huntSlots): 맡겨 둔 사냥 칸 전부 — 0번 칸은 늘 위 auto 와 같다(옛 앱·옛 코드가 auto 를 그대로 읽고 쓴다) · 1·2번 칸은 장부 4장·6장에 열린다 */
+      autos: [] as (HuntAuto | null)[],
       idleAt: 0,
       /** 핫픽스 10: 처음 깼을 때 모모의 「맡겨 두기」 안내 (계정당 1번) */
       autoHint: false,

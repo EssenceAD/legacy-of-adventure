@@ -8,6 +8,7 @@ import { idleFor } from '../engine/fps';
 import { getPref, setPref } from '../save/save';
 import { claimAllMail, mailWaiting } from '../world/meta';
 import { P, S, world } from '../world/state';
+import { activeAutos } from '../world/hunt';
 import { vis, fsay } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
 import { $, esc, fmt } from './common';
@@ -43,7 +44,8 @@ let canAuto: () => boolean = () => false;
 export const ssOn = () => on;
 
 const finishedRuns = () => new Set(P.runs.filter((r) => r.result).map((r) => r.id));
-const huntN = () => P.hunt.auto?.n ?? 0;
+// PACE §2: 맡겨 둔 칸 전부의 판 수 (끔이면 0번 칸 = 예전 그대로)
+const huntN = () => activeAutos().reduce((t, { a }) => t + (a.n ?? 0), 0);
 
 /** 지금까지 (켠 뒤로) */
 export function ssStats() {
