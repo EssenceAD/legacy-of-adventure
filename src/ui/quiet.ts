@@ -16,10 +16,12 @@ const Q = () => CONFIG.firstLook.quiet;
 const $ = (s: string) => document.querySelector<HTMLElement>(s);
 const shown = (e: HTMLElement | null): e is HTMLElement => !!e && !e.hidden && e.offsetParent !== null;
 
-/** 깜빡일 곳: 보이는 목표 알약 → 없으면 새 HUD 소식 띠 */
-function target(): HTMLElement | null {
-  const pill = $('#goalPill');
-  if (shown(pill)) return pill;
+/** 깜빡일 곳: 보이는 것 중 첫째 (sels 순서) → 없으면 새 HUD 소식 띠 */
+function target(sels: string[]): HTMLElement | null {
+  for (const q of sels) {
+    const e = $(q);
+    if (shown(e)) return e;
+  }
   const band = $('#newsBand');
   return shown(band) ? band : null;
 }
@@ -29,14 +31,20 @@ const anyReady = () => P.goals.list.some((g) => g.progress >= g.target && !g.cla
 let tag: HTMLButtonElement | null = null;
 let tagUntil = 0;
 let tagFor: HTMLElement | null = null;
+/** 지금 꼬리표: 글자 · 아직 보일 만한가 · 누르면 (없으면 붙은 곳을 누른 것과 같게) */
+let tagSpec: { label: string; aria: string; still: () => boolean; tap?: () => void } = { label: '받기!', aria: '오늘의 목표 받기', still: anyReady };
 
-/** 목표 달성 → 알약 깜빡 + 「받기!」 */
-export function goalNudge(now = performance.now()) {
-  syncGoalPill();
-  if ($('#newsBand') && !shown($('#goalPill'))) bandFocus('goal');
-  const t = target();
+/** 가운데 상자 대신: 붙을 곳을 1.2초 깜빡 + 옆에 작은 꼬리표 */
+function nudge(sels: string[], bandKey: string, spec: typeof tagSpec, now: number) {
+  if ($('#newsBand') && !sels.some((q) => shown($(q)))) bandFocus(bandKey);
+  const t = target(sels);
+  tagSpec = spec;
   tagUntil = now + Q().goalTagMs;
   tagFor = t;
+  if (tag) {
+    tag.textContent = spec.label;
+    tag.setAttribute('aria-label', spec.aria);
+  }
   if (t) {
     t.classList.remove('qblink');
     void t.offsetWidth;
@@ -46,9 +54,20 @@ export function goalNudge(now = performance.now()) {
   placeTag(now);
 }
 
+/** 목표 달성 → 알약 깜빡 + 「받기!」 */
+export function goalNudge(now = performance.now()) {
+  syncGoalPill();
+  nudge(['#goalPill'], 'goal', { label: '받기!', aria: '오늘의 목표 받기', still: anyReady }, now);
+}
+
+/** 리뷰 ④: 「새 장이 열렸어요」 → 장부 카드(없으면 목표 알약·소식 띠) 깜빡 + 「새 장!」 · 누르면 장부(3막 머리로) */
+export function chapterNudge(still: () => boolean, open: () => void, now = performance.now()) {
+  nudge(['#mission', '#goalPill'], 'mission', { label: '새 장!', aria: '장부 새 장 보기', still, tap: open }, now);
+}
+
 function placeTag(now: number) {
   const t = tagFor && shown(tagFor) ? tagFor : null;
-  const on = quietOn() && !!t && now < tagUntil && anyReady() && S.started && !S.visiting;
+  const on = quietOn() && !!t && now < tagUntil && tagSpec.still() && S.started && !S.visiting;
   if (!on) {
     if (tag) tag.hidden = true;
     return;
@@ -59,13 +78,14 @@ function placeTag(now: number) {
     tag = document.createElement('button');
     tag.id = 'qGoalTag';
     tag.className = 'px';
-    tag.textContent = '받기!';
-    tag.setAttribute('aria-label', '오늘의 목표 받기');
+    tag.textContent = tagSpec.label;
+    tag.setAttribute('aria-label', tagSpec.aria);
     tag.onclick = (e) => {
       e.stopPropagation();
       tagUntil = 0;
       tag!.hidden = true;
-      tagFor?.click();
+      if (tagSpec.tap) tagSpec.tap();
+      else tagFor?.click();
     };
     hud.appendChild(tag);
   }
@@ -91,6 +111,7 @@ export const quietRowHtml = () =>
 
 export function initQuietUi() {
   quietHooks.goalNudge = () => goalNudge();
+  quietHooks.chapterNudge = (still, open) => chapterNudge(still, open);
   // 개발·시트용: 말풍선 줄 보기 · 목표 하나 바로 달성
   if (import.meta.env.DEV)
     Object.assign(window, {

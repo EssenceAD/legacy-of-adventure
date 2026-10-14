@@ -9,6 +9,7 @@ import { today, track } from '../src/world/progress';
 import {
   bandHidden,
   BubbleQueue,
+  edgeShift,
   mergeFloat,
   nameTagRule,
   noteVillageOpen,
@@ -64,8 +65,9 @@ describe('플래그 · 설정', () => {
   it('설정 동기화 키에 들어 있다', () => {
     expect(SYNC_PREF_KEYS).toContain('quietOff');
   });
-  it('숫자는 config 한 곳: 간격 2.5초 · 건물 상태 1 · 0.9초 · 10초', () => {
-    expect(C.bubbleGapMs).toBe(2500);
+  it('숫자는 config 한 곳: 2.5~4초마다 · 1분 · 건물 상태 1 · 0.9초 · 10초', () => {
+    expect(C.bubbleEveryMs).toEqual([2500, 4000]);
+    expect(C.bubbleStaleMs).toBe(60000);
     expect(C.bldMax).toBe(1);
     expect(CONFIG.bldStatus.max).toBe(3);
     expect(C.floatMs).toBe(900);
@@ -76,21 +78,53 @@ describe('플래그 · 설정', () => {
 
 describe('§2-1 말풍선 줄 (BubbleQueue)', () => {
   const mk = (q: BubbleQueue, log: string[], pri: number, key: string, ms = 2800) => ({ pri, key, ms, show: () => void log.push(key) });
-  it('한 번에 하나 · 끝나고 2.5초 뒤에 다음', () => {
+  const fixed = (ms: number) => new BubbleQueue({ every: () => ms });
+  it('간격은 2.5~4초 사이 무작위', () => {
     const q = new BubbleQueue();
+    for (let i = 0; i < 200; i++) {
+      const v = q.every();
+      expect(v).toBeGreaterThanOrEqual(2500);
+      expect(v).toBeLessThanOrEqual(4000);
+    }
+  });
+  it('한 번에 하나 · 앞 것이 뜬 때부터 간격 뒤에 다음', () => {
+    const q = fixed(3600);
     const log: string[] = [];
     expect(q.request(mk(q, log, PRI.guest, 'a'), 0)).toBe(true);
     expect(q.request(mk(q, log, PRI.guest, 'b'), 100)).toBe(false);
     expect(log).toEqual(['a']);
     q.pump(2800); // a 끝
     expect(q.showing(2800)).toBeNull();
-    q.pump(2800 + 2499);
+    q.pump(3599);
     expect(log).toEqual(['a']);
-    q.pump(2800 + 2500);
+    q.pump(3600);
     expect(log).toEqual(['a', 'b']);
   });
+  it('간격이 짧게 뽑혀도 앞 말풍선이 사라지고 잠깐(0.4초) 빈 뒤 (겹치지 않음)', () => {
+    const q = fixed(2500);
+    const log: string[] = [];
+    q.request(mk(q, log, PRI.guest, 'a'), 0);
+    q.request(mk(q, log, PRI.guest, 'b'), 0);
+    q.pump(2800 + C.bubbleBlankMs - 1);
+    expect(log).toEqual(['a']);
+    q.pump(2800 + C.bubbleBlankMs);
+    expect(log).toEqual(['a', 'b']);
+  });
+  it('북적일 때: 줄 선 대사를 버리지 않고 차례로 계속 (손님 10명 → 10개 다 · 4초 안팎마다)', () => {
+    const q = new BubbleQueue();
+    const log: string[] = [];
+    const at: number[] = [];
+    let t = 0;
+    for (let i = 0; i < 10; i++) q.request({ ...mk(q, log, PRI.guest, 'g' + i), show: () => void (log.push('g' + i), at.push(t)) }, 0);
+    for (; t <= 45000; t += 50) q.pump(t);
+    expect(log).toEqual([...Array(10).keys()].map((i) => 'g' + i));
+    for (let i = 1; i < at.length; i++) {
+      expect(at[i] - at[i - 1]).toBeGreaterThanOrEqual(2800 + C.bubbleBlankMs);
+      expect(at[i] - at[i - 1]).toBeLessThanOrEqual(4050);
+    }
+  });
   it('우선순위: 안내 > 이야기·사건 > 손님 대사 (같으면 먼저 온 것)', () => {
-    const q = new BubbleQueue(undefined, () => 1e9);
+    const q = fixed(3500);
     const log: string[] = [];
     q.request(mk(q, log, PRI.guest, 'first'), 0);
     q.request(mk(q, log, PRI.guest, 'g1'), 10);
@@ -98,10 +132,10 @@ describe('§2-1 말풍선 줄 (BubbleQueue)', () => {
     q.request(mk(q, log, PRI.story, 's'), 30);
     q.request(mk(q, log, PRI.guide, 'guide'), 40);
     let t = 0;
-    for (let i = 0; i < 5; i++) q.pump((t += 2800 + 2500));
+    for (let i = 0; i < 5; i++) q.pump((t += 3500));
     expect(log).toEqual(['first', 'guide', 's', 'g1', 'g2']);
   });
-  it('「!」(붙잡는 안내)는 놓을 때까지 다른 걸 막고 · 놓으면 간격 뒤 다음', () => {
+  it('「!」(붙잡는 안내)는 놓을 때까지 다른 걸 막고 · 놓으면 2.5초 뒤 다음', () => {
     const q = new BubbleQueue();
     const log: string[] = [];
     expect(q.wantHold('wf', PRI.guide, 0)).toBe(true);
@@ -111,42 +145,50 @@ describe('§2-1 말풍선 줄 (BubbleQueue)', () => {
     q.pump(2000);
     expect(log).toEqual([]);
     q.release('wf', 2000);
-    q.pump(4499);
+    q.pump(2000 + C.bubbleHoldGapMs - 1);
     expect(log).toEqual([]);
-    q.pump(4500);
+    q.pump(2000 + C.bubbleHoldGapMs);
     expect(log).toEqual(['g']);
   });
   it('떠 있는 대사가 있으면 「!」도 기다렸다가 가장 먼저', () => {
-    const q = new BubbleQueue();
+    const q = fixed(3000);
     const log: string[] = [];
     q.request(mk(q, log, PRI.guest, 'g1'), 0);
     q.request(mk(q, log, PRI.guest, 'g2'), 0);
     expect(q.wantHold('wf', PRI.guide, 100)).toBe(false);
-    expect(q.wantHold('wf', PRI.guide, 5300)).toBe(true);
+    expect(q.wantHold('wf', PRI.guide, 3200)).toBe(true);
     expect(log).toEqual(['g1']);
   });
   it('건물 상태(빈자리 채우기)는 아무것도 없고 간격이 지났을 때만', () => {
-    const q = new BubbleQueue();
+    const q = fixed(3500);
     const log: string[] = [];
     expect(q.idle(0)).toBe(true);
     q.request(mk(q, log, PRI.guest, 'g'), 0);
     expect(q.idle(100)).toBe(false);
-    expect(q.idle(2800 + 2000)).toBe(false);
-    expect(q.idle(2800 + 2500)).toBe(true);
+    expect(q.idle(3499)).toBe(false);
+    expect(q.idle(3500)).toBe(true);
   });
-  it('오래 못 뜬 대사는 버림 · 주인이 사라진(ok=false) 대사는 건너뜀', () => {
-    const q = new BubbleQueue();
+  it('아주 오래(1분) 못 뜬 대사만 버림 · 주인이 사라진(ok=false) 대사는 건너뜀', () => {
+    const q = fixed(3500);
     const log: string[] = [];
     q.request(mk(q, log, PRI.guest, 'a'), 0);
     q.request({ ...mk(q, log, PRI.guest, 'gone'), ok: () => false }, 10);
     q.request(mk(q, log, PRI.guest, 'b'), 20);
-    q.pump(5300);
+    q.pump(3500);
     expect(log).toEqual(['a', 'b']);
-    q.request(mk(q, log, PRI.guest, 'old'), 5400);
-    q.pump(5400 + C.bubbleStaleMs + 1);
-    expect(log).toEqual(['a', 'b']);
+    q.request(mk(q, log, PRI.guest, 'mid'), 3600);
+    q.pump(3600 + 20000);
+    expect(log).toEqual(['a', 'b', 'mid']);
+    // 아주 오래 붙잡힌 「!」 뒤에 선 대사
+    q.wantHold('wf', PRI.guide, 24000);
+    q.request(mk(q, log, PRI.guest, 'old'), 24000);
+    for (let t = 24000; t <= 24000 + C.bubbleStaleMs + 1; t += 1000) q.wantHold('wf', PRI.guide, t);
+    q.release('wf', 24000 + C.bubbleStaleMs + 1);
+    q.pump(24000 + C.bubbleStaleMs + 1 + C.bubbleHoldGapMs);
+    q.request(mk(q, log, PRI.guest, 'busy'), 24000 + C.bubbleStaleMs + 1 + C.bubbleHoldGapMs);
+    expect(log).toEqual(['a', 'b', 'mid', 'busy']);
   });
-  it('줄은 길이 제한 (덜 급한 것부터 버림)', () => {
+  it('줄은 길이 제한 (덜 급한 것 중 늦게 온 것부터 버림)', () => {
     const q = new BubbleQueue();
     const log: string[] = [];
     q.request(mk(q, log, PRI.guest, 'cur'), 0);
@@ -154,7 +196,6 @@ describe('§2-1 말풍선 줄 (BubbleQueue)', () => {
     q.request(mk(q, log, PRI.story, 'story'), 2);
     expect(q.q.length).toBe(C.bubbleQueueMax);
     expect(q.q.some((x) => x.key === 'story')).toBe(true);
-    // 먼저 선 손님 대사가 남고 늦게 온 것이 빠짐
     expect(q.q.some((x) => x.key === 'g0')).toBe(true);
     expect(q.q.some((x) => x.key === 'g' + (C.bubbleQueueMax + 2))).toBe(false);
   });
@@ -319,5 +360,14 @@ describe('§2-2 목표 달성 안내', () => {
     }
     toast.mockRestore();
     nudge.mockRestore();
+  });
+});
+
+describe('리뷰 ② 말풍선 화면 안으로', () => {
+  it('왼쪽·오른쪽으로 넘치면 8px 안으로 · 안이면 그대로 · 화면보다 넓으면 왼쪽 맞춤', () => {
+    expect(edgeShift(-30, 70, 8, 404)).toBe(38);
+    expect(edgeShift(350, 450, 8, 404)).toBe(-46);
+    expect(edgeShift(50, 150, 8, 404)).toBe(0);
+    expect(edgeShift(-10, 500, 8, 404)).toBe(18);
   });
 });

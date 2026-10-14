@@ -1308,7 +1308,8 @@ export const CONFIG = {
   /**
    * FIRSTLOOK 첫인상 패스 — 숫자는 여기 한 곳 (섹션마다 플래그 하나)
    *  §2 화면 조용히 (플래그 flQuiet · 설정 「화면 조용히」 · world/quiet.ts):
-   *   bubbleGapMs = 마을 말풍선 사이 최소 간격 · bubbleStaleMs = 줄 서서 이만큼 못 뜬 대사는 버림 · bubbleQueueMax = 줄 길이 ·
+   *   bubbleEveryMs = 말풍선이 뜨는 간격(앞 것이 뜬 때부터 · 이 사이에서 무작위) · bubbleBlankMs = 앞 말풍선이 사라진 뒤 최소 빈 시간 ·
+   *   bubbleHoldGapMs = 「!」를 놓은 뒤 다음까지 · bubbleStaleMs = 줄 서서 이만큼 못 뜬 대사만 버림(아주 오래된 것) · bubbleQueueMax = 줄 길이 ·
    *   bldMax = 건물 상태 말풍선 최대(원래 bldStatus.max) · goalBlinkMs = 목표 알약 깜빡 · goalTagMs = 「받기!」 꼬리표 최대 ·
    *   tagTapSec = 사람을 누르면 이름표 · tagZoom = 단골 이상 이름표가 연하게 보이는 배율 · tagAlpha = 그 투명도 ·
    *   floatMs = 떠다니는 글씨 시간 · floatMergeMs = 이 시간 안에 같은 자리면 합침 · bandHideMs = 마을을 연 뒤 아래 소문·채팅 띠 숨김
@@ -1322,9 +1323,11 @@ export const CONFIG = {
     /** §3 flTouchHints: 터치 기기 대화창 안내 글자 · 건너뛰기가 열린 뒤 안 먹는 시간(ms · 확인 시트와 같은 350) */
     touch: { nextLabel: '탭: 다음', skipLabel: '건너뛰기', guardMs: 350 },
     quiet: {
-      bubbleGapMs: 2500,
-      bubbleStaleMs: 9000,
-      bubbleQueueMax: 6,
+      bubbleEveryMs: [2500, 4000] as [number, number],
+      bubbleBlankMs: 400,
+      bubbleHoldGapMs: 2500,
+      bubbleStaleMs: 60000,
+      bubbleQueueMax: 16,
       bldMax: 1,
       goalBlinkMs: 1200,
       goalTagMs: 12000,
