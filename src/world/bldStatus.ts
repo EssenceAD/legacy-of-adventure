@@ -52,7 +52,9 @@ export const uiHidden = () => typeof document !== 'undefined' && document.body.c
 /** L1 화면 보호 — 다른 묶음이 만든다 · 지금은 body.ssaver 로 본다 (합칠 때 진짜 함수로) */
 export const screenSaverOn = () => typeof document !== 'undefined' && document.body.classList.contains('ssaver');
 /** 말풍선을 아예 안 띄우는 때 (플래그 · 설정 · 이웃 마을 · UI 끄기 · 화면 보호). 사진·꾸미기·배치는 그리는 쪽에서 */
-export const bubblesHidden = () => !vis('bldStatus') || !bldBubblesOn() || !!S.visiting || uiHidden() || screenSaverOn();
+/** 컷신·대사 중 (dialogue.talk 가 #view 에 .talking 을 단다) — 마을 말풍선·떠다니는 글씨·「!」를 숨긴다 (형철: 모든 컷신 공통) */
+export const sceneTalking = () => typeof document !== 'undefined' && !!document.getElementById('view')?.classList.contains('talking');
+export const bubblesHidden = () => !vis('bldStatus') || !bldBubblesOn() || !!S.visiting || uiHidden() || screenSaverOn() || sceneTalking();
 
 // ───────── 건물별 상태 ─────────
 

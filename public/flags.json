@@ -74,5 +74,5 @@
   "huntSlots": true,
   "fishSfx": true,
   "enhTransfer": true,
-  "fiveStars": false
+  "fiveStars": true
 }
