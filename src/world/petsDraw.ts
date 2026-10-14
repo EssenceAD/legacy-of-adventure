@@ -1,7 +1,7 @@
 // LUXE §2 펫 — 마을에서 (꺼내 둔 3마리 · 이웃 방문 땐 그 마을 모습의 펫)
 //  움직임은 코드: 2프레임 깡총(위 1px) · 좌우는 뒤집기 · 미끄러지듯 이동 · 밤엔 잠(Zz 말풍선 + 1px 낮추기) · 손님 옆에서 가끔 하트
 //  여관 문 근처를 돌아다니고 가끔 주인 캐릭터를 따라간다. 그리기는 render.ts 깊이 정렬(캐릭터처럼 발판 기준)에 끼운다.
-//  그림: assets/pets/pet_<id>.png (16~21px) · 없으면(아직 안 들어온 그림) 코드 도트 자리표시 — 못 불러와도 안 깨진다
+//  그림: assets/pets/pet_<id>.png (16~21px) · 10마리 모두 그림 있음 · 못 불러오면 중립 코드 도트 자리표시 — 못 불러와도 안 깨진다
 import { dotShadow } from '../combat/draw';
 import { PETS } from '../data/luxe_cfg';
 import { tinted } from '../engine/assets';
@@ -195,22 +195,18 @@ export function drawPet(ctx: CanvasRenderingContext2D, p: PetRT) {
     ctx.fillRect(X + 4, top - 1, 1, 1);
   }
 }
-/** 그림이 아직 없는 펫(별여우 등): 작은 코드 도트 (주황 몸 + 귀 + 별 꼬리) */
+/** 그림을 못 불러온 펫(늦은 로딩 · 실패): 작은 중립 코드 도트 (둥근 몸 + 눈) — 특정 펫 모양 아님 */
 function placeholder(ctx: CanvasRenderingContext2D, X: number, Y: number, dir: number) {
   const r = (x: number, y: number, w: number, h: number, c: string) => {
     ctx.fillStyle = c;
     ctx.fillRect(X + (dir > 0 ? x : -x - w), Y + y, w, h);
   };
-  r(-5, -7, 10, 6, '#3a2a5a');
-  r(-4, -6, 8, 4, '#e8954a');
-  r(1, -10, 5, 4, '#3a2a5a');
-  r(2, -9, 3, 3, '#e8954a');
-  r(1, -11, 1, 1, '#3a2a5a');
-  r(5, -11, 1, 1, '#3a2a5a');
-  r(4, -8, 1, 1, '#1c1018');
-  r(-8, -9, 3, 3, '#ffe27a');
-  r(-7, -10, 1, 5, '#ffe27a');
-  r(-9, -8, 5, 1, '#ffe27a');
+  r(-4, -9, 8, 8, '#3a2a5a');
+  r(-5, -8, 10, 6, '#3a2a5a');
+  r(-3, -8, 6, 6, '#c9b8e0');
+  r(-4, -7, 8, 4, '#c9b8e0');
+  r(0, -6, 1, 1, '#1c1018');
+  r(2, -6, 1, 1, '#1c1018');
 }
 function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number, a: number) {
   ctx.globalAlpha = a;
