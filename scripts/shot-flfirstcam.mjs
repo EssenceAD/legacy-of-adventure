@@ -82,6 +82,60 @@ const shot = async (p, name) => {
   console.error('✓ ' + name + ' ' + JSON.stringify(await info(p)));
 };
 
+// V2=1 (형철 10/14 23:10·23:20 판정 뒤): 412 ⓐ 새 세이브 첫 낮만 + 팻말(장부 1장 전/뒤) + PC(1280) 물러나기 → *_v2.png · SHEET_v2.png
+if (process.env.V2) {
+  const sh = async (p, n) => shot(p, n + '_v2');
+  for (const after of [false, true]) {
+    const m = after ? 'after' : 'before';
+    let ctx;
+    try {
+      const o = await open(412, after, null);
+      ctx = o.ctx;
+      const p = o.p;
+      await W(p, 4000);
+      await clear(p);
+      await sh(p, `a_new_412_${m}`);
+      // 장부 1장을 마친 뒤 (legacy 로 흉내 — 같은 규칙) → 팻말 글씨
+      await p.evaluate(() => (window.__P.guide.legacy = true));
+      await W(p, 500);
+      await clear(p);
+      await sh(p, `sign_412_${m}_ch1done`);
+    } catch (e) {
+      errs.push(`v2 412 ${m}: ${String(e).slice(0, 300)}`);
+    }
+    await ctx?.close();
+  }
+  // PC 물러나기 (그대로 3 → 2)
+  let ctx;
+  try {
+    const o = await open(1280, true, null);
+    ctx = o.ctx;
+    const p = o.p;
+    await W(p, 3000);
+    await clear(p);
+    await p.evaluate(() => {
+      window.__S.gold = 5000;
+      window.__P.rep = Math.max(window.__P.rep, 999);
+    });
+    await sh(p, 'pull_1280_after_0');
+    await p.evaluate(() => window.__game.expandLand(2));
+    await sh(p, 'pull_1280_after_1');
+    await W(p, 900);
+    await sh(p, 'pull_1280_after_2');
+  } catch (e) {
+    errs.push(`v2 pull: ${String(e).slice(0, 300)}`);
+  }
+  await ctx?.close();
+  const b64 = (f) => 'data:image/png;base64,' + fs.readFileSync(`${OUT}/${f}.png`).toString('base64');
+  const td = (f, cap, w) => (fs.existsSync(`${OUT}/${f}.png`) ? `<td><small>${cap}</small><img src="${b64(f)}" style="width:${w}px"></td>` : '<td>—</td>');
+  const page = await (await br.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+  const css = 'body{margin:0;background:#16141f;color:#eee;font:14px sans-serif;padding:12px}h2{margin:6px 0 10px}table{border-collapse:collapse}td{vertical-align:top;padding:6px}img{display:block;border:1px solid #444}small{color:#aaa}';
+  await page.setContent(`<style>${css}</style><h2>FIRSTLOOK §1 v2 — 412 ⓐ 새 세이브 첫 낮 (폰 배율 2 · 물러나지 않음 · 팻말 글씨는 장부 1장 뒤)</h2><table><tr>${td('a_new_412_before_v2', '전 (flFirstCam 끔 = 지금, 배율 1)', 300)}${td('a_new_412_after_v2', '후 (켬, 배율 2 · 첫 화면 = 팻말 그림만)', 300)}${td('sign_412_before_ch1done_v2', '전 · 장부 1장 뒤', 300)}${td('sign_412_after_ch1done_v2', '후 · 장부 1장 뒤 (팻말 글씨)', 300)}</tr></table><h2>PC 1280 물러나기 (그대로 3 → 2)</h2><table><tr>${td('pull_1280_after_0_v2', '직전 (배율 3)', 420)}${td('pull_1280_after_1_v2', '넓힌 직후 (전환 중)', 420)}${td('pull_1280_after_2_v2', '0.9초 뒤 (배율 2)', 420)}</tr></table>`);
+  await page.screenshot({ path: `${OUT}/SHEET_v2.png`, fullPage: true });
+  await br.close();
+  console.error(errs.length ? '✗ 오류: ' + errs.join(' / ') : '✓ 페이지 오류 0');
+  process.exit(errs.length ? 1 : 0);
+}
 const nightSave = { ...big, night: true };
 const daySave = { ...big, night: false };
 const bigJson = JSON.stringify(big);
