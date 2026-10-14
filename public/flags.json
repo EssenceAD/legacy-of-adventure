@@ -81,5 +81,6 @@
   "flTouchHints": true,
   "flFirstCam": false,
   "flTeaserFit": false,
-  "flSideRail": false
+  "flSideRail": false,
+  "flCharPop": false
 }

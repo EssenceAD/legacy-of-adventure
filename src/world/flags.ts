@@ -169,6 +169,8 @@ export const FLAG_DEFAULTS = {
   flTeaserFit: false,
   /** FIRSTLOOK §5 오른쪽 버튼 줄 줄이기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 새 HUD 오른쪽 작은 버튼 줄: 배율(×1) + 「⋯」만 늘 보이고, 「⋯」를 누르면 낮밤·어울림·소리·구경(👁)이 그 아래로 펼쳐짐 · 바깥을 누르거나 하나를 고르면 접힘 · 안의 항목에 빨간 점이 있으면 「⋯」에 점 · id·동작은 그대로 (숫자 CONFIG.firstLook.rail) */
   flSideRail: false,
+  /** FIRSTLOOK §6 캐릭터가 눈에 띄게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 사람 발밑 그림자 한 단계 진하게(+알파 0.15 · 돌길 위에서도) · 사람 도트 바깥 1px 외곽선을 남보라(팔레트 0번)로 통일(만들 때 한 번 · 전설·신화 테두리는 그대로) · 걷는 동안 1px 통통 (숫자 CONFIG.firstLook.pop) */
+  flCharPop: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

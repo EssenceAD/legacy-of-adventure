@@ -203,8 +203,9 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
     clear(x: number, y: number) {
       if (x >= 0 && y >= 0 && x < w && y < h) g[y][x] = null;
     },
-    /** rim: HERODOT 전설·신화 — 부위색 외곽선에 금빛·은빛을 한 겹 섞는다 (없으면 예전 그대로) */
-    render(opts: { outline?: string; rim?: string } = {}) {
+    /** rim: HERODOT 전설·신화 — 부위색 외곽선에 금빛·은빛을 한 겹 섞는다 (없으면 예전 그대로)
+     *  outer: FIRSTLOOK §6 flCharPop — 바깥(격자 가장자리에서 빈칸으로 이어진) 1px 외곽선만 이 색 한 가지 · 안쪽 구멍 외곽선은 예전 부위색 */
+    render(opts: { outline?: string; rim?: string; outer?: string } = {}) {
       const cv = canvas(w, h);
       const ctx = cv.getContext('2d')!;
       // HERODOT: 'fx' = 빛·휘두름 궤적 — 명암·외곽선 없이 맨 위에 그대로 (예전 그림엔 없는 태그)
@@ -236,6 +237,8 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
+      // §6 flCharPop: 격자 가장자리에서 빈칸(채운 칸이 아닌 곳)으로 이어지는 칸 = 바깥
+      const outside = opts.outer ? outsideOf(w, h, filled) : null;
       // 선택적 외곽선: 그 부위 어두운 색보다 한 단계 더 어둡게 · 빛 받는 왼쪽 위 테두리는 한 단계 밝게
       for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
@@ -244,6 +247,8 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
           if (!nb) continue;
           if (opts.outline) {
             ctx.fillStyle = opts.outline;
+          } else if (outside && outside[y * w + x]) {
+            ctx.fillStyle = opts.outer!;
           } else {
             const n = g[y + nb[1]][x + nb[0]]!;
             const lit = nb[0] === 1 || nb[1] === 1;
@@ -267,6 +272,28 @@ export function Grid(w = 22, h = 30, ox = 0, oy = 0) {
   return o;
 }
 export type GridT = ReturnType<typeof Grid>;
+
+/** 바깥 칸 표 (1 = 격자 가장자리에서 채우지 않은 칸만 밟아 닿는다 · 4방향) */
+export function outsideOf(w: number, h: number, filled: (x: number, y: number) => boolean): Uint8Array {
+  const m = new Uint8Array(w * h);
+  const st: number[] = [];
+  const push = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const i = y * w + x;
+    if (m[i] || filled(x, y)) return;
+    m[i] = 1;
+    st.push(i);
+  };
+  for (let x = 0; x < w; x++) push(x, 0), push(x, h - 1);
+  for (let y = 0; y < h; y++) push(0, y), push(w - 1, y);
+  while (st.length) {
+    const i = st.pop()!;
+    const x = i % w;
+    const y = (i - x) / w;
+    push(x + 1, y), push(x - 1, y), push(x, y + 1), push(x, y - 1);
+  }
+  return m;
+}
 
 // ───────── HSL (지붕 색 바꾸기용) ─────────
 

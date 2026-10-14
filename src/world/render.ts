@@ -29,6 +29,7 @@ import { puff, updDrawParts } from './fx';
 import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, litGround, lookFor, signSpot, treeImg, trimGround, type Wild } from './ground';
 import { litHex } from './nightLook';
 import { vis } from './visual';
+import { shadowGap, walkBob } from './charPop';
 import { stars } from './progress';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
@@ -1196,8 +1197,11 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   const fade = a.fading !== undefined ? Math.max(0, a.fading) : 1;
   if (offscreen(X - 12, Y - 48, 24, 48)) return;
   let sg: HTMLCanvasElement | null = null;
-  if (pose) fr = (pose.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
-  else if (a.st === 'walk') fr = (a.back ? s.walkB : s.walk)[Math.floor(T * 8 + a.ph) % 4];
+  // FIRSTLOOK §6 flCharPop: 걷는 동안 발이 지나가는 프레임에서 통째로 1px 위로 (통통)
+  const wf = Math.floor(T * 8 + a.ph) % 4;
+  const walking = !!pose || a.st === 'walk';
+  if (pose) fr = (pose.back ? s.walkB : s.walk)[wf];
+  else if (a.st === 'walk') fr = (a.back ? s.walkB : s.walk)[wf];
   else if (a.st === 'idle' && a.back && !a.role) fr = s.idleB[Math.floor(T * 1.6 + a.ph) % 2];
   else if (a.st === 'atk') fr = s.atk[Math.floor(T * 3 + a.ph) % 2];
   else if (a.st === 'pray') fr = s.pray[Math.floor(T * 1.5 + a.ph) % 2];
@@ -1208,19 +1212,22 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   else if (s.blink && (T + a.ph) % (2 + (a.ph % 1)) < 0.13) fr = s.blink;
   else fr = s.idle[Math.floor(T * 1.6 + a.ph) % 2];
   // 리마스터: 발밑 그림자 2톤 도트 타원 (반투명 없이)
-  if (fade > 0.5) dotShadow(ctx, X, Y, 6, 2);
+  // FIRSTLOOK §6 flCharPop: 디더 빈칸을 채워 한 단계 진하게 (돌길 위에서도 보이게)
+  if (fade > 0.5) dotShadow(ctx, X, Y, 6, 2, shadowGap());
   ctx.globalAlpha = (a.pop ? 1 - a.pop / 0.4 : 1) * fade;
   const img = tinted(fr, NL);
   // 발 위치는 그림 크기와 상관없이 같은 칸 (전설 26×35도 24×33과 발이 같은 줄)
   const x = X - (fr.width >> 1);
   const y = Y - 32 - (fr.height - 33) + (a.st === 'sit' ? 3 : 0);
+  // 통통은 그림만 (이름표·등불 자리는 그대로)
+  const yb = y + walkBob(walking, wf);
   if (dir < 0) {
     ctx.save();
-    ctx.translate(x + fr.width, y);
+    ctx.translate(x + fr.width, yb);
     ctx.scale(-1, 1);
     ctx.drawImage(img, 0, 0);
     ctx.restore();
-  } else ctx.drawImage(img, x, y);
+  } else ctx.drawImage(img, x, yb);
   ctx.globalAlpha = 1;
   // FIVESTARS ④ 따뜻한밤 허리 등불: 밤에 2칸 빛 — 그린 직후 깊이 순서 안에서 (앞 건물이 나중에 그려지며 가린다 · v0.25.24 불빛 규칙)
   if (s.star === 'warmnight' && fade === 1 && frameLight > 0.01 && a.st !== 'sit') {
