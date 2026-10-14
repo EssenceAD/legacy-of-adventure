@@ -2,7 +2,9 @@
 import { bigNum, vis } from './world/visual';
 import { sfx } from './audio/sfx';
 import { extendAriaOnce } from './world/legends';
-import { migrateGradeKeys } from './world/grade';
+import { migrateGradeKeys, teaserView } from './world/grade';
+import { teaserFitOn } from './teaser/fit';
+import { village } from './teaser/scenes';
 import { landWhy, payLand } from './world/landreq';
 import { decoCoupon, useDecoCoupon } from './world/easter';
 import { clearOverlays } from './ui/overlays';
@@ -91,6 +93,8 @@ function showHud(v: boolean) {
 }
 
 function hideTitle() {
+  // FIRSTLOOK §4: 타이틀 뒤 연출용 등급 끄기
+  teaserView.g = -1;
   const t = $('#title');
   t.classList.add('out');
   setTimeout(() => (t.hidden = true), 600);
@@ -114,6 +118,14 @@ function resetScene() {
 /** 타이틀 뒤에 보여 줄 마을: 저장이 있으면 내 마을, 없으면 이웃 마을 하나 (밤) */
 export function titleBackdrop() {
   resetScene();
+  // FIRSTLOOK §4 (flTeaserFit): 저장과 상관없이 티저 3번째 컷 마을(낮)을 어둡게 깔고 큰 제목 (이어하기는 continueGame이 저장을 다시 불러온다)
+  if (teaserFitOn()) {
+    const c = CONFIG.firstLook.title;
+    village(c.g, c.night);
+    S.innName = c.innName;
+    S.started = false;
+    return;
+  }
   const save = readSave();
   if (save) applySave(save);
   else {

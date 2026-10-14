@@ -15,15 +15,17 @@ import { anim, startGradeAnim, teaserView } from '../world/grade';
 import { startTour, tour } from '../world/evalTour';
 import { S, world } from '../world/state';
 import { findKind } from '../world/town';
-import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
+import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, syncCovers, village } from './scenes';
+import { teaserFitOn, type FitOpts } from './fit';
+import { CONFIG } from '../data/config';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
 import { skipFrame } from '../engine/fps';
 import { skipTapOk } from '../ui/touchHints';
 
 /** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
-function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
-  const { cv, sc } = sceneCanvas(host, TF_W, TF_H, 0.6);
+function fieldCanvas(host: HTMLElement, fit: FitOpts = {}): { ctx: CanvasRenderingContext2D; k: number } {
+  const { cv, sc } = sceneCanvas(host, TF_W, TF_H, 0.6, fit);
   const k = Math.max(1, Math.round(sc * window.devicePixelRatio));
   cv.width = TF_W * k;
   cv.height = TF_H * k;
@@ -51,8 +53,38 @@ const el = (html: string) => {
   const d = document.createElement('div');
   d.innerHTML = html;
   stage.appendChild(d.firstElementChild!);
-  return stage.lastElementChild as HTMLElement;
+  const e = stage.lastElementChild as HTMLElement;
+  lateFade(e);
+  return e;
 };
+
+/** 버그 고침: 컷에 쓰는 초상화는 티저 전에 미리 불러 둔다 (빈 칸으로 뜨지 않게) */
+const TEASER_PORTRAITS = () => [...HEROES.slice(0, 5).map((h) => 'hero_' + h.id), 'legend_aria', 'mc_knight_f', 'legend_leon'];
+const preloaded: HTMLImageElement[] = [];
+export function preloadTeaserPortraits() {
+  if (preloaded.length) return;
+  for (const k of TEASER_PORTRAITS()) {
+    const src = portrait(k);
+    if (!src) continue;
+    const im = new Image();
+    im.src = src;
+    im.decode?.().catch(() => {});
+    preloaded.push(im);
+  }
+}
+/** 그래도 늦은 그림은 그 칸만 0.2초 페이드인 (다른 칸·컷은 그대로 흐른다) */
+function lateFade(root: HTMLElement) {
+  const imgs = root instanceof HTMLImageElement ? [root] : [...root.querySelectorAll('img')];
+  for (const im of imgs) {
+    if (im.complete && im.naturalWidth > 0) continue;
+    im.classList.add('tlate');
+    const show = () => {
+      im.classList.remove('tlate');
+      im.classList.add('tin');
+    };
+    im.addEventListener('load', show, { once: true });
+  }
+}
 
 // ───────── 컷 11개 ─────────
 
@@ -168,7 +200,8 @@ const CUTS: Cut[] = [
       // 전투 2차로 다시 찍음: 이번 주 보스(붉은 무사) · 내려찍기 예고 → 굴러 피하기 → 큰 한 방
       stage.classList.add('dark');
       const host = el('<div class="tscene"></div>');
-      const { ctx, k } = fieldCanvas(host);
+      // FIRSTLOOK §4: 꽉 채울 때 보스가 통째로 보이게
+      const { ctx, k } = fieldCanvas(host, { focus: CONFIG.firstLook.teaser.bossFocus });
       const bar = el('<div class="tbossbar"><span>붉은 무사</span><i><u></u></i></div>');
       const bd = bossCut(ctx, k);
       draw = (t) => {
@@ -217,12 +250,14 @@ const CUTS: Cut[] = [
     enter: () => {
       stage.classList.add('dark');
       const host = el('<div class="tscene attic"></div>');
-      const a = sceneCanvas(host, ATTIC_W, ATTIC_H, 0.62);
+      const a = sceneCanvas(host, ATTIC_W, ATTIC_H, 0.62, { contain: true });
       draw = (t) => {
         drawAttic(a.ctx, t);
         // 천천히 줌인: 정수 배율로 한 단계 (도트가 번지지 않게)
         if (t > 2.4 && !a.cv.dataset.z) {
           a.cv.dataset.z = '1';
+          // FIRSTLOOK §4: 꽉 채울 땐 방 전체(창·상자·칼)가 보이게 — 한 단계 더 당기지 않음
+          if (host.classList.contains('cover')) return;
           const k = Math.round(a.sc * window.devicePixelRatio) + 1;
           a.cv.style.width = (ATTIC_W * k) / window.devicePixelRatio + 'px';
           a.cv.style.height = (ATTIC_H * k) / window.devicePixelRatio + 'px';
@@ -236,7 +271,14 @@ const CUTS: Cut[] = [
     cap: '',
     trans: 'flash',
     enter: () => {
-      stage.classList.add('dark');
+      // FIRSTLOOK §4 (flTeaserFit): 마을 낮(3번째 컷)을 어둡게 깔고 큰 제목
+      if (teaserFitOn()) {
+        const c = CONFIG.firstLook.title;
+        anim.on = false;
+        village(c.g, c.night);
+        stage.classList.add('world', 'fit');
+        el('<i class="tdim"></i>');
+      } else stage.classList.add('dark');
       $('#teaser').classList.add('open');
       el(`<div class="tlogo"><div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div><div class="en">LEGACY OF ADVENTURE</div><p>당신의 이야기는, 다음 세대의 유산이 된다.</p><button class="bigbtn" id="tGo">${auto ? '시작하기' : '타이틀로'}</button></div>`);
       $('#tGo').onclick = finish;
@@ -309,6 +351,7 @@ function frame(now: number) {
   const lt = t - START[i];
   const dur = c.beats * BEAT;
   c.update?.(lt, dur);
+  syncCovers(stage);
   // 글자: 컷 끝 0.3초 전에 사라진다
   if (lt > dur - 0.3 && i < CUTS.length - 1) $('#tCap').classList.remove('on');
   // 마지막 컷: 2초 페이드아웃
@@ -333,6 +376,7 @@ export function playTeaser(isAuto: boolean, done: () => void) {
   saved = { land: S.land, night: S.night, nightT: S.nightT, innName: S.innName, cam: [view.cam.x, view.cam.y], zoom: S.zoom, focus: { ...view.focus } };
   S.innName = '솔바람 여관';
   void preloadTeaserField();
+  preloadTeaserPortraits();
   $('#title').hidden = true;
   const root = $('#teaser');
   root.hidden = false;
@@ -380,9 +424,14 @@ function finish() {
 
 /** 처음 실행: 「터치해서 시작」 → 첫 터치(소리 잠금 해제)와 함께 티저 */
 export function teaserTouchGate(done: () => void) {
+  preloadTeaserPortraits();
   const root = $('#teaser');
   root.hidden = false;
   root.classList.add('gate');
+  // FIRSTLOOK §4 (flTeaserFit): 「터치해서 시작」 = 타이틀과 같은 얼굴 (어둡게 깐 마을 낮 + 큰 제목 · 뒤 마을은 titleBackdrop)
+  const gate = root.querySelector<HTMLElement>('.tgate');
+  if (gate && teaserFitOn() && !gate.querySelector('.logo'))
+    gate.innerHTML = `<div class="logo"><div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div><div class="en">LEGACY OF ADVENTURE</div></div><span class="tgo">${gate.textContent}</span>`;
   $('#title').hidden = true;
   const go = () => {
     root.removeEventListener('pointerdown', go);

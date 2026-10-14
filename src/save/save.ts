@@ -4,6 +4,7 @@
 import { CATALOG, type Kind } from '../data/catalog';
 import { CLASS_RACES, GUEST_KINDS, RACES, RARITIES, type GuestKind } from '../data/classes';
 import { CONFIG } from '../data/config';
+import { teaserView } from '../world/grade';
 import { freshProgress, P, S, world, type Actor, type Building, type IncomeKind, type Progress } from '../world/state';
 
 export interface SavedBuilding {
@@ -99,6 +100,8 @@ export const savesHalted = () => saveHalted;
 export function writeSave(): void {
   if (saveHalted) return;
   if (!S.started && !S.innName) return; // 오프닝 도중엔 저장하지 않는다
+  // 버그 고침(플래그 없음): 시작 전 연출 마을(티저·타이틀 배경 · 가짜)은 저장하지 않는다 (원정 기록 보내기 등이 그때 불러도)
+  if (!S.started && teaserView.g >= 0) return;
   try {
     localStorage.setItem(CONFIG.save.key, JSON.stringify(snapshot()));
   } catch {

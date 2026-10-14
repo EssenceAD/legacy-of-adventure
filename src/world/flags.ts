@@ -165,6 +165,8 @@ export const FLAG_DEFAULTS = {
   flTouchHints: false,
   /** FIRSTLOOK §1 첫 화면 카메라 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 새 세이브는 배율 3으로 여관 본관 가운데에서 시작(배율을 고른 적 없는 기기만) · 장부 2장을 마치거나 땅을 처음 넓히면 배율 2로 한 번 부드럽게(0.6초) · 첫 낮에 화면 아래 30%가 숲이면 반 칸 옮겨 마을을 화면 40~60% 높이로 · 「땅 넓히기 ○G」 팻말 글씨는 금화가 그 값의 50% 이상일 때만 — 옛 저장·고른 배율은 그대로 (숫자 CONFIG.firstLook.cam) */
   flFirstCam: false,
+  /** FIRSTLOOK §4 티저·타이틀이 폰 화면을 채우게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 티저 작은 캔버스 컷(사냥·보스·다락)은 화면을 꽉 채우게(cover · 정수 배율 · 가운데 기준으로 좌우 자름) · 위아래 검은 띠 없음 · 타이틀·「터치해서 시작」·티저 마지막 컷 = 마을 낮(티저 3번째 컷)을 어둡게 깔고 큰 제목 (숫자 CONFIG.firstLook.title) */
+  flTeaserFit: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
