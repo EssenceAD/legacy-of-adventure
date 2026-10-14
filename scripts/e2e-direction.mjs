@@ -2,6 +2,8 @@
 //  실행: URL=http://localhost:5199/ node scripts/e2e-direction.mjs [phone|pc]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+// FIRSTLOOK §5 flSideRail: 접힌 「⋯」 안의 버튼이면 먼저 펼친다 (끄면 아무것도 안 함)
+const railExpand = (pg, sel) => pg.evaluate((s) => { const e = document.querySelector(s); const r = document.getElementById('bRail'); if (e && r && getComputedStyle(e).display === 'none' && !document.body.classList.contains('railopen')) r.click(); }, sel);
 const name = process.argv[2] ?? 'phone';
 const FX = 'tests/fixtures/real_lotte.json';
 const save = fs.existsSync(FX) ? JSON.parse(fs.readFileSync(FX, 'utf8')) : JSON.parse(fs.readFileSync('tests/fixtures/beta_town.json', 'utf8'));
@@ -148,6 +150,7 @@ await p.evaluate(() => { window.__P.story.wind = 'harvest'; });
 await W(800);
 await p.screenshot({ path: `${dir}/${name}_wind_harvest.png` });
 await p.evaluate(() => { window.__P.story.wind = 'stars'; });
+await railExpand(p, '#bDN');
 await p.locator('#bDN').click();
 await W(600);
 await settle();

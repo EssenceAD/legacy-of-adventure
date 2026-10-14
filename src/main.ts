@@ -27,6 +27,7 @@ import { gearHooks, initGear } from './ui/gear';
 import { initPrefsSync } from './ui/prefsSync';
 import { enterSaver, exitSaver, initScreenSaver, ssOn, ssStats } from './ui/screenSaver';
 import { enterUiHide, exitUiHide, initUiHide, uiHidden, uiHideTap } from './ui/uiHide';
+import { initSideRail } from './ui/sideRail';
 import { nextRegionCut, openNewRegions } from './world/regions2';
 import { initCommunity } from './ui/community';
 import './style.css';
@@ -984,6 +985,8 @@ async function boot() {
   initGear();
   initPrefsSync();
   initUiHide();
+  // FIRSTLOOK §5 오른쪽 버튼 줄 줄이기 (flSideRail · 👁 버튼을 만든 뒤 · 끄면 아무것도 안 함)
+  initSideRail();
   initScreenSaver(() => !!S.started && !S.visiting && !isWinOpen() && !isTalking() && !combatOn() && !document.getElementById('raid') && !teaserOn() && !photoOn() && !decorView.on && !placing.pl && !uiHidden() && document.getElementById('title')!.hidden === true);
   initSound();
   void initChat();

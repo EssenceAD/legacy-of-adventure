@@ -1339,6 +1339,8 @@ export const CONFIG = {
     /** §4 flTeaserFit 티저 작은 캔버스 컷: 확대 상한 = 폭 맞춤 × maxZoom · 남는 위아래 = 같은 장면을 늘려 어둡게(bgDim)·흐리게(bgBlur px) · 보스 컷은 bossFocus(장면 도트 가로 범위 · 붉은 무사)가 통째로 보이게 · 다락은 방 전체(자르지 않음) */
     teaser: { maxZoom: 1.4, bgDim: 0.55, bgBlur: 8, bossFocus: [100, 168] as [number, number] },
     title: { g: 4, night: false, dim: 0.55, koScale: 2, fitPad: 24, innName: '솔바람 여관' },
+    /** §5 flSideRail: 「⋯」 안에 접히는 버튼(id · 펼친 순서 · 위에서 아래로) · 빨간 점·접힘 확인 주기(ms) */
+    rail: { items: ['bDN', 'bHarm', 'hSpk', 'bEye'] as string[], tickMs: 500 },
   },
   /**
    * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식
