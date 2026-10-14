@@ -26,7 +26,7 @@ export interface ClassDef {
   pants: string;
   boots: string;
   accent: string;
-  weapon: 'sword' | 'staff' | 'axe' | 'dagger' | 'book' | 'bow' | 'holy' | 'lantern' | 'pinwheel' | 'brush' | null;
+  weapon: 'sword' | 'staff' | 'axe' | 'dagger' | 'book' | 'bow' | 'holy' | 'lantern' | 'pinwheel' | 'brush' | 'greatsword' | null;
   /** 리마스터: 등 뒤 망토 · 화살통 · 쌍단검 */
   cape?: string;
   quiver?: boolean;

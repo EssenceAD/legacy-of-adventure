@@ -6,6 +6,8 @@
 import type { ClassDef } from '../data/classes';
 import { dk, lt, mix, type GridT } from './pixel';
 import { arcC, FEATHER, hair2, headgear, quiver, type Dot2, type Pose2 } from './sprites2';
+import type { StarId } from '../data/fivestars';
+import { STAR_LOOKS, starArm, starBehind, starFront, starHead, starSigPose, starTrail } from './stars2';
 
 export interface NamedLook {
   tier: 'legend' | 'hero';
@@ -26,6 +28,8 @@ export interface NamedLook {
   noBraids?: boolean;
   /** 마법사 지팡이 구슬 색 (무기 등급 색이 없을 때) */
   orb?: string;
+  /** FIVESTARS ④: 다섯 별 (신화 단계 · 고유 색 망토 그대로 · 무지갯빛 이름표) */
+  star?: StarId;
 }
 
 export const LEGEND_RIM = dk('#ffb04a', 0.45);
@@ -59,6 +63,8 @@ export const NAMED: Record<string, NamedLook> = {
   seril: { tier: 'hero', head: 'hair', patch: { style: 'long', hair: '#c8e070', cloth: '#6a9a4a', arm: '#f2ead8', accent: '#e8e0a0', hat: undefined }, extras: ['leafCrown'], sig: 'hairflip', sigN: 2 },
   harald: { tier: 'hero', head: 'class', patch: { helm: '#4a4a56', beard: '#c83a2a', cloth: '#4a3a3a', accent: '#c9a04a' }, extras: ['mug'], sig: 'drink', sigN: 2 },
   nova: { tier: 'hero', head: 'hair', patch: { style: 'short', hair: '#c8c8d8', cloth: '#2a3360', arm: '#2a3360', accent: '#e8c45a', weapon: null, face: { eyes: 'dot', mouth: 'tiny', glasses: true }, glassesColor: '#3a3a4a' }, extras: ['bun', 'starRobe', 'telescope'], sig: 'peek', sigN: 2 },
+  // ── FIVESTARS ④ 다섯 별 (stars2.ts) ──
+  ...STAR_LOOKS,
   twins: { tier: 'hero', head: 'hair', patch: { style: 'short', hair: '#2a2228', cloth: '#3a3640', arm: '#3a3640', accent: '#3f6fd1' }, extras: ['blueScarf'], noCape: true, sig: 'nod', sigN: 2 },
 };
 
@@ -68,7 +74,8 @@ export const namedOf = (d: ClassDef): NamedLook | undefined => (d.named ? NAMED[
 export function applyNamed(d: ClassDef, L: NamedLook): ClassDef {
   const o: ClassDef = { ...d, ...L.patch, face: { ...d.face, ...(L.patch.face ?? {}) } };
   if (L.orb && !d.weaponColor) o.weaponColor = L.orb;
-  if (d.mythic && L.tier === 'legend') o.cape = STAR_NAVY;
+  if (d.mythic && L.tier === 'legend' && !L.star) o.cape = STAR_NAVY;
+  if (L.star) o.mythic = true;
   return o;
 }
 
@@ -84,6 +91,7 @@ export function sigPoses(L: NamedLook): Pose2[] {
     if (L.sig === 'pray') p.pray = 1;
     if (L.sig === 'nod' && i === 2) p.blink = 1;
     if (L.sig === 'puff' && i === 1) p.blink = 1;
+    if (L.star) Object.assign(p, starSigPose(L, i));
     out.push(p);
   }
   return out;
@@ -111,8 +119,9 @@ export function namedBehind(c: NCtx) {
   if (back) return;
   if ((has(c, 'cape') || def.mythic) && def.cape) {
     longCape(c, def.cape, false);
-    if (def.mythic) mythicStars(G, def.cape, by, false);
+    if (def.mythic && !c.L.star) mythicStars(G, def.cape, by, false);
   }
+  if (c.L.star) starBehind(c);
   if (has(c, 'wolfTail')) tail(c, def.hair, lt(def.hair, 0.5), false);
   if (has(c, 'dragonTail')) tail(c, '#2a8a80', '#e8c45a', false);
   if (has(c, 'scarf')) scarfTail(c);
@@ -206,6 +215,7 @@ export function namedHead(c: NCtx) {
     G.set(X - 10, Y - 2 + bo, C);
     G.set(X + 10, Y - 2 + bo, C);
   }
+  if (c.L.star) starHead(c);
   if (has(c, 'starHat')) {
     for (const [dx, dy] of [[-1, -6], [1, -5], [-3, -4], [2, -7]] as [number, number][]) G.set(X + dx, Y + dy, STAR_GOLD, 'flat');
   }
@@ -276,13 +286,14 @@ export function namedFront(c: NCtx) {
   if (back) {
     if ((has(c, 'cape') || def.mythic) && def.cape) {
       longCape(c, def.cape, true);
-      if (def.mythic) mythicStars(G, def.cape, by, true);
+      if (def.mythic && !c.L.star) mythicStars(G, def.cape, by, true);
     }
     if (has(c, 'wolfTail')) tail(c, def.hair, lt(def.hair, 0.5), true);
     if (has(c, 'dragonTail')) tail(c, '#2a8a80', '#e8c45a', true);
     if (has(c, 'scarf')) scarfTail(c);
     if (has(c, 'quiver')) quiver(G, by, true);
   }
+  if (c.L.star) starFront(c);
   // 신화 표시: 가슴 별 장식 (망토 없는 앞모습에서도 보이게)
   if (def.mythic && !back) {
     G.set(X + 3, by + 1, STAR_GOLD, 'flat');
@@ -295,6 +306,7 @@ export function namedFront(c: NCtx) {
 export function namedArm(c: NCtx, arm: string): boolean {
   const { G, def, by, pose } = c;
   if (!pose.sig) return false;
+  if (c.L.star) return starArm(c, arm);
   const i = pose.sig;
   const X = Math.round(c.hx);
   const Y = Math.round(c.hy);
@@ -513,6 +525,8 @@ export function namedTrail(c: NCtx): boolean {
   const cx = 13.5;
   const cy = by + 1.5;
   switch (c.L.trail) {
+    case 'star':
+      return starTrail(c);
     case 'silverArc':
       arcC(G, cx, cy, 9.5, -1.1, 2.3, '#ffffff', '#cfd8ea', '#8a96b0', 2);
       for (const [x, y] of [[21, by + 6], [22, by + 5], [21, by + 4], [20, by + 5]]) fx(x, y, '#fffbe0');

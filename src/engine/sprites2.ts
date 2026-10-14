@@ -4,6 +4,7 @@
 import type { ClassDef } from '../data/classes';
 import { dk, Grid, lt, mix, ramp, type GridT } from './pixel';
 import { applyNamed, NAMED, namedArm, namedBehind, namedFront, namedHead, namedOf, namedTrail, shadowStep, telescopeRest, walkGlint, type NCtx } from './named2';
+import { greatsword, pawTop, pinwheelTop } from './stars2';
 
 export type Dot2 = 'knight' | 'cleric' | 'rogue' | 'mage' | 'dwarf' | 'hunter' | 'keeper' | 'post' | 'hero';
 
@@ -619,6 +620,12 @@ function sword(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | '
 
 /** 성스러운 지팡이: 나무 자루 + 끝에 금 별 (빛 = 'fx') */
 function holyStaff(G: GridT, def: ClassDef, x: number, top: number, bottom: number, glow: number) {
+  if (def.named === 'star_walwal') {
+    // FIVESTARS ④ 왈왈콩선생: 강아지 발자국 성표
+    G.rect(x, top + 2, 1, bottom - top - 2, SHAFT);
+    G.set(x, top + 4, def.accent, 'flat');
+    return pawTop(G, x, top, glow);
+  }
   const star = def.weaponColor ?? '#ffd34a';
   G.rect(x, top + 2, 1, bottom - top - 2, SHAFT);
   G.set(x, top + 4, def.accent, 'flat');
@@ -673,6 +680,7 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
   const W = (hx: number, hy: number, mode: 'rest' | 'up' | 'fwd' | 'mid' | 'low') => {
     if (!w) return;
     if (w === 'sword') return sword(G, def, hx, hy, mode);
+    if (w === 'greatsword') return greatsword(G, def, hx, hy, mode);
     if (w === 'dagger') return dagger(G, hx, hy, mode, def.weaponColor);
     if (w === 'book') return book(G, def, hx, hy + (mode === 'rest' ? 1 : 0));
     if (w === 'axe') return axe2(G, def, hx, hy, mode);
@@ -729,6 +737,8 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     G.rect(15, by + 1, 3, 2, arm);
     G.rect(18, by + 1, 2, 2, SKN);
     if (a === 1) G.rect(13, by + 2, 2, 2, SKN);
+    // FIVESTARS ④: 다섯 별 사냥꾼(따뜻한밤)은 놓는 순간 궤적 (다른 전설 활은 예전 그대로)
+    if (a === 3 && def.named?.startsWith('star_')) trail?.();
     return bow2(G, def, 19, by - 7, 18, a === 1 ? 1 : a === 3 ? 2 : 0);
   }
   if (pose.atk === 1) {
@@ -774,6 +784,13 @@ function frontArm(G: GridT, def: ClassDef, kind: Dot2, pose: Pose2, by: number, 
     return;
   }
   const aF = pose.armF ?? 0;
+  if (!sit && w === 'greatsword') {
+    // 양손 대검 (FIVESTARS ④ 웅스): 팔을 굽혀 손이 어깨 앞 · 날은 어깨 위 뒤로 크게
+    G.rect(15, by + 1, 2, 2, arm);
+    greatsword(G, def, 16, by + 1 + Math.min(0, aF), 'rest');
+    G.rect(16, by + 1 + Math.min(0, aF), 2, 2, SKN);
+    return;
+  }
   if (!sit && kind === 'cleric' && (w === 'holy' || w === 'staff' || w === 'book')) {
     // 사제: 소매 끝 금 테 · 손을 몸 밖으로 — 지팡이를 쥐거나 책을 든다
     G.rect(15, by + 1, 2, 3, dk(arm, 0.08));
@@ -1082,6 +1099,13 @@ function axe2(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 'u
 
 /** 마법사 지팡이: 나무 자루 + 끝에 빛 구슬 (둘레 'fx' · tw = 1px 반짝) */
 function orbStaff(G: GridT, def: ClassDef, x: number, top: number, bottom: number, glow: number, tw = 0) {
+  if (def.named === 'star_ikamolly') {
+    // FIVESTARS ④ 이카몰리: 끝에 바람개비 (tw = 한 칸 돈 모양)
+    G.rect(x, top + 2, 1, bottom - top - 2, SHAFT);
+    pinwheelTop(G, x, top, tw ? 1 : 0);
+    if (glow >= 2) for (const [dx, dy] of [[-3, -2], [3, 2], [0, -4]]) G.set(x + dx, top + dy, '#bfe8ff', 'fx');
+    return;
+  }
   const o = def.weaponColor ?? '#7fe6ff';
   G.rect(x, top + 2, 1, bottom - top - 2, SHAFT);
   G.set(x - 1, top + 2, SHAFT);

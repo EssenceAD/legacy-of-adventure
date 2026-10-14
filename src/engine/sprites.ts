@@ -6,6 +6,7 @@ import { canvasAlive, Lru } from './lru';
 import { drawChar2, drawLying2, drawRoll2, type Dot2, type Pose2 } from './sprites2';
 import { applyNamed, LEGEND_RIM, MYTHIC_RIM, namedOf, sigPoses } from './named2';
 import { vis } from '../world/visual';
+import type { StarId } from '../data/fivestars';
 
 const SK = { skin: '#f2c49b', skin2: '#d99a78', eye: '#2a1a2e', blush: '#ec8f86' };
 
@@ -445,6 +446,36 @@ function weapon(G: GridT, def: ClassDef, hx: number, hy: number, mode: 'rest' | 
       G.rect(hx, hy - 1, 1, 3, hd);
     }
   }
+  if (w === 'greatsword') {
+    // FIVESTARS ④ 양손 대검 (예전 도트용 — 새 도트는 stars2.ts greatsword): 긴 2px 날 + 금 날밑
+    const bl = wc ?? '#e9eef7';
+    const gd = '#e0b050';
+    if (mode === 'rest') {
+      G.line(hx + 1, hy, hx + 5, hy - 10, bl);
+      G.line(hx + 2, hy, hx + 6, hy - 10, ramp(bl, -1));
+      G.rect(hx - 1, hy, 4, 1, gd);
+      G.set(hx, hy + 1, '#5a3a2a');
+    }
+    if (mode === 'mid') {
+      G.line(hx, hy, hx + 7, hy - 7, bl);
+      G.line(hx + 1, hy, hx + 8, hy - 7, ramp(bl, -1));
+      G.rect(hx - 1, hy - 1, 3, 2, gd);
+    }
+    if (mode === 'low') {
+      G.line(hx, hy, hx + 8, hy + 4, bl);
+      G.rect(hx - 1, hy - 1, 2, 2, gd);
+    }
+    if (mode === 'up') {
+      G.line(hx - 1, hy, hx - 7, hy - 9, bl);
+      G.line(hx, hy, hx - 6, hy - 9, ramp(bl, -1));
+      G.rect(hx - 1, hy - 1, 3, 2, gd);
+    }
+    if (mode === 'fwd') {
+      G.rect(hx + 1, hy, 9, 1, bl);
+      G.rect(hx + 1, hy + 1, 9, 1, dk(bl, 0.15));
+      G.rect(hx, hy - 1, 1, 3, gd);
+    }
+  }
   if (w === 'axe') {
     const h = '#7a5030';
     const b = wc ?? '#c9d1dc';
@@ -583,6 +614,8 @@ export interface CharFrames {
   sig?: HTMLCanvasElement[];
   /** 전설(금빛 외곽선 · 26×35) · 이름 있는 영웅 · 신화 */
   tier?: 'legend' | 'hero' | 'mythic';
+  /** FIVESTARS ④: 다섯 별 (무지갯빛 이름표 · 따뜻한밤 등불 빛) */
+  star?: StarId;
 }
 
 /** 직업 하나의 모든 프레임: 앞 걷기4·뒤 걷기4·대기2·뒤 대기2·앉기2·공격2·기도/밭일2 */
@@ -730,6 +763,7 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
     sleep: [drawSleep(L ? applyNamed(d, L) : d, 0).render(), drawSleep(L ? applyNamed(d, L) : d, 1).render()],
     blink: R({ blink: 1 }),
     tier: tierOf(d),
+    star: L?.star,
   };
   // 시그니처 동작은 처음 재생할 때 만든다 (첫 생성 시간을 늘리지 않게)
   if (L) Object.defineProperty(f, 'sig', { enumerable: true, get: () => (sigC ??= sigPoses(L).map(R)) });
