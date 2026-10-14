@@ -153,19 +153,22 @@ export function tickSpectacle(viewing: boolean) {
     if (gone) spectacles.splice(i, 1);
   }
   const h = Math.floor(now);
-  // FIVESTARS 고느끼 부탁: 그날 마지막 기회인데 아직 사건이 없으면 확률 없이 꼭 (마을을 볼 때까지 그 시간 안에서 다시 시도)
-  const force = fiveSpecForce(hourNow());
+  // FIVESTARS 고느끼 부탁: 오늘(한국 날짜) 사건이 없으면 오늘 첫 세션 뒤 게임 1시간 안에 확률 없이 꼭
+  //  매 호출(0.5초)마다 다시 봐서 마을을 볼 때까지 그 시간 안에서 다시 시도 · 게임 밤(07시 전)·하루 수·동시 수 제한도 넘는다 (1번만 — 생기면 specKst가 오늘이 됨)
+  const force = fiveSpecForce();
   if (h === today.hour && !force) return;
   today.hour = h;
   if (today.day !== S.day) Object.assign(today, { day: S.day, n: 0 });
-  if (!viewing || tour.on || today.n >= SP.perDay || spectacles.length >= 2) return;
-  if (hourNow() < 7 || (!force && Math.random() > SP.chancePerHour)) return;
+  if (!viewing || tour.on) return;
+  if (!force && (today.n >= SP.perDay || spectacles.length >= 2 || hourNow() < 7 || Math.random() > SP.chancePerHour)) return;
   for (let i = 0; i < 4; i++) {
     if (spawn(roll())) {
       today.n++;
       return;
     }
   }
+  // 보장 사건: 손님·건물이 모자라 못 생겼으면 언제나 생기는 것(여행자 무리 · 떠돌이 상인)으로
+  if (force && (spawn('group') || spawn('merchant'))) today.n++;
 }
 
 export const removeSpectacle = (s: Spectacle) => {

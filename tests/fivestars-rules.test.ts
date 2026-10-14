@@ -1,9 +1,9 @@
-// FIVESTARS 부탁 규칙 바꿈: 왈왈 「밤 출발」 = 현실 밤 또는 게임 안 밤(보낼 때 기록) · 고느끼 부탁 중 게임 하루 구경거리 1번 보장(그날 마지막 기회)
+// FIVESTARS 부탁 규칙 바꿈: 왈왈 「밤 출발」 = 현실 밤 또는 게임 안 밤(보낼 때 기록) · 고느끼 부탁 중 현실 하루(한국 시간) 구경거리 1번 보장(그날 첫 세션 게임 1시간 안)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONFIG } from '../src/data/config';
 import { makeAdventurer } from '../src/world/adventurers';
 import { resolveRun, sendParty } from '../src/world/expeditions';
-import { fiveNightWin, fiveSpecForce, fiveState, walwalNightRun } from '../src/world/fivestars';
+import { fiveNightWin, fiveSpecForce, fiveSpecSeen, fiveState, walwalNightRun } from '../src/world/fivestars';
 import { setFlag } from '../src/world/flags';
 import { spectacles, tickSpectacle } from '../src/world/spectacle';
 import { P, resetProgress, S, world, type Actor, type Quest, type Run } from '../src/world/state';
@@ -96,76 +96,125 @@ describe('왈왈 「밤 출발 원정」', () => {
   });
 });
 
-describe('고느끼: 게임 하루 구경거리 1번 보장', () => {
-  const H = F.gonu.forceHour;
-  /** 게임 시각 h시로 */
-  const setHour = (h: number) => void (S.clock = (((h - CONFIG.clock.dayStartHour + 24) % 24) * 60) + 5);
+describe('고느끼: 현실 하루(한국 시간) 구경거리 1번 보장', () => {
+  const W = F.gonu.forceWithinGameHours;
+  /** 한국 시간 2026-10-d h:mi → ms */
+  const kst = (d: number, h: number, mi = 0) => Date.UTC(2026, 9, d, h - 9, mi);
+  /** 게임 시각 h시 m분으로 */
+  const setHour = (h: number, m = 5) => void (S.clock = ((h - CONFIG.clock.dayStartHour + 24) % 24) * 60 + m);
   const guests = () => {
     mk();
     mk();
   };
+  const nowAt = (t: number) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(t);
+  };
 
-  it('목표 2번 그대로 · 마지막 기회는 23시', () => {
+  it('목표 2번 그대로 · 보장 창은 게임 1시간 (옛 23시 강제는 없음)', () => {
     expect(F.gonu.events).toBe(2);
-    expect(H).toBe(23);
+    expect(W).toBe(1);
+    expect('forceHour' in F.gonu).toBe(false);
   });
-  it('그날 사건이 없으면 마지막 기회에 확률 없이 생긴다', () => {
+  it('오늘 사건이 없으면 오늘 첫 세션 게임 1시간 안에 확률 없이 1번', () => {
+    nowAt(kst(14, 12));
     guests();
-    setHour(H);
-    expect(fiveSpecForce(H)).toBe(true);
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    tickSpectacle(true);
-    expect(spectacles.length).toBe(1);
-    expect(P.five.specDay).toBe(S.day);
-    expect(fiveSpecForce(H)).toBe(false);
-  });
-  it('마을을 안 보고 있었으면 그 시간 안에서 다시 시도', () => {
-    guests();
-    setHour(H);
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    tickSpectacle(false);
-    expect(spectacles.length).toBe(0);
-    tickSpectacle(true);
-    expect(spectacles.length).toBe(1);
-  });
-  it('마지막 기회가 아닌 시간엔 보장 없음', () => {
-    expect(fiveSpecForce(H - 1)).toBe(false);
-    guests();
-    setHour(H - 1);
+    setHour(10);
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     tickSpectacle(true);
+    expect(spectacles.length).toBe(1);
+    expect(P.five.specKst).toBe('2026-10-14');
+    expect(P.five.sessKst).toBe('2026-10-14');
+    expect(fiveSpecForce()).toBe(false);
+    S.clock += 20;
+    tickSpectacle(true);
+    expect(spectacles.length).toBe(1);
+  });
+  it('마을을 안 보고 있었으면 그 1시간 안에서 다시 시도 (매시 굴림이 안 걸려도)', () => {
+    nowAt(kst(14, 12));
+    guests();
+    setHour(10, 10);
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    tickSpectacle(false);
+    expect(spectacles.length).toBe(0);
+    S.clock += 40; // 같은 게임 시 · 시작 뒤 40분
+    tickSpectacle(true);
+    expect(spectacles.length).toBe(1);
+  });
+  it('세션 시작 뒤 게임 1시간이 지나면 보장 끝', () => {
+    nowAt(kst(14, 12));
+    guests();
+    setHour(10);
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    tickSpectacle(false);
+    S.clock += W * 60 + 1;
+    expect(fiveSpecForce()).toBe(false);
+    tickSpectacle(true);
     expect(spectacles.length).toBe(0);
   });
-  it('그날 이미 사건이 있었으면 보장 없음', () => {
-    P.five.specDay = S.day;
+  it('게임 밤(07시 전)에도 보장 사건은 생긴다', () => {
+    nowAt(kst(14, 21));
     guests();
-    setHour(H);
-    expect(fiveSpecForce(H)).toBe(false);
+    setHour(2);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    tickSpectacle(true);
+    expect(spectacles.length).toBe(1);
+  });
+  it('오늘(한국 날짜) 이미 사건이 있었으면 보장 없음', () => {
+    nowAt(kst(14, 12));
+    P.five.specKst = '2026-10-14';
+    guests();
+    setHour(10);
+    expect(fiveSpecForce()).toBe(false);
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     tickSpectacle(true);
     expect(spectacles.length).toBe(0);
   });
   it('어제 사건은 오늘 보장을 막지 않는다', () => {
-    P.five.specDay = S.day - 1;
-    expect(fiveSpecForce(H)).toBe(true);
+    nowAt(kst(14, 12));
+    P.five.specKst = '2026-10-13';
+    expect(fiveSpecForce()).toBe(true);
+  });
+  it('한국 시간 날짜 경계: 23:59에 생긴 사건은 00:01의 새 날 보장을 막지 않는다 (now 주입)', () => {
+    setHour(10);
+    expect(fiveSpecForce(kst(14, 23, 59))).toBe(true);
+    fiveSpecSeen(kst(14, 23, 59));
+    expect(P.five.specKst).toBe('2026-10-14');
+    expect(fiveSpecForce(kst(14, 23, 59))).toBe(false);
+    // 세션이 자정을 넘어 이어져도 새 한국 날짜의 첫 호출이 새 세션 시작
+    S.clock += 2;
+    expect(fiveSpecForce(kst(15, 0, 1))).toBe(true);
+    expect(P.five.sessKst).toBe('2026-10-15');
+    // UTC로는 같은 날(14:59 / 15:01 UTC)이라도 한국 날짜로 갈린다
+    expect(new Date(kst(14, 23, 59)).getUTCDate()).toBe(new Date(kst(15, 0, 1)).getUTCDate());
   });
   it('부탁을 채웠거나 · 장이 안 열렸거나 · 플래그 꺼짐이면 보장 없음', () => {
+    nowAt(kst(14, 12));
     P.five.done = ['gonu'];
-    expect(fiveSpecForce(H)).toBe(false);
+    expect(fiveSpecForce()).toBe(false);
     P.five.done = [];
     P.five.open = false;
-    expect(fiveSpecForce(H)).toBe(false);
+    expect(fiveSpecForce()).toBe(false);
     P.five.open = true;
     setFlag('fiveStars', false);
-    expect(fiveSpecForce(H)).toBe(false);
+    expect(fiveSpecForce()).toBe(false);
     guests();
-    setHour(H);
+    setHour(10);
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     tickSpectacle(true);
     expect(spectacles.length).toBe(0);
   });
-  it('옛 저장(specDay 없음)은 0으로', () => {
-    delete (P.five as Partial<typeof P.five>).specDay;
-    expect(fiveState().specDay).toBe(0);
+  it('옛 저장(새 칸 없음 · 옛 specDay만)은 기본값으로 · 바로 보장 대상', () => {
+    const f = P.five as unknown as Record<string, unknown>;
+    delete f.specKst;
+    delete f.sessKst;
+    delete f.sessAt;
+    f.specDay = 7;
+    const s = fiveState();
+    expect(s.specKst).toBe('');
+    expect(s.sessKst).toBe('');
+    expect(s.sessAt).toBe(0);
+    nowAt(kst(14, 12));
+    expect(fiveSpecForce()).toBe(true);
   });
 });

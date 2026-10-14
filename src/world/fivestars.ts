@@ -12,6 +12,8 @@ import { FIVE_SHARD, FIVE_TITLE } from '../data/story/fivestars_extra';
 import type { SLine } from '../data/story/v1';
 import { track } from '../net/telemetry';
 import { makeAdventurer } from './adventurers';
+import { absHours } from './clock';
+import { kstDay } from './goldsink';
 import { equippedItems } from './items';
 import { vis } from './visual';
 import { freshFive, markDirty, P, S, world, type Actor, type FiveBase, type FiveState } from './state';
@@ -189,15 +191,32 @@ export function fiveNightWin(ms: Actor[]) {
 
 /** 고느끼 부탁이 진행 중 (장 열림 · 칸 안 채움 · 켜짐) */
 const gonuActive = () => fiveOn() && fiveState().open && !fiveState().done.includes('gonu');
-/** 구경거리 사건이 생겼다 (world/spectacle.ts spawn) — 그 게임 날 기록 */
-export function fiveSpecSeen() {
+/** 구경거리 사건이 생겼다 (world/spectacle.ts spawn) — 그 한국 날짜 기록 */
+export function fiveSpecSeen(now = Date.now()) {
   const f = fiveState();
-  if (f.specDay === S.day) return;
-  f.specDay = S.day;
+  const d = kstDay(now);
+  if (f.specKst === d) return;
+  f.specKst = d;
   markDirty();
 }
-/** 그날 마지막 사건 기회(forceHour시)인데 고느끼 부탁 중 아직 사건이 없었으면: 꼭 생기게 */
-export const fiveSpecForce = (hour: number) => hour === C().gonu.forceHour && gonuActive() && fiveState().specDay !== S.day;
+/**
+ * 고느끼 부탁 중 현실 하루 구경거리 1번 보장 (world/spectacle.ts tickSpectacle이 마을이 돌아가는 동안 0.5초마다 부름)
+ *  오늘(한국 날짜) 부탁 중 처음 불린 때 = 오늘 첫 세션 시작 → 게임 시각(sessAt) 기록
+ *  오늘 아직 사건이 없고 그때부터 게임 forceWithinGameHours시간 안이면 true (확률 · 07~23시 · 하루 수 제한 없이 꼭)
+ */
+export function fiveSpecForce(now = Date.now()): boolean {
+  if (!gonuActive()) return false;
+  const f = fiveState();
+  const d = kstDay(now);
+  const t = absHours();
+  // 오늘 첫 세션 · 또는 게임 시계가 뒤로 갔으면(옛 저장으로 덮임) 지금부터 다시 잰다
+  if (f.sessKst !== d || t < f.sessAt) {
+    f.sessKst = d;
+    f.sessAt = t;
+    markDirty();
+  }
+  return f.specKst !== d && t - f.sessAt < C().gonu.forceWithinGameHours;
+}
 
 // ───────── §1 흐름 ─────────
 

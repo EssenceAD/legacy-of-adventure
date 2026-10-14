@@ -671,8 +671,11 @@ export function freshFive() {
     setSeen: [] as number[],
     heart: [] as string[],
     oswin: false,
-    /** 구경거리 사건이 마지막으로 생긴 게임 날 (고느끼 부탁: 하루 1번 보장) */
-    specDay: 0,
+    /** 고느끼 부탁: 현실 하루(한국 시간) 구경거리 1번 보장 — specKst = 사건이 마지막으로 생긴 한국 날짜 · sessKst/sessAt = 부탁 중 그 한국 날짜에 마을이 처음 돌아간 때(게임 시각 absHours)
+     *  (옛 specDay = 게임 날 기준은 안 씀 — 남아 있어도 무시) */
+    specKst: '',
+    sessKst: '',
+    sessAt: 0,
   };
 }
 export interface FiveBase {

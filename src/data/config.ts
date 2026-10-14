@@ -1305,8 +1305,9 @@ export const CONFIG = {
   fiveStars: {
     // pace.md: +12는 초월 단계라 라이트 유저 3일 안에 2개는 무리 → +10 (일반 강화 끝) · 사건은 마을 화면 게임 1시간 7%라 3번은 p50 8일 → 2번 + 숨은 어울림 새 발견도 사건 칸에 셈(hiddenCounts)
     woongs: { enh: 10, items: 2, kills: 1 },
-    // 부탁 중에는 게임 하루에 구경거리 1번 보장: 그날 아직 없으면 그날 마지막 기회(forceHour시 · 사건은 07~23시 매시 확률)에 꼭 생긴다
-    gonu: { events: 2, hidden: 1, hiddenCounts: true, forceHour: 23 },
+    // 부탁 중에는 현실 하루(한국 시간 0시 기준)에 구경거리 1번 보장: 오늘 아직 없으면 오늘 마을이 처음 돌아간 뒤 게임 forceWithinGameHours시간 안에 꼭 생긴다
+    //  (마을을 보고 있을 때 · 평소 사건은 07~23시만이지만 보장 사건은 게임 밤에도 — 저녁에 켜는 유저도 받게)
+    gonu: { events: 2, hidden: 1, hiddenCounts: true, forceWithinGameHours: 1 },
     ikamolly: { sets: 1, wins: 10 },
     // pace.md: 밤 출발 = 현실 20~04시 또는 게임 안 밤(22~06시, 보낼 때 기록) — 이틀에 한 번 저녁에 켜는 라이트 유저 기준 3번
     walwal: { nights: 3, hp: 60, talks: 5 },
