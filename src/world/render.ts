@@ -24,7 +24,8 @@ import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
 import { drawAmbient, drawLight, glow, NL, setPhotoNL } from './daynight';
 import { puff, updDrawParts } from './fx';
-import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, signSpot, treeImg, trimGround, type Wild } from './ground';
+import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, litGround, lookFor, signSpot, treeImg, trimGround, type Wild } from './ground';
+import { litHex } from './nightLook';
 import { vis } from './visual';
 import { stars } from './progress';
 import { drawFelling } from './felling';
@@ -179,45 +180,29 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   // 마을 등급 연출이 끝났으면 앞뒤 두 장 중 지금 것만 남긴다
   if (!anim.on) trimGround();
 
-  // 1) 바닥 + 밤 색 한 번
-  ctx.fillStyle = calmForest('#3e6a34');
+  // 1) 바닥 + 밤 색 — 바닥·밤 색조·숲 덧칠을 (바닥 · 밤 단계)마다 한 번 구운 한 장을 놓기만 한다
+  //    (웅스 신고: 새벽 04시 숲·바닥이 1~3초마다 잠깐 어두워짐 — 예전엔 매 프레임 화면 전체에 multiply + 짝홀 자르기 + 반투명으로 덧칠)
+  //    프레임 시작 상태도 늘 같게 (앞 프레임이 합성·투명도를 남겼어도 바닥 밝기는 같다)
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  const look = lookFor(NL);
+  ctx.fillStyle = litHex(calmForest('#3e6a34'), look);
   ctx.fillRect(0, 0, LW, LH);
-  if (okToDraw(ground.c)) ctx.drawImage(ground.c, OX - ground.ox, OY - ground.oy);
-  // 5단계: 마을 등급이 오르는 중 — 새 바닥이 위에서 아래로 덮어쓴다
+  const lg = litGround(ground, look);
+  if (okToDraw(lg)) ctx.drawImage(lg, OX - ground.ox, OY - ground.oy);
+  // 5단계: 마을 등급이 오르는 중 — 새 바닥이 위에서 아래로 덮어쓴다 (같은 밤 색으로 구운 것)
   if (anim.on) {
     const ng = groundFor(groundKey(S.visiting ? S.visiting.id : '', anim.to), anim.to);
+    const nlg = litGround(ng, look);
     const cut = Math.round(animF() * LH);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, LW, cut);
     ctx.clip();
-    ctx.drawImage(ng.c!, OX - ng.ox, OY - ng.oy);
+    if (okToDraw(nlg)) ctx.drawImage(nlg, OX - ng.ox, OY - ng.oy);
     ctx.restore();
-    ctx.fillStyle = '#fff3b0';
+    ctx.fillStyle = litHex('#fff3b0', look, false);
     ctx.fillRect(0, cut - 1, LW, 2);
-  }
-  if (NL) {
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = tintColor(NL / CONFIG.dayNight.tintSteps);
-    ctx.fillRect(0, 0, LW, LH);
-    // VISUAL §2: 밤엔 숲을 더 어둡게 → 마을이 「불 켜진 섬」 (울타리 안은 그대로)
-    if (vis('calmWorld')) {
-      const [a, b] = landBounds();
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, LW, LH);
-      ctx.moveTo(OX + sx(a, a), OY + sy(a, a));
-      ctx.lineTo(OX + sx(a, b), OY + sy(a, b));
-      ctx.lineTo(OX + sx(b, b), OY + sy(b, b));
-      ctx.lineTo(OX + sx(b, a), OY + sy(b, a));
-      ctx.closePath();
-      ctx.clip('evenodd');
-      ctx.globalAlpha = Math.min(1, (NL / CONFIG.dayNight.tintSteps) * 0.9);
-      ctx.fillStyle = '#6a6c9a';
-      ctx.fillRect(0, 0, LW, LH);
-      ctx.restore();
-    }
-    ctx.globalCompositeOperation = 'source-over';
   }
   // 땅 개편: 넓히는 중 쓰러지는 나무 (바닥 다음 · 건물보다 먼저)
   drawFelling(ctx, dt);

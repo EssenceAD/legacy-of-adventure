@@ -9,6 +9,8 @@ import { curLand, entrance, groundVersion, inLand, landBounds, paintOf, pathT, r
 import { gradeFolk, gradeNow, gradeProps, outerRoad } from './grade';
 import { calmTree } from '../engine/palette';
 import { vis } from './visual';
+import { canvasAlive } from '../engine/lru';
+import { litKey, nightLook, VEIL_RGB, type NightLook } from './nightLook';
 
 // ───────── VISUAL §2 calmWorld: 조용한 바닥 · 또렷한 사람 ─────────
 const hx = (h: string) => [1, 3, 5].map((o) => parseInt(h.slice(o, o + 2), 16));
@@ -58,6 +60,8 @@ export interface Ground {
   /** 앞 층 캔버스는 나무가 있는 곳만 잘라 둔다 (바닥 그림 기준 왼쪽 위) */
   frontX?: number;
   frontY?: number;
+  /** 밤 바닥 (바닥 + 밤 색 + 숲 덧칠을 한 번 구운 것) — litKey가 같으면 그대로 */
+  lit?: { key: string; c: HTMLCanvasElement } | null;
 }
 export const ground: Ground = { c: null, ox: 0, oy: 0, key: '', wild: [] };
 /** 마을 등급이 바뀌는 연출 동안 앞뒤 두 장을 같이 쓴다 */
@@ -80,21 +84,21 @@ export function trimGround() {
 }
 export function groundMem() {
   let px = 0;
-  for (const g of cache.values()) px += (g.c?.width ?? 0) * (g.c?.height ?? 0) + (g.front?.width ?? 0) * (g.front?.height ?? 0);
+  for (const g of cache.values()) px += (g.c?.width ?? 0) * (g.c?.height ?? 0) + (g.front?.width ?? 0) * (g.front?.height ?? 0) + (g.lit?.c.width ?? 0) * (g.lit?.c.height ?? 0);
   return { n: cache.size, px };
 }
 /** 필요할 때만 다시 그린다 (등급마다 바닥이 다르다) */
 export function ensureGround(visitKey: string, g = gradeNow()) {
   const key = groundKey(visitKey, g);
-  if (ground.c && ground.key === key && ground.c.width) return;
-  // 삼성 인터넷이 메모리 부족 때 캔버스를 잃으면(폭 0) 다시 그린다
-  if (ground.c && !ground.c.width) cache.delete(ground.key);
+  if (ground.c && ground.key === key && canvasAlive(ground.c)) return;
+  // 삼성 인터넷이 메모리 부족 때 캔버스를 잃으면(폭 0 · 컨텍스트 잃음) 같은 프레임에 다시 그린다 (빈 바닥 프레임 없이)
+  if (ground.c && !canvasAlive(ground.c)) cache.delete(ground.key);
   Object.assign(ground, groundFor(key, g));
 }
 /** 이 등급의 바닥 (캐시 두 장까지) */
 export function groundFor(key: string, g: number): Ground {
   let hit = cache.get(key);
-  if (hit && !hit.c?.width) {
+  if (hit && (!hit.c || !canvasAlive(hit.c))) {
     cache.delete(key);
     hit = undefined;
   }
@@ -105,6 +109,52 @@ export function groundFor(key: string, g: number): Ground {
   }
   return hit;
 }
+
+/**
+ * 밤 바닥 한 장: 바닥 그림 + 밤 색조(multiply) + 울타리 밖 숲 덧칠(calmWorld) — (바닥 키 · 실제 쓴 색)마다 한 번만 굽는다.
+ *  웅스 신고(새벽 04시 숲·바닥이 1~3초마다 잠깐 어두워짐): 예전엔 이 두 겹을 매 프레임 화면 전체에 다시 칠했다
+ *  (multiply + 짝홀 자르기 + 반투명 · 폰 GPU에서 프레임마다 결과가 흔들릴 수 있는 길). 이제 그리기는 구운 한 장을 놓기만 한다.
+ *  낮(NL 0)이면 바닥 그림 그대로. 구운 캔버스를 잃었으면(폭 0 · 컨텍스트 잃음) 그 자리에서 다시 굽는다.
+ */
+export function litGround(gr: Ground, L: NightLook, bounds: [number, number] = landBounds()): HTMLCanvasElement | null {
+  const src = gr.c;
+  if (!src || !L.tint) return src;
+  const k = litKey(gr.key, L) + '|' + bounds.join(',');
+  if (gr.lit && gr.lit.key === k && canvasAlive(gr.lit.c) && gr.lit.c.width === src.width && gr.lit.c.height === src.height) return gr.lit.c;
+  const c = gr.lit && canvasAlive(gr.lit.c) && gr.lit.c.width === src.width && gr.lit.c.height === src.height ? gr.lit.c : canvas(src.width, src.height);
+  const x = c.getContext('2d');
+  if (!x) return src;
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  x.globalAlpha = 1;
+  x.clearRect(0, 0, c.width, c.height);
+  x.drawImage(src, 0, 0);
+  x.globalCompositeOperation = 'multiply';
+  x.fillStyle = `rgb(${L.tint.join(',')})`;
+  x.fillRect(0, 0, c.width, c.height);
+  if (L.veil > 0) {
+    // VISUAL §2: 밤엔 숲을 더 어둡게 → 마을이 「불 켜진 섬」 (울타리 안은 그대로)
+    const [a, b] = bounds;
+    const X = (tx: number, ty: number) => gr.ox + sx(tx, ty);
+    const Y = (tx: number, ty: number) => gr.oy + sy(tx, ty);
+    x.beginPath();
+    x.rect(0, 0, c.width, c.height);
+    x.moveTo(X(a, a), Y(a, a));
+    x.lineTo(X(a, b), Y(a, b));
+    x.lineTo(X(b, b), Y(b, b));
+    x.lineTo(X(b, a), Y(b, a));
+    x.closePath();
+    x.clip('evenodd');
+    x.globalAlpha = L.veil;
+    x.fillStyle = `rgb(${VEIL_RGB.join(',')})`;
+    x.fillRect(0, 0, c.width, c.height);
+  }
+  x.restore();
+  gr.lit = { key: k, c };
+  return c;
+}
+/** 지금 밤 단계의 바닥 색 규칙 (render가 쓴다) */
+export const lookFor = (nl: number) => nightLook(nl, CONFIG.dayNight.tintSteps, vis('calmWorld'));
 
 function drawGround(g: number, key: string): Ground {
   const W = N * TW + TW * 2 * M;
@@ -453,6 +503,8 @@ function decoTile0(p: ReturnType<typeof P>, pc: string, X: number, Y: number, x:
  */
 export function patchTiles(tiles: [number, number][]) {
   if (!ground.c) return;
+  // 바닥 그림이 바뀌었으니 구운 밤 바닥도 다음 프레임에 다시 (캔버스는 다시 쓴다)
+  if (ground.lit) ground.lit.key = '';
   const p = P(ground.c.getContext('2d')!);
   const g = Number(/\|g(\d+)$/.exec(ground.key)?.[1] ?? 0);
   const stone = g >= 2;
