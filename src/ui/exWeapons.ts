@@ -8,7 +8,8 @@ import { exOwnerKey, exOwnerName, exWhy, exHooks, exHeroColor } from '../world/e
 import { josa } from '../data/josa';
 import { boxChoices, boxCount, EX_WEAPONS, exDef, exOwned, exOwnedN, exRetro, fragsToBox, makeEx, openBox, recruitedKeys } from '../world/exWeapons';
 import { exOn, rwState } from '../world/frags';
-import { equip, itemIcon } from '../world/items';
+import { equip, itemById, itemIcon, itemPower } from '../world/items';
+import { confirmSheet } from './confirmSheet';
 import { grantEx } from '../world/exWeapons';
 import { addFrags } from '../world/frags';
 import { openBag, showItem } from './guests';
@@ -96,11 +97,22 @@ export function exItemHtml(it: Item): string {
 export function bindExItem(it: Item, redraw: () => void) {
   $$('[data-exwear]').forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = async () => {
         const a = homeActors().find((x) => x.id === +b.dataset.exwear!);
         if (!a || !P.bag.includes(it)) return;
         const w = exWhy(a, it);
         if (w) return toast(w);
+        // 지금 낀 무기가 더 세면(강화한 무기 → +0 전용 무기) 한 번 확인 — 모르고 전투력이 떨어지지 않게
+        const old = itemById(a.equip[it.slot]);
+        const diff = old ? itemPower(it) - itemPower(old) : 0;
+        if (old && diff < 0) {
+          const ok = await confirmSheet({
+            title: '지금 무기가 더 세요',
+            body: `「${old.name}${old.enh ? ` +${old.enh}` : ''}」 대신 끼우면 무기 능력치가 ${Math.abs(Math.round(diff)).toLocaleString('ko-KR')} 낮아져요. 전용 무기를 강화하면 따라잡아요.`,
+            ok: '그래도 끼우기',
+          });
+          if (!ok || !P.bag.includes(it)) return;
+        }
         equip(a, it);
         markDirty();
         redraw();
