@@ -152,10 +152,12 @@ describe('§1 기록 따로', () => {
 });
 
 describe('§1 무기 조각 (25층마다)', () => {
+  // 합친 뒤: 조각은 전용 무기(exWeapons)가 켜졌을 때만 생긴다 (world/frags.ts addFrags)
+  beforeEach(() => setFlag('exWeapons', true));
+  afterEach(() => setFlag('exWeapons', false));
   it('25·50층에 +1 · 같은 층은 한 주에 한 번 · 다음 주엔 다시', () => {
     for (let f = 1; f <= 50; f++) clearFloor(f, 'ice', () => 0.99, NOW, 'rush');
     expect(fragCount()).toBe(2);
-    expect(rwState().got.abyss).toBe(2);
     expect(rushFragDue(25, NOW)).toBe(0);
     clearFloor(25, 'ice', () => 0.99, NOW, 'rush');
     expect(fragCount()).toBe(2);
@@ -164,8 +166,15 @@ describe('§1 무기 조각 (25층마다)', () => {
     expect(clearFloor(25, 'ice', () => 0.99, next, 'rush').frags).toBe(1);
     expect(fragCount()).toBe(3);
   });
-  it('한 층씩 모드는 조각 없음 (§2 exWeapons가 붙인다)', () => {
+  it('한 층씩 모드 25층은 §2 길(abyssFrags)로 +1 · 보스 연전과 따로 한 번씩만', () => {
     clearFloor(25, null, () => 0.99, NOW, 'floor');
+    expect(fragCount()).toBe(1);
+    clearFloor(25, null, () => 0.99, NOW, 'floor');
+    expect(fragCount()).toBe(1);
+  });
+  it('전용 무기가 꺼져 있으면 보스 연전 25층도 조각 0 (결과 창 +0)', () => {
+    setFlag('exWeapons', false);
+    expect(clearFloor(25, 'ice', () => 0.99, NOW, 'rush').frags).toBe(0);
     expect(fragCount()).toBe(0);
   });
   it('frags 모듈: 옛 저장(칸 없음·이상한 값) → 0 · add/spend', () => {
