@@ -154,6 +154,22 @@ function buildGround(region: string, deep: boolean): HTMLCanvasElement {
     }
   return c;
 }
+// ───────── RAIDWEAPON §3' 하늘 균열 배경 ─────────
+const RIFT_VOID = '#170a2c';
+const RIFT_TINT = 'rgba(118, 52, 206, 0.18)';
+/** 보라 하늘 별: 카메라를 조금 따라오는 점 (화면 크기와 상관없이 같은 자리) · 천천히 반짝 */
+function riftStars(ctx: CanvasRenderingContext2D, LW: number, LH: number, ox: number, oy: number) {
+  const t = performance.now() / 1000;
+  for (let i = 0; i < 70; i++) {
+    const hx = hash(i * 7.1, 3.3);
+    const hy = hash(i * 1.7, 9.1);
+    const x = Math.round(((hx * 997 + ox * 0.3) % LW + LW) % LW);
+    const y = Math.round(((hy * 991 + oy * 0.3) % LH + LH) % LH);
+    const tw = 0.5 + 0.5 * Math.sin(t * (0.8 + hx * 1.6) + i);
+    ctx.fillStyle = i % 5 ? `rgba(201, 166, 255, ${0.25 + tw * 0.5})` : `rgba(255, 236, 255, ${0.4 + tw * 0.6})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
 /** 문양 점: 각도를 여덟으로 나눈 나머지 (-0.5~0.5) */
 const fr8 = (a: number) => {
   const v = (a / (Math.PI * 2)) * 8;
@@ -229,9 +245,15 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     oy += Math.round((Math.random() * 2 - 1) * a);
   }
   const W = (x: number, y: number): [number, number] => [ox + Math.round(sx(x, y)), oy + Math.round(sy(x, y))];
-  ctx.fillStyle = deep ? deepen(T.pal.void, 0.32) : T.pal.void;
+  ctx.fillStyle = f.world ? RIFT_VOID : deep ? deepen(T.pal.void, 0.32) : T.pal.void;
   ctx.fillRect(0, 0, LW, LH);
+  // RAIDWEAPON §3' 하늘 균열: 보라 밤하늘 별 (바닥 밖) → 바닥 → 보라 빛 한 겹
+  if (f.world) riftStars(ctx, LW, LH, ox, oy);
   if (ground) ctx.drawImage(ground, ox - ground.width / 2, oy - 20 - 3 * TH - TH / 2 + TH / 2);
+  if (f.world) {
+    ctx.fillStyle = RIFT_TINT;
+    ctx.fillRect(0, 0, LW, LH);
+  }
   // REGIONS2 §4: 심연의 바닥 — 바닥 별 자국 넷 (보스 체력 25%마다 하나씩 켜짐)
   if (T.light === 'dark') starMarks(ctx, f, W, false);
 

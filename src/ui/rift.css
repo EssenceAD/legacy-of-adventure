@@ -1,0 +1,52 @@
+/* RAIDWEAPON §3' 하늘 균열 — 마을 하늘 금 · 알약 · 균열 창 · 전투 위 HUD (ui/rift.ts) */
+
+/* 마을 하늘 보라 금: 화면 위쪽 가운데 · 누를 수 없음 (알약이 입구) · 숨쉬듯 빛 */
+#riftCrack{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);width:min(56vw,300px);transform:translateX(-50%);pointer-events:none;z-index:1;filter:drop-shadow(0 0 3px #a24bff) drop-shadow(0 0 8px #6a2ad0);animation:rfGlow 2.4s steps(4) infinite;image-rendering:pixelated}
+#riftCrack[hidden]{display:none}
+#riftCrack svg{display:block;width:100%;height:auto}
+html:not([data-size="phone"]) #riftCrack{top:calc(env(safe-area-inset-top,0px) + 56px)}
+/* 열리는 순간 1프레임 번쩍 */
+#riftCrack.flash::before{content:'';position:fixed;inset:-100vh -100vw;background:rgba(190,140,255,.55)}
+@keyframes rfGlow{0%,100%{opacity:.82}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){#riftCrack{animation:none}}
+
+/* 오른쪽 위 알약 */
+#riftPill{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:calc(var(--z-hud) + 1);display:flex;flex-direction:column;align-items:flex-end;gap:0;padding:3px 9px;border:0;background:linear-gradient(#3b1d6e,#24104a);box-shadow:0 0 0 2px #140c18,0 0 0 3px #a24bff,0 0 10px rgba(162,75,255,.6);color:#f3e6ff;font-size:var(--f-small);line-height:1.15;cursor:pointer;white-space:nowrap}
+#riftPill[hidden]{display:none}
+#riftPill b{font-weight:700}
+#riftPill small{font-size:calc(var(--f-small) * .85);color:#cdb4ff}
+#riftPill.done{filter:saturate(.6);box-shadow:0 0 0 2px #140c18,0 0 0 3px #6a5a8a}
+body.winopen #riftPill,body.in-combat #riftPill,body.in-combat #riftCrack{visibility:hidden}
+
+/* 균열 창 */
+.rfwin .rfhead{display:flex;gap:10px;align-items:center;margin:2px 0 8px}
+.rfwin .rfhead img{width:64px;height:64px;object-fit:contain;image-rendering:pixelated;background:radial-gradient(#3b1d6e,#170a2c);box-shadow:0 0 0 2px var(--ink),0 0 0 3px #a24bff}
+.rfwin .rfhead img:not([src]){visibility:hidden}
+.rfwin .rfhead span{display:flex;flex-direction:column;gap:2px}
+.rfwin .rfhead b{color:#e6ccff;font-size:var(--f-ui)}
+.rfwin .rfbar{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
+.rfwin .rfbar i{display:block;height:14px;background:#24104a;box-shadow:0 0 0 2px var(--ink),0 0 0 3px #a24bff}
+.rfwin .rfbar u{display:block;height:100%;background:linear-gradient(#d39bff,#8a3ff0);text-decoration:none}
+.rfwin .rfbar small{text-align:center}
+.rfwin .rfparty{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 2px}
+.rfwin .rfparty span{display:flex;flex-direction:column;align-items:center;width:56px}
+.rfwin .rfparty img{width:40px;height:40px;image-rendering:pixelated;box-shadow:0 0 0 2px var(--ink)}
+.rfwin .rfparty small{font-size:calc(var(--f-small) * .85);max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 전투: 기본 보스 막대·시간·목표는 숨기고 균열 HUD */
+.cbt.rift .cbboss,.cbt.rift #cbTime,.cbt.rift #cbGoal{display:none}
+.rfhud{position:absolute;inset:0;pointer-events:none;z-index:3}
+.rfhud .rftop{position:absolute;left:70px;right:12px;top:calc(env(safe-area-inset-top,0px) + 44px);display:flex;flex-direction:column;align-items:center;gap:3px;text-shadow:1px 1px 0 #140c18}
+.rfhud .rftop b{font-size:15px;color:#e6ccff}
+.rfhud .rftop i{display:block;width:100%;max-width:520px;height:14px;background:#24104a;box-shadow:0 0 0 2px #140c18,0 0 0 3px #a24bff,0 0 10px rgba(162,75,255,.5)}
+.rfhud .rftop u{display:block;height:100%;background:linear-gradient(#e2b8ff,#8a3ff0);text-decoration:none}
+.rfhud .rftop small{font-size:var(--f-small);color:#f3e6ff}
+.rfhud .rftime{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 104px);transform:translateX(-50%);font:700 28px/1 var(--f);color:#fff3d6;text-shadow:2px 2px 0 #140c18;font-variant-numeric:tabular-nums}
+.rfhud .rftime.low{color:#ff8a7a}
+.rfhud .rfmine{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 140px);display:flex;flex-direction:column;align-items:flex-end;text-shadow:2px 2px 0 #140c18}
+.rfhud .rfmine small{font-size:var(--f-small);color:#cdb4ff}
+.rfhud .rfmine b{font:700 26px/1.05 var(--f);color:#ffe28a;font-variant-numeric:tabular-nums}
+.rfhud .rfmine em{display:none;font-style:normal;font-size:var(--f-small);color:#ffb0e8}
+.rfhud .rfmine.cap em{display:block}
+html:not([data-size="phone"]) .rfhud .rftop{left:90px;right:90px}
+.cbres .rfres{color:#e6ccff}

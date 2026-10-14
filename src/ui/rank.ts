@@ -10,6 +10,8 @@ import { isWinOpen, openWin, toast } from './windows';
 import { visitUser } from './neighbors';
 import { gbOn, popularHtml } from './guestbook';
 import { rushRankLine } from './abyss';
+import { riftRankHtml } from './rift';
+import { riftOn } from '../world/rift';
 
 let cur = 0;
 const BOARDS: [Board, string, (n: number) => string][] = [
@@ -22,8 +24,16 @@ const BOARDS: [Board, string, (n: number) => string][] = [
 const row = (r: RankRow, f: (n: number) => string, mineRow = false) =>
   `<button class="rkrow ${mineRow ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${r.user_id}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${mineRow && myTitle() ? `「${esc(myTitle())}」 ` : ''}${esc(r.nickname)}</small></span><i>${f(r.score)}</i></button>`;
 
-/** LUXE §4: 탭 이름 (guestbook 켰으면 맨 끝에 「이번 주 인기 마을」) */
-const tabNames = () => [...BOARDS.map((b) => b[1]), ...(gbOn() ? ['인기 마을'] : [])];
+/** LUXE §4: 탭 이름 (guestbook 켰으면 맨 끝에 「이번 주 인기 마을」) · RAIDWEAPON §3' worldRaid 켰으면 그 뒤에 「하늘 균열」 */
+type Extra = 'pop' | 'rift';
+const extras = (): Extra[] => [...(gbOn() ? (['pop'] as const) : []), ...(riftOn() ? (['rift'] as const) : [])];
+const EXTRA_NAME: Record<Extra, string> = { pop: '인기 마을', rift: '하늘 균열' };
+const tabNames = () => [...BOARDS.map((b) => b[1]), ...extras().map((k) => EXTRA_NAME[k])];
+/** 「하늘 균열」 탭 번호 (꺼져 있으면 0) */
+export const riftTabIndex = () => {
+  const i = extras().indexOf('rift');
+  return i < 0 ? 0 : BOARDS.length + i;
+};
 const bindRows = () =>
   $$('.rkrow').forEach(
     (b) =>
@@ -39,10 +49,11 @@ export async function openRank(i = cur) {
   cur = i;
   // RAIDWEAPON §1-4: 심연 보스 연전은 서버 랭킹 없이 내 기록 한 줄 (abyssRush 꺼지면 '')
   if (!sb) return openWin('랭킹', '<p class="sub">서버에 연결할 수 없어요</p>' + rushRankLine());
-  if (i === BOARDS.length) {
+  if (i >= BOARDS.length) {
+    const ex = extras()[i - BOARDS.length];
     openWin('랭킹', `${tabs(tabNames(), i, 'rkT')}${rushRankLine()}<p class="note">불러오는 중…</p>`);
     bindTabs('rkT', (k) => void openRank(k));
-    const html = await popularHtml();
+    const html = ex === 'rift' ? await riftRankHtml() : await popularHtml();
     if (cur !== i || !isWinOpen() || document.getElementById('winT')?.textContent !== '랭킹') return;
     openWin('랭킹', tabs(tabNames(), i, 'rkT') + html);
     bindTabs('rkT', (k) => void openRank(k));

@@ -289,6 +289,8 @@ export interface Field {
   noFold?: boolean;
   /** RAIDWEAPON §0: 이기면 팡파르 (부르는 쪽이 정했을 때만) */
   fanfare?: boolean;
+  /** RAIDWEAPON §3' 하늘 균열 판: 보라 하늘 (승패 없이 피해만 · 화면은 ui/rift.ts) */
+  world?: boolean;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
   /** ROLES (플래그 rolesV2): 켜졌나 · 사제 한 번 살리기 남은 횟수 · 탱·힐·딜 조합 (예고 +초) */
@@ -358,6 +360,8 @@ export interface FieldOpts {
   fanfare?: boolean;
   /** RAIDWEAPON §1 보스 연전: 쫄 웨이브 없이 보스 한 마리만 (stage 10 · look 보스) — 처치 목표 0 · 시작 무리 없음 */
   bossOnly?: boolean;
+  /** RAIDWEAPON §3' 하늘 균열 판 (mode raid · 보라 하늘 · 보스 그림은 rift_ 시트를 부르는 쪽이 미리 넣어 둠) */
+  world?: boolean;
 }
 /** combat/ui가 채운다: 지금 판이 접혀 있나 (접은 판 승리는 팡파르 없이) */
 export const fieldSound = { folded: () => false };
@@ -406,6 +410,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.look = opts.look;
   f.noFold = opts.noFold;
   f.fanfare = opts.music ? true : opts.fanfare;
+  if (opts.world) f.world = true;
   f.syn = syn;
   if (rolesOn) {
     f.roles = true;

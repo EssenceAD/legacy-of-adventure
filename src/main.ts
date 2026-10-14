@@ -10,6 +10,7 @@ import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
 import { initBurnPill } from './ui/burnPill';
 import { initLeftIcons } from './ui/leftIcons';
+import { initRift } from './ui/rift';
 import { openHarvestShop, tickHarvest } from './ui/harvest';
 import { ledgerHooks, openDaybook } from './ui/daybook';
 import { stampFx } from './ui/checkin';
@@ -976,6 +977,8 @@ async function boot() {
   initBurnPill();
   // CHECKIN §K2 왼쪽 아이콘 줄 (새 HUD 안 · 오늘의 장부 · 수확제 · 여관 연감)
   initLeftIcons();
+  // RAIDWEAPON §3' 하늘 균열 (플래그 worldRaid · 꺼져 있거나 서버 SQL이 없으면 알약·금이 안 보임)
+  initRift();
   if (import.meta.env.DEV)
     Object.assign(window, {
       __hv: {

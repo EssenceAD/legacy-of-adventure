@@ -88,5 +88,6 @@
   "pets": false,
   "abyssRush": false,
   "exWeapons": false,
-  "burnWeekend": false
+  "burnWeekend": false,
+  "worldRaid": false
 }
