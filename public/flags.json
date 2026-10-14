@@ -80,5 +80,6 @@
   "flQuiet": false,
   "flTouchHints": false,
   "flFirstCam": false,
-  "flTeaserFit": false
+  "flTeaserFit": false,
+  "flCharPop": false
 }

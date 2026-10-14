@@ -592,17 +592,21 @@ function drawMob(ctx: CanvasRenderingContext2D, m: Unit, W: (x: number, y: numbe
 }
 
 /** 2톤 도트 그림자: 가운데는 촘촘한 바둑 점, 가장자리는 성긴 점 (반투명 없이) */
-export function dotShadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number) {
+/** gap: FIRSTLOOK §6 flCharPop — 디더 빈칸도 같은 색을 이 알파로 채운다 (0 = 예전 그대로) */
+export function dotShadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, gap = 0) {
+  const a0 = ctx.globalAlpha;
   for (let y = -ry; y <= ry; y++) {
     const w = Math.round(rx * Math.sqrt(1 - (y * y) / (ry * ry)));
     for (let x = -w; x <= w; x++) {
       const core = (x * x) / (rx * rx * 0.45) + (y * y) / (ry * ry * 0.45) <= 1;
       const on = core ? (x + y) % 2 === 0 : (x + y) % 2 === 0 && (y % 2 === 0 || Math.abs(x) % 4 === 0);
-      if (!on) continue;
+      if (!on && !gap) continue;
       ctx.fillStyle = core ? '#1c1424' : '#2a2230';
+      if (gap) ctx.globalAlpha = on ? a0 : a0 * gap;
       ctx.fillRect(cx + x, cy + y, 1, 1);
     }
   }
+  if (gap) ctx.globalAlpha = a0;
 }
 
 function bar(ctx: CanvasRenderingContext2D, X: number, Y: number, p: number, col: string) {

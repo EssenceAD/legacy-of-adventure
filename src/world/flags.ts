@@ -167,6 +167,8 @@ export const FLAG_DEFAULTS = {
   flFirstCam: false,
   /** FIRSTLOOK §4 티저·타이틀이 폰 화면을 채우게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 티저 작은 캔버스 컷(사냥·보스·다락)은 화면을 꽉 채우게(cover · 정수 배율 · 가운데 기준으로 좌우 자름) · 위아래 검은 띠 없음 · 타이틀·「터치해서 시작」·티저 마지막 컷 = 마을 낮(티저 3번째 컷)을 어둡게 깔고 큰 제목 (숫자 CONFIG.firstLook.title) */
   flTeaserFit: false,
+  /** FIRSTLOOK §6 캐릭터가 눈에 띄게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 사람 발밑 그림자 한 단계 진하게(+알파 0.15 · 돌길 위에서도) · 사람 도트 바깥 1px 외곽선을 남보라(팔레트 0번)로 통일(만들 때 한 번 · 전설·신화 테두리는 그대로) · 걷는 동안 1px 통통 (숫자 CONFIG.firstLook.pop) */
+  flCharPop: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

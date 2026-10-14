@@ -1339,6 +1339,11 @@ export const CONFIG = {
     /** §4 flTeaserFit 티저 작은 캔버스 컷: 확대 상한 = 폭 맞춤 × maxZoom · 남는 위아래 = 같은 장면을 늘려 어둡게(bgDim)·흐리게(bgBlur px) · 보스 컷은 bossFocus(장면 도트 가로 범위 · 붉은 무사)가 통째로 보이게 · 다락은 방 전체(자르지 않음) */
     teaser: { maxZoom: 1.4, bgDim: 0.55, bgBlur: 8, bossFocus: [100, 168] as [number, number] },
     title: { g: 4, night: false, dim: 0.55, koScale: 2, fitPad: 24, innName: '솔바람 여관' },
+    /**
+     * §6 flCharPop (world/charPop.ts): shadowAdd = 발밑 그림자 진하기 +알파(디더 빈칸을 같은 색으로 채워 평균 +0.15 · 돌길 위에서도 보이게) ·
+     *  outline = 사람 도트 바깥 1px 외곽선 = 마스터 팔레트 칸(0번 = 남보라 · 전설·신화 금빛·은빛 테두리는 그대로) · bobPx = 걷는 동안 발이 지나가는 프레임에서 통째로 위로
+     */
+    pop: { shadowAdd: 0.15, outline: 0, bobPx: 1 },
   },
   /**
    * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식

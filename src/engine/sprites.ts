@@ -6,6 +6,7 @@ import { canvasAlive, Lru } from './lru';
 import { drawChar2, drawLying2, drawRoll2, type Dot2, type Pose2 } from './sprites2';
 import { applyNamed, LEGEND_RIM, MYTHIC_RIM, namedOf, sigPoses } from './named2';
 import { vis } from '../world/visual';
+import { popOutline } from '../world/charPop';
 import type { StarId } from '../data/fivestars';
 
 const SK = { skin: '#f2c49b', skin2: '#d99a78', eye: '#2a1a2e', blush: '#ec8f86' };
@@ -627,7 +628,9 @@ export function buildChar(key: ClassKey): CharFrames {
 export function buildFrom(d: ClassDef): CharFrames {
   const k2 = dot2Of(d);
   if (k2) return buildFrom2(d, k2);
-  const R = (g: GridT) => g.render();
+  // FIRSTLOOK §6 flCharPop: 마을 도트 바깥 1px 외곽선 한 색 (만들 때 한 번 · 전투 프레임은 그대로)
+  const outer = popOutline();
+  const R = (g: GridT) => g.render(outer ? { outer } : {});
   let cbf: CombatFrames | null = null;
   return {
     def: d,
@@ -747,7 +750,9 @@ const tierOf = (d: ClassDef) => { const L = namedOf(d); return !L ? undefined : 
 function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
   const rim = rimOf(d);
   const L = namedOf(d);
-  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : {});
+  // FIRSTLOOK §6 flCharPop: 바깥 1px 외곽선 한 색 · 전설·신화 금빛·은빛 테두리(rim)는 그대로
+  const outer = rim ? null : popOutline();
+  const R = (p: Pose2) => drawChar2(d, k, p, weapon).render(rim ? { rim } : outer ? { outer } : {});
   let cbf: CombatFrames | null = null;
   let sigC: HTMLCanvasElement[] | undefined;
   const f: CharFrames = {
@@ -760,7 +765,7 @@ function buildFrom2(d: ClassDef, k: Dot2): CharFrames {
     sit: [R({ sit: 1, eat: 1 }), R({ sit: 1, eat: 2 })],
     atk: [R({ atk: 1, face: 'shout' }), R({ atk: 2, face: 'shout' })],
     pray: [R({ pray: 1 }), R({ pray: 1, bob: 1 })],
-    sleep: [drawSleep(L ? applyNamed(d, L) : d, 0).render(), drawSleep(L ? applyNamed(d, L) : d, 1).render()],
+    sleep: [drawSleep(L ? applyNamed(d, L) : d, 0).render(outer ? { outer } : {}), drawSleep(L ? applyNamed(d, L) : d, 1).render(outer ? { outer } : {})],
     blink: R({ blink: 1 }),
     tier: tierOf(d),
     star: L?.star,
@@ -792,8 +797,10 @@ function buildCombat2(d: ClassDef, k: Dot2): CombatFrames {
 }
 
 const CACHE: Record<string, CharFrames> = {};
+/** FIRSTLOOK §6: 바깥 외곽선이 다르면 다른 그림 — 캐시 열쇠에 플래그 */
+const popKey = (key: string) => (popOutline() ? key + '|pop' : key);
 export function charFrames(key: ClassKey): CharFrames {
-  return (CACHE[key] ??= buildChar(key));
+  return (CACHE[popKey(key)] ??= buildChar(key));
 }
 /** 렌더 메모리: 손님마다 생기는 겉모습은 상한까지만 (오래 안 본 손님 것부터 버린다 · 다시 오면 다시 만든다) */
 const LOOKS = new Lru<string, CharFrames>(CONFIG.render.lookCacheMax);
@@ -804,7 +811,8 @@ let onNew: ((f: CharFrames) => void) | null = null;
 export function onNewFrames(fn: (f: CharFrames) => void) {
   onNew = fn;
 }
-export function framesFor(key: string, def: ClassDef): CharFrames {
+export function framesFor(key0: string, def: ClassDef): CharFrames {
+  const key = popKey(key0);
   let f: CharFrames | undefined = CACHE[key] ?? LOOKS.get(key);
   // 삼성 인터넷이 메모리 부족 때 캔버스를 잃으면(폭 0) 다시 만든다
   if (f && !canvasAlive(f.idle[0])) {
