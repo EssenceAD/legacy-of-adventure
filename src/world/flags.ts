@@ -177,6 +177,8 @@ export const FLAG_DEFAULTS = {
   luxeShop: false,
   /** LUXE §1-3 영웅 의상실 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 영웅 10 · 전설 14 · 다섯 별 5 각자 색 바꾸기 의상 2벌(① 인연 「친구」 보상 · ② 명품관) · 영웅 창 [의상] 2칸 미리보기(잠김 = 실루엣 + 얻는 법) · 바꾸기 무료 · 마을·전투·파티 칸·카드·대화 초상화·이웃 대표 영웅 모두 한 함수(engine/outfitPaint.ts) — 끄면 모두 기본 옷 (가진 것·입은 것은 그대로) */
   outfits: false,
+  /** RAIDWEAPON §1 심연 「보스 연전」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 심연 입구 창에 모드 둘 [한 층씩][보스 연전] · 보스 연전은 한 층씩 최고 10층부터 · 매 층 보스 한 마리(쓰러뜨린 지역 보스 중 무작위 · 직전 층과 다른 보스) · 쫄 웨이브 없음 · 보상은 한 층씩과 같음(보스 재료·고유 장비는 5층마다만) · 기록 따로(최고 층 · 주간 최고 · 랭킹 창 한 줄) · 곡 19 · 25층마다 무기 조각 1 (숫자 CONFIG.raidWeapon.rush) — 끄면 모드 버튼이 사라지고 한 층씩만 (기록·조각은 그대로) */
+  abyssRush: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

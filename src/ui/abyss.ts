@@ -1,8 +1,10 @@
 // GOLDSINK §7 끝없는 심연 창 · 층 오르기 (전투는 사냥 전투 그대로 · 접기 없음 · 맡겨 두기 없음)
+//  RAIDWEAPON §1 (abyssRush): 창 맨 위 모드 [한 층씩][보스 연전] · 보스 연전 = 매 층 보스 한 마리(쫄 없음 · 곡 19) · 기록·이어가기 칸 따로
 import { CONFIG } from '../data/config';
 import { REGIONS } from '../data/items';
 import { closeCombat, showCombatResult, startCombat, type CombatResult } from '../combat/ui';
-import { abyssOpen, abyssRec, checkpoints, clearFloor, contCost, dropContinue, enterFloor, floorRec, floorStage, isBossFloor, isRestFloor, loseFloor, payContinue, pickBoss, resumeFloor, resumeOn, startAt, type FloorReward } from '../world/abyss';
+import { abyssOpen, abyssRec, checkpoints, clearFloor, contCost, dropContinue, enterFloor, floorRec, floorStage, isBossFloor, isRestFloor, loseFloor, payContinue, pickBoss, pickRushBoss, resumeFloor, resumeOn, rushLockWhy, rushOn, rushOpen, rushRec, startAt, type AbyssMode, type FloorReward } from '../world/abyss';
+import { lockAttr } from './lockBtn';
 import { markAdventured } from '../world/actors';
 import { powerOf } from '../world/adventurers';
 import { fmtKo, onceDay, onceEver } from '../world/goldsink';
@@ -27,7 +29,28 @@ let abWhy = '';
 /** 「계속 오르기」 자동 (AUTO로 시작하면 켬) */
 let autoClimb = true;
 let timer = 0;
+/** RAIDWEAPON §1: 지금 모드 (창에서 고름 · 오르는 동안 그대로) */
+let mode: AbyssMode = 'floor';
 const C = () => CONFIG.abyss;
+const now = () => Date.now();
+/** 모드 고르기 줄 (보스 연전이 꺼져 있으면 '') · 막혔으면 🔒 + 「10층부터」 · 누르면 이유 토스트 (lockBtn) */
+function modeHtml(): string {
+  if (!rushOn()) return '';
+  const why = rushLockWhy();
+  return `<div class="tabs abmode" id="abM"><button class="tab ${mode === 'floor' ? 'on' : ''}" data-abm="floor">한 층씩</button><button class="tab ${mode === 'rush' ? 'on' : ''}" data-abm="rush" ${lockAttr(why)}>${why ? '🔒 ' : ''}보스 연전${why ? ` <small>${CONFIG.raidWeapon.rush.unlockBest}층부터</small>` : ''}</button></div>`;
+}
+function ruleHtml(): string {
+  if (mode === 'rush')
+    return `<p class="note abrule"><b>보스 연전</b> — 매 층 보스 한 마리 (쓰러뜨린 지역 보스 중 무작위 · 직전 층과 다른 보스) · 쫄 없음 · 층마다 강해져요 (×${C().grow}) · 보상은 한 층씩과 같아요 (보스 재료·고유 장비는 ${C().bossEvery}층마다) · ${CONFIG.raidWeapon.rush.fragEvery}층마다 무기 조각 · ${C().restEvery}층마다 쉼터</p>`;
+  return `<p class="note abrule">층마다 몬스터가 강해져요 (×${C().grow}) · ${C().bossEvery}층마다 보스 · ${C().restEvery}층마다 쉼터(축복 ${C().restMin}분) · 금화 대신 가루·재료 · 질 때까지 계속 올라요</p>`;
+}
+const recLabel = () => (mode === 'rush' ? '보스 연전 최고' : '최고');
+/** RAIDWEAPON §1-4: 랭킹 창 한 줄 (서버 랭킹 없음 · 내 기록만) — 꺼져 있거나 아직 안 열렸으면 '' */
+export function rushRankLine(): string {
+  if (!rushOn()) return '';
+  const r = rushRec();
+  return `<p class="note rkrush">심연 보스 연전 · 내 최고 <b class="g">${r.best}층</b> · 이번 주 <b>${r.weekBest}층</b> (월요일 초기화 · 내 기록만)</p>`;
+}
 const deepMat = () => REGIONS.find((r) => r.id === 'deep')!.mat;
 
 function party(): Actor[] {
@@ -41,10 +64,11 @@ export function openAbyss() {
   if (!abyssOpen()) return toast(`심연의 바닥 ${CONFIG.hunt.stages}을 깨면 열려요`);
   // 첫 입장 한 줄
   if (onceEver('abyss1')) return talk([['narr', '바닥이라 믿었던 곳 아래에, 또 계단이 있었다.']], openAbyss);
-  const rec = abyssRec();
+  if (mode === 'rush' && !rushOpen()) mode = 'floor';
+  const rec = abyssRec(now(), mode);
   const ms = party();
   const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
-  const cur = resumeFloor();
+  const cur = resumeFloor(now(), mode);
   const start = cur || rec.lost || 1;
   const pw = ms.length ? partyPower(ms) : 0;
   // J6 partyRulesV2: 원정 중인 사람도 흐리게 + 이유 · 지친 사람은 「체력 n · 지쳤어요」 · [추천 편성]
@@ -88,9 +112,9 @@ export function openAbyss() {
     };
     openWin(
       '끝없는 심연',
-      `${deckTopHtml(cfg)}${deckGridHtml(cfg)}<p class="sub">최고 <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
+      `${modeHtml()}${deckTopHtml(cfg)}${deckGridHtml(cfg)}<p class="sub">${recLabel()} <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
       <label class="abauto"><input type="checkbox" id="abAuto" ${autoClimb ? 'checked' : ''}> AUTO 전투 · 이기면 「계속 오르기」 자동</label>
-      <p class="note abrule">층마다 몬스터가 강해져요 (×${C().grow}) · ${C().bossEvery}층마다 보스 · ${C().restEvery}층마다 쉼터(축복 ${C().restMin}분) · 금화 대신 가루·재료 · 질 때까지 계속 올라요</p>
+      ${ruleHtml()}
       <div class="hopts">${primary === 'abNew' ? '' : `<div class="hopt"><button class="bigbtn ghost" id="abNew" ${dis}>1층부터 오르기</button></div>`}${
         cps.length > 1
           ? `<div class="hopt"><div class="abcps">${cps.slice(1).map((c) => `<button class="abcp" data-cp="${c.floor}" ${dis}><b>${c.floor}층부터</b><small>${fmtKo(c.fee)} G</small></button>`).join('')}</div><small>체크포인트: 최고 층까지 10층마다 · 입장료를 내고 그 층부터 새로</small></div>`
@@ -110,8 +134,8 @@ export function openAbyss() {
   } else
   openWin(
     '끝없는 심연',
-    `<p class="sub">최고 <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
-    <p class="note abrule">층마다 몬스터가 강해져요 (×${C().grow}) · ${C().bossEvery}층마다 보스 · ${C().restEvery}층마다 쉼터(축복 ${C().restMin}분) · 금화 대신 가루·재료 · 질 때까지 계속 올라요</p>
+    `${modeHtml()}<p class="sub">${recLabel()} <b class="g">${rec.best}층</b> · 이번 주 최고 <b>${rec.weekBest}층</b> (월요일 초기화)</p>
+    ${ruleHtml()}
     <div class="pw"><span>${start}층 추천 전투력</span><em>${fmt(floorRec(start))}</em><span>우리 파티</span><em class="${pw < floorRec(start) ? 'bad' : 'good'}">${fmt(pw)}</em></div>
     <p class="sub">파티 ${ms.length}/${huntPartyMax()} · 첫 번째가 대장</p>${recOn ? recButton('abRec', abWhy) : ''}
     <div class="plist">${rows || '<p class="note">데려갈 단골이 없어요</p>'}</div>
@@ -122,6 +146,15 @@ export function openAbyss() {
         : ''
     }<small>맡겨 두기 · 소탕은 없어요</small></div></div>`,
     'huntw',
+  );
+  $$('[data-abm]').forEach(
+    (el) =>
+      (el.onclick = () => {
+        const m = el.dataset.abm as AbyssMode;
+        if (m === mode) return;
+        mode = m;
+        keepScroll(openAbyss);
+      }),
   );
   $$('[data-ab]').forEach(
     (el) =>
@@ -148,7 +181,7 @@ export function openAbyss() {
   const au = document.getElementById('abAuto') as HTMLInputElement | null;
   if (au) au.onchange = () => (autoClimb = au.checked);
   document.getElementById('abNew')!.onclick = () => {
-    dropContinue();
+    dropContinue(now(), mode);
     closeWin();
     climb(1, ms);
   };
@@ -158,13 +191,13 @@ export function openAbyss() {
   if (rb)
     rb.onclick = () => {
       closeWin();
-      trackEv('abyss_resume', { floor: cur });
+      trackEv('abyss_resume', { floor: cur, ...(mode === 'rush' ? { mode } : {}) });
       climb(cur, ms);
     };
   $$('[data-cp]').forEach(
     (el) =>
       (el.onclick = () => {
-        const r = startAt(+el.dataset.cp!);
+        const r = startAt(+el.dataset.cp!, now(), mode);
         if ('err' in r) return toast(r.err);
         closeWin();
         trackEv('abyss_start', { power: Math.round(partyPower(ms)), from: r.floor, fee: r.fee });
@@ -175,7 +208,7 @@ export function openAbyss() {
 
 /** 이어하기: 값을 내고 (버나드 한마디) 진 층부터 */
 function doContinue(ms: Actor[]) {
-  const r = payContinue();
+  const r = payContinue(now(), mode);
   if ('err' in r) return toast(r.err);
   closeWin();
   closeCombat();
@@ -186,39 +219,44 @@ function doContinue(ms: Actor[]) {
 }
 
 /** 한 층 싸우기 */
-export function climb(f: number, ms: Actor[]) {
+export function climb(f: number, ms: Actor[], md: AbyssMode = mode) {
   clearTimeout(timer);
   const live = ms.filter((m) => huntCrew().includes(m));
   if (!live.length) return toast(fsay('데려갈 단골이 없어요', '함께 보내드릴 단골이 없어요'));
-  enterFloor(f);
-  const boss = isBossFloor(f) ? pickBoss() : null;
-  if (f === 1) trackEv('abyss_start', { power: Math.round(partyPower(live)) });
+  // 보스 연전이 꺼졌거나 막혔으면 한 층씩으로
+  if (md === 'rush' && !rushOpen()) md = 'floor';
+  mode = md;
+  const rush = md === 'rush';
+  enterFloor(f, now(), md);
+  // 보스 연전: 매 층 보스 (직전 층과 다른 보스) · 한 층씩: 5층마다
+  const boss = rush ? pickRushBoss(rushRec().prev) : isBossFloor(f) ? pickBoss() : null;
+  if (f === 1) trackEv('abyss_start', { power: Math.round(partyPower(live)), ...(rush ? { mode: md } : {}) });
   void startCombat(
     'deep',
-    floorStage(f),
+    rush ? CONFIG.hunt.stages : floorStage(f),
     live,
     autoClimb,
     (res) => {
       for (const m of live) m.hp = Math.max(1, m.hp - (res.win ? 3 : 10));
       markAdventured(live);
       if (res.win) {
-        const out = clearFloor(f, boss?.region ?? null);
+        const out = clearFloor(f, boss?.region ?? null, Math.random, now(), md);
         out.items.push(...res.items);
         showCombatResult(winHtml(out, res.autoUsed, res, live), (card) => bindWin(card, f, live, res.autoUsed));
         dropFanfare(out.items);
       } else if (res.quit && resumeOn()) {
         // v0.24.5: ✕로 나왔다 = 진 게 아님 → 그 층부터 무료로 이어가기 (cur 그대로)
-        enterFloor(f);
-        trackEv('abyss_leave', { floor: f });
+        enterFloor(f, now(), md);
+        trackEv('abyss_leave', { floor: f, ...(rush ? { mode: md } : {}) });
         showCombatResult(leaveHtml(f), (card) => bindLeave(card, f, live));
       } else {
-        loseFloor(f);
-        trackEv('abyss_end', { floor: f, best: abyssRec().best });
+        loseFloor(f, now(), md);
+        trackEv('abyss_end', { floor: f, best: abyssRec(now(), md).best, ...(rush ? { mode: md } : {}) });
         showCombatResult(loseHtml(f), (card) => bindLose(card, live));
       }
       markDirty();
     },
-    { rec: floorRec(f), noFold: true, fanfare: !!boss, ...(boss ? { look: boss.look } : {}) },
+    { rec: floorRec(f), noFold: true, fanfare: !!boss, ...(boss ? { look: boss.look } : {}), ...(rush ? { bossOnly: true, music: 'abyss_rush' as const } : {}) },
   );
 }
 
@@ -234,12 +272,13 @@ function winHtml(o: FloorReward, auto: boolean, res?: CombatResult, ms: Actor[] 
   ].filter(Boolean);
   const items = cards ? '' : o.items.map((it) => itemCell(it)).join('');
   const next = o.floor + 1;
-  return `<h2>끝없는 심연 ${o.floor}층 돌파!</h2>
+  const rush = mode === 'rush';
+  return `<h2>${rush ? '보스 연전' : '끝없는 심연'} ${o.floor}층 돌파!</h2>
     ${o.record ? '<p class="cen good">새 기록!</p>' : ''}${o.bragged ? `<p class="cen g">[알림] ${o.bragged}층 자랑을 했어요</p>` : ''}
     ${cards ? `${starsHtml(res!, CONFIG.combat.timeLimit)}${mvpHtml(ms.find((a) => a.id === res!.mvp))}` : ''}
-    ${o.rest ? `<p class="cen good">쉼터 — 예배당 축복 +${C().restMin}분</p>` : ''}
+    ${o.frags ? `<p class="cen g">무기 조각 +${o.frags}</p>` : ''}${o.rest ? `<p class="cen good">쉼터 — 예배당 축복 +${C().restMin}분</p>` : ''}
     <div class="loot">${loot.map((x) => (x.startsWith('<') ? x : `<span>${x}</span>`)).join('')}</div>${items ? `<div class="loot">${items}</div>` : ''}${cards ? dropsHtml(o.items) : ''}
-    <p class="note cen">다음 ${next}층${isBossFloor(next) ? ' · 보스' : isRestFloor(next) ? ' · 쉼터' : ''} · 추천 ${fmt(floorRec(next))}</p>
+    <p class="note cen">다음 ${next}층${rush || isBossFloor(next) ? ' · 보스' : ''}${(rush || !isBossFloor(next)) && isRestFloor(next) ? ' · 쉼터' : ''} · 추천 ${fmt(floorRec(next))}</p>
     ${auto && autoClimb ? `<p class="cen abcount" id="abCount">${C().autoNextSec}초 뒤 계속 올라요</p>` : ''}
     <div class="go"><button class="a" id="abNext">계속 오르기 · ${next}층</button><button class="b" id="abHome">그만 · 마을로</button></div>
     <p class="note cen">${resumeOn() ? `그만 내려가도 다음엔 ${next}층부터 무료로 이어가요` : `그만 내려가면 다음엔 ${next}층부터 이어하기(금화) 또는 1층부터`}</p>`;
@@ -253,7 +292,7 @@ function bindWin(card: HTMLElement, f: number, ms: Actor[], auto: boolean) {
   card.querySelector<HTMLElement>('#abNext')!.onclick = next;
   card.querySelector<HTMLElement>('#abHome')!.onclick = () => {
     clearTimeout(timer);
-    if (!resumeOn()) loseFloor(f + 1);
+    if (!resumeOn()) loseFloor(f + 1, now(), mode);
     closeCombat();
   };
   if (auto && autoClimb) {
@@ -282,7 +321,7 @@ function bindLeave(card: HTMLElement, f: number, ms: Actor[]) {
   card.querySelector<HTMLElement>('#abHome3')!.onclick = () => closeCombat();
 }
 function loseHtml(f: number): string {
-  const rec = abyssRec();
+  const rec = abyssRec(now(), mode);
   return `<h2>${f}층에서 쓰러졌어요…</h2>
     <p class="cen">최고 ${rec.best}층 · 이번 주 ${rec.weekBest}층</p>
     <div class="go"><button class="a" id="abCont2">${f}층부터 이어하기 · ${fmtKo(contCost(f))} G</button></div>
@@ -292,7 +331,7 @@ function loseHtml(f: number): string {
 function bindLose(card: HTMLElement, ms: Actor[]) {
   card.querySelector<HTMLElement>('#abCont2')!.onclick = () => doContinue(ms);
   card.querySelector<HTMLElement>('#abNew2')!.onclick = () => {
-    dropContinue();
+    dropContinue(now(), mode);
     closeCombat();
     climb(1, ms);
   };
@@ -300,4 +339,4 @@ function bindLose(card: HTMLElement, ms: Actor[]) {
 }
 
 /** 개발 · e2e */
-export const _abyss = { climb, open: openAbyss, state: () => ({ picked, autoClimb, rec: abyssRec(), hunt: P.hunt.best.deep }) };
+export const _abyss = { climb, open: openAbyss, state: () => ({ picked, autoClimb, mode, rec: abyssRec(now(), mode), hunt: P.hunt.best.deep }), setMode: (m: AbyssMode) => (mode = m) };

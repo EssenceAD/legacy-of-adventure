@@ -356,6 +356,8 @@ export interface FieldOpts {
   music?: 'abyss_rush' | 'world_raid';
   /** RAIDWEAPON §0: 이기면 팡파르를 틀지 부르는 쪽이 정함 (심연: 보스 층만) · 없으면 winFanfare 기본 규칙 */
   fanfare?: boolean;
+  /** RAIDWEAPON §1 보스 연전: 쫄 웨이브 없이 보스 한 마리만 (stage 10 · look 보스) — 처치 목표 0 · 시작 무리 없음 */
+  bossOnly?: boolean;
 }
 /** combat/ui가 채운다: 지금 판이 접혀 있나 (접은 판 승리는 팡파르 없이) */
 export const fieldSound = { folded: () => false };
@@ -392,7 +394,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   for (let i = 0; i < 7; i++) props.push({ x: 1.5 + Math.random() * (N - 3), y: 1.5 + Math.random() * (N - 3), r: 0.35, kind: 'rock' });
   const mode = opts.mode ?? 'hunt';
   const boss = stage >= 10;
-  const killGoal = mode === 'raid' ? 0 : boss ? C.bossKillGoal : Math.round(C.killGoal[0] + ((C.killGoal[1] - C.killGoal[0]) * (stage - 1)) / 8);
+  const killGoal = mode === 'raid' || (opts.bossOnly && boss) ? 0 : boss ? C.bossKillGoal : Math.round(C.killGoal[0] + ((C.killGoal[1] - C.killGoal[0]) * (stage - 1)) / 8);
   const f: Field = {
     region, stage, rec: opts.raid ? opts.raid.power : (opts.rec ?? recPower(region, stage)), units: [...allies], allies, me: allies[0], proj: [], fx: [], nums: [], drops: [],
     mode, killGoal, spawned: 0, elite: null, hit: 0, hitT: 0, streak: 0, streakT: 0, maxStreak: 0, loot: [], picked: [], lootLog: [], dropK: C.dropsPerRun / Math.max(1, killGoal), raidDmg: 0, banner: '', bannerT: 0,
@@ -414,7 +416,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.resolve = mode === 'hunt' && !opts.raid ? resolveOf(region, stage) : 0;
   if (mode === 'hunt' && !opts.raid && opts.harvest) f.hv = { king: opts.harvest.king && stage < 10, bark: opts.harvest.bark, barked: false, pumpkins: 0, kingSpawned: false, kingDown: false };
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
-  else {
+  else if (!(opts.bossOnly && boss)) {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
     spawnPack(f, false);
     spawnPack(f, false);

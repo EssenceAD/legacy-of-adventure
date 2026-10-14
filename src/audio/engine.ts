@@ -9,8 +9,10 @@ export interface SoundPrefs {
   sfxOn: boolean;
   sfxVol: number;
   muted: boolean;
+  /** RAIDWEAPON §0-4: 팡파르(승리·레벨업·장 넘김)만 따로 끄기 — 끄면 작은 coin (효과음은 그대로) */
+  fanfareOn: boolean;
 }
-const DEF: SoundPrefs = { bgmOn: true, bgmVol: 0.4, sfxOn: true, sfxVol: 0.7, muted: false };
+const DEF: SoundPrefs = { bgmOn: true, bgmVol: 0.4, sfxOn: true, sfxVol: 0.7, muted: false, fanfareOn: true };
 export const prefs: SoundPrefs = { ...DEF, ...getPref<Partial<SoundPrefs>>('sound', {}) };
 export const savePrefs = () => setPref('sound', prefs);
 /** CHECKIN §K1: 이 기기에서 소리 설정을 한 번도 저장한 적 없나 (처음 켬) */

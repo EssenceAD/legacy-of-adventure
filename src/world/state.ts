@@ -664,8 +664,16 @@ export function freshProgress() {
     outfits: freshOutfits(),
     /** LUXE §2 펫 「동물 친구」 (world/pets.ts petState()가 칸을 바로잡는다 · 플래그를 꺼도 만난 펫은 그대로) */
     pets: freshPets(),
+    /** RAIDWEAPON 무기 조각 (world/frags.ts rwState()가 칸을 바로잡는다 · §1 심연 25층마다 · §2·§3이 같은 칸을 쓴다) */
+    raidWeapon: freshRaidWeapon(),
   };
 }
+
+/** RAIDWEAPON: frags = 가진 무기 조각 (§2 선택 상자 10개) · got = 출처별 누적(심연·토벌·레이드…) */
+export function freshRaidWeapon() {
+  return { frags: 0, got: {} as Record<string, number> };
+}
+export type RaidWeaponState = ReturnType<typeof freshRaidWeapon>;
 
 /** LUXE §1-3: owned = 가진 의상 id · worn = 캐릭터 키(heroId·legendId·starId) → 입은 의상 id (없으면 기본 옷) · got = 「친구」 보상 안내를 한 의상 id */
 export function freshOutfits() {
