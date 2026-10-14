@@ -660,8 +660,16 @@ export function freshProgress() {
     guestbook: freshGuestbook(),
     /** LUXE §1 명품관 (world/luxeShop.ts lxState()가 칸을 바로잡는다 · 플래그를 꺼도 산 것은 그대로) */
     luxe: freshLuxe(),
+    /** LUXE §1-3 영웅 의상실 (world/outfits.ts odState()가 칸을 바로잡는다 · 플래그를 꺼도 가진 것·입은 것은 그대로 — 그림만 기본 옷) */
+    outfits: freshOutfits(),
   };
 }
+
+/** LUXE §1-3: owned = 가진 의상 id · worn = 캐릭터 키(heroId·legendId·starId) → 입은 의상 id (없으면 기본 옷) · got = 「친구」 보상 안내를 한 의상 id */
+export function freshOutfits() {
+  return { owned: [] as string[], worn: {} as Record<string, string>, got: [] as string[] };
+}
+export type OutfitState = ReturnType<typeof freshOutfits>;
 
 /**
  * LUXE §1: got = 명품관에서 산 종류(한 번이라도 · 순서대로) · spent = 쓴 금화 합 · coupons = 쓴 「이번 주 명품」 무료 쿠폰 수 (쿠폰 자체는 P.bundles.coupon)

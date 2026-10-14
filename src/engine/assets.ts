@@ -39,6 +39,8 @@ export const ROOF_POLYS: Record<string, [number, number][][]> = {};
 export const PORTRAITS: Record<string, string> = {};
 /** 초상화 이미지를 붙잡아 둔다 (창을 열 때 다시 디코드하지 않게) */
 const PORTRAIT_IMGS: HTMLImageElement[] = [];
+/** LUXE §1-3: 초상화 그림 (키 → 그림 · 의상 색 바꾸기가 읽는다 ui/outfitPort.ts) */
+export const PORTRAIT_IMG: Record<string, HTMLImageElement> = {};
 
 /** 핫픽스 13: 실패하면 0.5초·1.5초 뒤 두 번 더 (&r=n 으로 캐시 우회) — 그래도 안 되면 실패한 주소를 들고 실패 */
 export class AssetError extends Error {
@@ -140,6 +142,7 @@ export async function loadAssets(onProgress?: (p: number) => void) {
       // 디코드는 기다리지 않는다 (화면이 숨어 있으면 끝나지 않아 로딩이 멈춘다)
       im.decode?.().catch(() => {});
       PORTRAIT_IMGS.push(im);
+      PORTRAIT_IMG[k] = im;
       PORTRAITS[k] = av(src);
       tick();
     }),

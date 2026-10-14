@@ -204,3 +204,34 @@ export const LUXE_SHOP = {
     lx_color_flag: { from: 'banner', hue: 215, band: [0, 0.8], cols: [0.41, 1], hues: [340, 30] },
   } as Record<string, { from: string; hue: number; band: [number, number]; cols?: [number, number]; hues?: [number, number]; gray?: number }>,
 };
+
+/**
+ * LUXE §1-3 영웅 의상실 (플래그 outfits) — 숫자 한 곳
+ *  ② 의상 값: 영웅 10 = 200만 · 전설 14 = 300만~500만(얻기 어려운 전설일수록 비쌈 · 소문 조건 기준) · 다섯 별 = 500만
+ *  ① 의상: 인연 「친구」(3단계) 보상 — 다섯 별은 인연(ties)이 없어서 합류 + 밤 단골 대화(heart)를 들은 때를 「친구」로 본다
+ */
+export const LUXE_OUTFITS = {
+  /** ① 주는 인연 단계 (3 = 친구) */
+  friendStage: 3,
+  price: {
+    hero: 2_000_000,
+    star: 5_000_000,
+    legend: {
+      elysia: 3_000_000, ceres: 3_000_000, luna: 3_000_000, grom: 3_000_000, sylas: 3_000_000, vivian: 3_000_000,
+      aria: 4_000_000, nyx: 4_000_000, leon: 4_000_000, momo2: 4_000_000, scarlet: 4_000_000,
+      vael: 5_000_000, ryuka: 5_000_000, jin: 5_000_000,
+    } as Record<string, number>,
+    /** 표에 없는 전설 (안전값) */
+    legendDefault: 4_000_000,
+  },
+  /** 초상화 색 바꾸기: 옷 색에 가까운 픽셀만 (HSL 거리) · 배경은 테두리에서 번지는 비슷한 색 */
+  portrait: {
+    maxDist: 0.34,
+    bgStep: 22,
+    /** 이보다 작은 덩어리는 안 바꿈 (점 얼룩 방지) */
+    minRegion: 12,
+    /** 옷 색이 깔끔하게 안 옮겨지는 초상화 → 테두리만 의상 장식 색 (비교 시트 보고 정함) */
+    //  자동으로 옷 영역이 깔끔하게 잡히는 9명(리라 · 모르가 · 오스윈 · 세릴 · 엘리시아 · 닉스 · 미미 · 이카몰리 · 따뜻한밤)만 초상화 옷 색까지 · 나머지 20명은 테두리 (reports/luxe/outfits/sheet_*_portrait_auto.png)
+    frameOnly: ['kael', 'brok', 'pip', 'harald', 'nova', 'twins', 'ceres', 'vael', 'scarlet', 'luna', 'grom', 'aria', 'leon', 'sylas', 'ryuka', 'vivian', 'jin', 'woongs', 'gonu', 'walwal'] as string[],
+  },
+};

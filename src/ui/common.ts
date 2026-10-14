@@ -10,6 +10,7 @@ import type { Actor, Item } from '../world/state';
 import { sfx } from '../audio/sfx';
 import { bigNum, vis } from '../world/visual';
 import { isSelfStar, starOf } from '../world/fivestars';
+import { portSrc } from './outfitPort';
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 export const $$ = <T extends HTMLElement = HTMLElement>(s: string) => [...document.querySelectorAll(s)] as T[];
@@ -26,10 +27,11 @@ export function pic(a: Actor): string {
   if (a.cameo && PORTRAITS['p_' + a.cameo]) return PORTRAITS['p_' + a.cameo];
   // FIVESTARS: 다섯 별 신화 모습 (그림이 없으면 카메오 초상)
   const st = starOf(a);
-  if (st && (PORTRAITS['star_' + st] || PORTRAITS['p_' + st])) return PORTRAITS['star_' + st] || PORTRAITS['p_' + st];
+  if (st && (PORTRAITS['star_' + st] || PORTRAITS['p_' + st])) return portSrc('star_' + st) || PORTRAITS['p_' + st];
   // 영웅·전설은 전용 초상화
-  if (a.legendId && PORTRAITS['legend_' + a.legendId]) return PORTRAITS['legend_' + a.legendId];
-  if (a.heroId && PORTRAITS['hero_' + a.heroId]) return PORTRAITS['hero_' + a.heroId];
+  // LUXE §1-3: 입은 의상 색 (한 함수 portSrc · 안 입었으면 원래 그림)
+  if (a.legendId && PORTRAITS['legend_' + a.legendId]) return portSrc('legend_' + a.legendId);
+  if (a.heroId && PORTRAITS['hero_' + a.heroId]) return portSrc('hero_' + a.heroId);
   const { key, def } = appearance(a);
   if (PICS[key]) return PICS[key];
   const f = framesFor(key, def).idle[0];

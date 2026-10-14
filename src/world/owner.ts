@@ -22,6 +22,7 @@ import { markDirty, P, S, uiHooks, world, type Actor, type OwnerState, type Talk
 import { windTavern } from './wind';
 import { addChronicle } from './chronicle';
 import { gatesOn } from './paceGates';
+import { outfitOnTie, outfitSync } from './outfits';
 
 const O = CONFIG.owner;
 const T = CONFIG.ties;
@@ -171,6 +172,8 @@ export function dailyOwner() {
   checkSeason();
   prevLetter();
   pendingTieEvents();
+  // LUXE §1-3: 이미 「친구」 이상인 사람에게 의상 ① 소급 (말없이 가진 것으로)
+  outfitSync();
 }
 
 /** 주인 보너스 (0 ~ 0.15): 담력·체력·마음 */
@@ -328,6 +331,8 @@ export function tieEvent(id: string) {
   const lines: TalkLine[] = [['narr', `${PLACE[next]}, ${d.name} — 인연 「${stageName(next)}」`], ...d.ev[next - 2].map((s) => evLine(d, s))];
   const after = () => {
     t.stage = next;
+    // LUXE §1-3: 「친구」가 되면 의상 ① (켰을 때 안내 한 줄)
+    outfitOnTie(id, next);
     if (isLinked(id)) addEmber(E.linkedEvent);
     markDirty();
     uiHooks.toast(`${d.name}${josa(d.name, '과')}의 인연: ${stageName(next)}${next === 5 ? ` · ${t.rel === 'lover' ? '연인' : '전우'}` : ''}`);

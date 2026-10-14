@@ -12,6 +12,9 @@ import { S } from '../world/state';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
 import { gbHasNew, gbOn, lastTopHtml, loadGuestbook, pollGuestbook } from './guestbook';
 import { isWinOpen, openWin, toast } from './windows';
+import { portSrc } from './outfitPort';
+import { isOutfitId } from '../data/outfits';
+import { outfitsOn } from '../world/outfits';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
 export function toNeighbor(r: VillageRow): Neighbor | null {
@@ -40,6 +43,8 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     land: Math.max(1, Math.min(CONFIG.land.length, Math.floor(Number(s.land) || 1))),
     like: r.likes ?? 0,
     repHero: s.repHero ?? null,
+    // LUXE §1-3: 그 마을 대표 영웅이 입은 의상 (모르는 id면 기본 옷)
+    repOutfit: isOutfitId((s as { repOutfit?: unknown }).repOutfit) ? ((s as { repOutfit: string }).repOutfit) : null,
     grade: Math.max(0, Math.min(4, Math.floor(Number(s.grade) || 0))),
     title: typeof (s as { title?: unknown }).title === 'string' ? ((s as { title: string }).title).slice(0, 12) : '',
     layout,
@@ -47,6 +52,9 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) } : {}),
   };
 }
+
+/** LUXE §1-3: 대표 영웅 초상화 (그 마을이 입힌 의상 색 · outfits 꺼짐이면 원래 그림) */
+const repPort = (v: Neighbor) => portSrc(v.repHero, outfitsOn() ? (v.repOutfit ?? null) : null);
 
 let real: Neighbor[] = [];
 let mineRow: Neighbor | null = null;
@@ -91,11 +99,11 @@ export async function openVillage(tab = 0) {
   ).join('');
   const draw = (loading: boolean) => {
     // GUEST_SPEC §2: 내 여관을 맨 위에 고정 (♥ 확인용 · 누르면 아무 일 없음)
-    const mineRowHtml = mineRow ? `<div class="stp real mine"><img src="${(mineRow.repHero && PORTRAITS[mineRow.repHero]) || PORTRAITS.hero || ''}" alt=""><span><b>내 여관 · ${esc(mineRow.name)}</b><small>이웃들이 보는 내 마을</small></span><em>♥ ${fmt(mineRow.like)}</em></div>` : '';
+    const mineRowHtml = mineRow ? `<div class="stp real mine"><img src="${(mineRow.repHero && repPort(mineRow)) || PORTRAITS.hero || ''}" alt=""><span><b>내 여관 · ${esc(mineRow.name)}</b><small>이웃들이 보는 내 마을</small></span><em>♥ ${fmt(mineRow.like)}</em></div>` : '';
     const realRows = real
       .map(
         (v, i) =>
-          `<button class="stp real${v.uid && pioneerOfUid(v.uid) ? ' pioneer' : ''}" data-r="${i}"><img src="${(v.repHero && PORTRAITS[v.repHero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(v.name)}</b><small>${esc(ownerLine(v))} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like)}</em></button>`,
+          `<button class="stp real${v.uid && pioneerOfUid(v.uid) ? ' pioneer' : ''}" data-r="${i}"><img src="${(v.repHero && repPort(v)) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(v.name)}</b><small>${esc(ownerLine(v))} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like)}</em></button>`,
       )
       .join('');
     openWin(

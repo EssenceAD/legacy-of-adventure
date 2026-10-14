@@ -1,5 +1,7 @@
 // 모험가(손님) 만들기 · 능력치 · 경험치 · 전투력 · 겉모습
 import { specialSum } from './uniques';
+import { OUTFITS } from '../data/outfits';
+import { charOf, wornOfActor } from './outfits';
 import { sfx } from '../audio/sfx';
 import { isMythic, mythicStat } from './mythic';
 import { vis } from './visual';
@@ -168,7 +170,8 @@ export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
 // ───────── 겉모습 ─────────
 
 /** 그림에 쓸 직업 정의: 종족·얼굴·머리색·끼운 무기를 반영 */
-export function appearance(a: Actor): { key: string; def: ClassDef } {
+/** outfit: 안 주면 입은 의상(outfits 켰을 때) · null = 기본 옷 · id = 그 의상으로 (옷장 미리보기) */
+export function appearance(a: Actor, outfit?: string | null): { key: string; def: ClassDef } {
   const base = CLASSES[a.kind];
   // 여관 주인(나): 직업별 옷 + 초상화에 맞춘 머리색
   if (a.role === 'owner' && P.owner) return { key: `owner|${P.owner.job}|${P.owner.gender}`, def: ownerLook(P.owner.job, P.owner.gender) };
@@ -197,7 +200,7 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
     def.weapon = STARS[a.starId].weapon as ClassDef['weapon'];
     def.named = 'star_' + a.starId;
     def.mythic = true;
-    return { key: key + '|S:' + a.starId, def };
+    return dressed({ key: key + '|S:' + a.starId, def }, a, outfit);
   }
   const named = a.legendId ?? a.heroId;
   if (named && vis('heroDotV2')) {
@@ -205,5 +208,13 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
     def.mythic = isMythic(a);
     key += '|N:' + named + (def.mythic ? ':M' : '');
   }
-  return { key, def };
+  return dressed({ key, def }, a, outfit);
+}
+
+/** LUXE §1-3: 의상 id를 정의와 그림 열쇠에 (색 바꾸기는 그림 만들 때 engine/outfitPaint.ts dressGrid 한 함수) — 안 입으면 예전 그대로 (열쇠도 그대로) */
+function dressed(r: { key: string; def: ClassDef }, a: Actor, outfit?: string | null) {
+  const id = outfit === undefined ? wornOfActor(a) : outfit && charOf(a) === OUTFITS[outfit]?.char ? outfit : null;
+  if (!id || (isStarId(a.starId) && !vis('fiveStars'))) return r;
+  r.def.outfit = id;
+  return { key: r.key + '|O:' + id, def: r.def };
 }
