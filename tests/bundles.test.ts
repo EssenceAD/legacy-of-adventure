@@ -5,7 +5,10 @@ import { CONFIG } from '../src/data/config';
 import { CHAPTERS } from '../src/data/guide';
 import { LUXE } from '../src/data/luxe_cfg';
 import { migrate, readSave } from '../src/save/save';
-import { bdState, bundleById, donate, fillableNow, filledN, putOf, roomById, roomDone, ROOMS } from '../src/world/bundles';
+import { BUNDLE_DONE, HALL_FIRST, HALL_RESTORED, ROOM_DONE } from '../src/data/story/bundles';
+import {
+  bdState, bundleById, bundleDoneLine, donate, fillableNow, filledN, HALL_ROOM_OF, hallFirstLines, hallRestoredLines, putOf, roomById, roomDone, roomDoneLines, ROOMS, speakerHere,
+} from '../src/world/bundles';
 import { perkBait, perkEnhDust, perkHuntSlot, perkMealMult, perkPotionMult, perkRaidMats, perkRaidTries, roomPerk } from '../src/world/bundlePerks';
 import { alchReserve, drink } from '../src/world/facilities';
 import { enhanceCost } from '../src/world/craft';
@@ -168,6 +171,62 @@ describe('마을 회관 꾸러미 — 바치기', () => {
     expect(st.coupon).toBe(1);
     expect(P.decor.store.filter((s) => s.kind === 'town_hall').length).toBe(1);
     expect(st.final).toBe(true);
+  });
+});
+
+describe('마을 회관 꾸러미 — 대사', () => {
+  beforeEach(fresh);
+  afterEach(() => setFlag('bundles', false));
+
+  it('방 id 6개 모두 대사 방으로 이어진다', () => {
+    expect(ROOMS().map((r) => HALL_ROOM_OF[r.id]).sort()).toEqual(Object.keys(ROOM_DONE).sort());
+    for (const r of ROOMS()) expect(ROOM_DONE[HALL_ROOM_OF[r.id]].who).toBe(r.who);
+  });
+
+  it('처음 열기 대사는 1번만', () => {
+    expect(hallFirstLines()).toBe(HALL_FIRST);
+    expect(bdState().seen).toBe(true);
+    expect(hallFirstLines()).toBeNull();
+  });
+
+  it('방 완성: 담당이 영입돼 있으면 그 사람 · 아니면 버나드 fallback', () => {
+    // 영웅 (대장간 = 브로크)
+    expect(speakerHere('hero_brok')).toBe(false);
+    expect(roomDoneLines('smithy')).toBe(ROOM_DONE.forge.fallback);
+    P.dex.heroes.brok = { appeared: true, recruited: true, stars: 1 };
+    expect(roomDoneLines('smithy')).toBe(ROOM_DONE.forge.lines);
+    // 전설 (주방 = 그롬) — 찾아오기만 한 건 아직 아님
+    P.legends.grom = { st: 'visiting' } as never;
+    expect(roomDoneLines('kitchen')).toBe(ROOM_DONE.kitchen.fallback);
+    P.legends.grom = { st: 'joined' } as never;
+    expect(roomDoneLines('kitchen')).toBe(ROOM_DONE.kitchen.lines);
+    // fallback은 늘 있는 사람만 말한다
+    for (const d of Object.values(ROOM_DONE)) for (const [w] of d.fallback) expect(['keeper', 'narr']).toContain(w);
+    expect(roomDoneLines('nope')).toEqual([]);
+  });
+
+  it('꾸러미 완성 한 줄: 목록 안에서 · 바로 앞 줄과 안 겹친다', () => {
+    const a = bundleDoneLine(() => 0);
+    const b = bundleDoneLine(() => 0);
+    expect(BUNDLE_DONE).toContain(a);
+    expect(b).not.toBe(a);
+  });
+
+  it('회관 복원 컷: 마지막 방을 채울 때 1번만', () => {
+    expect(hallRestoredLines()).toBe(HALL_RESTORED);
+    const st = bdState();
+    for (const r of ROOMS()) for (const b of r.bundles) if (b.id !== 'h_bond') st.done.push(b.id);
+    st.rooms = ROOMS().filter((r) => r.id !== 'shelter').map((r) => r.id);
+    P.counters.giftsGiven = 30;
+    (P.ties as Record<string, unknown>).a = { pts: 99, stage: 4, talkDay: '' };
+    give('h_bond', 2);
+    const r = give('h_bond', 1) as { final?: boolean };
+    expect(r.final).toBe(true);
+    // 다시 바쳐도 컷은 또 안 나온다
+    st.rooms = st.rooms.filter((x) => x !== 'shelter');
+    st.done = st.done.filter((x) => x !== 'h_bond');
+    const again = give('h_bond', 1) as { final?: boolean };
+    expect(typeof again === 'string' || !again.final).toBe(true);
   });
 });
 

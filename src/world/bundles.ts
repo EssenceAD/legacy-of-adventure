@@ -7,6 +7,8 @@ import { CONFIG } from '../data/config';
 import { bossById } from '../data/bosses';
 import { DUST_NAME, REGIONS, regionById, type Grade, type RegionId } from '../data/items';
 import { FISH } from '../data/story/fish';
+import { BUNDLE_DONE, HALL_FIRST, HALL_RESTORED, ROOM_DONE, type HallRoom } from '../data/story/bundles';
+import type { SLine } from '../data/story/v1';
 import { LUXE, type BundleDef, type BundleRec, type BundleSlot, type RoomDef } from '../data/luxe_cfg';
 import { track } from '../net/telemetry';
 import { bdOn } from './bundlePerks';
@@ -291,3 +293,46 @@ export function fillableNow(room: RoomDef): { slots: number; total: number; bund
   }
   return { slots, total, bundles, done: bundles >= room.bundles.length };
 }
+
+// ───────── 대사 고르기 (data/story/bundles.ts · 화면은 ui/bundles가 playStory로 튼다) ─────────
+
+/** 대사 파일의 방 이름 → 게임 방 id (luxe_cfg) */
+export const HALL_ROOM_OF: Record<RoomDef['id'], HallRoom> = {
+  kitchen: 'kitchen',
+  pharmacy: 'apothecary',
+  smithy: 'forge',
+  water: 'water',
+  raid: 'trophy',
+  shelter: 'lodge',
+};
+/** 그 화자가 이 마을에 있나: 영웅 = 영입(recruited) · 전설 = 합류(joined) · 그 밖(버나드·모모·나)은 늘 */
+export function speakerHere(who: string): boolean {
+  if (who.startsWith('hero_')) return !!P.dex.heroes[who.slice(5)]?.recruited;
+  if (who.startsWith('legend_')) return P.legends[who.slice(7)]?.st === 'joined';
+  return true;
+}
+/** 처음 열기 대사 (1번만 · 본 걸로 적는다) — 이미 봤으면 null */
+export function hallFirstLines(): SLine[] | null {
+  const st = bdState();
+  if (st.seen) return null;
+  st.seen = true;
+  markDirty();
+  return HALL_FIRST;
+}
+/** 방 완성 대사: 담당(who)이 영입돼 있으면 그 사람 · 아니면 버나드(fallback) */
+export function roomDoneLines(roomId: string): SLine[] {
+  const d = ROOM_DONE[HALL_ROOM_OF[roomId as RoomDef['id']]];
+  if (!d) return [];
+  return speakerHere(d.who) ? d.lines : d.fallback;
+}
+/** 꾸러미 완성 한 줄 (무작위 · 바로 앞 줄과 겹치지 않게) */
+let lastDone = -1;
+export function bundleDoneLine(rnd = Math.random): string {
+  const n = BUNDLE_DONE.length;
+  let i = Math.floor(rnd() * n) % n;
+  if (n > 1 && i === lastDone) i = (i + 1) % n;
+  lastDone = i;
+  return BUNDLE_DONE[i];
+}
+/** 6방 다: 회관 복원 컷 */
+export const hallRestoredLines = (): SLine[] => HALL_RESTORED;
