@@ -98,7 +98,7 @@ export async function openVillage(tab = 0) {
   }
   const liked = game.likedSet();
   const fakeRows = NEIGHBORS.map(
-    (v, i) => `<button class="stp" data-f="${i}"><span style="grid-column:1/3"><b>${v.name}</b><small>예시 마을 · 주인 ${v.owner} · 땅 ${v.land}단계</small></span><em>♥ ${fmt(v.like + (liked.has(v.id) ? 1 : 0))}</em></button>`,
+    (v, i) => `<button class="stp" data-f="${i}"><span style="grid-column:1/3"><b>${v.name}</b><small>예시 마을 · 주인 ${v.owner} · 땅 ${v.land}단계</small></span>${gbOn() ? '' : `<em>♥ ${fmt(v.like + (liked.has(v.id) ? 1 : 0))}</em>`}</button>`, // LUXE §4 (형철): 방명록이 켜지면 예시 마을엔 ♥ 수를 안 보인다 (가짜 숫자)
   ).join('');
   const draw = (loading: boolean) => {
     // GUEST_SPEC §2: 내 여관을 맨 위에 고정 (♥ 확인용 · 누르면 아무 일 없음)

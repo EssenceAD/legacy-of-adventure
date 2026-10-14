@@ -687,6 +687,8 @@ export function updateLike() {
   const v = S.visiting;
   if (!v) return;
   const liked = !v.uid && likedSet().has(v.id);
+  // LUXE §4 (형철): 방명록이 켜지면 예시 마을(uid 없음)은 ♥ 수를 안 보인다 — 버튼(♥/✓)만
+  if (!v.uid && gbOn()) return void ($('#vLike').textContent = liked ? '♥ ✓' : '♥');
   $('#vLike').textContent = `${v.uid && gbOn() && !gbServer.missing ? '👍' : '♥'} ${fmt(v.like + (liked ? 1 : 0))}`;
 }
 

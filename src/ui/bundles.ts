@@ -1,5 +1,5 @@
 // LUXE §3 마을 회관 꾸러미 화면 (플래그 bundles · 실험실 vis) — 게시판 「마을 회관」 탭
-//  위: 회관 그림(★ 임시 — 그림이 오기 전까지 6조각 블록 · 방이 완성될 때마다 한 조각씩 복원) · 방 6개 카드 → 방 안: 꾸러미마다 칸 줄 · [바치기]
+//  위: 회관 그림(town_hall.png — 어둡게 시작 · 방이 완성될 때마다 위에서부터 한 띠씩 밝아짐) · 방 6개 카드 → 방 안: 꾸러미마다 칸 줄 · [바치기]
 //  대사(data/story/bundles.ts): 처음 열면 HALL_FIRST · 꾸러미 완성 = BUNDLE_DONE 한 줄(토스트) · 방 완성 = 담당 대사(영입 안 됐으면 버나드 fallback) · 6방 다 = HALL_RESTORED 컷
 import { LUXE, type BundleDef, type RoomDef } from '../data/luxe_cfg';
 import type { SLine } from '../data/story/v1';
@@ -27,14 +27,14 @@ export function bundleIntro(done: () => void) {
   playStory(lines, done);
 }
 
-/** 회관 그림 자리 (★ 임시: 6조각 블록 · 완성한 방 조각만 색이 돌아온다) */
+/** 회관 그림 (형철 town_hall.png): 무너진 상태 = 같은 그림 어둡고 흐리게 · 고친 방 하나마다 위→아래로 1/6 띠가 밝아진다 (6방 = 다 밝음) */
 function hallArt(): string {
-  const pieces = ROOMS()
-    .map((r) => `<i class="bd-pc ${roomDone(r) ? 'on' : ''}" title="${esc(r.name)}"><em>${esc(r.name)}</em></i>`)
-    .join('');
-  const n = roomsDoneN();
-  return `<div class="bd-hall ${n >= ROOMS().length ? 'full' : ''}" aria-label="마을 회관 그림 (임시)"><div class="bd-roof"></div><div class="bd-pcs">${pieces}</div><small class="bd-tmp">임시 그림 · 회관 그림이 오면 바뀌어요</small></div>
-  <p class="sub">${n >= ROOMS().length ? '마을 회관이 다 고쳐졌어요!' : `무너진 마을 회관 · 고친 방 ${n}/${ROOMS().length}`}</p>`;
+  const all = ROOMS().length;
+  const n = Math.min(roomsDoneN(), all);
+  const cut = all ? Math.round((1 - n / all) * 10000) / 100 : 0;
+  const src = 'assets/sprites/town_hall.png';
+  return `<div class="bd-hall ${n >= all ? 'full' : ''}" role="img" aria-label="마을 회관 그림 · 고친 방 ${n}/${all}"><div class="bd-art"><img class="bd-ruin" src="${src}" alt=""><img class="bd-lit" src="${src}" alt="" style="clip-path:inset(0 0 ${cut}% 0)"></div></div>
+  <p class="sub">${n >= all ? '마을 회관이 다 고쳐졌어요!' : `무너진 마을 회관 · 고친 방 ${n}/${all}`}</p>`;
 }
 
 /** 탭 내용 */

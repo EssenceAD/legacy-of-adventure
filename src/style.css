@@ -1577,6 +1577,10 @@ body.cbtalk #storyFx{z-index:45}
 .petgrid .pcell2 img.petsil{width:auto;height:auto;max-height:none;transform:scale(2.5);margin:18px 0 20px;filter:brightness(0) opacity(.55)}
 .pcell2.out{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #ff8fc2}
 .pcell2 button{margin-top:2px;width:100%;min-height:34px;font-size:var(--f-small)}
+/* LUXE 펫 (형철): 도감 카드 · 마을 펫 메뉴 버튼 = 기본 버튼(갈색 + 금테 · .bigbtn.sm) */
+.pcell2 .bigbtn{margin-top:2px;padding:4px 6px;min-height:34px}.pmenu .bigbtn{margin-top:0;min-height:40px;text-align:center}
+/* 펫 메뉴는 #view 밖(body)에 붙어 ui2 「보통(나무)」 버튼 규칙이 안 닿는다 → 같은 갈색 버튼을 직접 */
+body.ui2 #petmenu .bigbtn:not([disabled]){border:0;border-image:none;background:#7a4a2a!important;box-shadow:inset 0 2px 0 #a8743f,inset 0 -3px 0 #4a2c18,0 0 0 2px var(--ink);color:#fff3d6;text-shadow:1px 1px 0 var(--ink)}body.ui2 #petmenu .bigbtn:not([disabled]):active{background:#5e3820!important;box-shadow:inset 0 3px 0 #4a2c18,0 0 0 2px var(--ink)}
 .pmenu .pmfx{color:#ffd6ec;text-align:center;font-size:11px}.pmenu button:disabled{opacity:.6;cursor:default}
 /* ───────── GROWTH §4 낚시 ───────── */
 .fstage{position:relative;height:180px;margin:8px 0;overflow:hidden;background:linear-gradient(180deg,#2a5a8a,#173a66);box-shadow:0 0 0 2px var(--ink);touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
@@ -2382,14 +2386,11 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 .qhd.five{flex-wrap:wrap;gap:2px 8px}.qhd.five>b{white-space:nowrap}
 @media (max-width:340px){.qhd.five>b{font-size:var(--f-small)}}
 /* LUXE §3 마을 회관 꾸러미 (게시판 「마을 회관」 탭) — 회관 그림은 ★ 임시 블록 (6조각 · 완성한 방만 색) */
-.bd-hall{position:relative;margin:6px 0 2px;padding:8px 8px 18px;background:#2a2340;box-shadow:0 0 0 2px var(--ink);display:flex;flex-direction:column;align-items:center}
-.bd-roof{width:0;height:0;border-left:clamp(90px,34vw,150px) solid transparent;border-right:clamp(90px,34vw,150px) solid transparent;border-bottom:34px solid #4a3a52;margin-bottom:2px}
-.bd-hall.full .bd-roof{border-bottom-color:#c8553d}
-.bd-pcs{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:min(100%,300px)}
-.bd-pc{display:flex;align-items:center;justify-content:center;height:34px;background:repeating-linear-gradient(45deg,#3a3148 0 6px,#332a40 6px 12px);box-shadow:0 0 0 1px #1c1018;font-style:normal}
-.bd-pc em{font-style:normal;font-size:var(--f-small);color:#6f6888}
-.bd-pc.on{background:#c9a46a}.bd-pc.on em{color:#2a1a10}
-.bd-tmp{position:absolute;right:4px;bottom:2px;font-size:10px;color:#ffb86b;opacity:.85}
+.bd-hall{position:relative;margin:6px 0 2px;padding:8px;background:#2a2340;box-shadow:0 0 0 2px var(--ink);display:flex;justify-content:center}
+.bd-art{position:relative;width:160px;max-width:100%;aspect-ratio:80/89}
+.bd-art img{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.bd-ruin{filter:grayscale(.85) brightness(.42) contrast(.9)}
+.bd-lit{transition:clip-path .6s ease}
 .bd-rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:6px 0}
 .bd-room{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:0;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);padding:6px;min-height:58px;cursor:pointer;color:inherit;font:inherit}
 .bd-room small{color:#9aa6d8;font-size:var(--f-small)}.bd-room .bd-perk{color:#c9b98a}
@@ -2485,3 +2486,4 @@ body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2
 .wd-cell em{font-style:normal;font-size:11px;color:var(--cream)}
 .wd-cell em.wd-on{color:var(--gold)}.wd-cell em.wd-lock{color:#8a84a8}
 .wd-how{color:#c8b8e8!important}
+.wd-sw{display:flex;gap:5px;justify-content:center;margin:2px 0}.wd-sw i{display:block;width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 2px var(--ink)}
