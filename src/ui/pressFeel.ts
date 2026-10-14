@@ -53,7 +53,7 @@ export function initPressFeel() {
     (e) => {
       if (e.button > 0) return;
       const el = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(SEL);
-      if (!el || (el as HTMLButtonElement).disabled) return;
+      if (!el || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
       if (cur && cur !== el) cur.classList.remove('prs');
       clearTimeout(offT);
       cur = el;

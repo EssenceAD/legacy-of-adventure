@@ -7,12 +7,12 @@
 //  · 가방 정리 = [일반·희귀 한 번에 분해](C5) · 자동 분해 · 예전 분해 탭(한 개씩 · 일괄 분해… · 가루 바꾸기…)
 import { CONFIG } from '../data/config';
 import { def, ROOFS } from '../data/catalog';
-import { DUST_NAME, GRADE_INFO, regionById, SLOT_NAME, SLOTS, type Slot } from '../data/items';
+import { DUST_NAME, GRADE_INFO, SLOT_NAME, SLOTS, type Slot } from '../data/items';
 import { av } from '../engine/ver';
 import { shakeLv } from '../engine/shake';
 import * as game from '../game';
 import { powerOf } from '../world/adventurers';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, gardenLevelState, lastEnh, smithLvl, transcend, transcendCost, transcendOpen } from '../world/craft';
+import { enhance, enhanceCost, gardenLevelState, lastEnh, smithLvl, transcend, transcendCost, transcendOpen } from '../world/craft';
 import { favRank, isFav } from '../world/growth';
 import { bagSize, equip, itemPower } from '../world/items';
 import { bagGear, heroGear, slotAction, smithHeroes, smithPicks } from '../world/smithOne';
@@ -31,6 +31,9 @@ import { appendMoveButton, openWin, toast, winBack } from './windows';
 import { fsay, vis } from '../world/visual';
 import { openTransfer } from './enhTransfer';
 import { stampFx } from './checkin';
+import { lockAttr, lockNote } from './lockBtn';
+import { costLine, shortTip, shortWhy } from './costLine';
+import { enhanceParts, transcendParts, worstShort, type CostPart } from '../world/shortage';
 
 const SM = () => CONFIG.smith;
 /** 지금 탭 · 고른 영웅(-1 = 가방 장비) · 고른 칸 · 가방에서 고른 장비 */
@@ -47,9 +50,9 @@ function headHtml(o: Building): string {
   const btn = S.visiting
     ? ''
     : g.state === 'up'
-      ? `<button id="smUp" ${S.gold >= g.cost! ? '' : 'disabled'}>Lv.${g.lv + 1} · ${fmt(g.cost!)} G</button>`
+      ? `<button id="smUp" ${lockAttr(S.gold >= g.cost! ? null : `금화 ${fmt(g.cost! - S.gold)} 부족`)}>Lv.${g.lv + 1} · ${fmt(g.cost!)} G</button>`
       : g.state === 'land'
-        ? `<button disabled>Lv.${g.lv + 1} · 땅 ${g.needLand}단계 필요</button>`
+        ? `<button ${lockAttr(`땅 넓히기 ${g.needLand}단계가 되면 올릴 수 있어요`)}>Lv.${g.lv + 1} · 땅 ${g.needLand}단계 필요</button>`
         : g.state === 'con'
           ? '<span class="note">🔨 공사 중</span>'
           : '';
@@ -168,7 +171,7 @@ function bulkHtml(a: Actor): string {
     .flatMap((x) => heroGear(x).map((g) => g.it))
     .filter((x): x is Item => !!x);
   const f = bulkGoal(favItems.filter((x) => x.enh < SM().maxEnhance));
-  return `<div class="smo-bulk"><div class="btnrow"><button class="bigbtn sm ghost" id="smoAllH" ${h ? '' : 'disabled'}>모두 강화 (이 영웅)${h ? ` → +${h.goal}` : ''}</button>${f ? `<button class="bigbtn sm ghost" id="smoAllF">★ 영웅 전부 +${f.goal}까지</button>` : ''}${transcendOpen() ? '<button class="bigbtn sm ghost" id="smoBulkT">일괄 초월…</button>' : ''}</div></div>`;
+  return `<div class="smo-bulk"><div class="btnrow"><button class="bigbtn sm ghost" id="smoAllH" ${lockAttr(h ? null : !mine.length ? '이 영웅은 낀 장비가 없어요' : transcendOpen() ? '모두 최고 단계예요' : `모두 +${SM().maxEnhance} · 초월은 대장간 Lv.${SM().transcend.smithLv}부터`)}>모두 강화 (이 영웅)${h ? ` → +${h.goal}` : ''}</button>${f ? `<button class="bigbtn sm ghost" id="smoAllF">★ 영웅 전부 +${f.goal}까지</button>` : ''}${transcendOpen() ? '<button class="bigbtn sm ghost" id="smoBulkT">일괄 초월…</button>' : ''}</div></div>`;
 }
 /** 묶음 목표: +10 미만이 있으면 그중 가장 낮은 것의 다음 목표(+5 → +10) · 다 +10이면 초월(열렸을 때) */
 function bulkGoal(items: Item[]): { ids: number[]; goal: number; trans: boolean } | null {
@@ -194,20 +197,25 @@ function panelHtml(it: Item, a: Actor | null): string {
   const g = GRADE_INFO[it.grade];
   let cost = '';
   let label = '';
+  // 회색 버튼엔 이유: 재료마다 필요/가진 · 모자라면 빨강 −n (누르면 얻는 곳) · 큰 버튼 글 = 가장 많이 모자란 재료
+  let parts: CostPart[] = [];
   if (act.main === 'enhance') {
     const c = enhanceCost(it);
-    const bc = enhanceBossCost(it);
-    const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
-    cost = `<p class="note">비용: ${DUST_NAME[it.grade]} ${fmt(c)}/${fmt(P.dust[it.grade])}${bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : ''}</p>${bossShort ? `<p class="sub bad">${bossHint(bc!.boss.id)}</p>` : ''}`;
+    parts = enhanceParts(it);
+    cost = costLine(parts, '비용: ');
     label = `강화 +${it.enh + 1} · 성공 ${pct(Math.min(1, act.rate))} · ${DUST_NAME[it.grade]} ${fmt(c)}`;
   } else if (act.main === 'transcend') {
     const c = transcendCost(it);
-    const reg = regionById(it.region);
-    cost = `<p class="note">초월 비용: 금화 ${fmt(c.gold)}/${fmt(S.gold)} · ${reg.mat} ${c.mats}/${P.mats[it.region] ?? 0} · ${c.boss.mat} ${c.bossMats}/${P.bossMats[c.boss.id] ?? 0} · ${DUST_NAME[it.grade]} ${c.dust}/${fmt(P.dust[it.grade] ?? 0)}</p>`;
+    parts = transcendParts(it);
+    cost = costLine(parts, '초월 비용: ');
     label = `초월 +${it.enh + 1} · 성공 ${pct(Math.min(1, act.rate))} · 금화 ${fmt(c.gold)}`;
   } else if (act.main === 'locked') label = `초월은 대장간 Lv.${SM().transcend.smithLv}부터`;
   else if (act.main === 'max') label = '극의에 닿았어요';
   const tryable = act.main === 'enhance' || act.main === 'transcend';
+  const short = tryable && act.short ? worstShort(parts) : null;
+  if (short) label = shortWhy(parts)!;
+  // 막힌 이유 (누르면 토스트): 모자람 = 「○○ n개 부족 · 얻는 곳: …」 · 초월 잠김·극의 = 버튼 글 그대로
+  const why = short ? shortTip(parts) : tryable ? null : label || null;
   const G = P.growth;
   const dropStep = act.main === 'enhance' && it.enh + 1 >= CONFIG.growth.enhance.dropFrom;
   const to = tryable ? nextGoal(it.enh, act.main === 'transcend') : 0;
@@ -216,10 +224,10 @@ function panelHtml(it: Item, a: Actor | null): string {
   return `<div class="smo-panel" id="smoPanel">
     <div class="idet">${itemCell(it, 'id="smoIc"')}<div><b style="color:${g.color}">${esc(it.name)} +${it.enh}</b><small>${g.name} ${SLOT_NAME[it.slot]} · 합 ${fmt(itemPower(it))}${it.locked ? ' · 🔒' : ''}</small></div></div>
     ${tryable ? `<p class="sub" id="smoPity"><b class="g">${pityText(it, whetOn())}</b></p>` : ''}
-    <div class="btnrow smo-go"><button class="bigbtn" id="smoGo" ${tryable && !act.short ? '' : 'disabled'}>${label}</button>${act.reforge ? '<button class="bigbtn sm ghost" id="smoRf">재련</button>' : ''}</div>
+    <div class="btnrow smo-go"><button class="bigbtn" id="smoGo" ${lockAttr(why)}>${label}</button>${act.reforge ? '<button class="bigbtn sm ghost" id="smoRf">재련</button>' : ''}</div>${short ? lockNote(`얻는 곳: ${short.where}`, 'smoWhy') : ''}
     ${tryable ? `<p class="note">${riskText(it)}</p>${cost}` : ''}${it.enh >= SM().maxEnhance ? `<p class="note">${trRule()}</p>` : ''}
     ${tryable ? `<div class="enhuse"><label class="tog ${dropStep ? '' : 'dim'}"><input type="checkbox" id="smoCharm" ${enhUse.charm ? 'checked' : ''} ${G.charm > 0 ? '' : 'disabled'}> 🧿 부적 <small>(${G.charm}개 · 하락을 막을 때만)</small></label><label class="tog"><input type="checkbox" id="smoWhet" ${enhUse.whet ? 'checked' : ''} ${G.whet > 0 ? '' : 'disabled'}> 🪨 숫돌 <small>(${G.whet}개 · +${Math.round(CONFIG.growth.whet.add * 100)}%p)</small></label></div>` : ''}
-    <div class="btnrow smo-sub">${tryable && to > it.enh ? `<button class="bigbtn sm ghost" id="smoTo" ${act.short ? 'disabled' : ''}>+${to}까지</button>` : ''}<button class="bigbtn sm ghost" id="smoInfo">자세히</button>${vis('enhTransfer') ? '<button class="bigbtn sm ghost" id="smoTf">전수</button>' : ''}${a && a.runId == null ? '<button class="bigbtn sm ghost" id="smoSwap">바꾸기</button>' : ''}</div>
+    <div class="btnrow smo-sub">${tryable && to > it.enh ? `<button class="bigbtn sm ghost" id="smoTo" ${lockAttr(short ? shortTip(parts) : null)}>+${to}까지</button>` : ''}<button class="bigbtn sm ghost" id="smoInfo">자세히</button>${vis('enhTransfer') ? '<button class="bigbtn sm ghost" id="smoTf">전수</button>' : ''}${a && a.runId == null ? '<button class="bigbtn sm ghost" id="smoSwap">바꾸기</button>' : ''}</div>
     ${who ? `<div class="irow smo-who"><img src="${pic(who.a)}" alt=""><span>누가 끼면 좋을까 · ${isFav(who.a) ? '★ ' : ''}${esc(who.a.name)} <em class="good">▲ ${fmt(who.gain)}</em></span><button id="smoWear">끼우기</button></div>` : ''}
   </div>`;
 }

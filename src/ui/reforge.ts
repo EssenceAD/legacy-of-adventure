@@ -1,12 +1,15 @@
 // GROWTH §3-4: 대장간 「재련」 탭 — 옵션 하나 다시 굴리기 · 하나 잠그면 비용 ×2 · 고유 옵션(★)은 그대로
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById } from '../data/items';
 import { reforge, reforgeCost, reforgeWhy, rerollable } from '../world/reforge';
-import { P, S, world, type Item, type ItemOpt } from '../world/state';
+import { P, world, type Item, type ItemOpt } from '../world/state';
 import { $, $$, esc, fmt, itemCell } from './common';
 import { openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { vis } from '../world/visual';
 import { track as trackEv } from '../net/telemetry';
+import { lockAttr, lockNote } from './lockBtn';
+import { costLine, shortTip, shortWhy } from './costLine';
+import { anyShort, reforgeParts, worstShort } from '../world/shortage';
 
 const optText = (o: ItemOpt) => OPT_INFO[o.k].label(o.v, o.region ? regionById(o.region).name : undefined);
 const ownerName = (it: Item) => (it.owner == null ? '' : ((world.home?.actors ?? world.actors).find((a) => a.id === it.owner)?.name ?? ''));
@@ -31,6 +34,10 @@ export function openReforge(it: Item, back: () => void, changed = -1) {
   const c = reforgeCost(it, lockIdx);
   const why = reforgeWhy(it, lockIdx);
   const cand = rerollable(it, lockIdx);
+  // 회색 버튼엔 이유: 비용 재료마다 필요/가진 · 모자라면 빨강 −n · 버튼 글 = 가장 많이 모자란 것
+  const parts = reforgeParts(it, lockIdx);
+  const costShort = anyShort(parts) && (!why || /모자라요$/.test(why));
+  const btnWhy = costShort ? shortTip(parts) : why;
   const own = ownerName(it);
   const rows = it.opts
     .map(
@@ -43,9 +50,9 @@ export function openReforge(it: Item, back: () => void, changed = -1) {
     `<div class="idet">${itemCell(it)}<div><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${GRADE_INFO[it.grade].name}${own ? ` · ${esc(own)} 착용` : ''}</small></div></div>
     <div class="rfopts">${rows}</div>
     <p class="note">🎲 표시 중 하나가 무작위로 바뀌어요${lockIdx != null ? ' · 잠금 → 비용 2배' : ''}</p>
-    <p class="sub">비용: ${DUST_NAME[c.grade]} ${fmt(c.dust)}/${fmt(P.dust[c.grade] ?? 0)} · 금화 ${fmt(c.gold)}/${fmt(S.gold)}</p>
-    ${why ? `<p class="sub bad">${esc(why)}</p>` : ''}
-    <div class="btnrow"><button class="bigbtn" id="rfGo" ${why ? 'disabled' : ''}>재련하기</button><button class="bigbtn ghost" id="rfBack">돌아가기</button></div>`,
+    ${costLine(parts, '비용: ', 'sub')}
+    ${why && !costShort ? `<p class="sub bad">${esc(why)}</p>` : ''}
+    <div class="btnrow"><button class="bigbtn" id="rfGo" ${lockAttr(btnWhy)}>${costShort ? esc(shortWhy(parts)!) : '재련하기'}</button><button class="bigbtn ghost" id="rfBack">돌아가기</button></div>${costShort ? lockNote(`얻는 곳: ${worstShort(parts)!.where}`) : ''}`,
   );
   $$('[data-lk]').forEach(
     (b) =>

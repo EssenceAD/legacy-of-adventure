@@ -8,6 +8,9 @@ import { P, S, world, type Item } from '../world/state';
 import { $$, esc, fmt, itemCell } from './common';
 import { confirmSheet } from './confirmSheet';
 import { openWin, toast } from './windows';
+import { lockAttr } from './lockBtn';
+import { partHtml, shortTip, shortWhy } from './costLine';
+import { transferParts } from '../world/shortage';
 
 /** 한 목록 최대 줄 수 (할 수 있는 것 먼저) */
 const MAX_ROWS = 12;
@@ -27,8 +30,12 @@ function row(giver: Item, recv: Item, other: Item): string {
   const p = transferPlan(giver, recv);
   const g = GRADE_INFO[other.grade];
   const own = ownerName(other);
-  const line = p.rule ? `<small class="bad">${esc(p.why)}</small>` : `<small>${esc(previewText(p, recv))}</small>${p.ok ? '' : `<small class="bad">${esc(p.why)}</small>`}`;
-  return `<div class="irow tf-row" data-tg="${giver.id}" data-tr="${recv.id}">${itemCell(other)}<span><b style="color:${g.color}">${esc(nameOf(other))}</b><small>${g.name}${own ? ` · ${esc(own)} 착용` : ''}</small>${line}</span><button data-tgo="${giver.id}:${recv.id}" ${p.ok ? '' : 'disabled'}>전수</button></div>`;
+  // 회색 버튼엔 이유: 비용 재료마다 필요/가진 · 모자라면 빨강 −n (누르면 얻는 곳) · 막힌 [전수]도 눌리면 이유
+  const parts = transferParts(p.cost, recv);
+  const short = !p.rule && !p.ok ? shortWhy(parts) : null;
+  const line = p.rule ? `<small class="bad">${esc(p.why)}</small>` : `<small>+${p.from} → +${Math.max(p.from, p.to)} · 비용 ${parts.map(partHtml).join(' · ')}</small>${p.ok ? '' : `<small class="bad">${esc(short ?? p.why)}</small>`}`;
+  const why = p.ok ? null : p.rule ? p.why : (shortTip(parts) ?? p.why);
+  return `<div class="irow tf-row" data-tg="${giver.id}" data-tr="${recv.id}">${itemCell(other)}<span><b style="color:${g.color}">${esc(nameOf(other))}</b><small>${g.name}${own ? ` · ${esc(own)} 착용` : ''}</small>${line}</span><button data-tgo="${giver.id}:${recv.id}" ${lockAttr(why)}>전수</button></div>`;
 }
 const rank = (p: TransferPlan) => (p.ok ? 0 : p.rule ? 2 : 1);
 function listHtml(pairs: [Item, Item, Item][]): string {

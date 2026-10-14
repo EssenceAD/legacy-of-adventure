@@ -16,6 +16,7 @@ import { openNotices } from './notice';
 import { openWin, showObj, toast } from './windows';
 import { smithObj } from '../world/craft';
 import { smithCond } from '../world/bldStatus';
+import { raidTileLock } from '../world/raidWhy';
 
 const on = () => document.body.classList.contains('hud2');
 
@@ -40,7 +41,8 @@ function advItems(): AdvItem[] {
   return [
     { icon: 'm_hunt', name: '사냥', sub: '몬스터 · 장비 · 재료', open: () => openHunt(), lock: gate('hunt') },
     { icon: 'm_expedition', name: '원정', sub: '단골을 보내고 기다리기', open: () => openBoard(), lock: null },
-    { icon: 'm_raid', name: '토벌', sub: '주간 · 떠돌이 보스', open: () => openBoard(), lock: gate('raid') },
+    // 회색 버튼엔 이유: 열려 있어도 지금 못 가면 부제에 짧은 이유 (「오늘 도전 끝 · 내일 0시」)
+    { icon: 'm_raid', name: '토벌', sub: (feature('raid') && raidTileLock()?.short) || '주간 · 떠돌이 보스', open: () => openBoard(), lock: gate('raid') },
     {
       icon: 'm_dex',
       name: '심연',

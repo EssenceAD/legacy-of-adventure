@@ -112,7 +112,7 @@ for (let k = 0; k < 3; k++) {
   await W(800);
   await p.locator('#rWeek').click();
   await W(800);
-  const can = await p.evaluate(() => !document.querySelector('#rgAuto')?.disabled);
+  const can = await p.evaluate(() => { const b = document.querySelector('#rgAuto'); return !!b && !b.disabled && b.getAttribute('aria-disabled') !== 'true'; });
   if (can) await p.evaluate(() => document.querySelector('#rgAuto').click());
   await W(1200);
   await settle();

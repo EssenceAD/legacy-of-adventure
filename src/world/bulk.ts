@@ -1,6 +1,6 @@
 // SMITH §2·§3: 일괄 강화(초월 포함) · 일괄 제작 — 계획(미리보기) · 한 번씩 진행(멈춤 가능) · 요약
 import { CONFIG } from '../data/config';
-import { SLOTS, type RegionId, type Slot } from '../data/items';
+import { SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
 import { craft, craftCost, enhance, enhanceBossCost, enhanceCost, enhanceRate, transcend, transcendCost, transcendOpen, transcendRate } from './craft';
 import { bagSize, itemPower } from './items';
 import { P, S, world, type Item } from './state';
@@ -59,11 +59,14 @@ export interface BulkPlan {
   mats: number;
   /** 보스 재료가 모자라 멈출 장비 수 */
   bossShort: number;
+  /** 재료별 기대 비용 (미리보기 빨강 −n) — 가루 등급별 · 보스 재료별 · 지역 재료별 */
+  by: { dust: Partial<Record<Grade, number>>; boss: Record<string, number>; mats: Partial<Record<RegionId, number>> };
 }
 /** 미리보기 (기대값) */
 export function bulkPlan(o: BulkOpts): BulkPlan {
   const list = bulkItems(o);
-  const p: BulkPlan = { items: list.length, gold: 0, dust: 0, boss: 0, mats: 0, bossShort: 0 };
+  const p: BulkPlan = { items: list.length, gold: 0, dust: 0, boss: 0, mats: 0, bossShort: 0, by: { dust: {}, boss: {}, mats: {} } };
+  const add = <K extends string>(m: Partial<Record<K, number>>, k: K, v: number) => v && (m[k] = (m[k] ?? 0) + v);
   const bossLeft: Record<string, number> = { ...P.bossMats };
   for (const it of list) {
     let short = false;
@@ -72,6 +75,9 @@ export function bulkPlan(o: BulkOpts): BulkPlan {
       p.gold += c.gold;
       p.dust += c.dust;
       p.mats += c.mats;
+      add(p.by.dust, it.grade, c.dust);
+      add(p.by.mats, it.region, c.mats);
+      if (c.boss) add(p.by.boss, c.bossId, c.boss);
       if (c.boss) {
         p.boss += c.boss;
         bossLeft[c.bossId] = (bossLeft[c.bossId] ?? 0) - c.boss;
@@ -81,6 +87,7 @@ export function bulkPlan(o: BulkOpts): BulkPlan {
     if (short) p.bossShort++;
   }
   for (const k of ['gold', 'dust', 'boss', 'mats'] as const) p[k] = Math.round(p[k]);
+  for (const m of [p.by.dust, p.by.boss, p.by.mats] as Record<string, number>[]) for (const k in m) m[k] = Math.round(m[k]);
   return p;
 }
 
