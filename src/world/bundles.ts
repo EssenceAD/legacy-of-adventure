@@ -12,6 +12,7 @@ import type { SLine } from '../data/story/v1';
 import { LUXE, type BundleDef, type BundleRec, type BundleSlot, type RoomDef } from '../data/luxe_cfg';
 import { track } from '../net/telemetry';
 import { bdOn } from './bundlePerks';
+import { bundleFrags } from './exWeapons';
 import { alchReserve, cropSpare, fLv } from './facilities';
 import { chaptersDone } from './guide';
 import { freshBundles, gotGold, markDirty, P, S, world, type BundleState } from './state';
@@ -220,6 +221,8 @@ function finishRoom(room: RoomDef) {
   if (st.rooms.includes(room.id)) return;
   st.rooms.push(room.id);
   if (room.id === 'kitchen' && !st.petGrant) st.petGrant = B().petGrant;
+  // RAIDWEAPON §2: 「토벌 전리품」 방 = 무기 조각 5 (1번만 · 꺼져 있으면 켜질 때 exRetro가 한 번)
+  bundleFrags();
   track('bundle_room', { room: room.id, n: st.rooms.length });
   markDirty();
 }

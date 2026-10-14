@@ -27,6 +27,7 @@ import { flag } from './flags';
 import { gatesOn, queueRankWeek, wanderMet, wanderPity } from './paceGates';
 import { perkRaidMats, perkRaidTries } from './bundlePerks';
 import { petRaidDmg, petTry } from './pets';
+import { raidFrags } from './exWeapons';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -318,6 +319,8 @@ export interface RaidOutcome {
   chain?: number;
   mult?: number;
   record?: { ok: boolean; reason?: string };
+  /** RAIDWEAPON §2: 받은 무기 조각 (주간 토벌 처치) */
+  frags?: number;
 }
 
 export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'auto' | 'manual' | 'sweep', ex: RaidExpect, runId: number, secs?: number): RaidOutcome {
@@ -360,6 +363,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   // FIVESTARS 웅스 부탁: +12 장비 2개 낀 파티로 토벌 보스 처치
   if (killed) fiveRaidKill(members);
+  // RAIDWEAPON §2: 주간 토벌 처치 = 무기 조각 (첫 보스 1 · 연속 2·3번째 50% 1 · 떠돌이 X · 꺼져 있으면 0)
+  const frags = killed && t.kind === 'weekly' ? raidFrags(chain) : 0;
   const firstKill = killed && !P.raid.firstKills.includes(b.id);
   if (killed) P.raid.kills[b.id] = (P.raid.kills[b.id] ?? 0) + 1;
   if (firstKill) {
@@ -440,7 +445,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   track('expeditionWin');
   markDirty();
-  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, charm, items, personalBest, weekBest, chain, mult: cm };
+  lastOut = { damage, applied, killed, firstKill, rank, gold, mats, xp, token, charm, items, personalBest, weekBest, chain, mult: cm, ...(frags ? { frags } : {}) };
   return lastOut;
 }
 

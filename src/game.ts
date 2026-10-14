@@ -17,6 +17,7 @@ import { migrateOnboarding } from './world/guide';
 import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
+import { exRetro } from './world/exWeapons';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
@@ -240,6 +241,8 @@ export function continueGame() {
   onboardHooks.resume();
   // HOTFIX17 §2: 토벌 도전 횟수 오류 복구 (오늘 횟수 한 번 돌려주기)
   repairRaidTries();
+  // RAIDWEAPON §2: 이미 고친 「토벌 전리품」 방 조각 (켜져 있을 때 1번)
+  exRetro();
   // HOTFIX18 §3: 케미 알림 「전부」 → 「중요만」 (한 번)
   if (migrateChemNotice()) setTimeout(() => toast('케미 알림을 「중요만」으로 바꿨어요 · 설정에서 다시 켤 수 있어요'), 4000);
   S.started = true;

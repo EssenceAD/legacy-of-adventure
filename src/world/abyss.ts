@@ -7,7 +7,7 @@ import { CONFIG } from '../data/config';
 import { REGION_BOSS, type BossLook } from '../combat/mons';
 import { REGIONS, type RegionId } from '../data/items';
 import { flag } from './flags';
-import { addFrags } from './frags';
+import { addFrags, exOn } from './frags';
 import { vis } from './visual';
 import { addBlessMin, gsState, kstWeek } from './goldsink';
 import { brag } from './growth';
@@ -15,6 +15,7 @@ import { best, recPower, regionBossOf } from './hunt';
 import { rollUnique } from './uniques';
 import { markDirty, P, S, type GoldsinkState, type Item } from './state';
 import { petTry } from './pets';
+import { abyssFrags } from './exWeapons';
 
 const A = () => CONFIG.abyss;
 const R = () => CONFIG.raidWeapon.rush;
@@ -182,6 +183,8 @@ export function clearFloor(f: number, bossRegion: RegionId | null = null, rng: (
   if (rest) addBlessMin(A().restMin, now);
   // LUXE §2 펫: 심연 층 클리어 = 별고양이 시도 1
   petTry('abyss', rng);
+  // RAIDWEAPON §2: 한 층씩 모드는 25층마다 무기 조각 (이번 주 새 층만 · 꺼져 있으면 0) · 보스 연전은 아래 rushFragDue 한 길로만
+  if (!S.visiting && mode !== 'rush') abyssFrags(f, now);
   const rec = abyssRec(now, mode);
   const record = f > rec.best;
   rec.best = Math.max(rec.best, f);
@@ -195,10 +198,11 @@ export function clearFloor(f: number, bossRegion: RegionId | null = null, rng: (
     // 보스 연전: 직전 층 보스 기억 (이어가도 같은 보스가 연달아 안 나오게) · 25층마다 조각 (그 층은 이번 주 한 번)
     const rr = rec as RushRec;
     rr.prev = bossRegion ?? '';
-    frags = rushFragDue(f, now);
+    // 조각은 전용 무기(exWeapons)가 켜졌을 때만 (쓸 곳 없는 조각이 쌓이거나 결과 창에 「+1」만 뜨지 않게)
+    frags = exOn() ? rushFragDue(f, now) : 0;
     if (frags) {
       rr.fragWk!.push(f);
-      addFrags(frags, 'abyss');
+      addFrags(frags, 'rush');
     }
   } else
   for (const n of A().brags)

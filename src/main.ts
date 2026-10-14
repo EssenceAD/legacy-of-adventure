@@ -164,6 +164,7 @@ import { NEIGHBORS } from './data/neighbors';
 import { say } from './world/fx';
 import type { TalkLine } from './world/state';
 import { initPets, openPetMenu } from './ui/pets';
+import { initExWeapons } from './ui/exWeapons';
 import { petAt } from './world/petsDraw';
 
 const host = document.getElementById('view')!;
@@ -898,6 +899,7 @@ async function boot() {
   initKit();
   // LUXE §2 펫 (플래그 pets — 꺼지면 아무것도 안 함)
   initPets();
+  initExWeapons();
   // VISUAL 실험실 §4·§5: 켠 기기만 body.hud2 / body.ui2 (글자 크기 변수보다 먼저)
   initVisualClasses();
   // FIRSTLOOK §4 (flTeaserFit): 타이틀·티저는 저장보다 먼저 뜬다 — 플래그(flags.json)·실험실은 여기서 이미 읽힘

@@ -1,4 +1,5 @@
 // 도감(손님·아이템·케미·영웅 「방랑자의 서」) · 오늘의 목표 · 장부(오늘/이번 주) · 평판
+import { exDexHtml } from './exWeapons';
 import { vis, fsay } from '../world/visual';
 import { CHEM_PAIRS } from '../data/chem';
 import { visitText } from '../world/legends';
@@ -216,6 +217,8 @@ export function openDex(tab = dTab) {
     const met = new Set(P.meta.easter?.met ?? []);
     const pioneerBox = `<p class="sub g">개척자</p><div class="pion">${pioneerIds().map((id) => `<div class="pcell ${met.has(id) ? 'on' : ''}"><img src="${PORTRAITS['p_' + id] ?? ''}" alt=""><span><b>${esc(PIONEERS[id].name)}</b><small>「${esc(PIONEERS[id].title)}」</small><small>${esc(PIONEERS[id].intro)}</small></span></div>`).join('')}</div>`;
     body = `<p class="sub">방랑자의 서 · ${Object.values(P.dex.heroes).filter((h) => h.recruited).length}/${HEROES.length} 동료${titles.length ? ` · 칭호 ${titles.join(', ')}` : ''}</p><div class="heroes">${cards}</div>${sets}`;
+    // RAIDWEAPON §2: 전용 무기 칸 (모은 것 ✦ · 없는 것 실루엣 · 꺼져 있으면 없음)
+    body += exDexHtml();
     body += pioneerBox;
   }
   openWin(

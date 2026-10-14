@@ -23,6 +23,8 @@ import { bondTierBonus, legacyPower, ownerBonus, xpMult } from './owner';
 import { legendByKey } from '../data/legends';
 import { ownerLook } from '../data/origins';
 import { isStarId, STARS } from '../data/fivestars';
+import { exWeaponColor } from './exGate';
+import { exOn } from './frags';
 
 const G = CONFIG.guests;
 
@@ -187,8 +189,13 @@ export function appearance(a: Actor, outfit?: string | null): { key: string; def
   const w = equippedItems(a).find((it) => it.slot === 'weapon');
   def.weapon = w?.wkind ?? CLASS_WEAPON[guestKind(a)];
   def.weaponColor = w && w.grade !== 'n' ? GRADE_INFO[w.grade].color : undefined;
+  // RAIDWEAPON §2 (exWeapons 켰을 때): 전용 무기를 낀 ★5만 같은 색 규칙 (전설 금빛 · 다섯 별 궤적 색) — 끄면 아래 예전 ★5 규칙 그대로
+  if (exOn()) {
+    const xc = exWeaponColor(a, w);
+    if (xc) def.weaponColor = xc;
+  }
   // 전설 ★5: 전용 「유산 무기」 (금빛)
-  if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
+  else if (a.legendId && (a.stars ?? 1) >= 5) def.weaponColor = '#ffd36b';
   // STARUP: 신화 「다섯 별」 ★5 — 그 별의 궤적 색 (data/fivestars STARS[id].trail = engine/stars2 starTrailColor)
   else if (isStarId(a.starId) && (a.stars ?? 1) >= 5) def.weaponColor = STARS[a.starId].trail;
   // EASTER §2·§5: 놀러 온 개척자 — 고정 소품

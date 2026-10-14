@@ -86,5 +86,6 @@
   "luxeShop": false,
   "outfits": false,
   "pets": false,
-  "abyssRush": false
+  "abyssRush": false,
+  "exWeapons": false
 }
