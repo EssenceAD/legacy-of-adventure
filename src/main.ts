@@ -39,6 +39,7 @@ import { openStore } from './ui/decor';
 import { makeCameo } from './world/easter';
 import { addMail, claimMail, mailHooks } from './world/meta';
 import { initEaster, openPioneerLetter, tapCameo } from './ui/easter';
+import { initFiveStars } from './ui/fivestars';
 import { overlayHold } from './ui/overlays';
 import * as decodrop from './world/decodrop';
 import { initLuxury } from './ui/luxury';
@@ -937,6 +938,8 @@ async function boot() {
   initLuxury();
   // EASTER: 베타 개척자 (금빛 편지 · 카메오 · 전용 장식)
   initEaster();
+  // FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · 끄면 아무것도 안 함)
+  initFiveStars();
   mailHooks.pioneer = openPioneerLetter;
   initEvalUI();
   initPowerUI();

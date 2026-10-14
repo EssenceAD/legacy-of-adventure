@@ -1295,6 +1295,46 @@ export const CONFIG = {
   firstFlow: { glowMs: 3000, equipGlowMs: 3000 },
   /** CHECKIN §J8 건물 말풍선(플래그 bldStatus): 한 번에 최대 수 · 상태 다시 보기 간격(ms) · 위아래 1px 살랑 주기(초) · 글 한 줄이 붙는 화면 배율(CSS px / 도트) · 누르는 칸 최소(CSS px) */
   bldStatus: { max: 3, everyMs: 500, bobSec: 2.5, textZoom: 2, hitCss: 44 },
+  /**
+   * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식
+   *  부탁 숫자는 reports/fivestars/pace.md (라이트 유저 하루 10분 · 3막 진입 뒤 현실 3일 안) 기준
+   *  woongs: +enh 이상 장비 items개를 낀 파티로 토벌 보스 kills번 · gonu: 구경거리 사건 events번 + 숨은 어울림 hidden개 새로
+   *  ikamolly: 세트 장비 한 벌(3부위) sets벌 + 의뢰 성공 wins번 · walwal: 밤 출발 원정 성공 nights번(모두 체력 hp 이상으로 귀환) + 말 걸기 talks번
+   *  warmnight: 서로 다른 지역 regions곳에서 의뢰 성공 또는 사냥 첫 돌파 + 텃밭 수확 harvests번
+   */
+  fiveStars: {
+    // pace.md: +12는 초월 단계라 라이트 유저 3일 안에 2개는 무리 → +10 (일반 강화 끝) · 사건은 마을 화면 게임 1시간 7%라 3번은 p50 8일 → 2번 + 숨은 어울림 새 발견도 사건 칸에 셈(hiddenCounts)
+    woongs: { enh: 10, items: 2, kills: 1 },
+    gonu: { events: 2, hidden: 1, hiddenCounts: true },
+    ikamolly: { sets: 1, wins: 10 },
+    // pace.md: 밤 출발 = 현실 20~04시 — 이틀에 한 번 저녁에 켜는 라이트 유저 5번은 3일 안 56% → 3번 (79%)
+    walwal: { nights: 3, hp: 60, talks: 5 },
+    warmnight: { regions: 5, harvests: 5 },
+    /** 신화 능력치 = 전설 × statMult (MYTHIC과 같음) · 합류 레벨 = max(joinLvlMin, 단골 상위 3명 평균) */
+    statMult: 1.15,
+    joinLvlMin: 15,
+    /** 스킬 덧효과: 웅스 무기 강화 1단계당 공격 +1% (최대 woongsEnhMax%) · 고느끼 은밀 +gonuStealth (상한 stealthCap) · 이카몰리 의뢰 시간 −ikaTimeCut · 왈왈 밤 출발 성공률 +walwalNight · 따뜻한밤 공격 +warmAtk · 떠돌이 만날 확률 ×warmWander */
+    woongsEnhMax: 20,
+    gonuStealth: 0.2,
+    stealthCap: 0.8,
+    ikaTimeCut: 0.1,
+    walwalNight: 0.1,
+    warmAtk: 0.1,
+    warmWander: 1.5,
+    /** 세트 「다섯 별」: 2명 파티 공격 + · 3명 체력 소모 − · 4명 보상 금화 + (전투 시작 「다섯 별」 컷 1초 · 첫 판만) */
+    set2Atk: 0.05,
+    set3Hp: 0.1,
+    set4Gold: 0.05,
+    set4CutMs: 1000,
+    /** 합류 컷(카메오 → 신화 모습) 길이 ms (탭하면 바로 넘어감) · 다섯 별 깃발: 근처(칸) 파티 출발 기분 + */
+    joinCutMs: 900,
+    flagNear: 4,
+    flagMood: 5,
+    /** 왈왈콩선생 「밤길 방울」: 근처(칸) 손님 기분 +(초당) · 밤 출발 원정 시간 −bellNightCut */
+    bellNear: 3,
+    bellMoodPerSec: 0.3,
+    bellNightCut: 0.03,
+  },
   /** 시험용: 천장·원정 시간을 줄인다 (?test=1 로 열면 켜짐) */
   test: {
     pity: 3,

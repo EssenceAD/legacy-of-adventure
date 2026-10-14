@@ -9,6 +9,7 @@ import { powerOf } from '../world/adventurers';
 import { bondOf } from '../world/chem';
 import { isFav } from '../world/growth';
 import { isMythic } from '../world/mythic';
+import { isSelfStar } from '../world/fivestars';
 import { ROLE_ICON, ROLE_NAME, roleOf, type Role } from '../world/party';
 import { awayText, resting, type PartyWhere } from '../world/partyRules';
 import { companionText, isCompanion } from '../world/expeditions';
@@ -112,7 +113,7 @@ export function heroCardHtml(a: Actor, o: CardOpts = {}): string {
   const role = `<span class="hcd-role r-${d.role}"><i>${ROLE_ICON[d.role]}</i>${sm ? '' : `<small>${d.roleName}</small>`}</span>`;
   const fav = d.fav ? '<b class="hcd-fav">★</b>' : '';
   const heart = o.heart ? `<img class="hcd-heart" src="${uiSrc('heart')}" alt="케미">` : '';
-  const badge = o.badge ? `<b class="hcd-badge">${esc(o.badge)}</b>` : '';
+  const badge = (o.badge ? `<b class="hcd-badge">${esc(o.badge)}</b>` : '') + (isSelfStar(a) ? '<b class="hcd-me" title="본인">★본인</b>' : '');
   const frame = lf ? `<span class="hcd-lf" aria-hidden="true"></span><span class="hcd-crown"><i></i>${sm ? '' : `<small>${d.tier === 'mythic' ? '신화' : '전설'}</small>`}</span>` : '';
   const pic1 = `<span class="hcd-pic"><img src="${d.src}" alt=""></span>`;
   const txt = sm

@@ -2,6 +2,7 @@
 import { BOSSES, bossById, RAID_BOSSES, type BossDef } from '../data/bosses';
 import { markAdventured } from './actors';
 import { pioneerRaidMult } from './easter';
+import { fiveGold, fiveRaidKill } from './fivestars';
 import { hfx } from './harmony';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
@@ -222,12 +223,12 @@ export function wanderTarget(): RaidTarget | null {
 }
 
 /** 원정 승리 때: 그 지역 보스를 떠돌이로 만날 수도 (wanderHours) */
-export function maybeWander(region: RegionId): BossDef | null {
+export function maybeWander(region: RegionId, chanceMult = 1): BossDef | null {
   // PACE §1-3: 0.08 → 0.15 · 24 → 48시간 (플래그 끄면 예전 값)
   const W = pace() ? R : R.paceOff;
   // PACE R17 떠돌이 천장: 같은 지역 원정 승리 n번째엔 확정 (paceGates · 떠돌이가 이미 있으면 다음 기회로)
   const sure = wanderPity(region);
-  if (wanderTarget() || (!sure && Math.random() >= W.wanderChance)) return null;
+  if (wanderTarget() || (!sure && Math.random() >= W.wanderChance * chanceMult)) return null;
   const b = RAID_BOSSES.find((x) => x.region === region);
   if (!b) return null;
   wanderMet(region);
@@ -353,6 +354,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
       if (gatesOn()) P.counters.raidKills = (P.counters.raidKills ?? 0) + 1;
     }
   }
+  // FIVESTARS 웅스 부탁: +12 장비 2개 낀 파티로 토벌 보스 처치
+  if (killed) fiveRaidKill(members);
   const firstKill = killed && !P.raid.firstKills.includes(b.id);
   if (killed) P.raid.kills[b.id] = (P.raid.kills[b.id] ?? 0) + 1;
   if (firstKill) {
@@ -367,7 +370,7 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   // EASTER: 붉은 무사의 투구 — 토벌 금화 +3%
   // PARTY §2: 뒷골목 싸움 금화 +8%
   // PACE §1: 도전장 보스는 금화·재료 ×chainMult (고유 장비 확률·장부·업적·전설 카운트는 그대로)
-  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold) * cm);
+  const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold) * cm * fiveGold(members));
   const mats0 = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
   const mats = cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm));
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));

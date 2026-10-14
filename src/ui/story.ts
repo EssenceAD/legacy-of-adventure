@@ -6,7 +6,7 @@ import { mythicEndLines, mythicTick } from '../world/mythic';
 import { TRUE_AFTER, TRUE_HINTS, TRUE_LETTER, TRUE_STAR_LINES } from '../data/story/v3';
 import { endsSeen, onPickRoute, routePreDone, routeTick, trueReady } from '../world/routes';
 import { openGoals, routeCard, routeCardText, routeCut, editorVisit, type RouteStoryApi } from './routes';
-import { PIONEER_CREDIT } from '../data/story/easter';
+import { isPioneerCredit } from '../data/story/easter';
 import { endCredits, saveChronThumb } from './chronicle';
 import { clearOverlays } from './overlays';
 import { nextRegionCut } from '../world/regions2';
@@ -62,6 +62,11 @@ function fx(k: string) {
     b.innerHTML = `<img class="ledg" src="${iconSrc('m_quest')}" alt="">`;
   } else if (k === 'photo' || k === 'photo_mine') photoThumb();
   else if (k === 'drop') storyFx.drop();
+  // FIVESTARS: 무지갯빛 테두리 · 별가루 (흔들림 없음)
+  else if (k === 'fivestar') {
+    b.className = 'sfx-fivestar';
+    b.innerHTML = '<i class="st1"></i><i class="st2"></i><i class="st3"></i>';
+  }
   // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
   else if (k === 'lanterns') startLanterns();
   // STORY v2·v3 연출: 심연 · 별 · 부케 · 기둥 · 노래 · 셔터 · 별바다 · 접힘 · 반짝 글씨
@@ -121,7 +126,7 @@ const api: RouteStoryApi = {
   endRoute: (r, cut) => {
     lastThumb = '';
     // DIRECTION §2-2: 크레딧 줄(개척자 · 함께 만든 사람들)은 신화 대사 뒤로
-    const k = cut.findIndex((l) => l[1] === PIONEER_CREDIT);
+    const k = cut.findIndex((l) => isPioneerCredit(l[1]));
     const head = k >= 0 ? cut.slice(0, k) : cut.slice(0, -1);
     const tail = k >= 0 ? cut.slice(k) : cut.slice(-1);
     playStory([...head, ...mythicEndLines(), ...tail], () => {
@@ -151,6 +156,9 @@ const busy = () =>
   !S.started || S.visiting || isTalking() || isWinOpen() || placing.pl || tour.on || !!document.getElementById('hunt') || !!document.getElementById('raid') || !!document.getElementById('cbCv') || !($('#settle') as HTMLElement).hidden ||
   // v0.25.8: 화면 보호·UI 끄기 동안엔 이야기 대사를 띄우지 않는다 (끝난 뒤 「다녀오셨어요」 카드 위로 겹치던 것)
   document.body.classList.contains('ssaver') || document.body.classList.contains('uihide');
+
+/** FIVESTARS: 이야기 대사가 떠 있거나 기다리는 중 (ui/fivestars가 끼어들지 않게) */
+export const storyBusy = () => busy() || queue.length > 0;
 
 export function initStoryUI() {
   storyHooks.say = (l) => queue.push(l);

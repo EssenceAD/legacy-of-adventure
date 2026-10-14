@@ -102,7 +102,8 @@ const guestKind = (a: Actor): GuestKind => (GUEST_KINDS as readonly string[]).in
 /** 레벨·희귀도로 정해지는 기본 능력치 */
 export function baseStats(a: Actor): Record<StatKey, number> {
   const b = CLASS_STATS[guestKind(a)];
-  const mult = RARITY_INFO[a.rarity].mult * (a.legendId ? 1.4 : a.heroId ? 1.25 : 1) * (1 + 0.12 * (a.lvl - 1));
+  // FIVESTARS: 다섯 별 신화 영웅은 전설 기준 (그 위 ×1.15는 mythicStat)
+  const mult = RARITY_INFO[a.rarity].mult * (a.legendId || a.starId ? 1.4 : a.heroId ? 1.25 : 1) * (1 + 0.12 * (a.lvl - 1));
   const o = {} as Record<StatKey, number>;
   for (const k of STATS) o[k] = Math.round(b[k] * mult);
   return o;

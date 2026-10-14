@@ -24,6 +24,7 @@ import { flushScene } from '../audio/scene';
 import { flipOf, loadMon, whiteOf } from './mon';
 import { BOSS_IMG } from '../engine/assets';
 import { SYN_INFO, takeSynergyLine } from '../world/synergy';
+import { fiveSetCut } from '../ui/fivestars';
 
 const C = CONFIG.combat;
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -207,6 +208,8 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   dmgNums = getPref<boolean>('dmgNums', true);
   // REGIONS2: 50% 컷 — 전투를 멈추고 (일시정지 창 없이) 대화창을 전투 위에 · 끝나면 이어서
   const userHalf = opts.talkHalf;
+  // FIVESTARS: 세트 「다섯 별」 4명 첫 전투 — 1초 컷 (한 번만 · 탭하면 넘김)
+  fiveSetCut(members);
   F = makeField(region, stage, members, auto, userHalf ? { ...opts, half: () => {
     paused = true;
     holding = false;

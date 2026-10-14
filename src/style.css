@@ -2318,3 +2318,18 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 .whereln{margin:2px 0 0;color:#ffd36b;font-size:var(--f-small);text-align:center}
 #toast.over{z-index:calc(var(--z-title) + 3)}
 .lockwhy.flash{animation:lockflash .6s steps(2) 2}@keyframes lockflash{50%{color:#ffd36b}}
+/* FIVESTARS (플래그 fiveStars): 합류 컷 · 세트 컷 (흔들림 없음 · 탭하면 넘김) · 무지갯빛 테두리 · 밤하늘 별자리 · 본인 배지 */
+#fiveCut{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(10,8,40,.6);cursor:pointer}
+#fiveCut .fc-frame{position:relative;width:132px;height:150px;padding:6px;border:3px solid transparent;border-radius:6px;background:linear-gradient(#1c1430,#1c1430) padding-box,linear-gradient(90deg,#ff7a7a,#ffd36b,#8fe08a,#7ac8ff,#c08aff) border-box;text-align:center}
+#fiveCut .fc-frame img{position:absolute;left:6px;top:6px;width:120px;height:120px;image-rendering:pixelated}
+#fiveCut .fc-a{animation:fcOut .9s ease forwards}#fiveCut .fc-b{opacity:0;animation:fcIn .9s ease forwards}
+#fiveCut .fc-frame b{position:absolute;left:0;right:0;bottom:4px;color:#ffd36b}
+#fiveCut .fc-dust{position:absolute;inset:0;background:radial-gradient(circle,#fff3c0 1px,transparent 2px) 0 0/14px 14px;opacity:.5;animation:fcDust .9s linear}
+#fiveCut .fc-set b{font-size:28px;color:#ffd36b;text-shadow:0 0 8px #ffd36b;letter-spacing:4px}
+@keyframes fcOut{to{opacity:0}}@keyframes fcIn{to{opacity:1}}@keyframes fcDust{from{transform:translateY(8px)}to{transform:translateY(-8px)}}
+#storyFx.sfx-fivestar{box-shadow:inset 0 0 0 4px #ffd36b,inset 0 0 0 8px rgba(122,200,255,.6),inset 0 0 0 12px rgba(192,138,255,.4);background:radial-gradient(ellipse at 50% 40%,rgba(255,240,180,.18),rgba(10,8,40,.6))}
+#fiveSky{position:absolute;right:18px;top:64px;width:90px;height:50px;z-index:5;pointer-events:none;transition:opacity 2s}
+#fiveSky i{position:absolute;width:3px;height:3px;background:#fff3c0;box-shadow:0 0 6px #ffd36b;border-radius:50%}
+#fiveSky i:nth-child(1){left:0;top:30px}#fiveSky i:nth-child(2){left:22px;top:12px}#fiveSky i:nth-child(3){left:44px;top:22px}#fiveSky i:nth-child(4){left:66px;top:4px}#fiveSky i:nth-child(5){left:86px;top:26px}
+.pstar.me,.hcd-me{font-style:normal;font-size:10px;color:#1c1018;background:#ffd36b;border-radius:3px;padding:0 3px;margin-left:3px}
+.hcd-me{position:absolute;right:4px;bottom:4px;z-index:3}

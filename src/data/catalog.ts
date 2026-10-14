@@ -131,6 +131,9 @@ export const CATALOG = {
   gold_brush: { name: '황금 붓', sprite: 'gold_brush', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '마을의 붓 · 근처 길이 은은히 반짝 · 꾸미기 모드에서 누르면 길 붓' },
   red_helmet: { name: '붉은 무사의 투구', sprite: 'red_helmet', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '붉은 밤의 무사 · 밤엔 등불 · 토벌 금화 +3%' },
   pinwheel_light: { name: '바람개비 등대', sprite: 'pinwheel_light', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '첫 바람 · 바람개비가 빙글빙글 · 의뢰 시간 −3%' },
+  // FIVESTARS (플래그 fiveStars): 다섯 별 깃발(마지막 보상) · 왈왈콩선생 「밤길 방울」(다섯 번째 개척자) — 그림은 임시로 깃발·가로등 (도트는 다음 단계)
+  five_flag: { name: '다섯 별 깃발', sprite: 'banner', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '다섯 별의 원정대 · 근처에서 파티가 출발하면 기분 ↑' },
+  night_bell: { name: '밤길 방울', sprite: 'lamppost', size: [1, 1], cost: 0, deco: true, unique: true, pioneerDeco: true, unlock: 1, desc: '밤길의 선생님 · 근처 손님 기분 ↑ · 밤 출발 원정 시간 −3%' },
   // GROWTH §4: 물고기 박제 (낚시 창 「박제하기」로 받아 무료로 놓기)
   fish_firefly: { name: '반딧불 물고기 박제', sprite: 'fish_firefly', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 물속의 반딧불' },
   fish_kingkoi: { name: '왕관 쓴 황금 잉어 박제', sprite: 'fish_kingkoi', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 연못의 왕' },

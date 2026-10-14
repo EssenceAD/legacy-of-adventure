@@ -2,6 +2,7 @@
 // 공개 키(publishable)만 쓴다. 로그인 안 한 손님은 이 모듈을 거치지 않고 지금처럼 로컬로 논다.
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG } from '../data/config';
+import { vis } from '../world/visual';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
@@ -218,7 +219,11 @@ export async function pioneers(): Promise<Map<string, string>> {
   pioneerMap = new Map(r.error ? [] : (r.data ?? []).map((x) => [x.id as string, x.pioneer as string]));
   return pioneerMap;
 }
-export const pioneerOfUid = (uid: string) => pioneerMap?.get(uid) ?? null;
+/** FIVESTARS §5: 왈왈콩선생(walwal)은 플래그 fiveStars 켰을 때만 개척자로 보인다 (서버 값은 형철이 먼저 넣어도 됨) */
+export const pioneerOfUid = (uid: string) => {
+  const p = pioneerMap?.get(uid) ?? null;
+  return p === 'walwal' && !vis('fiveStars') ? null : p;
+};
 
 // ───────── 클라우드 저장 · 마을 모습 ─────────
 

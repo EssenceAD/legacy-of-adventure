@@ -1,12 +1,18 @@
 // EASTER: 베타 개척자 4인 — 전용 장식 효과 · 카메오 손님(외형·일정) · 선물 쿠폰 (화면은 ui/easter.ts)
-import { CAMEO, CAMEO_GIFT, PIONEERS, type PioneerId } from '../data/story/easter';
+import { CAMEO, CAMEO_GIFT, PIONEER_CREDIT, PIONEER_CREDIT5, PIONEERS, type PioneerId } from '../data/story/easter';
 import { blankActor } from './adventurers';
 import type { ClassDef } from '../data/classes';
 import { hourNow } from './clock';
 import { markDirty, P, S, world, type Actor, type Building } from './state';
+import { dreamLine, fiveOn, starJoined } from './fivestars';
+import { CONFIG } from '../data/config';
 
 export const PIONEER_IDS = Object.keys(PIONEERS) as PioneerId[];
-export const isPioneer = (v: unknown): v is PioneerId => typeof v === 'string' && (PIONEER_IDS as string[]).includes(v);
+/** 지금 보이는 개척자 (FIVESTARS §5: 다섯 번째 왈왈콩선생은 플래그 fiveStars 켰을 때만 — 끄면 예전 넷 그대로) */
+export const pioneerIds = (): PioneerId[] => (fiveOn() ? PIONEER_IDS : PIONEER_IDS.filter((x) => x !== 'walwal'));
+export const isPioneer = (v: unknown): v is PioneerId => typeof v === 'string' && (pioneerIds() as string[]).includes(v);
+/** 엔딩 크레딧 개척자 줄 (켜면 다섯 이름) */
+export const pioneerCredit = () => (fiveOn() ? PIONEER_CREDIT5 : PIONEER_CREDIT);
 /** 전용 장식 → 주인 */
 export const PIONEER_DECO: Record<string, PioneerId> = Object.fromEntries(PIONEER_IDS.map((id) => [PIONEERS[id].deco, id]));
 export const isPioneerDeco = (k: string) => k in PIONEER_DECO;
@@ -15,7 +21,16 @@ const homeObjs = (): Building[] => world.home?.objs ?? world.objs;
 const has = (k: string) => homeObjs().some((o) => o.kind === k);
 
 /** 바람개비 등대: 의뢰 시간 −3% · 이카몰리 선물 쿠폰(다음 의뢰 −10%) */
-export const pioneerExpCut = () => (has('pinwheel_light') ? 0.03 : 0) + (P.meta.easter?.expCoupon ? 0.1 : 0);
+export const pioneerExpCut = () => (has('pinwheel_light') ? 0.03 : 0) + (P.meta.easter?.expCoupon ? 0.1 : 0) + bellNightCut();
+/** FIVESTARS §5 밤길 방울: 밤에 출발하는 원정 시간 −3% */
+export const bellNightCut = () => (S.night && fiveOn() && has('night_bell') ? CONFIG.fiveStars.bellNightCut : 0);
+/** 밤길 방울: 근처(3칸) 손님 기분 + (1초마다 · ui/easter) */
+export function bellAura(dt: number) {
+  if (!fiveOn() || S.visiting) return;
+  const b = homeObjs().find((o) => o.kind === 'night_bell');
+  if (!b) return;
+  for (const a of world.actors) if (!a.role && !a.hidden && Math.hypot(a.x - b.tx - 0.5, a.y - b.ty - 0.5) <= CONFIG.fiveStars.bellNear) a.mood = Math.min(100, a.mood + CONFIG.fiveStars.bellMoodPerSec * dt);
+}
 /** 의뢰를 보내면 쿠폰은 쓴다 */
 export function useExpCoupon() {
   if (P.meta.easter?.expCoupon) {
@@ -54,6 +69,8 @@ const LOOK: Record<PioneerId, { kind: Actor['kind']; race: Actor['race']; hair: 
   gonu: { kind: 'mage', race: 'halfling', hair: '#6b3a24', face: { eyes: 'sparkle', mouth: 'tiny' } as Actor['face'] },
   warmnight: { kind: 'knight', race: 'human', hair: '#1c1418', face: { eyes: 'calm', mouth: 'flat', brow: 'angry' } as Actor['face'] },
   ikamolly: { kind: 'rogue', race: 'human', hair: '#e8c070', face: { eyes: 'round', mouth: 'grin', brow: 'up' } as Actor['face'] },
+  // FIVESTARS §5 왈왈콩선생 (임시 외형)
+  walwal: { kind: 'cleric', race: 'human', hair: '#6b4a2e', face: { eyes: 'happy', mouth: 'grin', blush: true } as Actor['face'] },
 };
 /** 마을 도트 소품 (손님 생성기 옷 칸): 웅스 흰 수건 · 고느끼 베레모 + 금빛 붓 · 따뜻한밤 붉은 망토 + 등불 · 이카몰리 바람개비 */
 export const CAMEO_DEF: Record<PioneerId, Partial<ClassDef>> = {
@@ -65,6 +82,8 @@ export const CAMEO_DEF: Record<PioneerId, Partial<ClassDef>> = {
   warmnight: { style: 'short', hair: '#7a3f24', face: { eyes: 'happy', blush: true }, cape: '#c8352e', hood: '#c8352e', cloth: '#5a3a2a', arm: '#5a3a2a', pants: '#4a3428', accent: '#7a5a3a', boots: '#3a2a20', weapon: 'lantern', shield: false, robe: false, helm: undefined, dot2: undefined },
   // 이카몰리: 인간 · 긴 갈색 웨이브 · 동그란 안경 · 크림 코트 · 하늘색 목도리 · 바람개비(빨강·노랑)
   ikamolly: { style: 'long', hair: '#8a4a2e', face: { eyes: 'calm', mouth: 'tiny', glasses: true }, glassesColor: '#c9a46a', cloth: '#f1e6d2', arm: '#f1e6d2', pants: '#d8c8ae', accent: '#c9b48e', boots: '#7a5a3a', towel: '#8fc6e0', weapon: 'pinwheel', weaponColor: '#e8503c', hood: undefined, dual: false, quiver: false, elf: false, robe: false, dot2: undefined },
+  // 왈왈콩선생 (§5 · 임시): 흰 셔츠 + 갈색 조끼 · 둥근 얼굴 · 강아지 같은 웃는 눈 · 낚싯대(도트 소품이 아직 없어 빈손 — HERODOT 단계에서)
+  walwal: { style: 'short', hair: '#6b4a2e', face: { eyes: 'happy', mouth: 'grin', blush: true }, cloth: '#f4f0e6', arm: '#f4f0e6', pants: '#5a4030', apron: '#8a5a34', accent: '#8a5a34', boots: '#4a3020', weapon: null, shield: false, robe: false, cape: undefined, hood: undefined, helm: undefined, elf: false, dot2: undefined },
 };
 export function makeCameo(id: PioneerId, x: number, y: number): Actor {
   const L = LOOK[id];
@@ -74,7 +93,8 @@ export function makeCameo(id: PioneerId, x: number, y: number): Actor {
 }
 /** 오늘 들를 개척자 (본인 마을이면 자기 빼고 나머지 셋) */
 export function cameoPick(mine: PioneerId | null): PioneerId | null {
-  const pool = PIONEER_IDS.filter((x) => x !== mine && !world.actors.some((a) => a.cameo === x));
+  // FIVESTARS: 신화로 합류한 개척자는 카메오로 지나가지 않는다
+  const pool = pioneerIds().filter((x) => x !== mine && !starJoined(x) && !world.actors.some((a) => a.cameo === x));
   return pool.length ? pool[(Math.random() * pool.length) | 0] : null;
 }
 /** 게임 하루 1~2번: 낮 10~17시에 가끔 · 오늘 몇 번 왔는지 */
@@ -100,7 +120,9 @@ export function noteMet(id: PioneerId) {
 /** 누를 때마다 다음 대사 · 다 말하면 선물 (그 방문에 한 번) */
 export function cameoNext(a: Actor): { line: string; gift?: string } {
   const id = a.cameo as PioneerId;
-  const lines = CAMEO[id];
+  // FIVESTARS §1-1: 2막부터 끝에 꿈 한 줄 (복선 · 플래그 fiveStars)
+  const dream = dreamLine(id);
+  const lines = dream ? [...CAMEO[id], dream] : CAMEO[id];
   const i = a.cameoI ?? 0;
   a.cameoI = i + 1;
   if (i < lines.length) return { line: lines[i] };
