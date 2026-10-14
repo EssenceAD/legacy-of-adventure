@@ -2359,3 +2359,16 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 /* 다섯 별 장부 장 제목은 한 줄 (머리 한 줄은 아래로) · 아주 좁으면 글자만 한 단계 작게 */
 .qhd.five{flex-wrap:wrap;gap:2px 8px}.qhd.five>b{white-space:nowrap}
 @media (max-width:340px){.qhd.five>b{font-size:var(--f-small)}}
+
+/* LUXE §4 이웃 방명록 (guestbook · vis): 도장 한마디 8개 · 방명록 숫자 두 칸 · 지난주 인기 마을 줄 */
+.gbstamps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
+.gbst{min-height:44px;padding:8px 6px;border:0;background:var(--navy2);color:var(--cream);box-shadow:0 0 0 2px var(--ink);font:inherit;cursor:pointer;text-align:center;line-height:1.25}
+.gbst.on{background:#5a3d1e;color:#ffe9a8;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold)}
+.gbst:disabled{opacity:.5;cursor:default}
+.gbwhy{color:#ffb3a0}
+.gbstat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}
+.gbstat span{display:flex;flex-direction:column;align-items:center;padding:8px 4px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink)}
+.gbstat b{font-size:22px;color:var(--gold)}.gbstat small{color:#9aa6d8}
+.stp.gbtop{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold);background:#3a2c1a}
+.stp.gbtop b{color:#ffe9a8}
+#nbT .tab{position:relative}

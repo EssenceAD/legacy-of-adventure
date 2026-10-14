@@ -8,6 +8,7 @@ import { themeName, themeOf } from '../world/evaluation';
 import { $$, bindTabs, esc, fmt, tabs } from './common';
 import { isWinOpen, openWin, toast } from './windows';
 import { visitUser } from './neighbors';
+import { gbOn, popularHtml } from './guestbook';
 
 let cur = 0;
 const BOARDS: [Board, string, (n: number) => string][] = [
@@ -20,11 +21,34 @@ const BOARDS: [Board, string, (n: number) => string][] = [
 const row = (r: RankRow, f: (n: number) => string, mineRow = false) =>
   `<button class="rkrow ${mineRow ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${r.user_id}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${mineRow && myTitle() ? `「${esc(myTitle())}」 ` : ''}${esc(r.nickname)}</small></span><i>${f(r.score)}</i></button>`;
 
+/** LUXE §4: 탭 이름 (guestbook 켰으면 맨 끝에 「이번 주 인기 마을」) */
+const tabNames = () => [...BOARDS.map((b) => b[1]), ...(gbOn() ? ['이번 주 인기 마을'] : [])];
+const bindRows = () =>
+  $$('.rkrow').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const u = b.dataset.u!;
+        if (u === me.profile?.id) return toast('내 마을이에요');
+        void visitUser(u);
+      }),
+  );
+
 export async function openRank(i = cur) {
+  if (i >= tabNames().length) i = 0;
   cur = i;
-  const [board, name, f] = BOARDS[i];
   if (!sb) return openWin('랭킹', '<p class="sub">서버에 연결할 수 없어요</p>');
-  openWin('랭킹', `${tabs(BOARDS.map((b) => b[1]), i, 'rkT')}<p class="note">불러오는 중…</p>`);
+  if (i === BOARDS.length) {
+    openWin('랭킹', `${tabs(tabNames(), i, 'rkT')}<p class="note">불러오는 중…</p>`);
+    bindTabs('rkT', (k) => void openRank(k));
+    const html = await popularHtml();
+    if (cur !== i || !isWinOpen() || document.getElementById('winT')?.textContent !== '랭킹') return;
+    openWin('랭킹', tabs(tabNames(), i, 'rkT') + html);
+    bindTabs('rkT', (k) => void openRank(k));
+    bindRows();
+    return;
+  }
+  const [board, name, f] = BOARDS[i];
+  openWin('랭킹', `${tabs(tabNames(), i, 'rkT')}<p class="note">불러오는 중…</p>`);
   bindTabs('rkT', (k) => void openRank(k));
   const week = mondayKey();
   const [list, my] = await Promise.all([top(board, 100, week), mine(board, week)]);
@@ -38,18 +62,11 @@ export async function openRank(i = cur) {
   const note = board === 'raidWeek' ? `이번 주(${week} 월요일부터) 보스에게 준 한 판 최고 피해량 · 매주 월요일 초기화` : board === 'reputation' ? '여관 평판 점수' : board === 'evalWeek' ? `이번 주 여관 평가단 점수 (테마 「${themeName(themeOf(week))}」) · 매주 월요일 새 시즌` : '손님·아이템·영웅 도감 평균 완성률';
   openWin(
     '랭킹',
-    `${tabs(BOARDS.map((b) => b[1]), i, 'rkT')}<p class="note">${note}</p>${myLine}<p class="sub">${name} 상위 100</p>
+    `${tabs(tabNames(), i, 'rkT')}<p class="note">${note}</p>${myLine}<p class="sub">${name} 상위 100</p>
     <div class="rklist">${list.map((r) => row(r, f, r.user_id === me.profile?.id)).join('') || '<p class="note">아직 아무도 없어요 · 첫 번째가 되어 보세요!</p>'}</div>
     <p class="note">누르면 그 마을을 구경해요</p>`,
   );
   bindTabs('rkT', (k) => void openRank(k));
-  $$('.rkrow').forEach(
-    (b) =>
-      (b.onclick = () => {
-        const u = b.dataset.u!;
-        if (u === me.profile?.id) return toast('내 마을이에요');
-        void visitUser(u);
-      }),
-  );
+  bindRows();
   void P;
 }

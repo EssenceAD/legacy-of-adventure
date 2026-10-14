@@ -7,6 +7,7 @@ import { unseenDrops } from '../world/decodrop';
 import { dotPlan, mailUnread, ripe, runsDone, smithReady, type DotPlan } from '../world/redDots';
 import { P as PG, S } from '../world/state';
 import { vis } from '../world/visual';
+import { gbHasNew } from './guestbook';
 
 export const redDotsOn = () => vis('redDots');
 
@@ -28,6 +29,7 @@ export function planNow(): DotPlan {
     achReady: live ? achReady() : 0,
     goalsReady: live && goalsReady(),
     unseenDeco: live ? unseenDrops().length : 0,
+    gbNew: live && gbHasNew() ? 1 : 0,
   });
 }
 
@@ -49,6 +51,7 @@ export function applyHudDots() {
   const nb = document.querySelector<HTMLElement>('#bBuild .nbadge');
   if (nb) nb.hidden = true;
   setDot(document.getElementById('bBuild'), p.build);
+  setDot(document.getElementById('bVillage'), p.village);
   setDot(document.getElementById('mission'), p.mission);
   const band = document.getElementById('newsBand');
   if (band) setDot(band, band.classList.contains('hot'));

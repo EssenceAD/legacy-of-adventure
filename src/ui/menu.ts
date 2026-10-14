@@ -107,7 +107,7 @@ function groups(): [string, Item[]][] {
       { icon: 'm_album', name: '📷 사진 찍기', open: () => { closeWin(); enterPhoto(); } },
     ]],
     ['교류', [
-      { icon: 'm_neighbor', name: '이웃', open: () => void openVillage() },
+      { icon: 'm_neighbor', name: '이웃', open: () => void openVillage(), dot: tileDot('neighbor') },
       { icon: 'm_chat', name: '채팅', open: () => openChat() },
       { icon: 'm_mail', name: '우편함', open: () => openMail(), dot: tileDot('mail') ?? mailWaiting() > 0 },
       { icon: 'm_notice', name: '공지', open: () => openNotices() },
