@@ -19,6 +19,7 @@ import { dexBonus, heroStarBonus } from './progress';
 import { bondTierBonus, legacyPower, ownerBonus, xpMult } from './owner';
 import { legendByKey } from '../data/legends';
 import { ownerLook } from '../data/origins';
+import { isStarId, STARS } from '../data/fivestars';
 
 const G = CONFIG.guests;
 
@@ -187,6 +188,13 @@ export function appearance(a: Actor): { key: string; def: ClassDef } {
   if (a.cameo && a.cameo in CAMEO_DEF) return { key: 'cameo|' + a.cameo, def: { ...def, ...CAMEO_DEF[a.cameo as keyof typeof CAMEO_DEF] } };
   let key = [a.kind, a.race, a.hair ?? '', JSON.stringify(a.face ?? ''), def.weapon, def.weaponColor ?? ''].join('|');
   // HERODOT 3 (heroDotV2 켰을 때만): 전설·이름 있는 영웅은 고정 겉모습 · 신화 표시 — 끄면 예전 그대로 (키도 그대로)
+  // FIVESTARS ④ (fiveStars 켰을 때만): 다섯 별은 신화 단계 고정 겉모습 · 고유 무기 모양(웅스 양손 대검 등) — 끄면 예전 그대로 (키도 그대로)
+  if (isStarId(a.starId) && vis('fiveStars')) {
+    def.weapon = STARS[a.starId].weapon as ClassDef['weapon'];
+    def.named = 'star_' + a.starId;
+    def.mythic = true;
+    return { key: key + '|S:' + a.starId, def };
+  }
   const named = a.legendId ?? a.heroId;
   if (named && vis('heroDotV2')) {
     def.named = named;

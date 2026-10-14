@@ -772,6 +772,18 @@ function drawFire(ctx: CanvasRenderingContext2D, o: { tx: number; ty: number }, 
   ctx.drawImage(im, X - FIRE_W / 2, Y - (im.height - CONFIG.fire.baseFromBottom) + dy);
 }
 
+/** FIVESTARS ④ 따뜻한밤 등불 빛 (R21: 가운데 밝기 = 예전 0.32 × 1.4 · #ffb347 계열) */
+export const LANTERN_A = 0.32 * 1.4;
+function lanternGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(255,179,71,${Math.min(1, a)})`);
+  g.addColorStop(0.45, `rgba(255,160,64,${Math.min(1, a) * 0.45})`);
+  g.addColorStop(1, 'rgba(255,140,50,0)');
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
 /** 이번 프레임 불빛 정도 (밤 · 노을 등불) */
 let frameLight = 0;
 /** 더하기(lighter)로 불빛 하나 — 합성·투명도는 원래대로 되돌린다 */
@@ -1049,14 +1061,17 @@ function sigAt(s: CharFrames, T: number, ph: number): HTMLCanvasElement | null {
   if (!s.tier || calmNow()) return null;
   const period = 8 + ((ph * 0.37) % 4);
   const t = (T + ph * 3) % period;
-  const dur = 1.1;
+  // FIVESTARS ④: 다섯 별 대기 동작은 1초 (품질 규칙 ≤1초)
+  const dur = s.star ? 1 : 1.1;
   if (t >= dur) return null;
   const fr = s.sig;
   return fr?.length ? fr[Math.min(fr.length - 1, Math.floor((t / dur) * fr.length))] : null;
 }
 
 /** HERODOT 이름표 (R8 판정): 이번 프레임에 그릴 이름표 · 눌러 본 영웅(몇 초 동안 이름표) */
-const TAGS: { X: number; top: number; name: string; tier: 'legend' | 'hero' | 'mythic' | 'guest'; d: number }[] = [];
+const TAGS: { X: number; top: number; name: string; tier: 'legend' | 'hero' | 'mythic' | 'guest'; d: number; rainbow?: boolean }[] = [];
+/** FIVESTARS ④ 무지갯빛 이름표 색 (글자마다 · 천천히 흐름 · 조용할 땐 멈춤) */
+export const RAINBOW = ['#ff8a8a', '#ffc46b', '#fff08a', '#9be89b', '#8ad0ff', '#b8a0ff', '#ff9ad8'];
 /** 설정 「손님 이름 항상 보기」가 지금 그려지나 (UI 끄기·화면 보호 중엔 쉼 · 사진 모드는 그 전에 TAGS를 비운다) — 프레임마다 한 번 */
 let namesT = -1;
 let namesV = false;
@@ -1113,8 +1128,23 @@ function drawNamedTags(ctx: CanvasRenderingContext2D) {
     ctx.fillText(t.name, tx + 1, ty + 1);
     if (!guest) ctx.fillText(t.name, tx - 1, ty + 1);
     ctx.fillText(t.name, tx, ty + 2);
-    ctx.fillStyle = col;
-    ctx.fillText(t.name, tx, ty);
+    if (t.rainbow) {
+      // 무지갯빛: 글자마다 다른 색 (가운데 정렬 그대로 · 왼쪽부터 한 글자씩)
+      const sh = calmNow() ? 0 : Math.floor(S.T * 2);
+      const chars = [...t.name];
+      const tw2 = ctx.measureText(t.name).width;
+      let cx2 = tx - tw2 / 2;
+      ctx.textAlign = 'left';
+      chars.forEach((ch, k) => {
+        ctx.fillStyle = RAINBOW[(k + sh) % RAINBOW.length];
+        ctx.fillText(ch, cx2, ty);
+        cx2 += ctx.measureText(ch).width;
+      });
+      ctx.textAlign = 'center';
+    } else {
+      ctx.fillStyle = col;
+      ctx.fillText(t.name, tx, ty);
+    }
     ctx.globalAlpha = 1;
     if (t.tier === 'mythic') {
       const sx3 = tx + Math.ceil((w - 6) / 2) + 4;
@@ -1152,7 +1182,7 @@ function namedFx(ctx: CanvasRenderingContext2D, a: Actor, s: CharFrames, X: numb
     }
   // 이름표는 모아 두었다가 한 번에 (겹치면 위로 쌓기 · 전설·신화 최대 3 · 영웅은 확대 2배 이상이거나 눌렀을 때만)
   const tier = s.tier!;
-  if (TAGS.length < 64 && (tier !== 'hero' || S.zoom >= 2 || (TAG_TAP.get(a) ?? -1) > T || allNames())) TAGS.push({ X, top: top + (s.idle[0].height - 33) + 2, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2) });
+  if (TAGS.length < 64 && (tier !== 'hero' || S.zoom >= 2 || (TAG_TAP.get(a) ?? -1) > T || allNames())) TAGS.push({ X, top: top + (s.idle[0].height - 33) + 2, name: a.name, tier, d: Math.hypot(X - view.LW / 2, top - view.LH / 2), rainbow: !!s.star });
 }
 
 function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [number, number]; back: boolean; dir: 1 | -1 }) {
@@ -1191,6 +1221,12 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
     ctx.restore();
   } else ctx.drawImage(img, x, y);
   ctx.globalAlpha = 1;
+  // FIVESTARS ④ 따뜻한밤 허리 등불: 밤에 2칸 빛 — 그린 직후 깊이 순서 안에서 (앞 건물이 나중에 그려지며 가린다 · v0.25.24 불빛 규칙)
+  if (s.star === 'warmnight' && fade === 1 && frameLight > 0.01 && a.st !== 'sit') {
+    // R21: 3칸 · 가운데 +40% · 따뜻한 주황(#ffb347) · 대기 동작에서 등불을 들어 올린 프레임(2·3)이면 빛도 같이 위로
+    const up = !!sg && !!s.sig && (s.sig.indexOf(sg) === 1 || s.sig.indexOf(sg) === 2);
+    lit(ctx, () => lanternGlow(ctx, up ? X + (dir < 0 ? -6 : 6) : X + (dir < 0 ? 5 : -5), up ? Y - 27 : Y - 12, TH * 3, LANTERN_A * frameLight));
+  }
   // 수련: 흰 바람 / 밭일: 물방울
   if (a.st === 'atk' && Math.random() < 0.06) puff(X + a.dir * 12 - view.OX, Y - 16 - view.OY, '#ffffff', a.dir * 10, -4, 0.25, 1);
   if (a.st === 'pray' && Math.random() < 0.05) puff(X + a.dir * 8 - view.OX, Y - 12 - view.OY, '#8fd0ff', 0, 10, 0.5, 1);
