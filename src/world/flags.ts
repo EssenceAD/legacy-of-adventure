@@ -145,6 +145,8 @@ export const FLAG_DEFAULTS = {
   fishSfx: true,
   /** PACE §2 자동 사냥 여러 파티 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 맡겨 둔 사냥 1칸 → 장부 4장 2칸 · 6장 3칸 (CONFIG.hunt.slotsMax) · 한 손님은 한 칸에만 · 칸마다 지역·스테이지·추천 조건 따로 · 2·3칸 금화 ×slotGold · 방치 장비 상한·방치 금화 상한은 칸 전체 하나 · 사냥 창 맨 위 칸 카드 줄 · 끄면 0번 칸만(예전 그대로, 1·2번 칸은 저장에 남고 멈춤) */
   huntSlots: false,
+  /** 웅스 건의 「강화 전수」 (형철 확인 전 꺼짐 · 비교 시트 reports/checkin/transfer · 「새 화면 미리 보기」로 켜 봄 — vis()) — 대장간 한 화면(smithOne) 행동 판에 [전수]: 같은 부위 · 받는 등급 ≥ 주는 등급 · 주는 장비 +3 이상의 강화 단계를 새 장비로 (같은 등급 그대로 · 한 등급 위 −1 · 두 등급 이상 −2 · 초월 +11 이상이면 −1 더 · 유물은 유물에게서만) · 옵션·고유 옵션·세트는 받는 장비 것 · 주는 장비는 사라지고 분해 가루는 받음 · 끼고 있던 사람에게 받는 장비를 끼워 줌 · 비용 금화+가루(CONFIG.growth.transfer · +0부터 직접 올릴 때 기댓값의 35%) · +11 이상은 부적 1개 · 원정 중인 사람의 장비는 막힘 */
+  enhTransfer: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

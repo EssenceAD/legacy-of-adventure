@@ -82,8 +82,9 @@ export function playReceipt(root: ParentNode = document) {
 
 // ───────── §E 숙박부 도장 「쿵」 (출석 · 장부 3개 · 연감) ─────────
 
-export type StampKind = 'checkin' | 'ledger' | 'almanac';
-const STAMP_ICON: Record<StampKind, IconKey> = { checkin: 'stamp_checkin', ledger: 'stamp_checkin', almanac: 'stamp_almanac' };
+/** transfer = 강화 전수 끝 (플래그 enhTransfer — 체크인 도장 그림 그대로 · checkinFx와 상관없이 찍힘) */
+export type StampKind = 'checkin' | 'ledger' | 'almanac' | 'transfer';
+const STAMP_ICON: Record<StampKind, IconKey> = { checkin: 'stamp_checkin', ledger: 'stamp_checkin', almanac: 'stamp_almanac', transfer: 'stamp_checkin' };
 /** 「쿵」 길이 (초): 0.4 · 조용하면 0.3 */
 export const stampDur = (calm = calmFx()) => (calm ? CALM : 0.4);
 const st = { kind: '' as string, at: 0, dur: 0, n: 0 };
@@ -93,7 +94,7 @@ const st = { kind: '' as string, at: 0, dur: 0, n: 0 };
  *  checkinFx가 꺼져 있으면 아무것도 안 함
  */
 export function stampFx(kind: StampKind, anchor?: HTMLElement | null): HTMLElement | null {
-  if (!fxOn()) return null;
+  if (kind !== 'transfer' && !fxOn()) return null;
   const dur = stampDur();
   Object.assign(st, { kind, at: performance.now(), dur, n: st.n + 1 });
   const im = document.createElement('img');
