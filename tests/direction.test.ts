@@ -356,7 +356,8 @@ describe('§3-2 다음 업데이트 카드 (public/next.json)', () => {
   it('없음 · 빈 파일 · 지난 날짜면 숨김 · 위험한 이미지 경로는 빼고', () => {
     expect(nextCardHtml(null, '', now)).toBe('');
     expect(nextCardHtml({ date: '', title: '', items: [] }, '', now)).toBe('');
-    expect(nextCardHtml(JSON.parse(fs.readFileSync('public/next.json', 'utf8')), '', now)).toBe('');
+    // 실제 next.json(수확제 예고): 날짜가 지나면 저절로 숨는다
+    expect(nextCardHtml(JSON.parse(fs.readFileSync('public/next.json', 'utf8')), '', new Date('2026-12-01T12:00:00+09:00'))).toBe('');
     expect(nextValid({ date: '2026-10-12', title: 'x' }, now)).toBe(false);
     expect(nextValid({ date: '2026-10-13', title: 'x' }, now)).toBe(true);
     const h = nextCardHtml({ title: 'x', image: 'javascript:alert(1)' }, '', now);
