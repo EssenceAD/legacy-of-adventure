@@ -11,6 +11,8 @@ if (!dir) throw new Error('사용법: node scripts/replay-saves.mjs <저장 폴�
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
 const b = await chromium.launch({ channel: 'chrome' });
 let fail = 0;
+// LAB=1: 「새 화면 미리 보기」(실험실 · 꺼진 vis 플래그 전부) 켠 채로 불러온다
+const LAB = !!process.env.LAB;
 const rows = [];
 const heroesOf = (s) => {
   const dex = s.progress?.dex?.heroes ?? {};
@@ -19,14 +21,15 @@ const heroesOf = (s) => {
 /** 저장 하나를 그 빌드로 불러와 상태를 읽는다 */
 async function loadIn(url, raw) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await ctx.addInitScript((save) => {
+  await ctx.addInitScript(([save, LAB]) => {
     try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
     localStorage.clear();
     localStorage.setItem('legacy-of-adventure-save', save);
     localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
     localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
     localStorage.setItem('legacy-of-adventure-telemetry', 'false');
-  }, raw);
+    if (LAB) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+  }, [raw, LAB]);
   const p = await ctx.newPage();
   try {
     await p.goto(url, { waitUntil: 'networkidle' });
@@ -46,14 +49,15 @@ for (const f of files) {
   const s = JSON.parse(raw);
   const before = { buildings: (s.buildings ?? []).length, items: (s.progress?.bag ?? []).length, gold: Math.floor(s.gold ?? 0), heroes: heroesOf(s), land: s.land ?? 1 };
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await ctx.addInitScript((save) => {
+  await ctx.addInitScript(([save, LAB]) => {
     try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
     localStorage.clear();
     localStorage.setItem('legacy-of-adventure-save', save);
     localStorage.setItem('legacy-of-adventure-teaserSeen', 'true');
     localStorage.setItem('legacy-of-adventure-lastVersion', '"99"');
     localStorage.setItem('legacy-of-adventure-telemetry', 'false');
-  }, raw);
+    if (LAB) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
+  }, [raw, LAB]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
