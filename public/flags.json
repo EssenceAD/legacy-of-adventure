@@ -67,6 +67,6 @@
   "ledgerDaily": false,
   "almanac": false,
   "leftIcons": false,
-  "legendFrame": false,
+  "legendFrame": true,
   "huntSlots": false
 }

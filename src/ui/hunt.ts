@@ -100,6 +100,13 @@ function slotBusy(a: Actor, target: number): string | null {
   return i >= 0 ? `맡겨 둔 사냥 ${i + 1}칸` : null;
 }
 /** 사냥 창 맨 위 칸 카드 줄: 지역-스테이지 · 파티 얼굴 4 · 판 수 · 재료 2 · [멈추기] / 「+ 맡기기」 / 「장부 ○장에 열려요」 */
+/** 칸 카드 금화: 좁은 카드에서 안 잘리게 짧게 (999 · 8.1K · 81.4K · 1.2M) */
+export function cardNum(n: number): string {
+  n = Math.round(n);
+  if (n < 1000) return String(n);
+  if (n < 1e6) return `${(n / 1e3).toFixed(n < 1e5 ? 1 : 0).replace(/.0$/, '')}K`;
+  return `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0).replace(/.0$/, '')}M`;
+}
 function slotCards(): string {
   const open = slotsOpen();
   const slots = autoSlots();
@@ -117,7 +124,7 @@ function slotCards(): string {
       .map((m) => `<img src="${pic(m)}" alt="">`)
       .join('');
     const mats = `<i>${esc(reg.mat)} +${fmt(a.mats ?? 0)}</i>` + (isBoss(a.stage) ? `<i>${esc(regionBossOf(a.region).mat)}</i>` : '');
-    return `<div class="hslot" style="--rc:${themeOf(a.region).band}"><b>${esc(reg.name)} ${stageName(a.region, a.stage)}</b><span class="hsf">${faces}</span><small>${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</small><span class="hsm">${mats}</span><button class="bigbtn ghost sm" data-hstop="${i}">멈추기</button></div>`;
+    return `<div class="hslot" style="--rc:${themeOf(a.region).band}"><b>${esc(reg.name)} ${stageName(a.region, a.stage)}</b><span class="hsf">${faces}</span><small class="hsn"><span>${fmt(a.n ?? 0)}판</span><span>${i > 0 ? '<em class="hsmat">재료</em>' : ''}💰+${cardNum(a.gold ?? 0)}</span></small><span class="hsm">${mats}</span><button class="bigbtn ghost sm" data-hstop="${i}">멈추기</button></div>`;
   }).join('');
   return `<div class="hslots"><p class="sub"><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 <b class="g">${used}/${open}</b></p><div class="hsrow">${cards}</div></div>`;
 }

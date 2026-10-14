@@ -174,14 +174,14 @@ describe('보상', () => {
     chapters(6);
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
   });
-  it('1칸 금화 그대로 · 2·3칸 ×slotGold (autoGoldMult 위에 곱) · 재료는 같다', () => {
+  it('1칸 금화 그대로 · 2·3칸 ×slotGold (하루 금화 감소에서 빠짐 · B안) · 재료는 같다', () => {
     expect([slotGoldX(0), slotGoldX(1), slotGoldX(2)]).toEqual([1, H.slotGold, H.slotGold]);
     const ms = world.actors.slice(0, 3);
     const a = clearStage('forest', 2, ms, 1, true, true);
     const b = clearStage('forest', 2, ms, 1, true, true, H.slotGold);
     expect(Math.abs(b.gold - a.gold * H.slotGold)).toBeLessThanOrEqual(1);
     expect(b.mats).toBe(a.mats);
-    // GOLDSINK 하루 판 수는 칸 전체가 같이 센다 (taper)
+    // B안(형철): 하루 판 수(taper)는 1칸만 센다 — 2·3칸은 세지도 받지도 않음 → 1칸은 칸을 늘려도 지금과 같다
     setFlag('goldsinkAutoCap', true);
     const g = gsState();
     g.autoN = 0;
@@ -189,7 +189,7 @@ describe('보상', () => {
     setAuto('forest', 2, world.actors.slice(3, 6), 1);
     setAuto('forest', 2, world.actors.slice(6, 9), 2);
     autoTick(P.hunt.idleAt + H.autoSeconds * 1000);
-    expect(g.autoN).toBe(3);
+    expect(g.autoN).toBe(1);
     const [s0, s1, s2] = P.hunt.autos;
     // 파티가 달라 조합 금화 보너스가 조금 다를 수 있다 (±10%)
     expect(s1!.gold! / s0!.gold!).toBeCloseTo(H.slotGold, 1);

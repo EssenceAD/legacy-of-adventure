@@ -2302,3 +2302,8 @@ body.hud2 #leftIcons button::after{content:'';display:block;position:absolute;in
 body.hud2 #leftIcons button small{display:none}
 body.hud2 #leftIcons img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
 body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor #leftIcons,body.visiting #leftIcons,body.photo #leftIcons{visibility:hidden}
+
+/* PACE §2 B안: 2·3칸은 재료용 — 제목 옆 작은 표시 */
+.hslot .hsmat{font-style:normal;font-size:var(--f-tiny);color:#9fd28a;margin-left:4px;padding:0 3px;box-shadow:0 0 0 1px #4f7a44;vertical-align:1px}
+.hslot small.hsn{display:flex;flex-direction:column;align-items:center;white-space:nowrap;line-height:1.2}
+.hslot .hsmat{margin:0 3px 0 0}

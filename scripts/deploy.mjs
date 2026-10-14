@@ -21,6 +21,8 @@ const force = process.argv.includes('--force-update');
 process.env.FORCE_UPDATE = force ? '1' : '';
 if (force) console.log('⚠ force 업데이트: 플레이어는 「조금 있다가」 없이 새로 시작해야 해요');
 // 자동 테스트 — 하나라도 실패하면 배포하지 않는다
+// 2026-10-14: 보이는 새 플래그가 확인 없이 켜지지 않게 (scripts/check-flags.mjs · 허용은 ALLOW_FLAGS=…)
+run('node scripts/check-flags.mjs');
 if (existsSync('tests')) run('npm test');
 run('npm run build');
 // 핫픽스 7: 빌드 결과물에서 그림·소리 요청 실패가 하나라도 있으면 배포하지 않는다

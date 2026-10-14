@@ -226,7 +226,7 @@ export const activeAutos = (): { a: HuntAuto; i: number }[] =>
     .filter((x): x is { a: HuntAuto; i: number } => !!x.a);
 /** 이 손님이 맡겨 둔 칸 번호 (except 칸은 빼고 · 없으면 -1) — 한 손님은 한 칸에만 */
 export const autoSlotOf = (id: number, except = -1): number => activeAutos().find(({ a, i }) => i !== except && a.members.includes(id))?.i ?? -1;
-/** 칸의 금화 배수: 0번 칸 1 · 그 뒤 칸 slotGold (autoGoldMult 위에 곱) */
+/** 칸의 금화 배수: 0번 칸 1 · 그 뒤 칸 slotGold — 형철 B안: 2·3칸은 하루 금화 감소(taper)에서 빠지고(세지도 받지도 않음) 금화 ×slotGold 고정 → 1칸은 지금과 완전히 같다 */
 export const slotGoldX = (i: number) => (i > 0 ? H.slotGold : 1);
 /** 첫 빈 칸 (다 찼으면 -1) */
 export const freeSlot = (): number => autoSlots().findIndex((a) => !a);
@@ -286,7 +286,7 @@ function autoRun(a: HuntAuto, slot: number): HuntReward | null {
     uiHooks.toast(fsay(`맡겨 둔 사냥${at ? ` ${at.trim()}` : ''}이 멈췄어요 (파티가 없거나 전투력이 부족해요)`, `맡아 둔 사냥${at ? ` ${at.trim()}` : ''}을 멈췄어요 (파티가 없거나 전투력이 부족해요)`));
     return null;
   }
-  const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true, slotGoldX(slot));
+  const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, slot === 0, slotGoldX(slot));
   // HARVEST §1-4: 맡겨 둔 사냥도 호박 도깨비를 센다 (칸마다 판마다 한 번 · 대왕 차례면 같이)
   settleAuto(a.region, a.stage);
   a.n = (a.n ?? 0) + 1;
@@ -316,10 +316,10 @@ const idleLabel = (r: string, s: number) => `${REGIONS[regionIdx(r)].name} ${reg
  *  huntSlots: 칸마다 같은 판 수를 번갈아 돈다 · 2·3칸 금화 ×slotGold · 방치 장비(idleItemsMax)·금화 상한(goldCap)은 칸 전체 하나
  */
 export function idleHunt(seconds: number, goldCap: number): IdleHunt | null {
-  type Job = { r: RegionId; s: number; ms: Actor[]; gx: number };
+  type Job = { r: RegionId; s: number; ms: Actor[]; gx: number; sz?: boolean };
   let jobs: Job[];
   const list = activeAutos();
-  if (list.length) jobs = list.map(({ a, i }) => ({ r: a.region as RegionId, s: a.stage, ms: autoMembers(a), gx: slotGoldX(i) }));
+  if (list.length) jobs = list.map(({ a, i }) => ({ r: a.region as RegionId, s: a.stage, ms: autoMembers(a), gx: slotGoldX(i), sz: i === 0 }));
   else {
     let r: string | null = null;
     let s = 0;
@@ -336,7 +336,7 @@ export function idleHunt(seconds: number, goldCap: number): IdleHunt | null {
   for (let c = 0; c < clears; c++)
     jobs.forEach((j, k) => {
       // 방치 판 하나 (판마다 셈은 여기 한 곳)
-      const out = reward(j.r, j.s, j.ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(j.s, false, true) * j.gx);
+      const out = reward(j.r, j.s, j.ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(j.s, false, j.sz !== false) * j.gx);
       const o = per[k];
       o.clears++;
       o.gold += out.gold;
