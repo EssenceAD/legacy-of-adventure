@@ -25,8 +25,8 @@ export function diaryOnChem(a: Actor, b: Actor) {
     pages()[k] = n + 1;
     markDirty();
     track('diary_page', { key: k, page: n + 1 });
-    // 사냥꾼은 아직 일러스트 초상화가 없다 → 그 손님 도트 얼굴로 말한다
-    const who = x.kind === 'hunter' ? '@' + x.id : `g_${k}`;
+    // 사냥꾼도 g_hunter_* 일러스트 초상이 생겼다 (웅스 제보) → 다른 손님과 같이
+    const who = `g_${k}`;
     if (n + 1 === d.pages.length) pending.push(DIARY_DONE.map(([s, t]) => (s === '@self' ? [who, t, undefined, x.name] : [s, t]) as SLine));
     else pending.push([['narr', `서재에서 「${d.title}」 ${n + 1}장을 찾았다 — 도감 「일기」에서 읽을 수 있어요`]]);
   }
