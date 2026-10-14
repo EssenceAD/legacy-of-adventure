@@ -35,7 +35,7 @@ export const STAR_LOOKS: Record<string, NamedLook> = {
   // 이카몰리: 바람에 날리는 긴 갈색 머리 · 둥근 안경 · 크림색 로브 + 하늘색 목도리 · 바람개비 지팡이
   star_ikamolly: {
     tier: 'legend', star: 'ikamolly', head: 'hair',
-    patch: { style: 'long', hair: '#8a4a36', cloth: '#f0e6c8', arm: '#f0e6c8', pants: '#c8b890', boots: '#6a4a3a', accent: SKY, hat: undefined, hatc: undefined, weapon: 'staff', elf: false, glassesColor: '#c9a46a' },
+    patch: { style: 'long', hair: '#8a4a36', cloth: '#f0e6c8', arm: '#f0e6c8', pants: '#c8b890', boots: '#6a4a3a', accent: SKY, hat: undefined, hatc: undefined, weapon: 'staff', elf: false, glassesColor: '#5a3a22', glassesGlint: '#e8c070' },
     extras: ['windHair', 'skyScarf'], sig: 'pinwheel', sigN: 4, walk: 'hair', trail: 'star',
   },
   // 왈왈콩선생(여): 흰 사제 두건 + 강아지 귀 · 꿀빛 머리 · 흰 로브(금 테) · 강아지 발자국 성표

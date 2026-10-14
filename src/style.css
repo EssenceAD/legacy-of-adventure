@@ -2341,10 +2341,10 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 #scene.skypan{transform:translateY(42%);transition:transform 1.5s cubic-bezier(.4,0,.2,1)}
 #scene.skypan-now{transition:none}
 #storyFx.sfx-constellation.pan{background:none}
-#storyFx.pan .skyp{position:absolute;left:0;right:0;top:0;height:46%;background:linear-gradient(#070a24,#10164a 62%,rgba(16,22,74,0));transform:translateY(-100%);animation:skyIn 1.5s cubic-bezier(.4,0,.2,1) forwards}
+/* R21 v3: 하늘은 마을 그림 윗변(42%)까지 꽉 · 그 아래 40px 그라데이션(하늘색 → 투명)으로 경계선 없이 */
+#storyFx.pan .skyp{position:absolute;left:0;right:0;top:0;height:calc(42% + 40px);background:linear-gradient(#070a24,#10164a calc(100% - 40px),rgba(16,22,74,0));transform:translateY(-100%);animation:skyIn 1.5s cubic-bezier(.4,0,.2,1) forwards}
 #storyFx.pan.now .skyp{animation:none;transform:none}
-#storyFx.pan .skyp i{margin-top:min(22vh,140px)}
-#storyFx.pan.now .skyp i{animation:none}
+#storyFx.pan .skyc{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
 @keyframes skyIn{to{transform:none}}
 #storyFx.sfx-constellation{background:radial-gradient(ellipse at 50% 20%,rgba(255,240,180,.16),rgba(10,8,40,.7))}
 #storyFx.sfx-constellation i{position:absolute;width:4px;height:4px;margin-left:calc(50% - 26px);margin-top:40px;background:#fff3c0;box-shadow:0 0 8px #ffd36b;border-radius:50%;animation:fcIn 1.2s ease both}

@@ -57,6 +57,8 @@ export interface ClassDef {
   /** FIVESTARS ④ R21: 머리 크기 +px (고느끼 1) · 로브 아랫단 양쪽 −px (왈왈콩선생 1) */
   headPlus?: number;
   robeTrim?: number;
+  /** R21 v3: 안경 윗변 가운데(코받침) 1px 빛 색 (이카몰리 금 #e8c070) */
+  glassesGlint?: string;
   /** HERODOT 3: 전설(legendId)·이름 있는 영웅(heroId) 고정 겉모습 열쇠 · 신화 (heroDotV2 켰을 때 appearance()가 넣는다) */
   named?: string;
   mythic?: boolean;

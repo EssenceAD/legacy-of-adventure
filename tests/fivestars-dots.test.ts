@@ -102,7 +102,8 @@ describe('FIVESTARS ④ R21 (형철 판정)', () => {
   it('고느끼 머리 +1 · 왈왈 로브 아랫단 양쪽 −1 · 이카몰리 금테 안경 · 웅스 긴 수건', () => {
     expect(NAMED.star_gonu.patch.headPlus).toBe(1);
     expect(NAMED.star_walwal.patch.robeTrim).toBe(1);
-    expect(NAMED.star_ikamolly.patch.glassesColor).toBe('#c9a46a');
+    expect(NAMED.star_ikamolly.patch.glassesColor).toBe('#5a3a22');
+    expect(NAMED.star_ikamolly.patch.glassesGlint).toBe('#e8c070');
     expect(STARS.ikamolly.face.glasses).toBe(true);
     expect(NAMED.star_woongs.extras).toContain('longTowel');
   });
@@ -110,4 +111,25 @@ describe('FIVESTARS ④ R21 (형철 판정)', () => {
     const { LANTERN_A } = await import('../src/world/render');
     expect(LANTERN_A).toBeCloseTo(0.32 * 1.4);
   }, 30000);
+});
+
+describe('FIVESTARS ④ R21 v3 별자리 하늘', () => {
+  it('별 다섯 색 = 궤적 색 · 오각형 · 선 0.8초 한 획씩 · 움직임 줄이기면 한 번에 · 반짝 없음', async () => {
+    const S = await import('../src/ui/skyStars');
+    expect(S.SKY_STAR_COLORS).toEqual(['#ffd36b', '#f4a3be', '#8fc6e0', '#ffffff', '#ffa040']);
+    expect(S.SKY_LINE_ALPHA).toBe(0.35);
+    expect(S.SKY_BG_STARS).toBeGreaterThanOrEqual(20);
+    expect(S.SKY_BG_STARS).toBeLessThanOrEqual(30);
+    expect(S.pentagon(50, 50, 20)).toHaveLength(5);
+    const t0 = S.SKY_LINE_START_MS;
+    expect(S.linesDone(t0, false, false)).toBe(0);
+    expect(S.linesDone(t0 + S.SKY_LINE_MS / 2, false, false)).toBeCloseTo(2.5);
+    expect(S.linesDone(t0 + S.SKY_LINE_MS, false, false)).toBe(5);
+    expect(S.linesDone(0, true, false)).toBe(5);
+    expect(S.linesDone(0, false, true)).toBe(5);
+    expect(S.twinkle(0, 100, false)).not.toBe(S.twinkle(1, 100, false));
+    expect(S.twinkle(0, 100, false)).not.toBe(S.twinkle(0, 600, false));
+    expect(S.twinkle(0, 100, true)).toBe(1);
+    expect(S.twinkle(1, 600, true)).toBe(1);
+  });
 });

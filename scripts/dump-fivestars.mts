@@ -383,9 +383,13 @@ async function constellation(p: Page, width: number) {
     await p.waitForTimeout(260);
   }
   // R21: 별자리 줄에서 카메라가 하늘로 1.5초 — 중간 한 장 · 다 올라간 하늘 한 장
-  await p.waitForTimeout(650);
+  // 하늘 캔버스가 붙은 순간부터 잰다 (선은 0.7초부터 0.8초 동안 한 획씩) → 1.05초 = 선 두 획쯤
+  await p.waitForFunction(() => !!document.querySelector('#storyFx .skyc'), null, { timeout: 5000 }).catch(() => {});
+  const late = await p.evaluate(() => performance.now() - Number((document.querySelector('#storyFx .skyc') as HTMLElement | null)?.dataset.t0 ?? 0));
+  console.error('하늘 붙은 뒤 ' + Math.round(late) + 'ms');
+  await p.waitForTimeout(Math.max(0, 1050 - late));
   await p.screenshot({ path: `${OUT}/constellation_pan_mid_${width}.png` });
-  await p.waitForTimeout(1300);
+  await p.waitForTimeout(1000);
   await p.screenshot({ path: `${OUT}/constellation_${width}.png` });
   console.error(`✓ constellation_${width} (${seen ? '별자리 줄 확인' : '별자리 줄 못 찾음'})`);
 }

@@ -29,6 +29,7 @@ import { holdLine, isTalking, talkStory } from './dialogue';
 import { iconSrc } from './kit';
 import { capture } from './photo';
 import { startLanterns } from '../world/harvestDraw';
+import { mountSky } from './skyStars';
 import { closeWin, isWinOpen, openWin, setWinLock, toast } from './windows';
 
 // ───────── 대사 틀기 (연출 포함) ─────────
@@ -103,8 +104,10 @@ function fx(k: string) {
     b.innerHTML = '<i class="st1"></i><i class="st2"></i><i class="st3"></i>';
   } else if (k === 'constellation') {
     b.className = 'sfx-constellation pan';
-    b.innerHTML = '<div class="skyp"><i></i><i></i><i></i><i></i><i></i></div>';
+    b.innerHTML = '<div class="skyp"></div>';
     skyPan(b);
+    // R21 v3: 별 다섯(궤적 색 · 번갈아 반짝) · 한 획씩 잇는 선 · 배경 별 (움직임 줄이기면 한 번에 · 반짝 없음)
+    mountSky(b.querySelector('.skyp')!, b);
   }
   // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
   else if (k === 'lanterns') startLanterns();

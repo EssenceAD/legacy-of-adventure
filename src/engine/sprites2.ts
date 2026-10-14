@@ -492,6 +492,8 @@ function face(G: GridT, def: ClassDef, pose: Pose2, hx: number, hy: number, SKN2
       G.rect(ex - 1, ey, 1, 3, gc, 'eye');
       G.rect(ex + 2, ey, 1, 3, gc, 'eye');
     });
+    // 윗변 가운데 1px만 금빛 (×1에서 「눈 위 어두운 가로줄」 + 가운데 반짝)
+    if (def.glassesGlint) G.set(Math.round(hx), ey - 1, def.glassesGlint, 'eye');
   }
   if (def.stache) {
     // 큰 흰 콧수염 (양끝 말려 올라감)
