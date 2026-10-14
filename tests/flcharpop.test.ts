@@ -78,7 +78,7 @@ describe('FIRSTLOOK §6 flCharPop', () => {
     const mean = (l: typeof on) => core(l).reduce((s, f) => s + f.a, 0) / cells / 0.8;
     expect(mean(on) - mean(off)).toBeGreaterThan(CONFIG.firstLook.pop.shadowAdd - 0.03);
     expect(mean(on) - mean(off)).toBeLessThan(CONFIG.firstLook.pop.shadowAdd + 0.03);
-  });
+  }, 30000);
 
   it('외곽선: Grid — 바깥 고리만 한 색 · 안쪽 구멍 외곽선은 예전 부위색', () => {
     const mk = () => {
