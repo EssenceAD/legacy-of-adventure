@@ -452,7 +452,8 @@ export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActo
 // ───────── 가방 ─────────
 
 export function openBag() {
-  const items = P.bag.slice().sort((p, q) => 'naerl'.indexOf(q.grade) - 'naerl'.indexOf(p.grade) || itemPower(q) - itemPower(p));
+  // RAIDWEAPON §2: 전용 무기는 맨 앞
+  const items = P.bag.slice().sort((p, q) => +!!q.ex - +!!p.ex || 'naerl'.indexOf(q.grade) - 'naerl'.indexOf(p.grade) || itemPower(q) - itemPower(p));
   const n = P.bag.filter((x) => x.owner == null).length;
   const full = n >= bagSize();
   openWin(

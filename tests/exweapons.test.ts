@@ -253,3 +253,36 @@ describe('플래그 끔 · 저장', () => {
   });
 });
 void ({} as Actor);
+
+describe('아이콘 (형철 그림 · scripts/copy-exw-icons.mjs)', () => {
+  it('원본에 있는 그림은 모두 public에 복사돼 목록에 · 없는 키는 직업 무기 + 금빛 테 그대로', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    // @ts-expect-error 스크립트(.mjs)는 타입 없음
+    const { copyExwIcons } = await import('../scripts/copy-exw-icons.mjs');
+    const { EXW_ICONS } = await import('../src/data/exwIcons');
+    const { itemIcon, exIconUrl } = await import('../src/world/items');
+    const src = 'asset_raw/weapons';
+    const srcFiles: string[] = fs.existsSync(src) ? fs.readdirSync(src).filter((f: string) => /^exw_[a-z0-9]+(_24)?\.png$/.test(f)) : [];
+    for (const f of srcFiles) expect(fs.existsSync(path.join('public/assets/weapons', f)), f).toBe(true);
+    // 임시 폴더로 다시 돌려도 같은 목록 (여러 번 돌려도 같음)
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exw-'));
+    const r = copyExwIcons(fs.existsSync(src) ? src : 'public/assets/weapons', tmp, null);
+    const r2 = copyExwIcons(fs.existsSync(src) ? src : 'public/assets/weapons', tmp, null);
+    expect(r2.keys).toEqual(r.keys);
+    expect([...EXW_ICONS].sort()).toEqual(r.keys);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    for (const d of EX_WEAPONS) {
+      const it = makeEx(d.id, () => 0.5, 'forest')!;
+      if (EXW_ICONS.includes(d.id)) {
+        expect(fs.existsSync(`public/assets/weapons/exw_${d.id}.png`) && fs.existsSync(`public/assets/weapons/exw_${d.id}_24.png`)).toBe(true);
+        expect(itemIcon(it)).toMatch(new RegExp(`assets/weapons/exw_${d.id}\.png$`));
+        expect(itemIcon(it, true)).toMatch(new RegExp(`exw_${d.id}_24\.png$`));
+      } else {
+        expect(exIconUrl(d.id)).toBeNull();
+        expect(itemIcon(it)).toMatch(/^data:/);
+      }
+    }
+  });
+});

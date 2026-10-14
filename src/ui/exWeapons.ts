@@ -9,6 +9,9 @@ import { josa } from '../data/josa';
 import { boxChoices, boxCount, EX_WEAPONS, exDef, exOwned, exOwnedN, exRetro, fragsToBox, makeEx, openBox, recruitedKeys } from '../world/exWeapons';
 import { exOn, rwState } from '../world/frags';
 import { equip, itemIcon } from '../world/items';
+import { grantEx } from '../world/exWeapons';
+import { addFrags } from '../world/frags';
+import { openBag, showItem } from './guests';
 import { markDirty, P, world, type Actor, type Item } from '../world/state';
 import { $$, esc } from './common';
 import { openWin, toast } from './windows';
@@ -171,7 +174,7 @@ export function exDexHtml(): string {
   const cells = EX_WEAPONS.map((d) => {
     const on = exOwned(d.id);
     const prev = makePreview(d.id);
-    const icon = itemIcon({ slot: 'weapon', grade: 'a', region: prev?.region ?? 'forest', wkind: prev?.wkind, ex: d.id });
+    const icon = itemIcon({ slot: 'weapon', grade: 'a', region: prev?.region ?? 'forest', wkind: prev?.wkind, ex: d.id }, true);
     const awake = rwState().awoke.includes(d.id);
     return `<div class="${on ? 'on' : ''}"><img src="${icon}" alt=""><span><b>${on ? '✦ ' : ''}${on ? esc(exShort(d)) : '???'}</b><br><small>${esc(exOwnerName(d))}${on ? (awake ? ' · 깨어남' : ' · 잠듦') : rec.has(d.id) ? ' · 상자에서' : ''}</small></span></div>`;
   }).join('');
@@ -185,3 +188,9 @@ export function initExWeapons() {
   started = true;
   exHooks.cut = (_a, it, color, text) => playAwakeCut(it, color, text);
 }
+
+// 시트·검사용 (개발/봇 빌드만)
+if (import.meta.env.DEV)
+  Object.assign(window, {
+    __ex: { grant: grantEx, frags: addFrags, box: openExBox, cut: playAwakeCut, bag: openBag, item: (id: number) => { const it = P.bag.find((x) => x.id === id); if (it) showItem(it); }, state: rwState, color: exHeroColor, equip, dex: exDexHtml },
+  });

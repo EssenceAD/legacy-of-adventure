@@ -16,6 +16,7 @@ import { brag, checkSet3 } from './growth';
 import { starSkillOpt } from './fivestars';
 import { exAwaken, exCanWear } from './exGate';
 import { exIconPath } from '../data/exweapons';
+import { EXW_ICONS } from '../data/exwIcons';
 
 const I = CONFIG.items;
 const E = CONFIG.expedition;
@@ -192,22 +193,13 @@ export function optSumOf(a: Actor, items: Item[], k: OptKey, region?: RegionId):
 // ───────── 아이콘 (16×16 도트: 부위 모양 × 등급 색 × 소재 색) ─────────
 
 const ICONS: Record<string, string> = {};
-// RAIDWEAPON §2 전용 무기 아이콘: public/assets/weapons/ex_<id>.png 가 있으면 그 그림 (넣기만 하면 저절로) · 없으면 직업 무기 아이콘 + 금빛 테두리
-const EX_PNG: Record<string, HTMLImageElement | null> = {};
-function exPng(id: string): string | null {
-  if (typeof Image === 'undefined') return null;
-  const hit = EX_PNG[id];
-  if (hit === null) return null;
-  if (hit) return hit.complete && hit.naturalWidth ? hit.src : null;
-  const im = new Image();
-  EX_PNG[id] = im;
-  im.onerror = () => void (EX_PNG[id] = null);
-  im.src = (import.meta.env?.BASE_URL ?? '/') + exIconPath(id);
-  return null;
-}
-export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'> & { ex?: string }): string {
+// RAIDWEAPON §2 전용 무기 아이콘: 그림이 있는 키(data/exwIcons · scripts/copy-exw-icons.mjs)면 public/assets/weapons/exw_<id>.png (small = _24)
+//  · 없으면 직업 무기 아이콘 + 금빛 테두리
+export const exIconUrl = (id: string, small = false): string | null =>
+  EXW_ICONS.includes(id) ? (import.meta.env?.BASE_URL ?? '/') + exIconPath(id, small) : null;
+export function itemIcon(it: Pick<Item, 'slot' | 'grade' | 'region' | 'wkind'> & { ex?: string }, small = false): string {
   if (it.ex) {
-    const png = exPng(it.ex);
+    const png = exIconUrl(it.ex, small);
     if (png) return png;
   }
   const key = `${it.slot}|${it.grade}|${it.region}|${it.wkind ?? ''}${it.ex ? '|ex' : ''}`;

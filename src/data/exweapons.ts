@@ -1,7 +1,8 @@
 // RAIDWEAPON §2 전용 무기 (플래그 exWeapons) — 19자루 이름 표 (전설 14 + 다섯 별 5)
 //  id = 그 영웅 키 (전설 legendId · 다섯 별 starId) — 그 영웅만 낄 수 있다 (무기 칸)
 //  name = 아이템 이름 · short = 「★ 웅스의 양손 대검이 깨어났습니다!」에 쓰는 짧은 이름 (「·」 뒤 · 없으면 name)
-//  아이콘: public/assets/weapons/ex_<id>.png (16×16 또는 32×32 · 투명 PNG) 를 넣으면 저절로 바뀐다 — 없으면 직업 무기 아이콘 + 금빛 테두리
+//  아이콘: 형철 그림 asset_raw/weapons/exw_<id>.png (32×32) · exw_<id>_24.png (24×24) → node scripts/copy-exw-icons.mjs
+//   → public/assets/weapons/ 같은 이름 + src/data/exwIcons.ts 목록 — 목록에 없는 키는 직업 무기 아이콘 + 금빛 테두리
 //  숫자는 CONFIG.raidWeapon.ex · 규칙은 world/exWeapons.ts
 export type ExOwner = 'legend' | 'star';
 export interface ExWeaponDef {
@@ -37,5 +38,5 @@ export const EX_WEAPONS: ExWeaponDef[] = [
 export const exDef = (id: string | undefined | null): ExWeaponDef | undefined => (id ? EX_WEAPONS.find((d) => d.id === id) : undefined);
 /** 알림용 짧은 이름 (「첫 번째 칼날 · 양손 대검」 → 「양손 대검」) */
 export const exShort = (d: ExWeaponDef): string => d.name.split(' · ').pop()!;
-/** 아이콘 파일 (public 아래 · BASE_URL 뒤에 붙인다) */
-export const exIconPath = (id: string): string => `assets/weapons/ex_${id}.png`;
+/** 아이콘 파일 (public 아래 · BASE_URL 뒤에 붙인다) — small = 24×24 판 (24px 이하로 보일 때) */
+export const exIconPath = (id: string, small = false): string => `assets/weapons/exw_${id}${small ? '_24' : ''}.png`;
