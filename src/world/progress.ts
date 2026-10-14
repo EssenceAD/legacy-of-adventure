@@ -10,6 +10,7 @@ import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS, BASE_GUEST_KINDS } from '../data/classes';
 import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
 import { heroFirst } from './wind';
+import { fsay } from './visual';
 
 // ───────── 평판 ★ ─────────
 
@@ -152,7 +153,7 @@ export function track(event: GoalEvent, n = 1) {
     const t = GOAL_TEMPLATES.find((x) => x.id === g.id);
     if (!t || t.event !== event || g.progress >= g.target) continue;
     g.progress = Math.min(g.target, g.progress + n);
-    if (g.progress >= g.target) uiHooks.toast(`오늘의 목표 달성! 「${t.text(g.target)}」 · 메뉴 → 오늘의 목표에서 받아요`);
+    if (g.progress >= g.target) uiHooks.toast(`오늘의 목표 달성! 「${t.text(g.target)}」 · 메뉴 → 오늘의 목표에서 ${fsay('받아요', '챙겨 가세요')}`);
   }
 }
 

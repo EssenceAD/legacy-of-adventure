@@ -93,6 +93,8 @@ export interface Unit {
   /** 시전 동작 · 맞은 직후 (리마스터 프레임) */
   castAnim?: number;
   hurtT?: number;
+  /** CHECKIN §J3 전투 결과 MVP: 이 판에 준 피해 합 (아군) */
+  dealt?: number;
   /** AI가 지금 예고를 피할지 정했다 */
   dodgeDecided?: number;
   // 몬스터
@@ -289,6 +291,8 @@ export interface Field {
   comboTele?: number;
   /** WAYFIND §2: 결의 (첫 돌파 못 한 사냥 판에서 연속 패배 → 주는 피해 + · 받는 피해 −) */
   resolve?: number;
+  /** CHECKIN §J3 전투 결과 별: 쓰러진 아군 수 */
+  downs?: number;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -527,6 +531,7 @@ export function hurtMob(f: Field, m: Unit, dmg: number, by: Unit, o: { crit?: bo
   if (f.resolve) dmg *= resolveDmg(f.resolve);
   dmg = Math.max(1, Math.round(dmg));
   m.hp -= dmg;
+  by.dealt = (by.dealt ?? 0) + Math.min(dmg, Math.max(0, m.hp + dmg));
   if (f.mode === 'raid' && m.boss) f.raidDmg += Math.min(dmg, Math.max(0, m.hp + dmg));
   m.flash = 1 / 30 + 0.001;
   if (o.stun) m.stun = Math.max(m.stun, o.stun * (m.boss ? 0.3 : 1));
@@ -622,6 +627,7 @@ function hurtAlly(f: Field, u: Unit, dmg: number, from: Unit, heavy = false) {
   if (u.hp <= 0) {
     u.hp = 0;
     u.dead = true;
+    f.downs = (f.downs ?? 0) + 1;
     if (isMe(f, u)) {
       // PARTY §3: 4번째 동료(AI 전용)는 셋이 다 쓰러졌을 때만 넘겨받는다
       const next = f.allies.slice(0, 3).find((a) => !a.dead) ?? f.allies.find((a) => !a.dead);

@@ -9,6 +9,8 @@ export const UI = [
   'dialog', 'nameplate', 'lock', 'dot_new', 'close', 'arrow_r', 'star', 'star_empty', 'coin', 'heart', 'hand_0', 'hand_1',
   // CHECKIN §J6 영웅 카드 틀 (숙박 카드 · 9-slice 10)
   'guestcard_9',
+  // CHECKIN §E 체크아웃 영수증 종이 (9-slice 8 · 가운데 반복)
+  'receipt_9',
 ] as const;
 
 /**
@@ -26,7 +28,8 @@ export type IconKey =
   | 'harmony' | 'eval_gourmet' | 'eval_relax' | 'eval_adventure' | 'eval_scenery'
   | 'cur_gold' | 'cur_seed' | 'cur_token' | 'cur_dust_n' | 'cur_dust_r' | 'cur_dust_e' | 'cur_dust_l' | 'cur_dust_a'
   // CHECKIN §E 그림 (asset_raw/checkin → public/assets/icons)
-  | 'box_gift';
+  | 'box_gift'
+  | 'box_crate' | 'box_chest' | 'stamp_checkin' | 'stamp_almanac' | 'key_room';
 export const iconSrc = (k: IconKey, small = false) => av(`assets/icons/${k}${small ? '_16' : ''}.png`);
 /** 아이콘 <img>: 크기는 그림의 정수배만 (24 → 24·48, 16 → 16·32) */
 export const icon = (k: IconKey, px: 16 | 24 | 32 | 48 = 24, cls = '') =>

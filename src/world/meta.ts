@@ -22,6 +22,7 @@ import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
 import { party4Ready } from './party4';
 import { chem5Titles, title5 } from './chemNews';
+import { fsay } from './visual';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -202,7 +203,7 @@ export function dailyAttend(): number | null {
   const day = ((a.total - 1) % 7) + 1;
   addMail({ from: 'attend', title: `출석 ${a.total}일째 도장`, body: `7일 보상판 ${day}일째 보상이에요.`, reward: ATTEND7[day - 1] });
   const big = ATTEND28[((a.total - 1) % 28) + 1];
-  if (big) addMail({ from: 'attend', title: `누적 출석 ${((a.total - 1) % 28) + 1}일 보상`, body: '꾸준히 와 줘서 고마워요!', reward: big });
+  if (big) addMail({ from: 'attend', title: `누적 출석 ${((a.total - 1) % 28) + 1}일 보상`, body: fsay('꾸준히 와 줘서 고마워요!', '꾸준히 들러 주셔서 고마워요!'), reward: big });
   // 출석 3일째: 모모 편지 한 통 — 유저 톡방 (한 번만)
   if (a.total >= 3 && !P.meta.kakaoMail) {
     P.meta.kakaoMail = true;
@@ -312,12 +313,12 @@ export function updateGift(ver: string, gift: Mail['reward'] | undefined, vetera
   markDirty();
   if (!veteran) return;
   addMail({ from: 'system', title: '모모의 편지 · 업데이트 선물', body: '잦은 업데이트로 불편을 드렸어요. 늘 고마워요! 작은 선물을 담았어요~', reward: gift, ver });
-  uiHooks.toast('우편함에 업데이트 선물이 왔어요');
+  uiHooks.toast(fsay('우편함에 업데이트 선물이 왔어요', '업데이트 선물, 우편함에 넣어 뒀어요'));
 }
 
 export function welcomeMail() {
   if (P.meta.welcome) return;
   P.meta.welcome = true;
   addMail({ from: 'admin', title: '운영자 선물 · 5단계 업데이트', body: '사냥터와 버나드의 장부가 열렸어요! 작은 선물을 보내요.', reward: { gold: 1000, dust: 100 } });
-  uiHooks.toast('우편함에 선물이 왔어요');
+  uiHooks.toast(fsay('우편함에 선물이 왔어요', '선물이 와서 우편함에 넣어 뒀어요'));
 }

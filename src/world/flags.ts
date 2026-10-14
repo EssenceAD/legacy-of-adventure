@@ -125,6 +125,10 @@ export const FLAG_DEFAULTS = {
   heroDotV2: false,
   /** CHECKIN §J7 대장간 「영웅 중심 한 화면」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 탭 5개 → 장비 손질(강화·초월·재련) · 제작 · 가방 정리 · 맨 위 「지금 할 만한 것」 2개 · 영웅 카드 줄 → 장비 칸 → 행동 판 하나(망치 연출 + 숫자 튀어 오름) · [자동 장착] · 창 맨 위 설명·레벨업·지붕 색 */
   smithOne: false,
+  /** CHECKIN §E 여관다운 보상 순간 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 버튼·알림 프런트 말투(reports/checkin/wording.md · 덜 분명해지는 줄은 원래 말) · 원정·사냥 결과 체크아웃 영수증(한 줄씩 찍힘 · 탭하면 다 찍힘 · 희귀 이상 금빛) · 숙박부 도장 「쿵」(출석 · 장부·연감은 stampFx) · 단골 되면 숙박 카드에 도장 · 첫 원정 열쇠 건네기 */
+  checkinFx: false,
+  /** CHECKIN §J3 글 대신 카드 (형철 확인 전 꺼짐 · vis()) — 전투 결과 별 1~3·MVP·드랍 칸 · 의뢰·부탁 한 줄 카드(아이콘·진행 막대·보상 칸) · 건설 그림 타일(못 지으면 어둡게 + 모자란 금화만 빨간 숫자) · 레벨업·해금 가운데 배너 1초 */
+  uiCards: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

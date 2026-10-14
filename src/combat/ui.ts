@@ -45,6 +45,15 @@ export interface CombatResult {
   timeLeft?: number;
   /** v0.24.5 ✕ → 포기로 끝났나 (끝없는 심연: 진 게 아니라 나간 것) */
   quit?: boolean;
+  /** CHECKIN §J3 전투 결과 카드: 쓰러진 아군 수 · MVP(가장 많이 때린 손님 번호) · 역할 조합(탱·힐·딜) */
+  downs?: number;
+  mvp?: number;
+  combo?: boolean;
+}
+/** CHECKIN §J3: 결과 카드용 덤 (판이 끝났을 때 필드에서) */
+function cardExtras(f: Field): Pick<CombatResult, 'downs' | 'mvp' | 'combo'> {
+  const best = f.allies.filter((u) => u.actor).reduce<Unit | null>((m, u) => (!m || (u.dealt ?? 0) > (m.dealt ?? 0) ? u : m), null);
+  return { downs: f.downs ?? 0, mvp: best?.actor?.id, combo: !!f.roles && (f.comboTele ?? 0) > 0 };
 }
 
 let F: Field | null = null;
@@ -134,7 +143,7 @@ export function runHeadless(region: RegionId, stage: number, members: Actor[]): 
   for (let t = 0; t < C.timeLimit + 5 && !f.done; t += dt) step(f, dt);
   for (let i = 0; i < 60; i++) step(f, dt);
   if (!f.done) f.done = 'lose';
-  return { win: f.done === 'win', grade: grade(f), autoUsed: true, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: [...f.picked], raidDmg: 0, bossDown: !!f.elite?.dead };
+  return { win: f.done === 'win', grade: grade(f), autoUsed: true, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: [...f.picked], raidDmg: 0, bossDown: !!f.elite?.dead, ...cardExtras(f) };
 }
 /** 다시 펼치기 (끝났으면 결과 카드가 그대로 보인다) */
 export function unfoldCombat() {
@@ -844,7 +853,7 @@ function finish() {
   finishedField = f;
   const res: CombatResult = {
     win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
-    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time), quit: !!f.quit,
+    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time), quit: !!f.quit, ...cardExtras(f),
   };
   onEnd?.(res);
 }

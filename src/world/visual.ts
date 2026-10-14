@@ -38,3 +38,8 @@ export function bigNum(n: number): string {
 }
 /** 새 화면 기능 하나가 켜졌나: 플래그(모두에게) 또는 실험실(이 기기) */
 export const vis = (k: FlagKey): boolean => flag(k) || labOn();
+/**
+ * CHECKIN §E 말투 정리 (플래그 checkinFx · 실험실): 켜면 프런트 직원 말투, 끄면 예전 문구 그대로
+ *  표 = reports/checkin/wording.md — 바꿨을 때 무슨 버튼인지 덜 분명해지는 줄은 원래 말 유지
+ */
+export const fsay = (old: string, neu: string): string => (vis('checkinFx') ? neu : old);

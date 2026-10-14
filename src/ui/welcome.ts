@@ -11,6 +11,7 @@ import { esc, fmt } from './common';
 import { iconSrc } from './kit';
 import { loadPatchNotes } from './update';
 import { closeWin, openWin, toast } from './windows';
+import { fsay } from '../world/visual';
 
 const awayText = (sec: number) => {
   const d = Math.floor(sec / 86400);
@@ -42,7 +43,7 @@ export function showWelcome(s: OfflineSummary) {
       <div class="wbnews" id="wbNews" hidden><b class="g">그동안 바뀐 것</b><ul></ul></div>`
     : '';
   const extra = [
-    runGold || huntGold ? `원정·사냥 금화 +${fmt(runGold + huntGold)}은 이미 금고에` : '',
+    runGold || huntGold ? fsay(`원정·사냥 금화 +${fmt(runGold + huntGold)}은 이미 금고에`, `원정·사냥 금화 +${fmt(runGold + huntGold)}은 금고에 넣어 뒀어요`) : '',
     items ? `얻은 장비: ${items}` : '',
     s.levelUps.length ? `레벨업: ${s.levelUps.map(esc).join(', ')}` : '',
     s.newChem.length ? `<span class="heart">새 케미: ${s.newChem.map(esc).join(', ')}</span>` : '',
@@ -54,9 +55,9 @@ export function showWelcome(s: OfflineSummary) {
     ${giftHtml}
     <div class="wbgrid">
       ${tile(iconSrc('cur_gold'), '받을 금화', `+${fmt(s.gold + (gift?.gold ?? 0))}`)}
-      ${tile(iconSrc('m_guests'), '다녀간 손님', `${s.guests}명`)}
+      ${tile(iconSrc('m_guests'), fsay('다녀간 손님', '묵고 가신 손님'), `${s.guests}명`)}
       ${tile(iconSrc('m_expedition'), '끝난 원정', s.runs.length ? `${s.runs.length}개 · 성공 ${wins}` : '없음')}
-      ${tile(iconSrc('m_garden'), '다 자란 것', s.harvested ? `${s.harvested}개 거둠` : '없음')}
+      ${tile(iconSrc('m_garden'), '다 자란 것', s.harvested ? fsay(`${s.harvested}개 거둠`, `${s.harvested}개 거둬 뒀어요`) : '없음')}
     </div>
     ${extra.length ? `<div class="offl">${extra.map((t) => `<div>· ${t}</div>`).join('')}</div>` : ''}
     <button class="bigbtn" id="offOk">모두 받기</button>`,
@@ -77,6 +78,6 @@ export function showWelcome(s: OfflineSummary) {
     P.runs = P.runs.filter((r) => !r.claimed);
     markDirty();
     closeWin();
-    toast(`금화 +${fmt(s.gold + (gift?.gold ?? 0))}${gift ? ` · 축복 ${gift.blessMin}분` : ''}`);
+    toast(`${fsay(`금화 +${fmt(s.gold + (gift?.gold ?? 0))}`, `금화 +${fmt(s.gold + (gift?.gold ?? 0))} 금고에 넣어 드렸어요`)}${gift ? ` · 축복 ${gift.blessMin}분` : ''}`);
   };
 }

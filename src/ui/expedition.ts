@@ -1,5 +1,5 @@
 // 원정 창: 의뢰 게시판(목록·진행 중 파티·천장) → 파티 고르기(전투력·성공률·전투력 올리기 안내) → 보고서 · 방치 요약
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { dropFanfare } from './fanfare';
 import { BASE_REGIONS } from '../data/items';
 import { huntRegionOpen } from '../world/hunt';
@@ -39,6 +39,7 @@ import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, m
 import { closeWin, openBuild, openWin, toast } from './windows';
 import * as game from '../game';
 import { showWelcome } from './welcome';
+import { bannerFx, boxFor, cardsOn, fxOn, itemLine, keyFx, lineCard, playReceipt, shortG, receiptHtml, type RcLine } from './checkin';
 import { def } from '../data/catalog';
 import { afterPaidRefresh, bindFavors, favorIntro, favorsHtml, refreshBtn, refreshHint } from './goldsink';
 
@@ -51,6 +52,14 @@ const crew = () => homeActors().filter((a) => partyEligible(a) && !a.leaving);
 function runRow(r: Run) {
   const reg = regionById(r.quest.region);
   const names = r.members.map((id) => homeActors().find((a) => a.id === id)?.name ?? '?').join(' · ');
+  // CHECKIN §J3 (uiCards): 한 줄 카드 — 아이콘 + 진행 막대 + 보상 칸 + [받기] (끝난 원정 = 보고서 보기)
+  if (cardsOn()) {
+    const box = boxFor(r.quest.tier <= 1 ? 0 : r.quest.tier <= 3 ? 1 : 2);
+    const gold = `${shortG(r.quest.gold[0])}~${shortG(r.quest.gold[1])} G`;
+    if (r.result)
+      return lineCard({ tag: 'button', cls: `run done ${r.result.win ? 'ready' : ''}`, attrs: `data-run="${r.id}"`, ic: iconSrc('m_expedition'), title: `${esc(reg.name)} ${r.result.win ? '성공!' : '실패…'}`, sub: esc(names), box, reward: r.result.win ? `+${shortG(r.result.gold)} G` : '—', btn: '<em class="lc-go">받기</em>' });
+    return lineCard({ tag: 'button', cls: 'run go', attrs: `data-log="${r.id}"`, ic: iconSrc('m_expedition'), title: esc(questName(r.quest)), sub: `${esc(names)}`, box, reward: gold, btn: '<em>›</em>' }).replace('</span><span class="lc-rw">', `<div class="pbar" data-start="${r.start}" data-end="${r.end}"><i><b></b></i><em>${leftText(r.end - Date.now())}</em></div></span><span class="lc-rw">`);
+  }
   if (r.result)
     return `<button class="run done" data-run="${r.id}"><b>${reg.name} ${r.result.win ? '성공!' : '실패…'}</b><small>${esc(names)}</small><em>보고서 보기</em></button>`;
   return `<button class="run go" data-log="${r.id}"><b>${esc(questName(r.quest))}</b><small>${esc(names)} · 눌러서 진행 일지</small><div class="pbar" data-start="${r.start}" data-end="${r.end}"><i><b></b></i><em>${leftText(r.end - Date.now())}</em></div></button>`;
@@ -63,6 +72,19 @@ const durText = (m: number) => (m < 1 ? `${Math.round(m * 60)}초` : minText(m))
 function questRow(q: Quest) {
   const reg = regionById(q.region);
   const dc = dropChances(q.region, CONFIG.expedition.tierGrade[q.tier] ?? q.tier);
+  // CHECKIN §J3 (uiCards): 한 줄 카드 — 지역 아이콘 · 이름·시간·추천 전투력 · 보상 칸(상자 + 금화) · ›
+  if (cardsOn())
+    return lineCard({
+      tag: 'button',
+      cls: `quest ${q.tutorial ? 'tut' : ''}`,
+      attrs: `data-q="${q.id}" style="--rc:${reg.color}"`,
+      ic: iconSrc('m_quest'),
+      title: `<span class="qreg">${reg.name}</span> ${q.tutorial ? `★ ${esc(q.name!)}` : `${TIER[q.tier]} 의뢰`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}`,
+      sub: `${q.tutorial ? '첫 원정 · 희귀 장비 확정! · ' : ''}추천 전투력 ${fmt(q.power)} · ${durText(q.minutes)}${q.tag ? ` · 📜 ${esc(q.tag.text)}` : ''}</small><small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}`,
+      box: boxFor(q.tutorial ? 1 : q.tier <= 1 ? 0 : q.tier <= 3 ? 1 : 2),
+      reward: `${shortG(q.gold[0])}~${shortG(q.gold[1])} G`,
+      btn: '<em>›</em>',
+    });
   return `<button class="quest ${q.tutorial ? 'tut' : ''}" data-q="${q.id}" style="--rc:${reg.color}"><span class="qreg">${reg.name}</span><span class="qmain"><b>${q.tutorial ? `★ ${esc(q.name!)} · ${durText(q.minutes)}` : `${TIER[q.tier]} 의뢰 · ${durText(q.minutes)}`}${partyMinFor(q) === 1 ? ' <small class="g">1명도 OK</small>' : ''}</b>${q.tutorial ? '<small class="g">첫 원정 · 희귀 장비 확정!</small>' : ''}<small>추천 전투력 ${fmt(q.power)} · 금화 ${fmt(q.gold[0])}~${fmt(q.gold[1])}</small>${q.tag ? `<small class="qtag">📜 ${esc(q.tag.text)}</small>` : ''}<small class="drop">희귀 ${pct(Math.min(1, dc.r), 0)} · 영웅 ${pct(Math.min(1, dc.e), 1)} · 전설 ${pct(Math.min(1, dc.l), 1)}</small></span><em>›</em></button>`;
 }
 
@@ -90,7 +112,7 @@ function bindBoardTabs() {
 /** 의뢰 게시판 */
 export function openBoard(tab?: number) {
   checkSlot5();
-  if (S.visiting) return toast('이웃 마을에선 원정을 못 보내요');
+  if (S.visiting) return toast(fsay('이웃 마을에선 원정을 못 보내요', '이웃 마을에선 원정을 보내드릴 수 없어요'));
   if (tab != null) boardTab = tab;
   if (boardTab === 1) {
     openWin('원정 · 의뢰 게시판', `${boardTabs()}${favorsHtml()}`);
@@ -229,7 +251,7 @@ function openParty(q: Quest, picked: number[] = [], fresh = false) {
     }</div>
     ${chemLine(sel)}
     ${tips.length ? `<div class="tips"><b>▲ 전투력 올리기</b>${tips.map((t) => `<div>· ${esc(t.text)}</div>`).join('')}</div>` : ''}
-    <button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
+    <button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>${fsay('출발!', '원정 보내드릴게요')}</button>`,
   );
   bindParty(q, picked, list, sel);
 }
@@ -249,7 +271,7 @@ function openPartyFF(q: Quest, picked: number[], list: Actor[], sel: Actor[], in
   const opened = P.meta.slot5 && !P.meta.slot5Seen ? slot5Banner() : '';
   openWin(
     questName(q),
-    `<div class="recb ffTop">${list.length ? '<button class="bigbtn sm" id="pRec">추천 편성</button>' : ''}<small>성공률 <b class="${info ? (short ? 'bad' : 'good') : ''}">${rate}</b> · ${sel.length}/${max}명</small><button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button></div>
+    `<div class="recb ffTop">${list.length ? '<button class="bigbtn sm" id="pRec">추천 편성</button>' : ''}<small>성공률 <b class="${info ? (short ? 'bad' : 'good') : ''}">${rate}</b> · ${sel.length}/${max}명</small><button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>${fsay('출발!', '보내기')}</button></div>
     ${reason ? `<p class="note">${esc(reason)}</p>` : ''}${opened}<div class="pty-slots">${cells.join('')}</div>
     <p class="sub">파티 ${pmin}~${max}명 · 추천 전투력 <b class="g">${fmt(q.power)}</b> · ${durText(q.minutes)}</p>
     ${tagLine(q.tag, sel)}${roleRow(sel)}${synRow(sel, list.filter((a) => !canSend(a)), max, 'exp')}
@@ -288,7 +310,7 @@ function openPartyCards(q: Quest, picked: number[], list: Actor[], sel: Actor[],
     synWhere: 'exp',
     recId: list.length ? 'pRec' : undefined,
     recWhy: recWhy.q === q.id ? recWhy.text : '',
-    go: `<button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>출발!</button>`,
+    go: `<button class="bigbtn" id="pGo" ${sel.length >= pmin ? '' : 'disabled'}>${fsay('출발!', '보내드릴게요')}</button>`,
     empty: '단골이 없어요 · 손님이 단골이 되면 보낼 수 있어요',
   };
   const opened = P.meta.slot5 && !P.meta.slot5Seen ? slot5Banner() : '';
@@ -322,20 +344,23 @@ function bindParty(q: Quest, picked: number[], list: Actor[], sel: Actor[]) {
   if (rb)
     rb.onclick = () => {
       const best = recommendParty(list.filter((a) => !canSend(a)), { power: q.power, region: q.region, min: partyMinFor(q), max: partyMax(), tag: q.tag });
-      if (!best) return toast('보낼 수 있는 단골이 없어요');
+      if (!best) return toast(fsay('보낼 수 있는 단골이 없어요', '지금 보내드릴 단골이 없어요'));
       recWhy = { q: q.id, text: best.reasons.join(' · ') || `전투력 ${fmt(best.power)} / 추천 ${fmt(q.power)}`, ids: best.members.map((m) => m.id).sort().join(',') };
       trackEv('party_recommend', { where: 'expedition', action: 'use', n: best.members.length });
       if (vis('heroCards')) deckGlow(best.members.map((m) => m.id));
       keepScroll(() => openParty(q, best.members.map((m) => m.id)));
     };
   $('#pGo').onclick = () => {
+    const first = P.counters.expeditions === 0;
     const r = sendParty(q, sel);
     if (typeof r === 'string') return toast(r);
     if (recWhy.q === q.id) trackEv('party_recommend', { where: 'expedition', action: 'go', modified: recWhy.ids !== sel.map((m) => m.id).sort().join(',') });
     departParty(r);
     markDirty();
     closeWin();
-    toast(`${reg.name}${josa(reg.name, "로")} 출발! (${durText(partyInfo(sel, q).minutes)})`);
+    // CHECKIN §E: 원정 처음 보낼 때 「열쇠 한 개 건네기」 (checkinFx)
+    if (first) keyFx();
+    toast(fsay(`${reg.name}${josa(reg.name, "로")} 출발! (${durText(partyInfo(sel, q).minutes)})`, `${reg.name}${josa(reg.name, "로")} 원정 보내드렸어요 (${durText(partyInfo(sel, q).minutes)})`));
     if (q.tutorial)
       talk([
         ['narr', `${durText(q.minutes)}면 돌아온다. 아래 원정 막대를 누르면 진행 일지를 볼 수 있다.`],
@@ -443,7 +468,7 @@ function slot5Banner(): string {
     if (P.meta.slot5Seen) return '';
     P.meta.slot5Seen = true;
     markDirty();
-    return '<p class="cen good slot5">✨ 5번째 자리 열림!</p>';
+    return `<p class="cen good slot5">${fsay('✨ 5번째 자리 열림!', '✨ 원정 5번째 자리가 열렸어요!')}</p>`;
   }
   return `<p class="note">${slot5Text()}</p>`;
 }
@@ -454,11 +479,14 @@ function showLoot(run: Run) {
   if (!res || run.claimed) return;
   const reg = regionById(run.quest.region);
   const items = res.items.map((it) => `<div class="loot">${itemCell(it)}<span style="color:${GRADE_INFO[it.grade].color}">${GRADE_INFO[it.grade].name} ${esc(it.name)}</span></div>`).join('');
+  // CHECKIN §E 체크아웃 영수증 (checkinFx): 금화·경험치·재료·장비를 영수증 한 장에 한 줄씩 (보상은 지금처럼 이미 들어와 있음)
+  const rc: RcLine[] = [{ k: '금화', v: `+${fmt(res.gold)}` }, { k: '경험치', v: `+${fmt(res.xp)}` }, { k: reg.mat, v: `+${res.mats}` }, ...res.items.map(itemLine)];
+  const rew = fxOn() ? receiptHtml(rc) : `<div class="rew">금화 <b class="g">+${fmt(res.gold)}</b> · 경험치 +${res.xp} · ${reg.mat} +${res.mats}</div>
+    ${items}`;
   openWin(
-    `원정 보고서 · ${reg.name}`,
+    fsay(`원정 보고서 · ${reg.name}`, `다녀오셨어요 · ${reg.name}`),
     `${partyRow(run)}<div class="rep ${res.win ? 'ok' : 'ng'}"><b>${res.win ? '성공!' : '실패…'}</b>${res.report.map(([, t]) => `<p>${esc(t)}</p>`).join('')}</div>
-    <div class="rew">금화 <b class="g">+${fmt(res.gold)}</b> · 경험치 +${res.xp} · ${reg.mat} +${res.mats}</div>
-    ${items}
+    ${rew}
     ${run.quest.tutorial ? '' : upgradeBtn(res.items, run.members.map((id) => homeActors().find((a) => a.id === id)).filter(Boolean) as Actor[])}
     ${res.levelUps.length ? `<p class="sub">레벨업! ${res.levelUps.map(esc).join(', ')}</p>` : ''}
     ${res.newChem.length ? `<p class="sub heart">새 케미 발견! ${res.newChem.map(esc).join(', ')}</p>` : ''}
@@ -467,6 +495,9 @@ function showLoot(run: Run) {
   );
   bindResend(run);
   dropFanfare(res.items);
+  playReceipt(document.getElementById('winB') ?? document);
+  // §J3 레벨업 배너 (uiCards)
+  if (res.levelUps.length) bannerFx(res.levelUps.length > 1 ? `${res.levelUps[0]} 외 ${res.levelUps.length - 1}명` : res.levelUps[0]);
   $('#repOk').onclick = () => {
     claimRun(run);
     closeWin();
@@ -500,7 +531,7 @@ function bindResend(run: Run) {
     markDirty();
     closeWin();
     const reg = regionById(p.q.region);
-    toast(`${reg.name}${josa(reg.name, '로')} 다시 출발! (${durText(partyInfo(p.members, p.q).minutes)})`);
+    toast(fsay(`${reg.name}${josa(reg.name, '로')} 다시 출발! (${durText(partyInfo(p.members, p.q).minutes)})`, `${reg.name}${josa(reg.name, '로')} 다시 보내드렸어요 (${durText(partyInfo(p.members, p.q).minutes)})`));
   };
 }
 
@@ -531,7 +562,7 @@ function guideEquip(run: Run) {
           ]);
         },
       },
-      { label: '나중에', fn: () => toast('손님 창의 장비 칸에서 언제든 끼울 수 있어요') },
+      { label: '나중에', fn: () => toast(fsay('손님 창의 장비 칸에서 언제든 끼울 수 있어요', '손님 창 장비 칸에서 언제든 끼워 드릴게요')) },
     ],
   );
 }
@@ -561,10 +592,10 @@ export function showOffline(s: OfflineSummary) {
     .map(([g, n]) => `<b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name} ${n}</b>`)
     .join(' · ');
   openWin(
-    '그동안 마을에서는…',
+    fsay('그동안 마을에서는…', '다녀오셨어요'),
     `<p class="sub">${h ? `${h}시간 ` : ''}${m}분 동안${over}</p>
     <div class="offl">
-      <div>· 손님 ${s.guests}명이 묵고 갔어요 — 금화 <b class="g">+${fmt(s.gold)}</b>${s.capped ? ' <small>(다음 목표 비용의 80%까지)</small>' : ''}</div>
+      <div>· ${fsay(`손님 ${s.guests}명이 묵고 갔어요`, `손님 ${s.guests}분이 묵고 가셨어요`)} — 금화 <b class="g">+${fmt(s.gold)}</b>${s.capped ? ' <small>(다음 목표 비용의 80%까지)</small>' : ''}</div>
       ${s.runs.length ? `<div>· 원정 ${s.runs.length}개 끝남 (성공 ${wins}) — 금화 +${fmt(runGold)} <small>(이미 금고에)</small></div>` : ''}
       ${items ? `<div>· 얻은 장비: ${items}</div>` : ''}
       ${s.levelUps.length ? `<div>· 레벨업: ${s.levelUps.map(esc).join(', ')}</div>` : ''}
@@ -580,7 +611,7 @@ export function showOffline(s: OfflineSummary) {
     P.runs = P.runs.filter((r) => !r.claimed);
     markDirty();
     closeWin();
-    toast(`금화 +${fmt(s.gold)}`);
+    toast(fsay(`금화 +${fmt(s.gold)}`, `금화 +${fmt(s.gold)} 금고에 넣어 드렸어요`));
   };
 }
 

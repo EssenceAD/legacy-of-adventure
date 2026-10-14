@@ -6,7 +6,7 @@ import { abyssOpen } from '../world/abyss';
 import { flag } from '../world/flags';
 import { feature, featureChapter } from '../world/guide';
 import { S } from '../world/state';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { openAbyss } from './abyss';
 import { esc } from './common';
 import { openBoard } from './expedition';
@@ -51,7 +51,7 @@ function advItems(): AdvItem[] {
   ];
 }
 export function openAdventure() {
-  if (S.visiting) return toast('이웃 마을에서 돌아온 뒤에 해요');
+  if (S.visiting) return toast(fsay('이웃 마을에서 돌아온 뒤에 해요', '이웃 마을에서 돌아오시면 해 드릴게요'));
   const items = advItems();
   openWin(
     '모험',

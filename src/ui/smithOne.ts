@@ -28,6 +28,7 @@ import { nextGoal, openBulkEnhance, openBulkFor, runToGoal } from './bulkSmith';
 import { autoSalvageHtml, bindAutoSalvage, openTidyConfirm, tidyBtnHtml } from './bulkSalvage';
 import { bindCraft, bindSalvage, craftHtml, dustLine, salvageHtml, sorted } from './smith';
 import { appendMoveButton, openWin, toast } from './windows';
+import { fsay } from '../world/visual';
 
 const SM = () => CONFIG.smith;
 /** 지금 탭 · 고른 영웅(-1 = 가방 장비) · 고른 칸 · 가방에서 고른 장비 */
@@ -314,7 +315,7 @@ function bindGear(o: Building, redraw: () => void) {
       const before = powerOf(w.a);
       equip(w.a, it);
       markDirty();
-      toast(`${w.a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(w.a) - before)}`);
+      toast(fsay(`${w.a.name} 「${it.name}」 장착 · 전투력 +${fmt(powerOf(w.a) - before)}`, `${w.a.name}님께 「${it.name}」 입혀 드렸어요 · 전투력 +${fmt(powerOf(w.a) - before)}`));
       st.bagItem = null;
       redraw();
     };

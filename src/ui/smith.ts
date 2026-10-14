@@ -7,7 +7,7 @@ import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith'
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
 import { craftWhet, gardenLevelState, gardenPlots, whetCost } from '../world/craft';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { def } from '../data/catalog';
 import { maxLevel } from '../world/town';
 import { favActors, favRank } from '../world/growth';
@@ -191,7 +191,7 @@ export function bindSalvage(redraw: () => void) {
         if (it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
         if (!P.bag.includes(it)) return;
         salvage(it);
-        toast(`분해 · ${salvageText(it.grade)}`);
+        toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}`);
         redraw();
       }),
   );
@@ -235,7 +235,7 @@ export function bindCraft(o: Building, redraw: () => void) {
       (b.onclick = () => {
         const slot = b.dataset.cs as Slot;
         const n = b.dataset.n === 'max' ? craftMax(craftRegion) : +b.dataset.n!;
-        if (n <= 0) return toast(P.bag.filter((x) => x.owner == null).length >= bagSize() ? '가방이 꽉 찼어요 · 분해 탭에서 비워요' : '재료가 모자라요');
+        if (n <= 0) return toast(P.bag.filter((x) => x.owner == null).length >= bagSize() ? fsay('가방이 꽉 찼어요 · 분해 탭에서 비워요', '가방이 꽉 찼어요 · 분해 탭에서 비워 주세요') : '재료가 모자라요');
         if (n === 1) {
           const r = craft(craftRegion, slot);
           if (typeof r === 'string') return toast(r);
@@ -252,7 +252,7 @@ export function bindCraft(o: Building, redraw: () => void) {
   if (cf)
     cf.onclick = () => {
       const got = fillAsh(ashShort(craftRegion));
-      toast(got ? `가루를 바꿔 ${DUST_NAME.n} +${fmt(got)}` : '바꿀 가루가 없어요');
+      toast(got ? fsay(`가루를 바꿔 ${DUST_NAME.n} +${fmt(got)}`, `가루 바꿔 드렸어요 · ${DUST_NAME.n} +${fmt(got)}`) : '바꿀 가루가 없어요');
       redraw();
     };
   const cs = document.getElementById('cSet');
@@ -305,7 +305,7 @@ export function openGarden(o: Building) {
     (b) =>
       (b.onclick = () => {
         const n = harvest(o, +b.dataset.h!);
-        toast(`수확! +${n}`);
+        toast(fsay(`수확! +${n}`, `거둬 뒀어요 +${n}`));
         openGarden(o);
       }),
   );

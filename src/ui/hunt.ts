@@ -28,7 +28,7 @@ import { upgradeBtn } from './guests';
 import { recommendParty } from '../world/party';
 import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
 import { partyBlock, partyNote, partyPool, rulesV2 } from '../world/partyRules';
-import { vis } from '../world/visual';
+import { vis, fsay } from '../world/visual';
 import { mentorBadge, recButton, roleIcon, roleRow, slotRow, synRow } from './partyUi';
 import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
@@ -44,6 +44,7 @@ import { routePreDone, setFlag } from '../world/routes';
 import { storyHooks } from '../world/story';
 import { playStory } from './story';
 import { dropFanfare } from './fanfare';
+import { bannerFx, cardsOn, dropsHtml, fxOn, itemLine, mvpHtml, playReceipt, receiptHtml, starsHtml, type RcLine } from './checkin';
 import { openFishing } from './fishing';
 import { openSmith } from './smith';
 import { craftMax } from '../world/bulk';
@@ -263,7 +264,7 @@ function openHuntPrep(r: RegionId, s: number) {
     rp.onclick = () => {
       const err = setAuto(r, s, ms);
       if (err) return toast(err);
-      toast(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`);
+      toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
       openHunt(r);
     };
   const sw = document.getElementById('hSweep');
@@ -604,9 +605,9 @@ function showHuntResult(view: BattleView, r: RegionId, s: number, members: Actor
     <div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>
     ${items ? `<div class="loot">${items}</div>` : ''}
     ${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}
-    ${win ? '' : `<p class="cen">전투력이 부족해요 (추천 ${fmt(recPower(r, s))}) · 장비·레벨을 올리고 다시!</p>`}
+    ${win ? '' : `<p class="cen">전투력이 부족해요 (추천 ${fmt(recPower(r, s))}) · ${fsay('장비·레벨을 올리고 다시!', '장비·레벨을 올리고 다시 오세요')}</p>`}
     <div class="go">${win && next && stageOpen(r, next) ? `<button class="a" id="hNext">다음 ${stageName(r, next)}</button>` : `<button class="a" id="hAgain">다시 하기</button>`}<button class="b" id="hHome">마을로</button></div>
-    ${win ? `<div class="go"><button class="b" id="hRep">이 스테이지 자동 사냥</button><button class="b" id="hMap">사냥터 지도</button></div>` : ''}`;
+    ${win ? `<div class="go"><button class="b" id="hRep">${fsay('이 스테이지 자동 사냥', '여기 맡겨 두기')}</button><button class="b" id="hMap">사냥터 지도</button></div>` : ''}`;
   view.q('#rResBody').innerHTML = html;
   view.q('#rResult').hidden = false;
   const done = () => activeHunt?.stop();
@@ -629,7 +630,7 @@ function showHuntResult(view: BattleView, r: RegionId, s: number, members: Actor
       const err = setAuto(r, s, members);
       if (err) return toast(err);
       done();
-      toast(`맡겨 두기 시작 · ${stageName(r, s)}`);
+      toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)}`, `${stageName(r, s)} 맡아 둘게요`));
     };
   const mp = document.getElementById('hMap');
   if (mp)
@@ -653,9 +654,35 @@ export function smithLine(): string {
   return `<button class="b smithln" id="cSmith">⚒️ 대장간에서 쓸 수 있는 것: 강화 ${enh} · 제작 ${cr}</button>`;
 }
 let lastLoot: Item[] = [];
-function lootHtml(r: RegionId, out: HuntReward): string {
+/** CHECKIN §J3 레벨업 배너 (uiCards): 결과가 뜬 뒤 가운데 1초 */
+let lastUps: string[] = [];
+let lastUnlock = '';
+const levelBanner = (ups: string[]) => {
+  const u = lastUnlock;
+  lastUnlock = '';
+  if (u) bannerFx(u, '새 지역이 열렸어요!');
+  else if (ups.length) bannerFx(ups.length > 1 ? `${ups[0]} 외 ${ups.length - 1}명` : ups[0]);
+};
+function lootHtml(r: RegionId, out: HuntReward, card = false): string {
   lastLoot = out.items;
   const items = out.items.map((it) => itemCell(it)).join('');
+  // CHECKIN §E 체크아웃 영수증 (checkinFx) · §J3 드랍 칸 (uiCards · 전투 결과 카드) — 장비는 드랍 칸이 있으면 칸에, 없으면 영수증 줄에
+  const drops = card && cardsOn();
+  if (fxOn() || drops) {
+    const mat = REGIONS[regionIdx(r)].mat;
+    const lines: RcLine[] = [
+      { k: '금화', v: `+${fmt(out.gold)}` },
+      { k: '경험치', v: `+${fmt(out.xp)}` },
+      { k: mat, v: `×${out.mats}` },
+      ...(out.firstDust ? [{ k: '잿빛 가루', v: `+${out.firstDust}`, g: true }] : []),
+      ...(out.shards ? [{ k: '증표 조각', v: `+${out.shards}`, g: true }] : []),
+      ...(out.token ? [{ k: '인연의 증표', v: '+1', g: true }] : []),
+      ...(out.bossMats ? [{ k: regionBossOf(r).mat, v: `×${out.bossMats}`, g: true }] : []),
+      ...(drops ? [] : out.items.map(itemLine)),
+    ];
+    const rew = fxOn() ? receiptHtml(lines) : `<div class="loot">${lines.map((l) => `<span${l.g ? ' class="g"' : ''}>${esc(l.k)} ${esc(l.v)}</span>`).join('')}</div>${drops ? '' : items ? `<div class="loot">${items}</div>` : ''}`;
+    return `${rew}${drops ? dropsHtml(out.items) : ''}${upgradeBtn(out.items)}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}${smithLine()}`;
+  }
   return `<div class="loot"><span>금화 +${fmt(out.gold)}</span><span>경험치 +${fmt(out.xp)}</span><span>${esc(REGIONS[regionIdx(r)].mat)} ×${out.mats}</span>${out.firstDust ? `<span class="g">잿빛 가루 +${out.firstDust}</span>` : ''}${out.shards ? `<span class="g">증표 조각 +${out.shards}</span>` : ''}${out.token ? '<span class="g">인연의 증표 +1!</span>' : ''}${out.bossMats ? `<span class="g">${esc(regionBossOf(r).mat)} ×${out.bossMats}</span>` : ''}</div>${items ? `<div class="loot">${items}</div>` : ''}${upgradeBtn(out.items)}${out.levelUps.length ? `<p class="cen good">레벨업! ${out.levelUps.map(esc).join(', ')}</p>` : ''}${smithLine()}`;
 }
 
@@ -673,8 +700,12 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
   void startCombat(r, s, ms, auto, (res) => {
     if (bossLine && res.win) markBossShown(r);
     const html = settleHunt(r, s, ms, res);
-    showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
+    showCombatResult(html, (card) => {
+      bindResult(card, r, s, ms, closeCombat);
+      playReceipt(card);
+    });
     dropFanfare(lastLoot);
+    levelBanner(lastUps);
   }, { ...(bossLine ? { bossLine } : {}), ...(voice ? { talkHalf: (done: () => void) => playStory(DEEP_VOICE, done) } : {}) });
 }
 
@@ -716,6 +747,7 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   // REGIONS2 §5-5: 별을 삼킨 것 처치 → 용사 루트(최종 토벌 앞까지 마침)면 HERO 컷 + 최종 토벌 완료 · 아니면 PLAIN (회차마다 한 번)
   if (res.win && r === 'deep' && s === H.stages) deepDefeat();
   if (newRegion) trackEv('region_open', { region: newRegion.id });
+  lastUnlock = newRegion?.name ?? '';
   // 사냥 창이 뒤에 열려 있었으면 끝난 뒤 다시 그린다 (탭·스테이지 칸이 🔒 그대로 남지 않게)
   queueEvent(() => {
     if (/^사냥터/.test(document.getElementById('winT')?.textContent ?? '') && document.getElementById('win')?.classList.contains('on')) openHunt(r);
@@ -724,19 +756,29 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   if (hint) P.hunt.autoHint = true;
   // WAYFIND §2: 패배 카드에 대장간이 있으면 위 「대장간에서 쓸 수 있는 것」 줄은 뺀다 (같은 말 두 번)
   const stuck = res.win ? '' : stuckHtml(r, s, ms, wasNew, resAfter);
-  let loot = lootHtml(r, out);
+  let loot = lootHtml(r, out, true);
+  lastUps = out.levelUps;
   if (stuck.includes('data-stk="smith"')) loot = loot.replace(smithLine(), '');
-  const gradeLine = res.win
+  // CHECKIN §J3 (uiCards): 별 1~3(안 쓰러짐·빠르게·역할 조합) 위에 · 평가 글자는 작게 · MVP 초상 + 한 마디
+  const cards = cardsOn();
+  const gradeLine = res.win && cards
+    ? `${starsHtml(res, CONFIG.combat.timeLimit)}<div class="cgrade sm g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
+    : res.win
     ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
     : '';
   return `<h2>${res.win ? `사냥 ${stageName(r, s)} 돌파!` : '사냥 실패…'}</h2>${gradeLine}
-      <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>
+      <p class="cen">${res.time}초 · 맞은 횟수 ${res.hits} · 처치 ${res.kills} · 최대 ${res.maxStreak} KILLS</p>${cards && res.win ? mvpHtml(ms.find((a) => a.id === res.mvp)) : ''}
       ${res.win && out.first ? '<p class="cen good">첫 돌파!</p>' : ''}${newRegion ? `<div class="newreg"><span>새 지역이 열렸어요! ✨</span><b>${esc(newRegion.name)}</b><button class="a" id="cGoReg" data-reg="${newRegion.id}">바로 가기</button></div>` : ''}${loot}
       ${stuck}
       <p class="note">평가 = 덜 맞고 · 빨리 끝내고 · KILLS를 길게 이을수록 높아요</p>
-      ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">이 스테이지 자동 사냥</button></div>` : ''}
-      <div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
-      <div class="go"><button class="b" id="cMap">사냥터 지도</button>${canNext ? '<button class="b" id="cAgain">다시 하기</button>' : ''}</div>`;
+      ${hint ? `<p class="cen momohint"><b>모모</b> 「깬 곳은 저한테 맡기셔도 돼요! 마을에 있어도 계속 사냥해요~」</p><div class="go"><button class="a flash" id="cKeep">${fsay('이 스테이지 자동 사냥', '여기 맡겨 두기')}</button></div>` : ''}
+      ${
+        cards
+          ? `<div class="go">${canNext ? `<button class="b" id="cAgain">다시 하기</button><button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : '<button class="a" id="cAgain">다시 하기</button>'}</div>
+      <div class="go"><button class="b" id="cMap">사냥터 지도</button><button class="b" id="cHome">마을로</button></div>`
+          : `<div class="go">${canNext ? `<button class="a" id="cNext" data-next="${next}">다음 ${stageName(r, next)}</button>` : `<button class="a" id="cAgain">다시 하기</button>`}<button class="b" id="cHome">마을로</button></div>
+      <div class="go"><button class="b" id="cMap">사냥터 지도</button>${canNext ? '<button class="b" id="cAgain">다시 하기</button>' : ''}</div>`
+      }`;
 }
 
 function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], close: () => void) {
@@ -751,7 +793,7 @@ function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], clos
     const err = setAuto(r, s, ms);
     if (err) return toast(err);
     close();
-    toast(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`);
+    toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
   });
   on('cMap', () => {
     close();
@@ -840,7 +882,7 @@ function stuckGo(k: string, r: RegionId, s: number) {
 /** 대장간 창 열기 (없으면 안내) */
 function goSmith() {
   const o = smithObj();
-  if (!o) return toast('대장간이 필요해요');
+  if (!o) return toast(fsay('대장간이 필요해요', '대장간부터 지어 주세요'));
   openSmith(o);
 }
 
@@ -851,13 +893,13 @@ foldHooks.fold = () => {
   if (fi) P.hunt.folded = { region: fi.region, stage: fi.stage, members: fl, at: Date.now() };
   markDirty();
   trackEv('hunt_fold', { stage: fi ? `${fi.region}-${fi.stage}` : '' });
-  toast('전투를 접었어요 · 마을에서 마저 싸워요 (평가 보너스 없음)');
+  toast(fsay('전투를 접었어요 · 마을에서 마저 싸워요 (평가 보너스 없음)', '전투는 접어 둘게요 · 마을에서 마저 싸워요 (평가 보너스 없음)'));
 };
 foldHooks.done = (win) => {
   const fi = foldInfo();
   if (!fi) return;
   const nm = `${REGIONS[regionIdx(fi.region)].name} ${stageName(fi.region, fi.stage)}`;
-  toast(win ? `${nm} 돌파! · 아래 줄을 눌러 결과 보기` : `${nm} 실패… 전투력을 올려 봐요`);
+  toast(win ? fsay(`${nm} 돌파! · 아래 줄을 눌러 결과 보기`, `${nm} 돌파! · 아래 줄을 누르면 결과 보여 드릴게요`) : `${nm} 실패… 전투력을 올려 봐요`);
 };
 /** 마을 줄을 눌렀을 때: 전투(또는 결과) 다시 펼치기 */
 export function unfoldHunt() {
@@ -877,7 +919,9 @@ export function settleFolded(): boolean {
   const html = settleHunt(r, fo.stage, ms, res, true);
   openWin('사냥 결과 (접어 둔 판)', `<div class="res huntres">${html}</div>`);
   bindResult($('#winB'), r, fo.stage, ms, closeWin);
+  playReceipt($('#winB'));
   dropFanfare(lastLoot);
+  levelBanner(lastUps);
   return true;
 }
 
@@ -891,6 +935,7 @@ function sweep(r: RegionId, s: number, ms: Actor[]) {
     `<p class="sub">전투 없이 바로 결과 · 기본 보상의 ${Math.round(CONFIG.combat.sweep * 100)}%</p>${lootHtml(r, out)}<div class="btnrow"><button class="bigbtn" id="swAgain">한 번 더 소탕</button><button class="bigbtn ghost" id="swBack">준비로</button></div>`,
   );
   dropFanfare(out.items);
+  playReceipt($('#winB'));
   const sm = document.getElementById('cSmith');
   if (sm) sm.onclick = goSmith;
   document.getElementById('swAgain')!.onclick = () => sweep(r, s, ms);

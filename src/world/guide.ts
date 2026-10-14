@@ -102,6 +102,7 @@ export const rewardText = (m: Mission) =>
 
 /** 다 한 임무 받기: 보상 + 버나드 한마디 + 다음 임무. 장이 끝나면 장 보상 */
 import { track as trackEv } from '../net/telemetry';
+import { fsay } from './visual';
 export function claimMission(silent = false): TalkLine[] {
   const m = currentMission();
   if (!m || !missionProgress(m).done) return [];
@@ -132,7 +133,7 @@ export function skipDone(): number {
     claimMission(true);
     n++;
   }
-  if (n) uiHooks.toast(`장부: 이미 해 둔 일 ${n}개를 완료했어요`);
+  if (n) uiHooks.toast(fsay(`장부: 이미 해 둔 일 ${n}개를 완료했어요`, `장부: 이미 해 두신 일 ${n}개, 완료로 적어 뒀어요`));
   return n;
 }
 

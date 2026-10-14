@@ -17,6 +17,7 @@ import { isTalking, talk } from './dialogue';
 import { uiSrc } from './kit';
 import { openCreate, ownerLaterLines } from './owner';
 import { isWinOpen, toast } from './windows';
+import { fsay } from '../world/visual';
 
 const OB = () => CONFIG.onboard;
 let guest: Actor | null = null;
@@ -129,7 +130,7 @@ export function giveTomorrowGift() {
   m.d2Given = true;
   addMail({ from: 'system', title: '모모의 이틀째 선물 🎁', body: '정말 와 주셨네요! 약속한 선물이에요. 내일도, 일주일째에도 출석 선물이 기다려요.', reward: { gold: OB().day2Gold, gear: 'r', deco: 'thanks_basket' } });
   markDirty();
-  setTimeout(() => toast('우편함에 이틀째 선물이 왔어요 🎁'), 2500);
+  setTimeout(() => toast(fsay('우편함에 이틀째 선물이 왔어요 🎁', '이틀째 선물, 우편함에 넣어 뒀어요 🎁')), 2500);
 }
 /** 두 번째 세션부터 한 번: 홈 화면에 추가하는 법 (앱처럼 켜기) */
 export function homeScreenLetter() {

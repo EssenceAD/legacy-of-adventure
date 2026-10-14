@@ -18,6 +18,7 @@ import { navHooks, openPlace } from './nav';
 import { openVillage } from './neighbors';
 import { enterPhoto } from './photo';
 import { isWinOpen, openBuild, openWin, showObj, toast } from './windows';
+import { fsay } from '../world/visual';
 
 export const wfBubblesOn = () => !getPref<boolean>('wfBubOff', false);
 export const setWfBubbles = (on: boolean) => {
@@ -109,7 +110,7 @@ function shine(sel: string) {
 }
 const objOf = (k: string) => bestOf(k as never, homeObjs(), true);
 export function goFirst(go: FirstGo, id = '') {
-  if (S.visiting) return toast('이웃 마을에서 돌아온 뒤에 해요');
+  if (S.visiting) return toast(fsay('이웃 마을에서 돌아온 뒤에 해요', '이웃 마을에서 돌아오시면 해 드릴게요'));
   switch (go) {
     case 'pond': {
       const o = objOf('lily_pond') ?? objOf('koi_pond');

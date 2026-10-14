@@ -8,6 +8,7 @@ import { $, $$, esc, fmt, itemCell } from './common';
 import { closeWin, openWin, toast } from './windows';
 import { enhUse } from './enhance';
 import { track as trackEv } from '../net/telemetry';
+import { fsay } from '../world/visual';
 
 const SM = () => CONFIG.smith;
 const opts: BulkOpts = { target: 'equipped', goal: 5, budget: 0.5, skipLocked: false, picked: [] };
@@ -131,7 +132,7 @@ export function runToGoal(it: Item, goal: number): string {
   const r = startBulk({ target: 'pick', picked: [it.id], goal, budget: 1, skipLocked: false, charm: enhUse.charm });
   let n = 0;
   while (bulkTick(r) && n++ < 400);
-  return `${esc(it.name)} +${it.enh}${it.enh >= goal ? ' 도달!' : ' (재료가 모자라 멈춤)'} · 실패 ${r.fails}회${r.spentGold ? ` · 금화 −${fmt(r.spentGold)}` : ''} · 가루 −${fmt(r.spentDust)}`;
+  return `${esc(it.name)} +${it.enh}${it.enh >= goal ? ' 도달!' : fsay(' (재료가 모자라 멈춤)', ' (재료가 모자라 멈췄어요)')} · 실패 ${r.fails}회${r.spentGold ? ` · 금화 −${fmt(r.spentGold)}` : ''} · 가루 −${fmt(r.spentDust)}`;
 }
 /** 다음 목표 단계: +5 → +10 → (초월) +15 → +20 */
 export const nextGoal = (enh: number, trans: boolean) => (enh < 5 ? 5 : enh < SM().maxEnhance ? SM().maxEnhance : trans ? (enh < 15 ? 15 : maxGoal()) : SM().maxEnhance);
@@ -158,7 +159,7 @@ export function craftSummary(r: RegionId, b: CraftBatch, back: () => void, slots
     s.onclick = () => {
       let d = 0;
       for (const it of normals) d += salvage(it);
-      toast(`일반 등급 ${normals.length}개 분해 · 가루 +${d}`);
+      toast(`일반 등급 ${normals.length}개 ${fsay('분해', '분해해 드렸어요')} · 가루 +${d}`);
       back();
     };
   void craftMany;
