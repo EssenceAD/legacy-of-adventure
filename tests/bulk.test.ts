@@ -1,4 +1,5 @@
 // SMITH §2·§3: 일괄 강화 — 예산 한도에서 멈춤 · 멈춤 버튼 · 보스 재료 부족 · 요약 숫자 = 실제 차감 / 일괄 제작 — 최대 수 · 가방 부족 정지 · 세트 맞추기
+import { enhanceCost } from '../src/world/craft';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bulkItems, bulkPlan, bulkTick, craftMany, craftMax, missingSetSlots, startBulk } from '../src/world/bulk';
 import { makeItem, bagSize } from '../src/world/items';
@@ -68,6 +69,21 @@ describe('일괄 강화', () => {
     expect(d0 - dustSum()).toBe(r.spentDust);
     expect(r.spentDust).toBe(plan.dust);
     expect(r.fails).toBe(0);
+    // 목표(+1) 너머로 넘어간 단계는 「아낀 것」이 아니다
+    expect(r.savedDust).toBe(0);
+  });
+  it('+2까지 · 대성공으로 +1 단계를 건너뛰면 아낀 가루 = 미리보기 − 실제 차감', () => {
+    give(3);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const plan = bulkPlan({ target: 'bag', goal: 2, budget: 1, skipLocked: false });
+    const r = startBulk({ target: 'bag', goal: 2, budget: 1, skipLocked: false });
+    while (bulkTick(r));
+    expect(r.stopped).toBe('done');
+    expect(r.tries).toBe(3);
+    expect(r.savedDust).toBeGreaterThan(0);
+    // 건너뛴 +1→+2 한 번 비용 × 3 (미리보기는 실패 확률까지 넣은 기대값이라 그보다 조금 큼)
+    expect(r.savedDust).toBe(3 * enhanceCost({ ...P.bag[0], enh: 1 }));
+    expect(r.spentDust + r.savedDust).toBeLessThanOrEqual(plan.dust);
   });
   it('예산 한도를 넘기 전에 멈춘다', () => {
     give(5);

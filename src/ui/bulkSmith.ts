@@ -55,7 +55,7 @@ function draw(back: () => void, trans: boolean) {
       <input type="range" id="bBud" min="10" max="100" step="10" value="${Math.round(opts.budget * 100)}">
       <label class="chk"><input type="checkbox" id="bLock" ${opts.skipLocked ? 'checked' : ''}> 🔒 잠금 장비 빼기</label>
       ${trans ? '' : `<label class="chk"><input type="checkbox" id="bCharm" ${opts.charm ? 'checked' : ''} ${P.growth.charm > 0 ? '' : 'disabled'}> 🧿 부적 자동 사용 <small>(${P.growth.charm}개 · +7~+10 하락을 막을 때만 1개)</small></label>`}
-      <div class="bprev"><b>미리보기</b> · 대상 ${p.items}개 · 예상${p.gold ? ` 금화 ${fmt(p.gold)} ·` : ''} 가루 ${fmt(p.dust)}${p.boss ? ` · 보스 재료 ${fmt(p.boss)}` : ''}${p.mats ? ` · 지역 재료 ${fmt(p.mats)}` : ''}${p.bossShort ? `<br><span class="bad">보스 재료가 모자라 멈출 장비 ${p.bossShort}개</span>` : ''}<br><small>실패 확률을 반영한 기대값이에요 · 예산을 넘기 전에 멈춰요</small></div>
+      <div class="bprev"><b>미리보기</b> · 대상 ${p.items}개 · 예상${p.gold ? ` 금화 ${fmt(p.gold)} ·` : ''} 가루 ${fmt(p.dust)}개 · 대성공이 나면 덜 들어요${p.boss ? ` · 보스 재료 ${fmt(p.boss)}` : ''}${p.mats ? ` · 지역 재료 ${fmt(p.mats)}` : ''}${p.bossShort ? `<br><span class="bad">보스 재료가 모자라 멈출 장비 ${p.bossShort}개</span>` : ''}<br><small>실패 확률을 반영한 기대값이에요 · 예산을 넘기 전에 멈춰요</small></div>
       <div class="btnrow"><button class="bigbtn" id="bGo" ${p.items ? '' : 'disabled'}>시작</button><button class="bigbtn ghost" id="bBack">대장간으로</button></div>
     </div>`,
   );
@@ -105,7 +105,7 @@ function drawRun(back: () => void, trans: boolean) {
   const summary = `${startList.length}개 ${trans ? '초월' : '강화'} · +${r.o.goal} 도달 ${reached}개 · 실패 ${r.fails}회${r.spentGold ? ` · 금화 −${fmt(r.spentGold)}` : ''} · 가루 −${fmt(r.spentDust)}`;
   openWin(
     trans ? '일괄 초월' : '일괄 강화',
-    `<div class="bulkw"><p class="sub">${done ? '<b class="g">끝!</b> ' : '진행 중… '}${summary}${why}</p><div class="blogs">${lines || '<p class="note">준비 중…</p>'}</div>
+    `<div class="bulkw"><p class="sub">${done ? '<b class="g">끝!</b> ' : '진행 중… '}${summary}${why}</p>${r.savedDust ? `<p class="sub good">대성공으로 가루 ${fmt(r.savedDust)}개 아꼈어요!</p>` : ''}<div class="blogs">${lines || '<p class="note">준비 중…</p>'}</div>
     <div class="btnrow">${done ? '<button class="bigbtn" id="bEnd">대장간으로</button>' : '<button class="bigbtn ghost" id="bStop">멈춤</button>'}</div></div>`,
   );
   const st = document.getElementById('bStop');

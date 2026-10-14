@@ -93,6 +93,8 @@ export interface BulkRun {
   limDust: number;
   spentGold: number;
   spentDust: number;
+  /** 대성공으로 건너뛴 단계의 가루 (한 번 두드리는 값 · 형철 판정: 요약에 「아꼈어요」) */
+  savedDust: number;
   tries: number;
   fails: number;
   ups: number;
@@ -102,7 +104,7 @@ export interface BulkRun {
 }
 const dustTotal = () => Object.values(P.dust).reduce((s, v) => s + v, 0);
 export function startBulk(o: BulkOpts): BulkRun {
-  return { o, queue: bulkItems(o), limGold: Math.floor(S.gold * o.budget), limDust: Math.floor(dustTotal() * o.budget), spentGold: 0, spentDust: 0, tries: 0, fails: 0, ups: 0, reached: 0, stopped: '', log: [] };
+  return { o, queue: bulkItems(o), limGold: Math.floor(S.gold * o.budget), limDust: Math.floor(dustTotal() * o.budget), spentGold: 0, spentDust: 0, savedDust: 0, tries: 0, fails: 0, ups: 0, reached: 0, stopped: '', log: [] };
 }
 /** 한 번 두드린다 · 끝났으면 false */
 export function bulkTick(r: BulkRun): boolean {
@@ -126,12 +128,15 @@ export function bulkTick(r: BulkRun): boolean {
   }
   const g0 = S.gold;
   const d0 = dustTotal();
+  const e0 = it.enh;
   const res = trans ? transcend(it) : enhance(it, { charm: !!r.o.charm });
   r.spentGold += g0 - S.gold;
   r.spentDust += d0 - dustTotal();
   if (res === 'ok' || res === 'fail') {
     r.tries++;
     if (res === 'ok') r.ups++;
+    // 대성공: 한 번에 2단계 이상 → 건너뛴 단계의 한 번 비용만큼 아낌
+    if (res === 'ok' && !trans) for (let e = e0 + 1; e < Math.min(it.enh, r.o.goal); e++) r.savedDust += enhanceCost({ ...it, enh: e } as Item);
     else r.fails++;
     r.log.push({ name: it.name, to: it.enh, ok: res === 'ok' });
     return true;
