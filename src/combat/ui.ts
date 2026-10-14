@@ -5,7 +5,7 @@ import { CONFIG } from '../data/config';
 import { clearOverlays } from '../ui/overlays';
 import type { RegionId } from '../data/items';
 import { PORTRAITS } from '../engine/assets';
-import { pic } from '../ui/common';
+import { portrait } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
 import { battleMusic, bindSoundSettings, soundSettingsHtml } from '../ui/sound';
 import { vis } from '../world/visual';
@@ -491,7 +491,7 @@ function hud() {
   // 필살기 컷인 띠 (0.5초)
   const cut = $('#cbCut');
   if (f.ult > 0 && cut.hidden) {
-    cut.innerHTML = `<div class="band"></div>${f.allies.filter((a) => !a.dead).map((a) => `<img draggable="false" src="${pic(a.actor!)}" alt="">`).join('')}<b>${f.ultName}</b>`;
+    cut.innerHTML = `<div class="band"></div>${f.allies.filter((a) => !a.dead).map((a) => `<img draggable="false" src="${portrait(a.actor!)}" alt="">`).join('')}<b>${f.ultName}</b>`;
     cut.hidden = false;
   } else if (f.ult <= 0 && !cut.hidden) cut.hidden = true;
   if (f.done && f.doneT > 1 && $('#cbRes').hidden) finish();
@@ -500,7 +500,7 @@ function hud() {
 function buildParty() {
   const f = F!;
   $('#cbParty').innerHTML = f.allies
-    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name}${i >= 3 ? ' (자동)' : ' 조종'}" class="${i >= 3 ? 'ai4' : ''}"><img draggable="false" src="${pic(u.actor!)}" alt=""><i><u></u></i></button>`)
+    .map((u, i) => `<button data-ally="${i}" aria-label="${u.actor!.name}${i >= 3 ? ' (자동)' : ' 조종'}" class="${i >= 3 ? 'ai4' : ''}"><img draggable="false" src="${portrait(u.actor!)}" alt=""><i><u></u></i></button>`)
     .join('');
   document.querySelectorAll<HTMLElement>('[data-ally]').forEach(
     (b) =>

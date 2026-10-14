@@ -928,7 +928,8 @@ html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 132p
 #cbQuit{position:absolute;right:10px;top:0}
 .cbparty{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 8px);display:flex;flex-direction:column;gap:6px;z-index:3}
 .cbparty button{border:0;padding:0;background:#1e2132;cursor:pointer;box-shadow:0 0 0 2px #140c18,0 0 0 3px #4a4e68;display:flex;flex-direction:column}
-.cbparty img{width:calc(24px * var(--k1) * 1.5);height:calc(24px * var(--k1) * 1.5);image-rendering:pixelated;display:block}
+/* 초상화 전부: 일러스트 초상화는 작으면 뭉개져 1.25배 (36 → 45px) · 체력바는 그대로 아래 */
+.cbparty img{width:calc(24px * var(--k1) * 1.875);height:calc(24px * var(--k1) * 1.875);image-rendering:pixelated;display:block}
 .cbparty i{display:block;height:3px;background:#140c18}.cbparty u{display:block;height:100%;background:#7ad06a;text-decoration:none}
 .cbparty .me{box-shadow:0 0 0 2px #140c18,0 0 0 4px #ffd36b}
 .cbparty .dead{filter:grayscale(1) brightness(.5)}
@@ -950,9 +951,10 @@ html:not([data-size="phone"]) #hSpk{top:calc(env(safe-area-inset-top,0px) + 132p
 .cbb.ult{right:132px;bottom:118px;width:48px;height:48px}
 .cbb.ult .ring{position:absolute;inset:-4px;border-radius:50%;z-index:0;-webkit-mask:radial-gradient(circle,transparent 60%,#000 62%);mask:radial-gradient(circle,transparent 60%,#000 62%)}
 .cbb.ult.ready{animation:beat .6s ease infinite}
-.cbcut{position:absolute;left:0;right:0;top:38%;height:72px;z-index:6;display:flex;align-items:center;justify-content:center;gap:8px;pointer-events:none}
+.cbcut{position:absolute;left:0;right:0;top:38%;height:72px;z-index:6;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 8px;pointer-events:none}
 .cbcut .band{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,122,168,.85) 20%,rgba(255,211,107,.9) 50%,rgba(255,122,168,.85) 80%,transparent);animation:hban .3s ease-out}
-.cbcut img{position:relative;width:calc(24px * var(--k));height:calc(24px * var(--k));image-rendering:pixelated;box-shadow:0 0 0 2px #140c18}
+/* 초상화 전부: 컷인 얼굴도 1.25배 (48 → 60px) · 좁은 화면에서 긴 합동기 이름이 잘리지 않게 얼굴이 함께 줄어든다 */
+.cbcut img{position:relative;width:calc(30px * var(--k));height:auto;aspect-ratio:1;flex:0 1 auto;min-width:0;image-rendering:pixelated;box-shadow:0 0 0 2px #140c18}
 .cbcut b{position:relative;color:#fff;font-size:var(--f-big);text-shadow:2px 2px 0 #140c18;margin-left:8px}
 .cbres{position:absolute;inset:0;z-index:8;background:rgba(5,6,20,.72);display:flex;align-items:center;justify-content:center;padding:20px}
 .cbres .card{width:100%;max-width:400px;padding:14px;line-height:1.5}
@@ -1019,7 +1021,8 @@ html:not([data-size="phone"]) .cbcast{bottom:calc(env(safe-area-inset-bottom,0px
 #nbody .pnlist{margin-top:4px}
 .ver{border:0;background:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-size:13px;color:#b9c3ea}
 /* ── 전투 2차: HIT · KILLS · 보스 막대 · 알림 띠 · 목표 · 획득 알림 ── */
-.cbhit{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 200px);z-index:3;display:flex;flex-direction:column;align-items:flex-start;pointer-events:none;text-shadow:2px 2px 0 #140c18,-1px -1px 0 #140c18}
+/* 초상화 전부: 파티 칸이 커져 KILLS 는 칸 오른쪽 (위 줄·목표 글씨 아래) */
+.cbhit{position:absolute;left:calc(8px + 24px * var(--k1) * 1.875 + 12px);top:calc(env(safe-area-inset-top,0px) + 84px);z-index:3;display:flex;flex-direction:column;align-items:flex-start;pointer-events:none;text-shadow:2px 2px 0 #140c18,-1px -1px 0 #140c18}
 .cbhit b{font-size:17px;color:#fff;line-height:1.1}
 .cbhit small{font-size:13px;color:#ffd36b;font-weight:700}
 .cbhit strong{font-size:28px;color:#ff8a5a;line-height:1.1;margin-top:2px;letter-spacing:1px}

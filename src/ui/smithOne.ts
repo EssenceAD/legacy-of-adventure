@@ -18,7 +18,7 @@ import { bagSize, equip, itemPower } from '../world/items';
 import { bagGear, heroGear, slotAction, smithHeroes, smithPicks } from '../world/smithOne';
 import { markDirty, P, S, type Actor, type Building, type Item } from '../world/state';
 import { whoWears } from '../world/autoEquip';
-import { $$, bindTabs, esc, fmt, itemCell, keepScroll, pct, pic, tabs } from './common';
+import { $$, bindTabs, esc, fmt, itemCell, keepScroll, pct, portrait, tabs } from './common';
 import { icon } from './kit';
 import { heroCardHtml } from './heroCard';
 import { openBestPreview, pickGear, showItem } from './guests';
@@ -228,7 +228,7 @@ function panelHtml(it: Item, a: Actor | null): string {
     ${tryable ? `<p class="note">${riskText(it)}</p>${cost}` : ''}${it.enh >= SM().maxEnhance ? `<p class="note">${trRule()}</p>` : ''}
     ${tryable ? `<div class="enhuse"><label class="tog ${dropStep ? '' : 'dim'}"><input type="checkbox" id="smoCharm" ${enhUse.charm ? 'checked' : ''} ${G.charm > 0 ? '' : 'disabled'}> 🧿 부적 <small>(${G.charm}개 · 하락을 막을 때만)</small></label><label class="tog"><input type="checkbox" id="smoWhet" ${enhUse.whet ? 'checked' : ''} ${G.whet > 0 ? '' : 'disabled'}> 🪨 숫돌 <small>(${G.whet}개 · +${Math.round(CONFIG.growth.whet.add * 100)}%p)</small></label></div>` : ''}
     <div class="btnrow smo-sub">${tryable && to > it.enh ? `<button class="bigbtn sm ghost" id="smoTo" ${lockAttr(short ? shortTip(parts) : null)}>+${to}까지</button>` : ''}<button class="bigbtn sm ghost" id="smoInfo">자세히</button>${vis('enhTransfer') ? '<button class="bigbtn sm ghost" id="smoTf">전수</button>' : ''}${a && a.runId == null ? '<button class="bigbtn sm ghost" id="smoSwap">바꾸기</button>' : ''}</div>
-    ${who ? `<div class="irow smo-who"><img src="${pic(who.a)}" alt=""><span>누가 끼면 좋을까 · ${isFav(who.a) ? '★ ' : ''}${esc(who.a.name)} <em class="good">▲ ${fmt(who.gain)}</em></span><button id="smoWear">끼우기</button></div>` : ''}
+    ${who ? `<div class="irow smo-who"><img src="${portrait(who.a)}" alt=""><span>누가 끼면 좋을까 · ${isFav(who.a) ? '★ ' : ''}${esc(who.a.name)} <em class="good">▲ ${fmt(who.gain)}</em></span><button id="smoWear">끼우기</button></div>` : ''}
   </div>`;
 }
 

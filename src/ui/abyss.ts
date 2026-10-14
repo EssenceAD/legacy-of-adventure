@@ -10,7 +10,7 @@ import { huntCrew, partyPower } from '../world/hunt';
 import { huntPartyMax } from '../world/party4';
 import { markDirty, P, S, type Actor } from '../world/state';
 import { track as trackEv } from '../net/telemetry';
-import { $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
+import { $$, esc, fmt, itemCell, keepScroll, nameTag, portrait } from './common';
 import { cardsOn, dropsHtml, mvpHtml, starsHtml } from './checkin';
 import { recButton } from './partyUi';
 import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
@@ -52,9 +52,9 @@ export function openAbyss() {
   const blocked = v2 ? partyPool().filter((a) => partyBlock(a, 'abyss')).sort((x, y) => powerOf(y) - powerOf(x)) : [];
   const rows =
     crew
-      .map((a) => `<button class="pm ${picked.includes(a.id) ? 'on' : ''}" data-ab="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${(v2 && partyNote(a, 'abyss')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`)
+      .map((a) => `<button class="pm ${picked.includes(a.id) ? 'on' : ''}" data-ab="${a.id}"><img src="${portrait(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${(v2 && partyNote(a, 'abyss')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`)
       .join('') +
-    blocked.map((a) => `<button class="pm" disabled><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'abyss')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+    blocked.map((a) => `<button class="pm" disabled><img src="${portrait(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'abyss')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   const dis = ms.length ? '' : 'disabled';
   const rec1 = floorRec(start);
   const recOn = v2 && crew.length > 0;

@@ -4,7 +4,7 @@
 // 토벌전(ui/raid.ts)과 사냥(ui/hunt.ts)이 함께 쓴다. 장면은 기기 픽셀 정수 배율(README 0장).
 import { getPref, setPref } from '../save/save';
 import type { Actor } from '../world/state';
-import { esc, pic } from './common';
+import { esc, portrait } from './common';
 import { dpr, iconSrc, px, type IconKey } from './kit';
 
 export const LW = 356;
@@ -63,7 +63,7 @@ export function mountBattle(opt: { id: string; title: string; members: Actor[]; 
         <div class="bhp"><u id="bLag"></u><i id="bBar"></i><s></s><s></s><s></s></div><small id="bHpTxt"></small></div>
       <div class="btimer" id="bTimer">0</div>
       <div class="bparty">${opt.members
-        .map((m, i) => `<div class="pp ${i === 0 ? 'lead' : ''}"><img src="${pic(m)}" alt="${esc(m.name)}"><i><b id="bPhp${i}"></b></i></div>`)
+        .map((m, i) => `<div class="pp ${i === 0 ? 'lead' : ''}"><img src="${portrait(m)}" alt="${esc(m.name)}"><i><b id="bPhp${i}"></b></i></div>`)
         .join('')}</div>
       <div class="bskills">${opt.skills.map(btn).join('')}</div>
       <div class="btip" id="bTip" hidden></div>

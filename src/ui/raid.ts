@@ -23,7 +23,7 @@ import {
   cancelRaid,
 } from '../world/raid';
 import { legendHooks, markDirty, P, type Actor } from '../world/state';
-import { $, $$, esc, fmt, keepScroll, nameTag, pct, pic } from './common';
+import { $, $$, esc, fmt, keepScroll, nameTag, pct, portrait } from './common';
 import { mine } from '../net/server';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx } from './battle';
 import { closeWin, openWin, toast } from './windows';
@@ -119,10 +119,10 @@ export function openRaidPrep(t: RaidTarget) {
         const on = picked.includes(a.id);
         const lead = picked[0] === a.id;
         const aff = affOf(a);
-        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${portrait(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
       })
       .join('') +
-    blocked.map((a) => `<button class="pm" data-id="${a.id}" ${lockAttr(partyBlock(a, 'raid'))}><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'raid')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+    blocked.map((a) => `<button class="pm" data-id="${a.id}" ${lockAttr(partyBlock(a, 'raid'))}><img src="${portrait(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'raid')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   // 회색 버튼엔 이유: 막혀도 눌리고(실행 X) 이유 토스트 · 버튼 아래 한 줄
   const why = raidLock(t, members.length)?.text ?? null;
   const dis = lockAttr(why);
@@ -608,7 +608,7 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     warnBlock: (on) => view.warnBlock(on),
     chemReady: () => {},
     joint: () => {
-      view.cutin(pair ? [pic(pair[0]), pic(pair[1])] : [pic(leader)], '합동기 · 마음을 하나로!');
+      view.cutin(pair ? [portrait(pair[0]), portrait(pair[1])] : [portrait(leader)], '합동기 · 마음을 하나로!');
       view.log('합동기 · 마음을 하나로!', 'wave');
     },
     perfectBlock: () => {
@@ -815,7 +815,7 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
   // 시작: 와이프 → 보스 등장 컷인 → 전투
   fit();
   ui();
-  view.cutin([bossPic(b), pic(leader)], `${b.name} 등장!`);
+  view.cutin([bossPic(b), portrait(leader)], `${b.name} 등장!`);
   if (manual) battleHints(view, 'raid', ['화면을 탭하면 공격!', '위아래로 밀면 줄을 옮겨 돌진을 피해요', '보스가 번쩍이면 막기를 꾹!', '스킬을 길게 누르면 설명이 나와요']);
   startAt = 1.3;
   raf = requestAnimationFrame((t0) => {
@@ -836,7 +836,7 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
     else damage = survived ? Math.max(ex.target * R.manualMin, Math.min(ex.target * R.manualMax, live)) : Math.max(live, ex.target * R.manualMin * (1 - S.t / R.seconds));
     if (killedNow) damage = Math.max(damage, t.hpLeft);
     damage = Math.round(damage);
-    if (killedNow) view.cutin([pic(leader), bossPic(b)], `${b.name} 처치!`);
+    if (killedNow) view.cutin([portrait(leader), bossPic(b)], `${b.name} 처치!`);
     sfx(killedNow ? 'win' : survived ? 'win' : 'lose');
     const out = settle(t, members, damage, manual ? 'manual' : 'auto', ex, run, R.seconds - S.t);
     view.log(killedNow ? `${b.name} 처치!` : survived ? '시간 종료' : '파티가 쓰러졌어요…', killedNow ? 'wave' : survived ? 'kill' : 'bad');

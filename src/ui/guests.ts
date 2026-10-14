@@ -29,7 +29,7 @@ import { track as trackEv } from '../net/telemetry';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
 import { heroCtx, track } from '../world/progress';
 import { speakerOf, talk } from './dialogue';
-import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, pic, portrait, tabs } from './common';
+import { $, $$, bar, bindTabs, esc, fmt, itemCell, keepScroll, kindText, nameTag, pct, portrait, tabs } from './common';
 import { dustLine } from './smith';
 import { applyBest, bestPlan, whoWears } from '../world/autoEquip';
 import { favRank, guestHint, isFav, sortGuests, toggleFav } from '../world/growth';
@@ -93,7 +93,7 @@ export function openGuests() {
   // CHECKIN §J6 (heroCards · 실험실): 단골 탭 = 영웅 카드 격자 (누르면 상세 · 정렬·★ 고정 그대로)
   const cards = visOn('heroCards') && gTab === 0;
   const rows = list
-    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + (cards ? heroCardHtml(a) : `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`))
+    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + (cards ? heroCardHtml(a) : `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${portrait(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`))
     .join('');
   openWin(
     `손님 ${all.length}명`,
@@ -229,7 +229,7 @@ export function showActor(a: Actor) {
     return `<button class="slot" data-s="${s}">${it ? itemCell(it) : '<span class="ic empty"></span>'}<small>${SLOT_NAME[s]}</small>${it ? fitTag(a, it) : ''}</button>`;
   }).join('');
   const bonds = bondsOf(a);
-  const chem = bonds.map((b) => `<span class="chip"><img src="${pic(b.other)}" alt="">${esc(b.other.name)} · ${esc(b.pair.name)} ${'♥'.repeat(b.lv)}</span>`).join('');
+  const chem = bonds.map((b) => `<span class="chip"><img src="${portrait(b.other)}" alt="">${esc(b.other.name)} · ${esc(b.pair.name)} ${'♥'.repeat(b.lv)}</span>`).join('');
   const hero = a.heroId ? heroById(a.heroId) : null;
   const avg = a.moodN ? a.moodSum / a.moodN : a.mood;
   openWin(
@@ -567,7 +567,7 @@ function uniqHtml(it: Item): string {
 function whoHtml(it: Item): string {
   const list = whoWears(it);
   if (!list.length) return '';
-  return `<div class="whow"><b class="g">누가 끼면 좋을까</b>${list.map((x) => `<div class="irow"><img src="${pic(x.a)}" alt=""><span>${isFav(x.a) ? '★ ' : ''}${esc(x.a.name)} <em class="good">▲ ${fmt(x.gain)}</em></span><button data-wear="${x.a.id}">끼우기</button></div>`).join('')}</div>`;
+  return `<div class="whow"><b class="g">누가 끼면 좋을까</b>${list.map((x) => `<div class="irow"><img src="${portrait(x.a)}" alt=""><span>${isFav(x.a) ? '★ ' : ''}${esc(x.a.name)} <em class="good">▲ ${fmt(x.gain)}</em></span><button data-wear="${x.a.id}">끼우기</button></div>`).join('')}</div>`;
 }
 const fitClassName = (it: Item) => (Object.entries(CLASS_WEAPON).filter(([, w]) => w === it.wkind).map(([k]) => (CLASSES as Record<string, { name: string }>)[k]?.name ?? k).join('·') || '없음');
 

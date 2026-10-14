@@ -2,7 +2,7 @@
 import { CONFIG } from '../data/config';
 import { balanced, isMentee, ROLE_ICON, ROLE_NAME, roleOf, skewed, tagMet, type Role } from '../world/party';
 import type { Actor, QuestTag } from '../world/state';
-import { esc, pic } from './common';
+import { esc, portrait } from './common';
 import { SYN_IDS, SYN_INFO, synergiesOf, synergyHint } from '../world/synergy';
 import { ledgerNeed, party4Open } from '../world/party4';
 import { markDirty, P as PR } from '../world/state';
@@ -53,7 +53,7 @@ export function slotRow(sel: Actor[], max: number): string {
   const cells: string[] = [];
   for (let i = 0; i < Math.max(4, max); i++) {
     const a = sel[i];
-    if (a) cells.push(`<span class="pty-slot on"><img src="${pic(a)}" alt="">${i === 0 ? '<b>대장</b>' : i === 3 ? '<b>AI</b>' : ''}</span>`);
+    if (a) cells.push(`<span class="pty-slot on"><img src="${portrait(a)}" alt="">${i === 0 ? '<b>대장</b>' : i === 3 ? '<b>AI</b>' : ''}</span>`);
     else if (i < max) cells.push(`<span class="pty-slot${i === 3 && !PR.meta.party4Seen ? ' spark' : ''}">${i === 3 ? '<b>NEW</b>' : ''}</span>`);
     else cells.push(`<span class="pty-slot lock" title="훈련장 Lv5 + 장부 ${ledgerNeed()}장">🔒<small>훈련장 Lv5 · 장부 ${ledgerNeed()}장</small></span>`);
   }

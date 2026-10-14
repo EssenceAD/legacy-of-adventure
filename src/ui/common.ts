@@ -18,7 +18,7 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
 export const fmt = (n: number) => (vis('uiKitV2') ? bigNum(n) : Math.round(n).toLocaleString('ko-KR'));
 export const pct = (v: number, d = 0) => (v * 100).toFixed(d) + '%';
 
-/** 손님 전신 그림 (종족·머리색·무기까지 보이게). 겉모습 키마다 한 번만 만든다 */
+/** 마을 도트에서 잘라 낸 얼굴 (종족·머리색·무기까지 보이게). 겉모습 키마다 한 번만 만든다 — 얼굴 칸에는 portrait()를 쓴다 */
 const PICS: Record<string, string> = {};
 export function pic(a: Actor): string {
   if (a.role) return PORTRAITS[a.kind] || '';
@@ -42,7 +42,9 @@ export function pic(a: Actor): string {
 
 /**
  * 초상화 작업: 대화창·손님 정보 창에 쓰는 큰 얼굴 — 손님이면 직업×종족 일러스트 초상화 (g_직업_종족).
- * 영웅·전설·NPC는 전용 초상화, 그림이 없으면 도트 얼굴(pic). 작은 목록 아이콘은 pic 그대로(마을 모습과 이어지게).
+ * 영웅·전설·NPC는 전용 초상화, 그림이 없으면 도트 얼굴(pic).
+ * 초상화 전부 (K9 같은 사람 = 같은 얼굴): 얼굴을 보여 주는 곳은 모두 portrait — 전투 파티 칸 · 합동기 컷인 · 파티 고르기 · 손님 목록 · 대장간 줄까지.
+ * pic 은 여기(초상화가 없을 때) 와 heroCard 의 도트 판정에만 남는다 (tests/portraitAll.spec.ts 가 지킨다).
  */
 export function portrait(a: Actor): string {
   if (a.role || a.legendId || a.heroId || a.cameo || starOf(a)) return pic(a);

@@ -35,7 +35,7 @@ import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, type DeckCfg } from './h
 import { partyBlock, rulesV2 } from '../world/partyRules';
 import { bondOf } from '../world/chem';
 import { pairById } from '../data/chem';
-import { $, $$, claimOrder, esc, keepScroll, fmt, itemCell, leftText, liveWin, minText, nameTag, pct, pic, portrait } from './common';
+import { $, $$, claimOrder, esc, fmt, itemCell, keepScroll, leftText, liveWin, minText, nameTag, pct, portrait } from './common';
 import { closeWin, openBuild, openWin, toast } from './windows';
 import * as game from '../game';
 import { showWelcome } from './welcome';
@@ -237,7 +237,7 @@ function openParty(q: Quest, picked: number[] = [], fresh = false) {
     .map((a) => {
       const why = block(a);
       const on = picked.includes(a.id);
-      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${isCompanion(a) && !why ? `${companionText(a)} · ` : ''}${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+      return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}" ${why && !on ? 'disabled' : ''}><img src="${portrait(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, sel)}<small>${isCompanion(a) && !why ? `${companionText(a)} · ` : ''}${why ?? `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
     })
     .join('');
   if (ff) return openPartyFF(q, picked, list, sel, info, tips, rows, pmin);
@@ -268,7 +268,7 @@ function openPartyFF(q: Quest, picked: number[], list: Actor[], sel: Actor[], in
   const reason = recWhy.q === q.id ? recWhy.text : '';
   const max = partyMax();
   const cells: string[] = [];
-  for (let i = 0; i < max; i++) cells.push(sel[i] ? `<span class="pty-slot on"><img src="${pic(sel[i])}" alt=""></span>` : '<span class="pty-slot"></span>');
+  for (let i = 0; i < max; i++) cells.push(sel[i] ? `<span class="pty-slot on"><img src="${portrait(sel[i])}" alt=""></span>` : '<span class="pty-slot"></span>');
   if (!P.meta.slot5) cells.push('<span class="pty-slot lock" id="pSlot5" role="button" tabindex="0" title="5번째 자리">🔒</span>');
   const opened = P.meta.slot5 && !P.meta.slot5Seen ? slot5Banner() : '';
   openWin(

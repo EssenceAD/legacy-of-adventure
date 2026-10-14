@@ -34,7 +34,7 @@ import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
 import { checkSlot5 } from '../world/meta';
 import { queueEvent } from '../world/events';
-import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, pic } from './common';
+import { $, $$, esc, fmt, itemCell, keepScroll, nameTag, portrait } from './common';
 import { iconSrc } from './kit';
 import { closeWin, openWin, toast } from './windows';
 import { BASE_REGIONS } from '../data/items';
@@ -121,7 +121,7 @@ function slotCards(): string {
     const reg = REGIONS[regionIdx(a.region)];
     const faces = slotMembers(a)
       .slice(0, 4)
-      .map((m) => `<img src="${pic(m)}" alt="">`)
+      .map((m) => `<img src="${portrait(m)}" alt="">`)
       .join('');
     const mats = `<i>${esc(reg.mat)} +${fmt(a.mats ?? 0)}</i>` + (isBoss(a.stage) ? `<i>${esc(regionBossOf(a.region).mat)}</i>` : '');
     return `<div class="hslot" style="--rc:${themeOf(a.region).band}"><b>${esc(reg.name)} ${stageName(a.region, a.stage)}</b><span class="hsf">${faces}</span><small class="hsn"><span>${fmt(a.n ?? 0)}판</span><span>${i > 0 ? '<em class="hsmat">재료</em>' : ''}💰+${cardNum(a.gold ?? 0)}</span></small><span class="hsm">${mats}</span><button class="bigbtn ghost sm" data-hstop="${i}">멈추기</button></div>`;
@@ -258,10 +258,10 @@ function openHuntPrep(r: RegionId, s: number) {
     crew
       .map((a) => {
         const on = picked.includes(a.id);
-        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}${(v2 && partyNote(a, 'hunt')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
+        return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${portrait(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}${(v2 && partyNote(a, 'hunt')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
       })
       .join('') +
-    away.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}<small>${esc(blockOf(a)!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+    away.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${portrait(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}<small>${esc(blockOf(a)!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위
   const dis = ms.length ? '' : 'disabled';
   const opt = (id: string, cls: string, label: string, desc: string) => `<div class="hopt"><button class="bigbtn ${cls}" id="${id}" ${dis}>${label}</button><small>${desc}</small></div>`;
@@ -447,7 +447,7 @@ export function startHunt(r: RegionId, s: number, members: Actor[], manual: bool
       const hp = bossMob ? waveHp * 0.8 : isBossWave ? waveHp * 0.2 : waveHp / n;
       W.mobs.push({ key: bossMob ? 'boss' : k, img, white: whiteOf(img), x: LW - 30 + i * 30, lane: bossMob ? 1 : i % 3, hp, max: hp, boss: bossMob, stop: (bossMob ? 168 : 132) + (i % 3) * 22, hit: 0, dead: 0 });
     }
-    if (isBossWave) view.cutin([pic(leader), ''], `${regionBossOf(r).name}(새끼) 등장!`);
+    if (isBossWave) view.cutin([portrait(leader), ''], `${regionBossOf(r).name}(새끼) 등장!`);
     // 세로 화면 기록창
     const names = [...new Set(W.mobs.filter((m) => m.hp > 0).map((m) => mobLabel(m)))].join(' · ');
     view.log(`웨이브 ${W.wave}/${H.waves} · ${names} ${n}마리`, 'wave');
@@ -505,7 +505,7 @@ export function startHunt(r: RegionId, s: number, members: Actor[], manual: bool
   const combo = () => {
     if (!W.on || W.chem < 100) return;
     W.chem = 0;
-    view.cutin([pic(leader), members[1] ? pic(members[1]) : ''], '합동기!');
+    view.cutin([portrait(leader), members[1] ? portrait(members[1]) : ''], '합동기!');
     for (const m of alive()) hurt(m, dps * 2, 'big');
     W.shake = 0.4;
   };
@@ -659,7 +659,7 @@ export function startHunt(r: RegionId, s: number, members: Actor[], manual: bool
   activeHunt = { advance: (sec) => { for (let i = 0; i < sec * 60; i++) tick(1 / 60); }, stop: () => { cancelAnimationFrame(raf); view.destroy(); activeHunt = null; } };
   view.fit();
   ui();
-  view.cutin([pic(leader), ''], `사냥 ${stageName(r, s)}`);
+  view.cutin([portrait(leader), ''], `사냥 ${stageName(r, s)}`);
   if (manual) battleHints(view, 'hunt', ['화면을 탭하면 앞 몬스터를 공격!', '몬스터가 많이 붙으면 막기!', '깬 스테이지는 자동 사냥으로 반복해요']);
   raf = requestAnimationFrame((t0) => {
     last = t0;
