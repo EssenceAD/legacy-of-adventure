@@ -1,5 +1,6 @@
 // 원정: 의뢰 목록(매일 아침 갱신) → 파티 출발 → (현실 시간으로) 진행 → 결과·보고서·전리품
 import { flag } from './flags';
+import { burnMats, burnMult, burnOn, burnWindow } from './burn';
 import { vis } from './visual';
 import { bestOf, nextLevelCost } from './town';
 import { markAdventured } from './actors';
@@ -296,6 +297,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   // 첫 원정(튜토리얼)은 늘 성공
   // FIVESTARS: 왈왈콩선생 밤 출발 성공률 +
   const win = q.tutorial || Math.random() < info.success + fiveNightSuccess(members, nightStart(run.start));
+  // RAIDWEAPON §6 버닝: 지금(서버 시각) 버닝 중 + 이 의뢰가 기간 안에 끝났을 때만 경험치·금화 ×2 · 재료 ×1.5 (기간 전에 끝나 쌓여 있던 보고서는 그대로)
+  const bw = burnWindow();
+  const burn = burnOn() && run.end >= bw.from && run.end < bw.to;
   const r = ri(q.region);
   const tierR = E.tierReward[q.tier];
   const tg = E.tierGrade[q.tier] ?? q.tier;
@@ -306,11 +310,11 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const nightG = S.night ? partySpecial(members, 'nightGold') / 100 : 0;
   // PARTY §2: 조합 보너스 — 뒷골목 싸움 금화 + · 수호의 맹세 체력 소모 −
   const syn = synergyFx(members);
-  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()) * (1 + syn.gold) * windQuestGold());
+  const gold = Math.round(rnd(q.gold[0], q.gold[1]) * (win ? 1 : E.failReward) * (1 + goldPct / 100) * info.chem * questGoldMult() * tagGoldMult(q, members) * (1 + guildGold()) * mythicQuestGold(members, nightStart(run.start)) * (1 + nightG + mealGold()) * (1 + syn.gold) * windQuestGold() * (burn ? burnMult('gold') : 1));
   // MYTHIC 루나 부탁: 밤에 출발한 의뢰 성공
   if (win && nightStart(run.start)) P.counters.nightWins = (P.counters.nightWins ?? 0) + 1;
   tieRun(members);
-  const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5));
+  const xp = Math.round(E.baseXp * tierR * Math.pow(1.6, r) * (win ? 1 : 0.5) * (burn ? burnMult('exp') : 1));
   const levelUps: string[] = [];
   const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
   for (const m of members) {
@@ -324,7 +328,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   // FIVESTARS 왈왈콩선생 부탁: 밤 출발 성공 · 모두 체력 지켜 귀환 ·
   // 현실 밤(20~04시) 또는 게임 안 밤(보낼 때 기록)에 출발
   if (win && walwalNightRun(run)) fiveNightWin(members);
-  const mats = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
+  const mats0 = Math.round(rnd(E.mats[0], E.mats[1]) * (1 + tg) * (win ? 1 : 0.5)) + (win ? partySpecial(members, 'matPlus') : 0);
+  const mats = burn ? burnMats(mats0) : mats0;
   P.mats[q.region] += mats;
   const nItems = win ? 1 + (tg >= 2 ? 1 : 0) : Math.random() < 0.5 ? 1 : 0;
   const items = [];
@@ -385,8 +390,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     petTry('expedition');
     if (q.guild) {
       const bid = BOSSES.find((b) => b.region === q.region)!.id;
-      P.bossMats[bid] = (P.bossMats[bid] ?? 0) + CONFIG.newBuildings.guild.specialBossMats;
-      extra.push(['narr', `길드 특별 의뢰 성공! 「${BOSSES.find((b) => b.region === q.region)!.mat}」 ×${CONFIG.newBuildings.guild.specialBossMats}`]);
+      const gm = burn ? burnMats(CONFIG.newBuildings.guild.specialBossMats) : CONFIG.newBuildings.guild.specialBossMats;
+      P.bossMats[bid] = (P.bossMats[bid] ?? 0) + gm;
+      extra.push(['narr', `길드 특별 의뢰 성공! 「${BOSSES.find((b) => b.region === q.region)!.mat}」 ×${gm}`]);
     }
     addRep(CONFIG.reputation.expeditionWin);
     track('expeditionWin');

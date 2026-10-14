@@ -2,6 +2,7 @@
 // 깬 스테이지는 자동 사냥으로 반복, 꺼져 있어도 가장 높은 스테이지 기준 방치 보상(방치 상한 안에서, 원정과 합산)
 import { partyEligible } from './expeditions';
 import { mythicHuntWin } from './mythic';
+import { burnMats, burnMult } from './burn';
 import { BOSSES } from '../data/bosses';
 import { buffOf } from './facilities';
 import { CONFIG } from '../data/config';
@@ -95,15 +96,17 @@ function taperFor(s: number, first: boolean, auto: boolean): number {
   return autoGoldMult();
 }
 /** 한 판 보상 (mult = 방치처럼 비율을 낮출 때 · goldMult = 자동 사냥 금화 비율) */
-function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult = 1, dropItem = true, goldMult = 1): HuntReward {
+function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult = 1, dropItem = true, goldMult = 1, live = true): HuntReward {
   const ri = regionIdx(r);
   // ECONOMY §1: 사냥 금화 ×0.65 · 지역 배수 2.0 · 재료 ×1.5
   const EC = CONFIG.economy;
-  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult * fiveGold(members) * petHuntGold());
+  const g = Math.round(rnd(H.gold[0], H.gold[1]) * Math.pow(EC.regionReward, ri) * (1 + H.goldPerStage * (s - 1)) * (isBoss(s) ? 2 : 1) * mult * EC.huntGold * (1 + synergyFx(members).gold) * goldMult * fiveGold(members) * petHuntGold() * (live ? burnMult('gold') : 1));
   // GOLDSINK §3: 축복 — 사냥 경험치 +
-  const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult * (1 + blessFx('xp')));
+  const xp = Math.round(H.xp * Math.pow(1.6, ri) * (1 + 0.1 * (s - 1)) * mult * (1 + blessFx('xp')) * (live ? burnMult('exp') : 1));
   // GROWTH §3-4 고유 효과 「지역 재료 +1」 (낀 사람마다)
-  const mats = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult) + (mult >= 1 ? partySpecial(members, 'matPlus') : 0);
+  // RAIDWEAPON §6 버닝: 경험치·금화 ×2 · 재료 ×1.5 (방치 판 live=false는 그대로)
+  const mats0 = Math.round(rnd(H.mats[0], H.mats[1]) * (isBoss(s) ? 3 : 1) * mult * EC.matMult) + (mult >= 1 ? partySpecial(members, 'matPlus') : 0);
+  const mats = live ? burnMats(mats0) : mats0;
   S.gold += g;
   S.ledger.dungeon += g;
   gotGold(g, 'hunt');
@@ -112,6 +115,7 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   let bossMats = 0;
   if (isBoss(s) && mult >= 1) {
     bossMats = first ? 3 : 1 + EC.bossRepeat;
+    if (live) bossMats = burnMats(bossMats);
     const bid = regionBossOf(r).id;
     P.bossMats[bid] = (P.bossMats[bid] ?? 0) + bossMats;
   }
@@ -348,7 +352,7 @@ export function idleHunt(seconds: number, goldCap: number): IdleHunt | null {
   for (let c = 0; c < clears; c++)
     jobs.forEach((j, k) => {
       // 방치 판 하나 (판마다 셈은 여기 한 곳)
-      const out = reward(j.r, j.s, j.ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(j.s, false, j.sz !== false) * j.gx);
+      const out = reward(j.r, j.s, j.ms, false, H.idleReward, nItems < H.idleItemsMax, taperFor(j.s, false, j.sz !== false) * j.gx, false);
       const o = per[k];
       o.clears++;
       o.gold += out.gold;

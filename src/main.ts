@@ -8,6 +8,7 @@ import { heroCardHtml } from './ui/heroCard';
 import { vis, fsay } from './world/visual';
 import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
+import { initBurnPill } from './ui/burnPill';
 import { initLeftIcons } from './ui/leftIcons';
 import { openHarvestShop, tickHarvest } from './ui/harvest';
 import { ledgerHooks, openDaybook } from './ui/daybook';
@@ -971,6 +972,8 @@ async function boot() {
   initPowerUI();
   // VISUAL §4 새 HUD (실험실 · 끄면 아무것도 안 함)
   initHud2();
+  // RAIDWEAPON §6 버닝 주말: 상태줄 모서리 🔥 (기간 중만)
+  initBurnPill();
   // CHECKIN §K2 왼쪽 아이콘 줄 (새 HUD 안 · 오늘의 장부 · 수확제 · 여관 연감)
   initLeftIcons();
   if (import.meta.env.DEV)

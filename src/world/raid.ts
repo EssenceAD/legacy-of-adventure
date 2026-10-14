@@ -28,6 +28,7 @@ import { gatesOn, queueRankWeek, wanderMet, wanderPity } from './paceGates';
 import { perkRaidMats, perkRaidTries } from './bundlePerks';
 import { petRaidDmg, petTry } from './pets';
 import { raidFrags } from './exWeapons';
+import { burnMats, burnRaidTries } from './burn';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -75,7 +76,8 @@ export function ensureWeek(): boolean {
 export const pace = () => flag('raidPace');
 /** 하루 도전 (플래그 끄면 예전 3) */
 /** LUXE §3 토벌 전리품 완성: +1 */
-export const triesMax = () => (pace() ? R.triesPerDay : R.paceOff.triesPerDay) + perkRaidTries();
+/** RAIDWEAPON §6 버닝 주말: +1 (기간 중만 · 서버 시각) */
+export const triesMax = () => (pace() ? R.triesPerDay : R.paceOff.triesPerDay) + perkRaidTries() + burnRaidTries();
 /** 이번 주 몇 번째 보스 (1부터 · 옛 저장 = 1) */
 export const chainN = () => Math.max(1, P.raid.chainN || 1);
 /** 이번 주 잡은 보스 (옛 저장: 지금 보스를 잡았으면 그것 하나) */
@@ -159,6 +161,7 @@ export function beginRaid(): number | null {
   ensureDay();
   if (P.raid.tries >= triesMax()) return null;
   P.raid.tries = Math.min(triesMax(), P.raid.tries + 1);
+  if (burnRaidTries() && P.raid.tries > triesMax() - burnRaidTries()) P.raid.burnDay = P.raid.day;
   P.raid.runSeq = (P.raid.runSeq ?? 0) + 1;
   markDirty();
   return P.raid.runSeq;
@@ -177,7 +180,7 @@ export function repairRaidTries() {
     P.raid.fix17 = true;
     P.raid.tries = 0;
     markDirty();
-  } else if (P.raid.tries > triesMax()) P.raid.tries = triesMax() - 1;
+  } else if (P.raid.tries > triesMax() + (P.raid.burnDay === P.raid.day ? CONFIG.burn.raidTries : 0)) P.raid.tries = triesMax() - 1;
 }
 let lastOut: RaidOutcome | null = null;
 
@@ -382,7 +385,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   const gold = Math.round((b.gold * ratio + (killed ? b.gold * R.killGoldMult : 0)) * pioneerRaidMult() * (1 + synergyFx(members).gold) * cm * fiveGold(members));
   const mats0 = 1 + { S: 3, A: 2, B: 1, C: 0 }[rank] + (killed ? R.killMats : 0);
   // LUXE §3 토벌 전리품 완성: 재료 +10% (소수점 이월)
-  const mats = perkRaidMats(cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm)));
+  // RAIDWEAPON §6 버닝: 토벌 재료 ×1.5
+  const mats = burnMats(perkRaidMats(cm === 1 ? mats0 : Math.max(1, Math.round(mats0 * cm))));
   const xp = Math.round(30 * (regionIdx(b.region) + 1) * 2 * Math.min(2, ratio));
   S.gold += gold;
   S.ledger.dungeon += gold;

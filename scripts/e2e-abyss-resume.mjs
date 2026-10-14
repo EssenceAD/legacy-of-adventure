@@ -54,8 +54,23 @@ await p.evaluate(() => { for (const a of window.__world.actors) if (a.id) a.hp =
 const r0 = await rec();
 ok(r0.best === 33 && !r0.lost, `실세이브: 최고 ${r0.best}층 · 이어하기 ${r0.lost} · 이어가기 ${r0.cur ?? '-'}`);
 await openAb();
-const cps = await p.$$eval('[data-cp]', (els) => els.map((e) => `${e.dataset.cp}:${e.querySelector('small').textContent}`));
-ok(cps.join('|') === '10:1만 G|20:4.1만 G|30:17만 G', `체크포인트 ${cps.join(' · ')}`);
+const cps = await p.$$eval('[data-cp]', (els) => els.map((e) => [Number(e.dataset.cp), e.querySelector('small').textContent]));
+// 체크포인트 값은 글 모양(「10,114 G」 · 예전 「1만 G」)이 아니라 숫자로: config 의 abyss 숫자로 계산한 cpFee 와 비교
+const abLine = fs.readFileSync('src/data/config.ts', 'utf8').split('\n').find((l) => /^\s*abyss: \{/.test(l));
+const abCfg = (k) => Number(abLine.match(new RegExp(`\\b${k}: ([0-9.]+)`))[1]);
+const cpFee = (f) => (f <= 1 ? 0 : Math.round(abCfg('contBase') * abCfg('contGrow') ** f * abCfg('cpFeeMult')));
+/** 「10,114 G」 → 10114 · 「4.1만 G」 → 41000 (만 단위는 반올림 오차 허용) */
+const parseG = (t) => {
+  const m = /([\d,.]+)\s*(만)?/.exec(t.replace(/\s+/g, ' '));
+  if (!m) return { v: NaN, tol: 0 };
+  const n = Number(m[1].replace(/,/g, ''));
+  return m[2] ? { v: n * 1e4, tol: 0.05e4 + 1 } : { v: n, tol: 0 };
+};
+const cpOk = cps.length === 3 && cps.every(([f, t], i) => {
+  const { v, tol } = parseG(t);
+  return f === (i + 1) * 10 && Math.abs(v - cpFee(f)) <= tol;
+});
+ok(cpOk, `체크포인트 ${cps.map(([f, t]) => `${f}:${t}`).join(' · ')} (기대 ${[10, 20, 30].map((f) => `${f}:${cpFee(f).toLocaleString()}`).join(' · ')})`);
 ok(await p.locator('#abNew').isVisible(), '1층부터(무료) 버튼');
 await p.screenshot({ path: `${dir}/phone_picker.png` });
 // 결과 화면 자동 진행 끄기 · 금화 넉넉히 (시험)

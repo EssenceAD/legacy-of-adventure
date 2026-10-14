@@ -402,6 +402,8 @@ export function freshProgress() {
       runSeq: 0,
       lastSettled: 0,
       fix17: false,
+      /** RAIDWEAPON §6: 버닝 +1 도전을 쓴 날 (그날은 부팅 바로잡기가 +1을 넘었다고 깎지 않게) */
+      burnDay: '' as string,
       /** 이번 주 참여 보상(인연의 증표)을 받았나 */
       joined: false,
       alarmed: false,

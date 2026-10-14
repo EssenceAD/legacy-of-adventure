@@ -1803,6 +1803,10 @@ body.hud2 #newsBand span{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;mi
 body.hud2 #newsBand i{font-style:normal;color:#8a96c8;font-size:var(--f-tiny);flex:none;margin-left:auto}
 body.hud2 #newsBand.hot{color:#ffd36b;box-shadow:inset 3px 0 0 var(--gold);animation:none}
 body.hud2 #newsBand.hot span{animation:mglow 1s steps(2) infinite}
+/* RAIDWEAPON §6 버닝 주말: 띠를 넓게 (남은 시간까지) · 꼬리는 안 잘림 · 상태줄 오른쪽 위 작은 🔥 */
+body.hud2 #newsBand.burn{max-width:calc(100% - 8px);box-shadow:inset 3px 0 0 #ff8a3d}
+body.hud2 #newsBand .ntail{flex:none;font-weight:normal;color:#ffb070;font-size:var(--f-tiny)}
+#burnPill{position:absolute;top:0;right:0;z-index:2;font-style:normal;font-size:9px;line-height:1;padding:1px 2px 2px 3px;border:1px solid #ff8a3d;border-width:0 0 1px 1px;border-radius:0 0 0 6px;background:rgba(60,20,8,.92);pointer-events:none}
 body.hud2 #newsBand:active{background:rgba(30,34,64,.9)}
 body.hud2.winopen #newsBand,body.hud2 .talking #newsBand,body.hud2 .placing #newsBand{visibility:hidden}
 body.hud2.visiting #newsBand{display:none!important}

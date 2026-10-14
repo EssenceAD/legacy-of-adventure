@@ -6,6 +6,7 @@ import { getPref, hasSave, setPref, writeSave } from '../save/save';
 import { HIGHLIGHTS, highlightGo, type Highlight } from './notice';
 import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
+import { noteServerDate } from '../world/flags';
 import { creditLine, normVer } from '../data/credits';
 import { letterCredits } from '../net/direction';
 import { closeWin, isWinOpen, openWin, toast } from './windows';
@@ -215,6 +216,8 @@ export async function checkVersion() {
   if (APP_VERSION === 'dev' || import.meta.env.DEV) return;
   try {
     const r = await fetch(new URL(`version.json?t=${Date.now()}`, document.baseURI).href, { cache: 'no-store' });
+    // RAIDWEAPON §6 버닝: 서버 시각 기준점을 새로 (돌아올 때 · 10분마다 — 잠자기·오프라인 부팅 뒤에도 다시 맞춤)
+    noteServerDate(r.headers.get('date'));
     if (!r.ok) return;
     const v = (await r.json()) as { version: string; build: string; force?: boolean };
     if (!v.build || v.build === BUILD) return;

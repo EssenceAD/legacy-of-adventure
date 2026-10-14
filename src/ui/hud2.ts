@@ -17,6 +17,7 @@ import { openWin, showObj, toast } from './windows';
 import { smithObj } from '../world/craft';
 import { smithCond } from '../world/bldStatus';
 import { raidTileLock } from '../world/raidWhy';
+import { burnBandText, burnLeftText } from '../world/burn';
 
 const on = () => document.body.classList.contains('hud2');
 
@@ -83,6 +84,10 @@ interface News {
   text: string;
   /** 받을 게 있다 (반짝 · 이것끼리만 돈다) */
   hot: boolean;
+  /** 받을 게 있어도 같이 돈다 (버닝 주말 — 기간 중 늘 보이게 · 반짝이지는 않음) */
+  keep?: boolean;
+  /** 글 뒤에 잘리지 않게 붙는 짧은 꼬리 (남은 시간) */
+  tail?: string;
   tap: () => void;
 }
 const el = (s: string) => document.querySelector<HTMLElement>(s);
@@ -90,6 +95,9 @@ const txt = (e: Element | null) => (e?.textContent ?? '').replace(/\s+/g, ' ').t
 
 function collect(): News[] {
   const out: News[] = [];
+  // RAIDWEAPON §6 버닝 주말: 기간 중 맨 앞 (다른 소식과 4초마다 번갈아 · 한 번에 하나)
+  const burn = S.visiting ? '' : burnBandText();
+  if (burn) out.push({ key: 'burn', icon: '', text: burn, tail: `${burnLeftText()} 남음`, hot: false, keep: true, tap: () => toast('🔥 버닝 주말 — 사냥·의뢰 경험치·골드 2배 · 재료 1.5배 · 하늘 균열 조각 2배 · 토벌 도전 +1') });
   const m = el('#mission');
   if (m && !m.hidden && m.innerHTML) {
     const t = [txt(m.querySelector('b')), txt(m.querySelector('em'))].filter(Boolean).join(' · ');
@@ -133,7 +141,7 @@ function drawBand(now: number) {
   if (!band) return;
   const all = collect();
   const hot = all.filter((n) => n.hot);
-  const list = hot.length ? hot : all;
+  const list = hot.length ? all.filter((n) => n.hot || n.keep) : all;
   band.hidden = !list.length;
   if (!list.length) return (cur = null);
   if (now >= flipAt) {
@@ -147,9 +155,10 @@ function drawBand(now: number) {
   }
   cur = list[idx];
   shownKey = cur.key;
-  const html = `${cur.icon ? `<img src="${cur.icon}" alt="">` : ''}<span>${esc(cur.text)}</span>${list.length > 1 ? `<i>${idx + 1}/${list.length}</i>` : ''}`;
+  const html = `${cur.icon ? `<img src="${cur.icon}" alt="">` : ''}<span>${esc(cur.text)}</span>${cur.tail ? `<b class="ntail">${esc(cur.tail)}</b>` : ''}${list.length > 1 ? `<i>${idx + 1}/${list.length}</i>` : ''}`;
   if (band.innerHTML !== html) band.innerHTML = html;
   band.classList.toggle('hot', cur.hot);
+  band.classList.toggle('burn', cur.key === 'burn');
   band.setAttribute('aria-label', cur.text);
 }
 

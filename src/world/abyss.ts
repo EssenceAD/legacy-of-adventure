@@ -7,6 +7,7 @@ import { CONFIG } from '../data/config';
 import { REGION_BOSS, type BossLook } from '../combat/mons';
 import { REGIONS, type RegionId } from '../data/items';
 import { flag } from './flags';
+import { burnMats } from './burn';
 import { addFrags, exOn } from './frags';
 import { vis } from './visual';
 import { addBlessMin, gsState, kstWeek } from './goldsink';
@@ -163,7 +164,9 @@ export function floorLoot(f: number) {
 
 /** 층을 깼다: 보상 · 쉼터 · 기록 · 자랑 (bossRegion = 보스 층에 나온 보스의 지역) */
 export function clearFloor(f: number, bossRegion: RegionId | null = null, rng: () => number = Math.random, now = Date.now(), mode: AbyssMode = 'floor'): FloorReward {
-  const L = floorLoot(f);
+  // RAIDWEAPON §6 버닝: 층 재료·보스 재료 ×1.5 (가루는 재료가 아니라 그대로)
+  const L0 = floorLoot(f);
+  const L = { ...L0, mats: burnMats(L0.mats, rng), bossMats: burnMats(L0.bossMats, rng) };
   P.dust.n += L.dustN;
   P.dust.r += L.dustR;
   P.dust.e += L.dustE;

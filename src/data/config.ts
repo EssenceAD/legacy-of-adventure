@@ -1297,6 +1297,11 @@ export const CONFIG = {
    *  보상(금화 없음): 잿빛 가루 dustN[0] + dustN[1]×층 · 희귀 가루 1 + 층/dustREvery · 심연 재료 matBase + 층/matEvery · 보스 층: 보스 재료 bossMats · 영웅 가루 1 + 층/dustEEvery · 고유 장비 확률 ×uniqueMult
    *  이어하기 contBase × contGrow^층 · 자랑 층 · AUTO 「계속 오르기」 대기(초) */
   abyss: { grow: 1.07, bossEvery: 5, restEvery: 10, restMin: 30, dustN: [20, 2] as [number, number], dustREvery: 10, dustEEvery: 25, matBase: 2, matEvery: 10, bossMats: 2, uniqueMult: 2, contBase: 5000, contGrow: 1.15, cpEvery: 10, cpFeeMult: 0.5, brags: [25, 50, 100], autoNextSec: 3 },
+  /**
+   * RAIDWEAPON §6 (10/15 정정) 오픈 기념 버닝 주말 (flag burnWeekend) — 기간은 KST · end는 그 초까지 포함 · 서버 시각으로만 판정 (world/burn.ts)
+   *  expGold = 사냥·의뢰 경험치·금화 배수 · mats = 재료 드롭 배수(사냥·의뢰·심연·토벌 · 소수점은 확률로) · riftFrags = 하늘 균열 조각 배수 · raidTries = 토벌 하루 도전 +
+   */
+  burn: { start: '2026-10-17T00:00:00+09:00', end: '2026-10-18T23:59:59+09:00', expGold: 2, mats: 1.5, riftFrags: 2, raidTries: 1 },
   /** GOLDSINK §8 주사위 술내기: 목표 점수 · 그롬은 이번 차례 점수가 aiStop을 넘으면 멈춤 · 판돈 base × m(r) × 배수 · 주점 몫(판 전체의 cut) · 이기면 인연 +tieWin · 연승 업적 */
   dice: { goal: 3000, aiStop: 500, base: 1000, mults: [1, 2, 5, 10], cut: 0.1, tieWin: 2, streakGoal: 10, winLineEvery: 10, aiStepMs: 650 },
   /** CHECKIN §A2 「모아 보기」(플래그 storyInbox): 곁이야기가 하루(현실 날짜)에 저절로 뜨는 최대 수 · 모아 둔 단골 제안이 유효한 게임 시간(지나면 손님이 조용히 떠남) */

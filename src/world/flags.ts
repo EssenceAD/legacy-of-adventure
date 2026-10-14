@@ -181,6 +181,8 @@ export const FLAG_DEFAULTS = {
   abyssRush: false,
   /** RAIDWEAPON §2 전용 무기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 전설 14 + 다섯 별 5 = 19자루 · 그 영웅 ★5만 낌(전엔 가방에 「★5가 되면 깨어나요」) · 등급 「전용」(유물 규칙 그대로 · 바탕 = 가장 높은 지역 고유 무기 × 1.15 · 고정 옵션 = 스킬 값 50% + 일반 2) · 처음 낄 때 1.5초 빛기둥 컷 · ★5 알림 「유산 무기가 깨어날 준비가 됐어요」 · 무기 조각 10 = 선택 상자(영입한 영웅 중 고름) · 조각: 주간 토벌 첫 처치 1 · 연속 2·3번째 50% 1 · 심연 25층마다 1 · 회관 「토벌 전리품」 5 · 도감 「영웅」 탭 전용 무기 칸 (숫자 CONFIG.raidWeapon.ex · .frag) — 끄면 조각이 안 생기고 상자·컷·새 알림 없음 (가진 것은 그대로) */
   exWeapons: false,
+  /** RAIDWEAPON §6 (10/15 정정) 오픈 기념 버닝 주말 (꺼진 채 배포 · 릴리스 때 켬) — 기간 CONFIG.burn(10/17 00:00 ~ 10/18 23:59 KST · 서버 시각으로만 판정, 기기 시계 무시 · 서버 시각을 못 받았으면 꺼짐) · 사냥·의뢰 경험치·금화 ×2 · 재료 드롭(사냥·의뢰·심연·토벌) ×1.5 · 토벌 도전 +1 · 하늘 균열 조각 ×2(burnRiftMult) · 소식 띠 「🔥 오픈 기념 버닝 주말」 + 남은 시간 · 오른쪽 위 🔥 — 방치(꺼져 있던 동안) 보상엔 안 붙음 · 기간이 끝나면 저절로 꺼짐 (world/burn.ts) */
+  burnWeekend: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
@@ -190,11 +192,27 @@ export const flag = (k: FlagKey): boolean => flags[k] !== false;
  *  2분 넘게 다를 때만 쓴다 (Date는 초 단위 · 오프라인이면 0 = 기기 시계)
  */
 export let serverSkew = 0;
-export function noteServerDate(h: string | null | undefined, now = Date.now()) {
+/**
+ * RAIDWEAPON §6 버닝: 서버 시각 기준점 — Date 머리를 받은 순간의 { 서버 시각 · performance.now() · 기기 시계 }.
+ *  performance.now()는 기기 시계를 바꿔도 안 움직이므로 「기준점 + 지난 시간」은 시계 조작에 안 흔들린다.
+ *  (잠자기 동안 performance.now()가 멈추는 브라우저도 있어서 world/burn.ts는 기기 시계 쪽 추정과 둘 다 기간 안일 때만 켠다)
+ */
+export interface ServerAnchor {
+  server: number;
+  perf: number;
+  wall: number;
+}
+let anchor: ServerAnchor | null = null;
+export const serverAnchor = (): ServerAnchor | null => anchor;
+/** 시험용: 서버 기준점을 직접 (null = 못 받음) */
+export const setServerAnchor = (a: ServerAnchor | null) => (anchor = a);
+const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+export function noteServerDate(h: string | null | undefined, now = Date.now(), perf = perfNow()) {
   const t = h ? Date.parse(h) : NaN;
   if (!Number.isFinite(t)) return;
   const d = t - now;
   serverSkew = Math.abs(d) > 120000 ? d : 0;
+  anchor = { server: t, perf, wall: now };
 }
 /** 부팅 때 한 번 (2초 안에 못 받으면 기본값) */
 export async function loadFlags(base = import.meta.env.BASE_URL): Promise<void> {

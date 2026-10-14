@@ -87,5 +87,6 @@
   "outfits": false,
   "pets": false,
   "abyssRush": false,
-  "exWeapons": false
+  "exWeapons": false,
+  "burnWeekend": false
 }
