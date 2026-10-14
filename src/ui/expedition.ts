@@ -2,7 +2,7 @@
 import { vis, fsay } from '../world/visual';
 import { dropFanfare } from './fanfare';
 import { BASE_REGIONS } from '../data/items';
-import { huntRegionOpen } from '../world/hunt';
+import { activeAutos, huntRegionOpen, idleLines } from '../world/hunt';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
 import { GRADE_INFO, GRADES, REGIONS, regionById, type Grade } from '../data/items';
@@ -137,7 +137,7 @@ export function openBoard(tab?: number) {
   // 5단계: 사냥터 카드 (장부 1장) · 토벌은 장부 4장에 열린다 (5단계 전 저장은 그대로)
   const huntBest = REGIONS.map((r) => `${r.name} ${P.hunt.best[r.id] ?? 0}/10`).filter((_, i) => i === 0 || huntRegionOpen(i));
   const huntHtml = feature('hunt')
-    ? `<div class="qhd"><b class="g">사냥</b><span class="note">${P.hunt.auto ? '자동 사냥 중' : '스테이지 돌파 · 자동 반복'}</span></div><button class="raidcard hunt" id="rHunt"><img src="${iconSrc('m_hunt')}" alt=""><span><b>사냥터</b><small>${huntBest.join(' · ')}</small></span><em>사냥 ›</em></button>`
+    ? `<div class="qhd"><b class="g">사냥</b><span class="note">${activeAutos().length ? '자동 사냥 중' : '스테이지 돌파 · 자동 반복'}</span></div><button class="raidcard hunt" id="rHunt"><img src="${iconSrc('m_hunt')}" alt=""><span><b>사냥터</b><small>${huntBest.join(' · ')}</small></span><em>사냥 ›</em></button>`
     : `<div class="qlock">🔒 사냥터 — 장부 ${featureChapter('hunt')}장을 마치면 열려요</div>`;
   const raidHtml = feature('raid')
     ? `<div class="qhd"><b class="g">토벌</b><span class="note">오늘 남은 도전 ${triesLeft()}/${CONFIG.raid.triesPerDay} · 증표 ${P.tokens}</span></div>
@@ -601,7 +601,7 @@ export function showOffline(s: OfflineSummary) {
       ${s.levelUps.length ? `<div>· 레벨업: ${s.levelUps.map(esc).join(', ')}</div>` : ''}
       ${s.newChem.length ? `<div class="heart">· 새 케미: ${s.newChem.map(esc).join(', ')}</div>` : ''}
       ${s.harvested ? `<div>· 텃밭에서 채소 ${s.harvested}개를 거둬 뒀어요</div>` : ''}
-      ${s.hunt ? `<div>· 방치 사냥 ${esc(s.hunt.label)} ${s.hunt.clears}판 — 금화 +${fmt(s.hunt.gold)} · 경험치 +${fmt(s.hunt.xp)} · 재료 +${s.hunt.mats}${Object.keys(s.hunt.items).length ? ` · 장비 ${Object.values(s.hunt.items).reduce((a, b) => a + (b ?? 0), 0)}개` : ''} <small>(이미 금고에)</small></div>` : ''}
+      ${s.hunt ? idleLines(s.hunt).map((h) => `<div>· 방치 사냥 ${esc(h.label)} ${h.clears}판 — 금화 +${fmt(h.gold)} · 경험치 +${fmt(h.xp)} · 재료 +${h.mats}${Object.keys(h.items).length ? ` · 장비 ${Object.values(h.items).reduce((a, b) => a + (b ?? 0), 0)}개` : ''} <small>(이미 금고에)</small></div>`).join('') : ''}
     </div>
     <button class="bigbtn" id="offOk">모두 받기</button>`,
   );

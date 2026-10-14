@@ -19,7 +19,7 @@ import { appearance, powerOf } from '../world/adventurers';
 import { companionText, isCompanion, powerTips } from '../world/expeditions';
 import { featureChapter, guideHooks } from '../world/guide';
 import {
-  best, clearStage, failStage, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, stageOpen, stopAuto, sweepStage, type HuntReward,
+  autoSlotOf, autoSlots, best, clearStage, failStage, freeSlot, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, slotChapter, slotMembers, slotsOn, slotsOpen, stageOpen, stopAuto, sweepStage, type HuntReward,
 } from '../world/hunt';
 import { markDirty, P, type Actor } from '../world/state';
 import { skipFrame } from '../engine/fps';
@@ -68,6 +68,52 @@ let picked: number[] = [];
 /** 이번에 사용자가 파티를 직접 고쳤나 (지도로 돌아가면 풀린다) */
 let manualPick = false;
 
+// ───────── PACE §2 맡겨 둔 사냥 여러 칸 (플래그 huntSlots) ─────────
+/** 칸 카드 「+ 맡기기」로 고른 칸 (사냥 창 밖에서 다시 열면 풀린다) */
+let slotTarget: number | null = null;
+/** 「맡겨 두기」가 들어갈 칸: 고른 칸 → 첫 빈 칸 → 0번 칸(바꾸기 · 예전처럼) · 끔이면 늘 0 */
+function targetSlot(): number {
+  if (!slotsOn()) return 0;
+  if (slotTarget != null && slotTarget < slotsOpen()) return slotTarget;
+  const f = freeSlot();
+  return f >= 0 ? f : 0;
+}
+/** 맡겨 두기 (준비 창 · 결과 창 두 가지 — 같은 함수) · at = 토스트 앞말 (켬: 「2칸 · 」 · 끔: 없음) */
+function keepAuto(r: RegionId, s: number, ms: Actor[]): { err: string | null; at: string } {
+  const slot = targetSlot();
+  const err = setAuto(r, s, ms, slot);
+  if (!err) slotTarget = null;
+  return { err, at: slotsOn() ? `${slot + 1}칸 · ` : '' };
+}
+/** 이 손님이 다른 칸에 맡겨져 있으면 그 이유 (끔이면 늘 null) — 한 손님은 한 곳에만 */
+function slotBusy(a: Actor, target: number): string | null {
+  if (!slotsOn() || !a.id) return null;
+  const i = autoSlotOf(a.id, target);
+  return i >= 0 ? `맡겨 둔 사냥 ${i + 1}칸` : null;
+}
+/** 사냥 창 맨 위 칸 카드 줄: 지역-스테이지 · 파티 얼굴 4 · 판 수 · 재료 2 · [멈추기] / 「+ 맡기기」 / 「장부 ○장에 열려요」 */
+function slotCards(): string {
+  const open = slotsOpen();
+  const slots = autoSlots();
+  const used = slots.filter(Boolean).length;
+  const cards = Array.from({ length: H.slotsMax }, (_, i) => {
+    if (i >= open) {
+      const ch = slotChapter(i);
+      return `<div class="hslot lock"><b>${i + 1}칸</b><small>${ch ? `장부 ${ch}장에 열려요` : '곧 열려요'}</small></div>`;
+    }
+    const a = slots[i];
+    if (!a) return `<button class="hslot add${slotTarget === i ? ' on' : ''}" data-hadd="${i}"><b>+ 맡기기</b><small>${i + 1}칸</small></button>`;
+    const reg = REGIONS[regionIdx(a.region)];
+    const faces = slotMembers(a)
+      .slice(0, 4)
+      .map((m) => `<img src="${pic(m)}" alt="">`)
+      .join('');
+    const mats = `<i>${esc(reg.mat)} +${fmt(a.mats ?? 0)}</i>` + (isBoss(a.stage) ? `<i>${esc(regionBossOf(a.region).mat)}</i>` : '');
+    return `<div class="hslot" style="--rc:${themeOf(a.region).band}"><b>${esc(reg.name)} ${stageName(a.region, a.stage)}</b><span class="hsf">${faces}</span><small>${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</small><span class="hsm">${mats}</span><button class="bigbtn ghost sm" data-hstop="${i}">멈추기</button></div>`;
+  }).join('');
+  return `<div class="hslots"><p class="sub"><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 <b class="g">${used}/${open}</b></p><div class="hsrow">${cards}</div></div>`;
+}
+
 // ───────── 스테이지 지도 ─────────
 
 /** 장부 「자동 사냥 켜 보기」: 깬 가장 높은 숲 스테이지 준비 창 */
@@ -78,9 +124,11 @@ guideHooks.autoHuntPrep = () => {
   return true;
 };
 
-export function openHunt(region?: RegionId) {
+export function openHunt(region?: RegionId, keepSlot = false) {
   if (!huntRegionOpen(0)) return toast(`사냥터는 장부 ${featureChapter('hunt')}장을 마치면 열려요`);
   manualPick = false;
+  if (!keepSlot) slotTarget = null;
+  const slotsHtml = slotsOn() ? slotCards() : '';
   if (region) curRegion = region;
   if (!huntRegionOpen(regionIdx(curRegion))) curRegion = 'forest';
   // 전투 2차: 5지역 × 10스테이지 모두 새 전투
@@ -103,10 +151,10 @@ export function openHunt(region?: RegionId) {
   const reg = REGIONS[regionIdx(curRegion)];
   openWin(
     '사냥터',
-    `<div class="tabs">${tabs}${abyssOpen() ? `<button class="tab abtab" id="hAbyss" style="--rc:${themeOf('deep').band}">끝없는 심연</button>` : ''}${huntRegionOpen(5) ? '<button class="tab fishtab" id="hFish" title="해안 낚시">🎣</button>' : ''}</div>
+    `${slotsHtml}<div class="tabs">${tabs}${abyssOpen() ? `<button class="tab abtab" id="hAbyss" style="--rc:${themeOf('deep').band}">끝없는 심연</button>` : ''}${huntRegionOpen(5) ? '<button class="tab fishtab" id="hFish" title="해안 낚시">🎣</button>' : ''}</div>
     <p class="sub">${esc(reg.name)} · 최고 돌파 <b class="g">${b ? stageName(curRegion, b) : '없음'}</b> · 증표 조각 ${P.hunt.shards}/${H.shardsPerToken}</p>
     <div class="hmap" style="--rc:${themeOf(curRegion).band}">${cells}</div>
-    <div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>
+    ${slotsHtml ? '' : `<div class="hauto">${a ? `<span><img src="${iconSrc('skill_auto')}" alt=""> 맡겨 둔 사냥 · <b>${esc(REGIONS[regionIdx(a.region)].name)} ${stageName(a.region, a.stage)}</b> · ${fmt(a.n ?? 0)}판 · 💰+${fmt(a.gold ?? 0)}</span><button class="bigbtn ghost sm" id="hStop">멈추기</button>` : `<span class="note">깬 스테이지를 누르고 「맡겨 두기」 → 마을에 있어도 계속 사냥해요 · 꺼 둬도 가장 높은 스테이지 기준으로 방치 보상</span>`}</div>`}
     ${taperLine()}<p class="note">무리를 쓰러뜨려 처치 목표를 채우면 정예가 나와요 · ${H.stages}스테이지는 지역 보스</p>`,
     'huntw',
   );
@@ -116,7 +164,27 @@ export function openHunt(region?: RegionId) {
         // HOTFIX14 §3: 잠긴 지역은 무엇을 깨면 열리는지 (예전엔 disabled 라 눌러도 아무 반응이 없었다)
         const i = regionIdx(el.dataset.r as RegionId);
         if (!huntRegionOpen(i)) return toast(i ? `${REGIONS[i - 1].name} ${H.stages}(보스)을 깨면 열려요` : '사냥터는 아직 잠겨 있어요');
-        openHunt(el.dataset.r as RegionId);
+        openHunt(el.dataset.r as RegionId, true);
+      }),
+  );
+  $$('[data-hstop]').forEach(
+    (el) =>
+      (el.onclick = () => {
+        stopAuto('user', +el.dataset.hstop!);
+        openHunt(curRegion, true);
+      }),
+  );
+  $$('[data-hadd]').forEach(
+    (el) =>
+      (el.onclick = () => {
+        slotTarget = +el.dataset.hadd!;
+        // 지금 지역에서 깬 가장 높은 스테이지 준비 창으로 (지도로 돌아가 다른 스테이지를 골라도 이 칸에 맡긴다)
+        const top = best(curRegion);
+        if (!top) {
+          toast('깬 스테이지만 맡길 수 있어요 · 스테이지를 골라요');
+          return openHunt(curRegion, true);
+        }
+        openHuntPrep(curRegion, top);
       }),
   );
   $$('[data-s]').forEach((el) => (el.onclick = () => openHuntPrep(curRegion, +el.dataset.s!)));
@@ -148,7 +216,11 @@ function openHuntPrep(r: RegionId, s: number) {
   // PARTY §3: 4번째 자리 (훈련장 Lv5 + 장부) — 열리는 순간이면 모모 편지
   checkParty4();
   const max = huntPartyMax();
-  const crew = huntCrew().sort((a, b) => powerOf(b) - powerOf(a));
+  // PACE §2 huntSlots: 다른 칸에 맡긴 손님은 빠진다 (흐리게 + 「맡겨 둔 사냥 n칸」) · 끔이면 예전 그대로
+  const tgt = targetSlot();
+  const crew = huntCrew()
+    .filter((a) => !slotBusy(a, tgt))
+    .sort((a, b) => powerOf(b) - powerOf(a));
   picked = picked.filter((id) => crew.some((a) => a.id === id));
   // 직접 고친 파티가 아니면, 빈자리는 돌아온 단골 중 가장 센 순서로 채운다
   // PARTY §3: 4번째 자리가 막 열렸으면 그 칸은 비워 둔다 (반짝 · 직접 채워 보게)
@@ -165,7 +237,8 @@ function openHuntPrep(r: RegionId, s: number) {
   const goal = isBoss(s) ? `${CONFIG.combat.bossKillGoal}마리 → 보스 ${REGION_BOSS[r].name}` : `${Math.round(CONFIG.combat.killGoal[0] + ((CONFIG.combat.killGoal[1] - CONFIG.combat.killGoal[0]) * (s - 1)) / 8)}마리 → 정예`;
   // J6 partyRulesV2: 원정 중인 사람도 흐리게 + 「원정 중 n분」 · 지친 사람은 「체력 n · 지쳤어요」 (사냥은 지쳐도 갈 수 있음)
   const v2 = rulesV2();
-  const away = v2 ? partyPool().filter((a) => partyBlock(a, 'hunt')).sort((a, b) => powerOf(b) - powerOf(a)) : [];
+  const blockOf = (a: Actor) => partyBlock(a, 'hunt') ?? slotBusy(a, tgt);
+  const away = v2 ? partyPool().filter((a) => blockOf(a)).sort((a, b) => powerOf(b) - powerOf(a)) : [];
   const rows =
     crew
       .map((a) => {
@@ -173,24 +246,29 @@ function openHuntPrep(r: RegionId, s: number) {
         return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${picked[0] === a.id ? '<b class="g">대장</b> ' : ''}${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}${mentorBadge(a, ms)}<small>${isCompanion(a) ? `${companionText(a)} · ` : ''}${(v2 && partyNote(a, 'hunt')) || `체력 ${Math.round(a.hp)}`}</small></span><em>${fmt(powerOf(a))}</em></button>`;
       })
       .join('') +
-    away.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'hunt')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+    away.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${roleIcon(a)}${nameTag(a)} Lv.${a.lvl}<small>${esc(blockOf(a)!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
   // 핫픽스 10 (11-1): 버튼마다 한 줄 설명 · 깬 스테이지면 「맡겨 두기」가 맨 위 큰 버튼, 아니면 직접 사냥이 맨 위
   const dis = ms.length ? '' : 'disabled';
   const opt = (id: string, cls: string, label: string, desc: string) => `<div class="hopt"><button class="bigbtn ${cls}" id="${id}" ${dis}>${label}</button><small>${desc}</small></div>`;
   const man = opt('hMan', cleared ? 'ghost' : 'red', '직접 사냥', '내가 조작 · 평가 보너스 S +30% · A +15%');
   const watch = opt('hAuto1', 'ghost', '전투 보기 (AUTO)', '화면을 보면서 자동으로 싸워요 · 기본 보상');
-  const keep = opt('hRepeat', 'keep', '맡겨 두기 · 마을에서 계속 사냥', `화면 안 봐도 돼요 · 마을에 있어도 ${H.autoSeconds}초마다 한 판`);
+  const keep = opt(
+    'hRepeat',
+    'keep',
+    '맡겨 두기 · 마을에서 계속 사냥',
+    slotsOn() ? `${tgt + 1}칸에 맡겨요${autoSlots()[tgt] ? ' (바꾸기)' : ''} · 마을에 있어도 ${H.autoSeconds}초마다 한 판` : `화면 안 봐도 돼요 · 마을에 있어도 ${H.autoSeconds}초마다 한 판`,
+  );
   const sweepB = opt('hSweep', 'ghost', '소탕', '전투 없이 바로 · 보상 70% (첫 돌파 보상 없음)');
   const hopts = cleared ? [keep, man, watch, sweepB] : [man, watch];
   if (vis('heroCards')) {
     // CHECKIN §J6 카드 덱: 맨 위 [추천 편성][맨 위 행동(맡겨 두기 / 직접 사냥)] · 나머지 행동은 격자 아래
-    const top = cleared ? `<button class="bigbtn keep" id="hRepeat" ${dis}>맡겨 두기</button>` : `<button class="bigbtn red" id="hMan" ${dis}>직접 사냥</button>`;
+    const top = cleared ? `<button class="bigbtn keep" id="hRepeat" ${dis}>${slotsOn() ? `${tgt + 1}칸에 맡겨 두기` : '맡겨 두기'}</button>` : `<button class="bigbtn red" id="hMan" ${dis}>직접 사냥</button>`;
     const cfg: DeckCfg = {
       where: 'hunt',
       pool: v2 ? partyPool() : crew,
       sel: ms,
       max,
-      block: (a) => (v2 ? partyBlock(a, 'hunt') : crew.includes(a) ? null : '원정 중'),
+      block: (a) => (v2 ? blockOf(a) : crew.includes(a) ? null : (slotBusy(a, tgt) ?? '원정 중')),
       note: (a) => (v2 ? partyNote(a, 'hunt') : null),
       extra: (a) => mentorBadge(a, ms),
       lead: true,
@@ -256,15 +334,15 @@ function openHuntPrep(r: RegionId, s: number) {
       trackEv('party_recommend', { where: 'hunt', action: 'use', n: picked.length });
       keepScroll(() => openHuntPrep(r, s));
     };
-  $('#hBack').onclick = () => openHunt(r);
+  $('#hBack').onclick = () => openHunt(r, true);
   $('#hMan').onclick = () => go(true);
   $('#hAuto1').onclick = () => go(false);
   const rp = document.getElementById('hRepeat');
   if (rp)
     rp.onclick = () => {
-      const err = setAuto(r, s, ms);
+      const { err, at } = keepAuto(r, s, ms);
       if (err) return toast(err);
-      toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
+      toast(at + fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
       openHunt(r);
     };
   const sw = document.getElementById('hSweep');
@@ -627,10 +705,10 @@ function showHuntResult(view: BattleView, r: RegionId, s: number, members: Actor
   const rp = document.getElementById('hRep');
   if (rp)
     rp.onclick = () => {
-      const err = setAuto(r, s, members);
+      const { err, at } = keepAuto(r, s, members);
       if (err) return toast(err);
       done();
-      toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)}`, `${stageName(r, s)} 맡아 둘게요`));
+      toast(at + fsay(`맡겨 두기 시작 · ${stageName(r, s)}`, `${stageName(r, s)} 맡아 둘게요`));
     };
   const mp = document.getElementById('hMap');
   if (mp)
@@ -790,10 +868,10 @@ function bindResult(card: HTMLElement, r: RegionId, s: number, ms: Actor[], clos
     openHunt(to);
   });
   on('cKeep', () => {
-    const err = setAuto(r, s, ms);
+    const { err, at } = keepAuto(r, s, ms);
     if (err) return toast(err);
     close();
-    toast(fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
+    toast(at + fsay(`맡겨 두기 시작 · ${stageName(r, s)} (${H.autoSeconds}초마다 한 판)`, `${stageName(r, s)} 맡아 둘게요 (${H.autoSeconds}초마다 한 판)`));
   });
   on('cMap', () => {
     close();

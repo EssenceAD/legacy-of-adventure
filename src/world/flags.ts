@@ -129,6 +129,8 @@ export const FLAG_DEFAULTS = {
   checkinFx: false,
   /** CHECKIN §J3 글 대신 카드 (형철 확인 전 꺼짐 · vis()) — 전투 결과 별 1~3·MVP·드랍 칸 · 의뢰·부탁 한 줄 카드(아이콘·진행 막대·보상 칸) · 건설 그림 타일(못 지으면 어둡게 + 모자란 금화만 빨간 숫자) · 레벨업·해금 가운데 배너 1초 */
   uiCards: false,
+  /** PACE §2 자동 사냥 여러 파티 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 맡겨 둔 사냥 1칸 → 장부 4장 2칸 · 6장 3칸 (CONFIG.hunt.slotsMax) · 한 손님은 한 칸에만 · 칸마다 지역·스테이지·추천 조건 따로 · 2·3칸 금화 ×slotGold · 방치 장비 상한·방치 금화 상한은 칸 전체 하나 · 사냥 창 맨 위 칸 카드 줄 · 끄면 0번 칸만(예전 그대로, 1·2번 칸은 저장에 남고 멈춤) */
+  huntSlots: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

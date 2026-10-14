@@ -12,6 +12,7 @@ import { iconSrc } from './kit';
 import { loadPatchNotes } from './update';
 import { closeWin, openWin, toast } from './windows';
 import { fsay } from '../world/visual';
+import { idleLines } from '../world/hunt';
 
 const awayText = (sec: number) => {
   const d = Math.floor(sec / 86400);
@@ -47,7 +48,8 @@ export function showWelcome(s: OfflineSummary) {
     items ? `얻은 장비: ${items}` : '',
     s.levelUps.length ? `레벨업: ${s.levelUps.map(esc).join(', ')}` : '',
     s.newChem.length ? `<span class="heart">새 케미: ${s.newChem.map(esc).join(', ')}</span>` : '',
-    s.hunt ? `방치 사냥 ${esc(s.hunt.label)} ${s.hunt.clears}판` : '',
+    // PACE §2 huntSlots: 칸이 여럿이면 칸마다 한 줄 (하나면 예전 그대로)
+    ...(s.hunt ? idleLines(s.hunt).map((h) => `방치 사냥 ${esc(h.label)} ${h.clears}판${s.hunt!.slots ? ` · 금화 +${fmt(h.gold)} · 재료 +${h.mats}` : ''}`) : []),
   ].filter(Boolean);
   openWin(
     '다녀오셨어요',

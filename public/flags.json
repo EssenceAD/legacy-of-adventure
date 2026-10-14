@@ -61,5 +61,6 @@
   "heroDotV2": true,
   "smithOne": true,
   "checkinFx": false,
-  "uiCards": false
+  "uiCards": false,
+  "huntSlots": false
 }

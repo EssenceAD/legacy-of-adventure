@@ -69,7 +69,11 @@ for (const f of files) {
       const objs = W.home?.objs ?? W.objs;
       const mailGold = P.meta.mail.filter((m) => !m.claimed).reduce((t, m) => t + (m.reward?.gold ?? 0), 0);
       const heroes = Object.values(P.dex.heroes).filter((h) => h?.recruited).length + Object.values(P.legends).filter((l) => l?.st === 'joined').length;
-      return { buildings: objs.length, items: P.bag.length, gold: Math.floor(S.gold), mailGold, heroes, land: S.land, enh: P.bag.map((it) => [it.id, it.enh]) };
+      // PACE §2: 맡겨 둔 사냥 (auto = 0번 칸 · autos[0]이 같아야)
+      const au = P.hunt.auto;
+      const hunt = au ? `${au.region}-${au.stage}` : null;
+      const a0 = P.hunt.autos?.[0];
+      return { buildings: objs.length, items: P.bag.length, gold: Math.floor(S.gold), mailGold, heroes, land: S.land, enh: P.bag.map((it) => [it.id, it.enh]), hunt, huntSync: !Array.isArray(P.hunt.autos) || P.hunt.autos.length === 0 || (a0 ? `${a0.region}-${a0.stage}` : null) === hunt };
     });
   } catch (e) {
     errs.push('불러오기 실패: ' + String(e).slice(0, 120));
@@ -82,6 +86,11 @@ for (const f of files) {
     if (after.gold + after.mailGold < before.gold) lost.push(`금화 ${before.gold}→${after.gold}(+우편 ${after.mailGold})`);
     if (after.heroes < before.heroes) lost.push(`영웅 ${before.heroes}→${after.heroes}`);
     if (after.land < before.land) lost.push(`땅 ${before.land}→${after.land}`);
+    // PACE §2: 맡겨 둔 사냥이 있던 저장은 불러온 뒤에도 그대로 돌아야 (autos[0] = auto)
+    const ha = s.progress?.hunt?.auto;
+    before.hunt = ha ? `${ha.region}-${ha.stage}` : null;
+    if (before.hunt && after.hunt !== before.hunt) lost.push(`맡겨 둔 사냥 ${before.hunt}→${after.hunt}`);
+    if (!after.huntSync) lost.push('autos[0] ≠ auto');
     const em = new Map(after.enh);
     const down = (s.progress?.bag ?? []).filter((it) => em.has(it.id) && em.get(it.id) < it.enh);
     if (down.length) lost.push(`강화 수치 낮아짐 ${down.length}개`);
@@ -103,7 +112,7 @@ for (const f of files) {
     }
   }
   if (lost.length) fail++;
-  rows.push(`${lost.length ? '✗' : '✓'} ${f} v${s.version} · 건물 ${before.buildings}→${after?.buildings ?? '?'} · 아이템 ${before.items}→${after?.items ?? '?'} · 금화 ${before.gold}→${after?.gold ?? '?'}${after?.mailGold ? `(+우편 ${after.mailGold})` : ''} · 영웅 ${before.heroes}→${after?.heroes ?? '?'} · 땅 ${before.land}→${after?.land ?? '?'}${before.enhSum != null ? ` · 강화 합 ${before.enhSum} 그대로` : ''}${lost.length ? '  ← ' + lost.join(', ') : ''}`);
+  rows.push(`${lost.length ? '✗' : '✓'} ${f} v${s.version} · 건물 ${before.buildings}→${after?.buildings ?? '?'} · 아이템 ${before.items}→${after?.items ?? '?'} · 금화 ${before.gold}→${after?.gold ?? '?'}${after?.mailGold ? `(+우편 ${after.mailGold})` : ''} · 영웅 ${before.heroes}→${after?.heroes ?? '?'} · 땅 ${before.land}→${after?.land ?? '?'}${before.enhSum != null ? ` · 강화 합 ${before.enhSum} 그대로` : ''}${before.hunt ? ` · 맡겨 둔 사냥 ${before.hunt}→${after?.hunt ?? '?'}` : ''}${lost.length ? '  ← ' + lost.join(', ') : ''}`);
   await ctx.close();
 }
 console.log(rows.join('\n'));

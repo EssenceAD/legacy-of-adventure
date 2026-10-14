@@ -27,7 +27,7 @@ import type { Building } from '../world/state';
 import { openNotices } from './notice';
 import { openBoard, openRunLog, runsWaiting } from './expedition';
 import { syncGuide } from './guide';
-import { autoTick } from '../world/hunt';
+import { activeAutos, autoTick } from '../world/hunt';
 import { iconSrc } from './kit';
 import { openHunt, unfoldHunt } from './hunt';
 import { landHint } from '../world/render';
@@ -601,7 +601,9 @@ let runbarKey = '';
 function updateRunbar() {
   const bar = $('#runbar');
   const runs = S.visiting ? [] : PG.runs.filter((r) => !r.claimed).slice(0, CONFIG.expedition.maxParties);
-  const au = S.visiting ? null : PG.hunt.auto;
+  // PACE §2 huntSlots: 맡겨 둔 칸이 여럿이면 한 줄로 합쳐서 (「⚔ 맡겨 둔 사냥 3칸 · 36판 · 💰+…」) · 하나면 예전 줄 그대로
+  const autos = S.visiting ? [] : activeAutos();
+  const au = autos.length ? autos[0].a : null;
   const fo = S.visiting ? null : foldInfo();
   bar.hidden = !runs.length && !au && !fo;
   if (bar.hidden) {
@@ -614,7 +616,7 @@ function updateRunbar() {
   }
   const now = Date.now();
   // 핫픽스 6: 접힌 「진행 중」 띠 한 줄(아이콘 + 남은 시간) · 누르면 위로 펼쳐 원정·자동 사냥 줄이 나온다
-  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}` : '') + (fo ? `|f${fo.region}${fo.stage}${fo.done ? 'd' : ''}` : '');
+  const key = runs.map((r) => r.id + (r.result ? 'd' : '')).join(',') + (au ? `|h${au.region}${au.stage}${autos.length > 1 ? `x${autos.length}` : ''}` : '') + (fo ? `|f${fo.region}${fo.stage}${fo.done ? 'd' : ''}` : '');
   if (key !== runbarKey) {
     runbarKey = key;
     const chips = runs.map((r) => `<span class="rc" data-rc="${r.id}"><img src="${iconSrc('m_expedition', true)}" alt=""><em></em></span>`).join('');
@@ -626,7 +628,7 @@ function updateRunbar() {
       .join('')}</div>${hline}${runs.length ? `<button class="px rbstrip" id="rbStrip" aria-label="진행 중 펼치기">${chips}<s>${rbOpen ? '▾' : '▴'}</s></button>` : ''}`;
     bar.querySelectorAll<HTMLElement>('[data-rb]').forEach((b) => (b.onclick = () => openRunLog(PG.runs.find((r) => r.id === +b.dataset.rb!)!)));
     const hb = document.getElementById('rbHunt');
-    if (hb && au) hb.onclick = () => openHunt(au.region as never);
+    if (hb && au) hb.onclick = () => openHunt(autos.length > 1 ? undefined : (au.region as never));
     // 핫픽스 10 §13: 접어 둔 전투 — 누르면 다시 펼치기 (끝났으면 결과 카드)
     const fb = document.getElementById('rbFold');
     if (fb) fb.onclick = () => unfoldHunt();
@@ -649,7 +651,10 @@ function updateRunbar() {
   if (hb && au) {
     const f = Math.min(1, (now - PG.hunt.idleAt) / (CONFIG.hunt.autoSeconds * 1000));
     (hb.querySelector('u') as HTMLElement).style.width = f * 100 + '%';
-    const t = `⚔ ${regionById(au.region as never).name.slice(0, 2).trim()} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage} 사냥 중 · ${fmt(au.n ?? 0)}판 · 💰+${fmt(au.gold ?? 0)}`;
+    const t =
+      autos.length > 1
+        ? `⚔ 맡겨 둔 사냥 ${autos.length}칸 · ${fmt(autos.reduce((s, x) => s + (x.a.n ?? 0), 0))}판 · 💰+${fmt(autos.reduce((s, x) => s + (x.a.gold ?? 0), 0))}`
+        : `⚔ ${regionById(au.region as never).name.slice(0, 2).trim()} ${REGIONS.findIndex((x) => x.id === au.region) + 1}-${au.stage} 사냥 중 · ${fmt(au.n ?? 0)}판 · 💰+${fmt(au.gold ?? 0)}`;
     const tb = hb.querySelector('b')!;
     if (tb.textContent !== t) tb.textContent = t;
   }

@@ -801,8 +801,12 @@ export const CONFIG = {
     idleRate: 0.25,
     /** 방치 판 하나의 보상 비율 (금화·경험치·재료) */
     idleReward: 0.5,
-    /** 방치 장비는 이 개수까지 */
+    /** 방치 장비는 이 개수까지 (huntSlots: 칸 전체를 합쳐서) */
     idleItemsMax: 8,
+    /** PACE §2 (플래그 huntSlots): 맡겨 둘 칸 최대 · 2칸째·3칸째가 열리는 장부 장 · 2칸째부터 금화 배수 (GOLDSINK autoGoldMult 위에 곱 · 하루 판 수는 칸 전체가 같이 센다) — 명세 0.4 → 실세이브 시뮬레이션(최악 3칸 중복 · 헤비 하루)에서 +15% 이내로 0.2 (reports/pace/hunt.md) */
+    slotsMax: 3,
+    slotChapters: [4, 6],
+    slotGold: 0.2,
   },
   /** 4단계: 주인공 · 인연 · 방랑의 불씨 · 엔딩 */
   owner: {

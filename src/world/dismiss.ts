@@ -8,6 +8,7 @@ import { makeAdventurer } from './adventurers';
 import { equip } from './items';
 import { markDirty, P, S, world, type Actor } from './state';
 import { capacity, entrance } from './town';
+import { autoSlotOf } from './hunt';
 
 const D = () => CONFIG.dismiss;
 export interface FormerReg {
@@ -32,7 +33,8 @@ export function dismissWhy(a: Actor): string | null {
   if (a.cameo) return '지나가는 개척자예요';
   if (a.heroId || a.legendId || a.status === 'hero') return '영웅·전설 동료는 내보낼 수 없어요';
   if (a.runId != null) return '원정 중이에요';
-  if (P.hunt.auto?.members?.includes(a.id)) return '사냥 중이에요 (맡겨 두기)';
+  // PACE §2 huntSlots: 맡겨 둔 칸 어디든 (끔이면 0번 칸 = 예전 P.hunt.auto)
+  if (a.id && autoSlotOf(a.id) >= 0) return '사냥 중이에요 (맡겨 두기)';
   if (a.leaving) return '이미 떠나는 중이에요';
   if (a.role || !a.id) return '손님이 아니에요';
   return null;
