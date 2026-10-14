@@ -20,6 +20,7 @@ import { partySpecial, rollUnique } from './uniques';
 import { partySynMult, synergyFx } from './synergy';
 import { autoGoldMult, blessFx, gsState } from './goldsink';
 import { takeUniqueBoost } from './favors';
+import { settleAuto } from './harvest';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -218,6 +219,8 @@ export function autoTick(now = Date.now()): HuntReward | null {
     return null;
   }
   const out = clearStage(a.region as RegionId, a.stage, ms, 1, true, true);
+  // HARVEST §1-4: 맡겨 둔 사냥도 호박 도깨비를 센다 (판마다 한 마리 확률 · 대왕 차례면 같이)
+  settleAuto(a.region, a.stage);
   a.n = (a.n ?? 0) + 1;
   a.gold = (a.gold ?? 0) + out.gold;
   return out;

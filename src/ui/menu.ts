@@ -1,5 +1,11 @@
 // 5단계 4장: 아이콘 격자 메뉴 (여관 · 모험 · 수집 · 교류 · 상점 · 시스템) — 잠긴 것도 보이게(자물쇠 + 열리는 조건)
 // + 업적 · 칭호 · 출석 · 상점 · 우편함 · 안내서 · 설정 · 임무 목록
+import { almanacDot, almanacOn } from '../world/almanac';
+import { daybookDot, daybookOn } from '../world/daybook';
+import { harvestShopOn, hvNow, hvPhase, launched, shopDot } from '../world/harvest';
+import { openAlmanac } from './almanac';
+import { openDaybook } from './daybook';
+import { bindShopTabs, openHarvestShop, shopHooks, shopTabsHtml } from './harvest';
 import { tileDot } from './redDots';
 import { ACHIEVEMENTS } from '../data/achieve';
 import { flag, type FlagKey } from '../world/flags';
@@ -83,7 +89,9 @@ function groups(): [string, Item[]][] {
       { icon: 'm_expedition', name: '원정', open: () => openBoard(), dot: tileDot('exp') },
       { icon: 'm_raid', name: '토벌', open: () => openBoard(), lock: gate('raid') },
       { icon: 'm_rank', name: '랭킹', open: () => void openRank() },
-      { icon: 'm_quest', name: '오늘의 목표', open: () => openGoals(), dot: tileDot('goals') },
+      // CHECKIN §D1: 장부가 켜지면 「오늘의 목표」 칸 = 오늘의 장부 (목표·부탁은 그 안 탭) · §D2 여관 연감 (시즌 중)
+      daybookOn() ? { icon: 'm_quest' as IconKey, name: '오늘의 장부', open: () => openDaybook(0), dot: daybookDot() } : { icon: 'm_quest' as IconKey, name: '오늘의 목표', open: () => openGoals(), dot: tileDot('goals') },
+      ...(almanacOn() ? [{ icon: 'stamp_almanac' as IconKey, name: '여관 연감', open: () => openAlmanac(), dot: almanacDot() }] : []),
     ]],
     ['수집', [
       { icon: 'm_dex', name: '도감', open: () => openDex() },
@@ -105,6 +113,8 @@ function groups(): [string, Item[]][] {
     ['상점', [
       { icon: 'm_shop', name: '상점', open: () => openShop(), lock: shopOpen() ? null : `장부 ${featureChapter('shop')}장` },
       { icon: 'm_attendance', name: '출석', open: () => openAttend() },
+      // HARVEST §1-5: 수확제 교환소 (기간 + 3일)
+      ...(harvestShopOn() ? [{ icon: 'cur_ribbon' as IconKey, name: '수확제 교환소', open: () => openHarvestShop(), dot: shopDot() }] : []),
     ]],
     ['시스템', [
       { icon: 'm_account', name: online() ? '계정' : '로그인', open: () => openAccount() },
@@ -333,7 +343,7 @@ export function openShop() {
   };
   openWin(
     '상점',
-    `<p class="sub">금화 <b class="g">${fmt(S.gold)}</b> · 오늘의 진열은 매일 바뀌어요</p>
+    `${shopTabsHtml()}<p class="sub">금화 <b class="g">${fmt(S.gold)}</b> · 오늘의 진열은 매일 바뀌어요</p>
     <div class="qhd"><b class="g">오늘의 진열</b></div><div class="shop">${P.meta.shop.items.map((id) => row(id, true)).join('')}</div>
     <div class="qhd"><b class="g">늘 파는 것</b></div><div class="shop">${SHOP_FIXED.map((x) => row(x.id, false)).join('')}<div class="irow shopi"><img src="${iconSrc('m_bond')}" alt=""><span>선물 가게<small>인연 선물 12종</small></span><button id="shGift">가기</button></div></div>`,
   );
@@ -348,6 +358,8 @@ export function openShop() {
       }),
   );
   $('#shGift').onclick = () => (P.owner ? openGifts() : toast('주인을 만들면 열려요'));
+  // HARVEST §1-5: 「수확제」 탭 = 교환소 창
+  bindShopTabs();
 }
 
 // ───────── 설정 (예전 메뉴의 설정 칸) ─────────
@@ -574,6 +586,8 @@ export const MANUAL: { key: string; icon: IconKey; title: string; lines: string[
 /** 창 제목 → 안내서 쪽 */
 export const HELP_OF: [RegExp, string][] = [
   [/^원정|의뢰/, 'expedition'], [/^사냥/, 'hunt'], [/^토벌/, 'raid'], [/^건설|땅 넓히기/, 'build'], [/^손님|단골/, 'guests'], [/대장간|텃밭/, 'smith'], [/^도감/, 'dex'],
+  // HARVEST §1-9 · CHECKIN §D
+  [/^수확제/, 'harvest'], [/^오늘의 장부|^여관 연감/, 'daybook'],
   [/^주인|^인연|선물/, 'owner'], [/^업적|^칭호/, 'collect'], [/^상점|^출석|^우편함/, 'shop'], [/장부|오늘의 목표/, 'start'],
   // DIRECTION: 여정 → 이야기 쪽 · 소문 보내기 → 이웃·채팅 쪽
   [/^여정/, 'story'], [/^소문 보내기/, 'social'],
@@ -586,7 +600,15 @@ export const manualLines = (lines: string[]) =>
     if (!m) return [l];
     return vis(m[2] as FlagKey) === (m[1] === '@') ? [l.slice(m[0].length)] : [];
   });
+/** HARVEST §1-9: 수확제·장부 쪽은 수확제 시작 시각부터 · 수확제가 끝나면 제목에 「(끝남)」 */
+export function manualPages(now = hvNow()) {
+  const ph = hvPhase(now);
+  return MANUAL.filter((p) => (p.key !== 'harvest' || (flag('harvestFest') && ph !== 'before')) && (p.key !== 'daybook' || launched(now))).map((p) =>
+    p.key === 'harvest' && (ph === 'shop' || ph === 'after') ? { ...p, title: `${p.title} (끝남${ph === 'shop' ? ' · 교환소는 11/8까지' : ''})` } : p,
+  );
+}
 export function openManual(key?: string) {
+  const MANUAL = manualPages();
   const page = MANUAL.find((p) => p.key === key);
   if (page) {
     openWin(`안내서 · ${page.title}`, `<div class="mpage"><img src="${iconSrc(page.icon)}" alt=""><div>${manualLines(page.lines).map((l) => `<p>${esc(l)}</p>`).join('')}</div></div><button class="bigbtn ghost sm" id="mnBack">목차</button>`);
@@ -600,6 +622,7 @@ export function openManual(key?: string) {
 
 /** 부팅 때: 창마다 「?」 → 안내서 그 쪽 */
 export function initMenu() {
+  shopHooks.shop = () => openShop();
   helpHook.page = (title) => (title.startsWith('안내서') || title === '여관 운영 안내서' ? null : HELP_OF.find(([re]) => re.test(title))?.[1] ?? null);
   helpHook.open = (k) => openManual(k);
 }

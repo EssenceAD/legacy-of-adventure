@@ -7,6 +7,7 @@ import { CONFIG } from '../data/config';
 import { HEROES } from '../data/heroes';
 import { BASE_REGIONS, REGIONS } from '../data/items';
 import { openNewRegions, regionRumor } from '../world/regions2';
+import { hvRumor } from '../world/harvest';
 import { bragHooks, rumorHint } from '../world/growth';
 import { tieAvailable } from '../world/owner';
 import { NEIGHBORS } from '../data/neighbors';
@@ -171,6 +172,13 @@ function next() {
     const t = pick(THREADS);
     t.forEach(([who, text], i) => setTimeout(() => push({ ch: '소문', who, text: fill(text) }), i * C.threadGapMs));
     setTimeout(next, t.length * C.threadGapMs + rnd());
+    return;
+  }
+  // HARVEST §1-6: 수확제 기간엔 소문 4개 중 1개 꼴로 수확제 소문
+  const hr = hvRumor();
+  if (hr) {
+    push({ ch: '소문', who: pick(SPEAKERS), text: hr });
+    setTimeout(next, rnd());
     return;
   }
   // REGIONS2 §5-6: 새 지역이 열렸으면 가끔 그 지역 소문 (열린 뒤에만)

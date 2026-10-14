@@ -1,5 +1,7 @@
 // STORY_V1: 막(1→2→3) · 루트 점수(보이지 않게) · 3막 갈림길 · 「조용한 은퇴」 목표 · 회차 기억 대사 · 유산 포인트·기억 조각
 //  회차 = P.legacy.gen · 엔딩 기록 = P.legacy.album/cards (기존 엔딩 앨범과 같은 곳) · 이 회차 이야기 = P.story
+import { CLASSES } from '../data/classes';
+import { bondById } from '../data/bonds';
 import { CONFIG } from '../data/config';
 import { fillNames } from '../data/josa';
 import { HEROES } from '../data/heroes';
@@ -306,6 +308,8 @@ export function storyLines(src: SLine[]): StoryLine[] {
     else if (who.startsWith('legend_')) line = [who, t, undefined, LEGENDS.find((l) => 'legend_' + l.key === who)?.name ?? ''];
     else if (who === 'editor') line = ['editor', t, undefined, '여행자 안내서 편집장'];
     else if (who === 'star') line = ['star', t, undefined, '별지기'];
+    // HARVEST §1-2: 인연 인물(빵집 도라 아줌마 등)은 그 초상·이름 그대로
+    else if (bondById(who) && !(who in CLASSES)) line = [bondById(who)!.port, t, undefined, bondById(who)!.name];
     else if (who === '@fav') {
       const f = P.legacy.prevFav;
       const a = f ? (world.home?.actors ?? world.actors).find((x) => !x.role && x.name === f.name) : favActor();

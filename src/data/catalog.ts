@@ -136,6 +136,14 @@ export const CATALOG = {
   fish_kingkoi: { name: '왕관 쓴 황금 잉어 박제', sprite: 'fish_kingkoi', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 연못의 왕' },
   fish_lanternfish: { name: '등대 초롱아귀 박제', sprite: 'fish_lanternfish', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 밤바다의 초롱' },
   fish_starwhale: { name: '아기 별고래 박제', sprite: 'fish_starwhale', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '낚시 기념 박제 · 등에 별이 박힌 아기 고래' },
+  // HARVEST §1-5: 수확제 장식 (교환소·여관 연감으로만 받는다 · 받은 게 있을 때만 건설 목록에 · 무료로 놓기)
+  jack_lantern: { name: '호박등', sprite: 'jack_lantern', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 밤이면 속에서 촛불이 일렁여요' },
+  leaf_pile: { name: '낙엽 더미', sprite: 'leaf_pile', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 바스락 소리가 나요' },
+  wheat_sheaf: { name: '밀단', sprite: 'wheat_sheaf', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 올해 거둔 밀' },
+  lantern_post: { name: '등불 기둥', sprite: 'lantern_post', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 호박 등불이 줄줄이 · 밤 불빛' },
+  harvest_table: { name: '수확제 잔칫상', sprite: 'harvest_table', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 근처 손님 포만 +5/시간' },
+  harvest_arch: { name: '수확제 아치', sprite: 'harvest_arch', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 아래를 지나가면 한 해 운이 좋아진대요' },
+  pumpkin_carriage: { name: '호박 마차', sprite: 'pumpkin_carriage', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 수확제 · 밤 등불 · 근처 손님 기분 +5' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
   // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
   cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },

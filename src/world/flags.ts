@@ -125,10 +125,31 @@ export const FLAG_DEFAULTS = {
   heroDotV2: false,
   /** CHECKIN §J7 대장간 「영웅 중심 한 화면」 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 탭 5개 → 장비 손질(강화·초월·재련) · 제작 · 가방 정리 · 맨 위 「지금 할 만한 것」 2개 · 영웅 카드 줄 → 장비 칸 → 행동 판 하나(망치 연출 + 숫자 튀어 오름) · [자동 장착] · 창 맨 위 설명·레벨업·지붕 색 */
   smithOne: false,
+  /** HARVEST §1 첫 번째 가을 수확제 (기간 한정 · 10/22 20:00 ~ 11/05 · 교환소 11/08까지 · 날짜는 서버 시각 world/harvest.ts) — 켜 둬도 기간 밖엔 아무것도 안 보인다 · 끄면 마을 가을 장식·호박 도깨비·교환소·수프·소문·컷 모두 숨김 (모은 리본·바꾼 장식·칭호는 그대로 남음) */
+  harvestFest: true,
+  /** HARVEST §2 노을 (영구 · 수확제 시작 시각부터): 게임 17:00~22:00 노을 색 → 밤 색조 · 19:00부터 등불이 서서히 · 손님 노을 말풍선 · 첫 노을 한 번 대사 — 끄면 예전처럼 22:00에 바로 밤 */
+  sunset: true,
+  /** CHECKIN §D1 오늘의 장부 (수확제 시작 시각부터 · 그 뒤 계속): 매일(한국 0시) 후보 6개 중 3개 · 하나마다 작은 보상 · 셋이면 연감 도장 3 + 상자 · 「오늘의 목표」·마을 부탁·이번 주 장부를 탭으로 — 끄면 오늘의 목표·부탁 예전 그대로 */
+  ledgerDaily: true,
+  /** CHECKIN §D2 여관 연감 시즌 1 = 수확제 (10/22 20:00 ~ 11/08 · 30칸 · 마지막 주 도장 ×2 · 다음 시즌으로 30%) — 기간 밖·끄면 안 보임 */
+  almanac: true,
+  /** CHECKIN §K2 왼쪽 가장자리 아이콘 줄 (새 HUD hudV2 안 · 오늘의 장부 · 수확제(기간 중) · 여관 연감(시즌 중) 최대 3 · 빨간 점 규칙) — 끄면 메뉴 칸으로만 */
+  leftIcons: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
 export const flag = (k: FlagKey): boolean => flags[k] !== false;
+/**
+ * HARVEST §1-1: 서버 시각 — flags.json 응답의 Date 머리(서비스워커를 거치지 않는 요청)로 기기 시계와의 차이를 잰다.
+ *  2분 넘게 다를 때만 쓴다 (Date는 초 단위 · 오프라인이면 0 = 기기 시계)
+ */
+export let serverSkew = 0;
+export function noteServerDate(h: string | null | undefined, now = Date.now()) {
+  const t = h ? Date.parse(h) : NaN;
+  if (!Number.isFinite(t)) return;
+  const d = t - now;
+  serverSkew = Math.abs(d) > 120000 ? d : 0;
+}
 /** 부팅 때 한 번 (2초 안에 못 받으면 기본값) */
 export async function loadFlags(base = import.meta.env.BASE_URL): Promise<void> {
   try {
@@ -136,6 +157,7 @@ export async function loadFlags(base = import.meta.env.BASE_URL): Promise<void> 
     const t = setTimeout(() => ctl.abort(), 2000);
     const r = await fetch(`${base}flags.json?t=${Date.now()}`, { cache: 'no-store', signal: ctl.signal });
     clearTimeout(t);
+    noteServerDate(r.headers.get('date'));
     if (!r.ok) return;
     const j = (await r.json()) as Record<string, unknown>;
     for (const [k, v] of Object.entries(j)) if (typeof v === 'boolean') flags[k] = v;

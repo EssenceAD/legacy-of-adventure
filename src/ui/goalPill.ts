@@ -9,6 +9,8 @@ import { isTalking } from './dialogue';
 import { openPlace, type Place } from './nav';
 import { isWinOpen, toast } from './windows';
 import { bindTodayPicks, todayPicksHtml } from './wayfind';
+import { dayCount, daybookDot, daybookOn } from '../world/daybook';
+import { openDaybook } from './daybook';
 
 export const goalPillOn = () => !getPref<boolean>('goalPillOff', false);
 export const setGoalPill = (on: boolean) => (setPref('goalPillOff', !on), syncGoalPill());
@@ -82,6 +84,21 @@ export function syncGoalPill() {
   const battle = !!document.querySelector('.battle, .cbt, #cbCv, #hunt, #raid, #storyFx') || document.body.classList.contains('photo') || isWinOpen();
   // 날이 바뀌면 새 목표로 (알약이 다시 켜진다)
   if (S.started && !S.visiting) ensureGoals();
+  // CHECKIN §D1: 오늘의 장부가 켜지면 알약 = 장부 진행 (오늘의 목표는 장부 안 탭으로 · 중복 표시 없앰)
+  if (daybookOn()) {
+    const on = goalPillOn() && S.started && !S.visiting && !battle && !isTalking();
+    pill.hidden = !on;
+    if (!on) return;
+    const [n, of] = dayCount();
+    const dot = daybookDot();
+    const t = of && n >= of ? '🎯 장부 끝!' : `🎯 장부 ${n}/${of}`;
+    if (pill.firstChild?.textContent !== t) pill.innerHTML = `${t}<i class="ndot"${dot ? '' : ' hidden'}></i>`;
+    else pill.querySelector<HTMLElement>('.ndot')!.hidden = !dot;
+    pill.classList.toggle('ready', dot);
+    pill.classList.toggle('over', !!of && n >= of);
+    placePill(pill);
+    return;
+  }
   const show = goalPillOn() && S.started && !S.visiting && !battle && !isTalking() && P.goals.list.length > 0;
   pill.hidden = !show;
   if (!show) return;
@@ -141,7 +158,8 @@ export function initGoalPill() {
       if (e) ro.observe(e);
     }
   }
-  const toggle = () => (panel ? closeGoalPanel() : openGoalPanel());
+  // CHECKIN §D1: 장부가 켜지면 알약·여관 카드 = 오늘의 장부 창
+  const toggle = () => (daybookOn() ? openDaybook(0) : panel ? closeGoalPanel() : openGoalPanel());
   pill.onclick = (e) => (e.stopPropagation(), toggle());
   // 왼쪽 위 여관 정보 카드 (전투력 버튼은 따로)
   const stat = $('.top .stat');

@@ -7,6 +7,7 @@ import { landWhy, payLand } from './world/landreq';
 import { decoCoupon, useDecoCoupon } from './world/easter';
 import { clearOverlays } from './ui/overlays';
 import { isDropKind, newAtLand, noteBought, ownedDrops } from './world/decodrop';
+import { isHvDeco } from './world/harvest';
 import { funnel } from './net/funnel';
 import { createPendingOwner } from './world/owner';
 import { talkTagged } from './ui/dialogue';
@@ -426,8 +427,10 @@ export function placeBuilding(pl: Placement): boolean {
   // 베타: 마을 등급 장식을 마을 안으로 옮기면 무료 (그 자리 장식은 사라진다)
   // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ (CONFIG.town.copyCost)
   // EASTER: 고느끼 선물 — 장식 하나 10% 할인 (다음 장식 한 번)
-  const coupon = !pl.prop && d.deco && d.cost > 0 ? decoCoupon() : 0;
-  const cost = pl.prop ? 0 : Math.round(buildCost(pl.kind) * (1 - coupon));
+  // HARVEST §1-5: 수확제 교환소·연감에서 받은 장식은 무료로 놓는다 (금화 값이 있는 호박 더미·단풍나무… 포함)
+  const hvGift = !pl.prop && isHvDeco(pl.kind) && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0;
+  const coupon = !pl.prop && !hvGift && d.deco && d.cost > 0 ? decoCoupon() : 0;
+  const cost = pl.prop || hvGift ? 0 : Math.round(buildCost(pl.kind) * (1 - coupon));
   if (S.gold < cost) {
     toast('금화가 모자라요');
     return false;
@@ -458,7 +461,7 @@ export function placeBuilding(pl: Placement): boolean {
   P.buildTipSeen = true;
   landHint.firstBuild = false;
   // HOTFIX14 §5: 선물 장식은 하나 쓴다 (환불 없음)
-  const giftDeco = !pl.prop && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0 && d.cost === 0;
+  const giftDeco = !pl.prop && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0 && (d.cost === 0 || hvGift);
   if (giftDeco) P.meta.giftDeco[pl.kind]--;
   // DECO_DROP §3: 처음 사는 장식 종류인가 (놓기 전에 본다)
   const newDeco = isDropKind(pl.kind) && !ownedDrops().includes(pl.kind);

@@ -52,6 +52,14 @@ import type { Item } from '../world/state';
 import { taperLine } from './goldsink';
 import { abyssOpen } from '../world/abyss';
 import { openAbyss } from './abyss';
+import { fieldHarvest, hvState, settleField } from '../world/harvest';
+import { hvLootHtml } from './harvest';
+
+/** HARVEST §1-4: 수확제 기간 사냥 판이면 호박 도깨비 · 대왕 차례 (기간 밖이면 빈 것) */
+function hvOpts(s: number): { harvest?: { king: boolean; bark: boolean } } {
+  const h = fieldHarvest(s);
+  return h.on ? { harvest: { king: h.king, bark: !hvState().bark } } : {};
+}
 import { flag } from '../world/flags';
 import { losesAt, noteHuntResult, RESOLVE, resolveOf, resolveText, unclearedStage } from '../world/wayfind';
 import { blessed, blessFx } from '../world/goldsink';
@@ -675,7 +683,7 @@ function beginCombat(r: RegionId, s: number, ms: Actor[], auto: boolean) {
     const html = settleHunt(r, s, ms, res);
     showCombatResult(html, (card) => bindResult(card, r, s, ms, closeCombat));
     dropFanfare(lastLoot);
-  }, { ...(bossLine ? { bossLine } : {}), ...(voice ? { talkHalf: (done: () => void) => playStory(DEEP_VOICE, done) } : {}) });
+  }, { ...(bossLine ? { bossLine } : {}), ...(voice ? { talkHalf: (done: () => void) => playStory(DEEP_VOICE, done) } : {}), ...hvOpts(s) });
 }
 
 /** 지역 10 보스 처치 뒤 컷 (마을로 돌아가면 대사 차례에) */
@@ -704,6 +712,9 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   // GOLDSINK §4: 접어 둔 판은 자동 사냥과 같은 하루 판 수로 센다
   const out = res.win ? clearStage(r, s, ms, 1 + bonus, false, folded) : failStage(r, s, ms);
   out.items.push(...res.items);
+  // HARVEST §1-4: 잡은 호박 도깨비 · 대왕 → 수확 리본 (이긴 판·진 판 모두)
+  const hv = res.pumpkins != null ? settleField(r, res.pumpkins, !!res.kingDown) : null;
+  if (res.barked) hvState().bark = true;
   for (const m of ms) m.hp = Math.max(1, m.hp - (res.win ? 5 : 15));
   markAdventured(ms);
   markDirty();
@@ -724,7 +735,7 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   if (hint) P.hunt.autoHint = true;
   // WAYFIND §2: 패배 카드에 대장간이 있으면 위 「대장간에서 쓸 수 있는 것」 줄은 뺀다 (같은 말 두 번)
   const stuck = res.win ? '' : stuckHtml(r, s, ms, wasNew, resAfter);
-  let loot = lootHtml(r, out);
+  let loot = lootHtml(r, out) + (hv ? hvLootHtml(hv) : '');
   if (stuck.includes('data-stk="smith"')) loot = loot.replace(smithLine(), '');
   const gradeLine = res.win
     ? `<div class="cgrade g${res.grade}"><b>${res.grade}</b><span>${res.autoUsed ? 'AUTO 사용 · 평가 보너스 없음' : bonus ? `평가 보너스 +${Math.round(bonus * 100)}%` : '평가 보너스 없음'}</span></div>`
@@ -873,7 +884,7 @@ export function settleFolded(): boolean {
   const r = fo.region as RegionId;
   const ms = fo.members.map((id) => huntCrew().find((a) => a.id === id)).filter(Boolean) as Actor[];
   if (!ms.length || !REGIONS.some((x) => x.id === r)) return false;
-  const res = runHeadless(r, fo.stage, ms);
+  const res = runHeadless(r, fo.stage, ms, hvOpts(fo.stage));
   const html = settleHunt(r, fo.stage, ms, res, true);
   openWin('사냥 결과 (접어 둔 판)', `<div class="res huntres">${html}</div>`);
   bindResult($('#winB'), r, fo.stage, ms, closeWin);

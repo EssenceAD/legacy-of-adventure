@@ -14,6 +14,7 @@ import { addMail } from './meta';
 import { addTie, tieAvailable } from './owner';
 import { markDirty, P, S, world, type Favor } from './state';
 import { bestOf } from './town';
+import { dbCount } from './hvLite';
 
 const F = () => CONFIG.goldsink.favor;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -173,6 +174,8 @@ export function claimFavor(i: number): FavorClaim | null {
   f.claimed = true;
   d.give();
   g.weekN++;
+  // CHECKIN §D1: 오늘의 장부 「마을 부탁 1개」
+  dbCount('favor');
   let letter = false;
   if (g.weekN >= F().weekGoal && !g.letter) {
     g.letter = true;

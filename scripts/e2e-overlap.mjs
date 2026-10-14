@@ -34,7 +34,7 @@ const notes = [];
 async function run(who, file, size) {
   const raw = fs.readFileSync(file, 'utf8');
   const ctx = await b.newContext(DEVS[size]);
-  await ctx.addInitScript(([save, lab]) => {
+  await ctx.addInitScript(([save, lab, hv]) => {
     try { if (sessionStorage.getItem('x')) return; sessionStorage.setItem('x', 1); } catch { return; }
     localStorage.clear();
     localStorage.setItem('legacy-of-adventure-save', save);
@@ -43,7 +43,9 @@ async function run(who, file, size) {
     localStorage.setItem('legacy-of-adventure-settleOff', 'true');
     localStorage.setItem('legacy-of-adventure-telemetry', 'false');
     if (lab) localStorage.setItem('legacy-of-adventure-visualLab', 'true');
-  }, [raw, LAB]);
+    // HARVEST: HVNOW=시각(ms) 이면 수확제 날짜 강제 (왼쪽 아이콘 줄·장부 알약까지 보이게)
+    if (hv) localStorage.setItem('legacy-of-adventure-hvNow', hv);
+  }, [raw, LAB, process.env.HVNOW ?? '']);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
@@ -81,7 +83,7 @@ async function run(who, file, size) {
     const hud = await p.evaluate((lab) => {
       const vis = (e) => { if (!e || e.hidden) return null; const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return null; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? r : null; };
       const L = ['.top .stat', '#newsBand', '#mission', '#evalbar', '#goalPill', '#storyWait'];
-      const R = ['#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#propBadge'];
+      const R = ['#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#propBadge', '#liBook', '#liHv', '#liAlm'];
       // 새 HUD: 아래쪽 줄(진행 줄 각 줄 · 채팅 · 메뉴줄)도 위 줄·버튼과 서로 안 겹쳐야
       const B = lab ? ['#runbar > button', '#runbar > .rbstrip', '#chatlog', 'nav.dk'] : [];
       const got = [...L, ...R].map((s) => [s, vis(document.querySelector(s))]).filter(([, r]) => r);
@@ -94,7 +96,7 @@ async function run(who, file, size) {
         if (hit(ra, rc)) out.push(`${a} ↔ ${c}`);
       }
       // 마을 보이는 면적: 보이는 HUD 상자들의 합집합을 뺀 몫 (토스트·말풍선·떠다니는 글씨처럼 잠깐 뜨는 건 빼고)
-      const A = ['.top .stat', '#newsBand', '#mission', '#evalbar', '#goalPill', '#storyWait', '#propBadge', '#blessIco', '#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#runbar > button', '#runbar > .rbstrip', '#chatlog', 'nav.dk', '#visitbar', '#visitfoot'];
+      const A = ['.top .stat', '#newsBand', '#mission', '#evalbar', '#goalPill', '#storyWait', '#propBadge', '#blessIco', '#bNotice', '#bDN', '#bMenu', '#bHarm', '#hSpk', '#bZoom', '#liBook', '#liHv', '#liAlm', '#runbar > button', '#runbar > .rbstrip', '#chatlog', 'nav.dk', '#visitbar', '#visitfoot'];
       const boxes = [];
       for (const s of A) document.querySelectorAll(s).forEach((e) => { const r = vis(e); if (r) boxes.push(r); });
       const V = document.querySelector('#view').getBoundingClientRect();

@@ -26,6 +26,8 @@ import { myTitle } from '../world/meta';
 import { vis } from '../world/visual';
 import { today } from '../world/progress';
 import { actorOfBond, giftPerson, talkPerson } from './personActions';
+import { harvestShopOn } from '../world/harvest';
+import { openHarvestShop } from './harvest';
 
 const myPort = () => (P.owner ? PORTRAITS[mcPortrait(P.owner.job, P.owner.gender)] : PORTRAITS.hero) || '';
 const portOf = (d: BondDef) => PORTRAITS[d.port] || '';
@@ -303,13 +305,16 @@ export function openTie(id: string) {
       <small>${P.owner?.linked.includes(id) ? '연결된 영웅 · 인연 1.3배' : ''}</small></div></div>
     <div class="bar"><span>인연</span><i><b style="width:${t.pts}%;background:#e86a8a"></b></i><em>${Math.floor(t.pts)}</em></div>
     <div class="acc"><div>좋아하는 것<b>${t.knowLike ? GIFTS[d.likes].name : '???'}</b></div><div>싫어하는 것<b>${t.knowHate ? GIFTS[d.hates].name : '???'}</b></div></div>
-    <div class="menu grid"><button id="tTalk">말 걸기</button>${v2 ? '<button id="tGift">선물하기</button>' : ''}<button id="tShop">선물 가게</button></div>
+    <div class="menu grid"><button id="tTalk">말 걸기</button>${v2 ? '<button id="tGift">선물하기</button>' : ''}<button id="tShop">선물 가게</button>${id === 'baker' && harvestShopOn() ? '<button id="tHv">🌾 수확제 교환소</button>' : ''}</div>
     ${v2 ? `<p class="note">하루 한 번씩 · 행동력 ${energyLeft()}/${energyMax()}${t.talkDay === today() ? ' · 오늘 이야기 함' : ''}${t.giftDay === today() ? ' · 오늘 선물 함' : ''}</p>` : tieGifts}
     <button class="bigbtn ghost" id="tBack">목록으로</button>`,
     'tie1',
   );
   $('#tBack').onclick = () => openTies();
   $('#tShop').onclick = () => openGifts(id);
+  // HARVEST §1-5: 빵집 도라 아줌마 = 수확제 교환소 (기간 + 3일)
+  const hv = document.getElementById('tHv');
+  if (hv) hv.onclick = () => openHarvestShop();
   const tg = document.getElementById('tGift');
   if (tg) tg.onclick = () => giftPerson(actorOfBond(id), id);
   $('#tTalk').onclick = () => {

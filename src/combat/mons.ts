@@ -1,5 +1,6 @@
 // 전투 2차: 몬스터·정예·보스 표 — 그림은 Ninja Adventure (CC0, pixel-boy) · 1배 크기 그대로 (키우지 않는다)
 import type { RegionId } from '../data/items';
+import { PUMPKIN_KING } from '../data/story/harvest';
 
 export interface MonDef {
   id: string;
@@ -75,6 +76,8 @@ export const MONS: MonDef[] = [
   m('na_mouseblack', '그림자 쥐', 'deep', 0.8, 1.0, 2.2),
   m('na_beast2', '잃어버린 짐승', 'deep', 1.25, 1.3, 1.6, { hitR: 0.78 }),
   m('na_cyclope2', '눈먼 외눈이', 'deep', 1.45, 1.35, 1.1, { hitR: 0.8 }),
+  // HARVEST §1-4 호박 도깨비 (수확제 기간에만 · 무리에 10% 섞임 · 지역 몬스터와 같은 강함 배율)
+  m('na_pumpkin', '호박 도깨비', 'any', 0.9, 0.9, 1.4, { hop: true, reach: 1.25 }),
   // 1차 코드 그림 (예비)
   m('slime', '슬라임', 'any', 0.9, 0.9, 0.95, { hop: true, reach: 1.25, hitR: 0.62 }),
   m('goblin', '고블린', 'any', 1.15, 1.1, 1.9, { r: 0.32, hitR: 0.72 }),
@@ -113,6 +116,8 @@ export const REGION_BOSS: Record<RegionId, BossLook> = {
   sky: { id: 'nb_tengub', name: '푸른 텐구', pats: ['돌풍 급강하', '회오리 찍기', '나비 부르기'], r: 0.75, minion: 'na_butterfly' },
   deep: { id: 'nb_deep', name: '별을 삼킨 것', pats: ['별빛 흡수', '어둠 내려찍기', '그림자 부르기'], r: 0.8, minion: 'na_slime4' },
 };
+/** HARVEST §1-4 황금 호박 대왕 (사냥 중간 보스 · 패턴 이름 · 부하 = 호박 도깨비) */
+export const PUMPKIN_KING_LOOK: BossLook = { id: PUMPKIN_KING.id, name: PUMPKIN_KING.name, pats: PUMPKIN_KING.pats, r: 0.7, minion: PUMPKIN_KING.minion };
 /** 토벌 주간 보스 그림 (주마다 돌아가며) */
 export const RAID_LOOKS: BossLook[] = [
   { id: 'nb_samurai', name: '붉은 무사', pats: ['베어 들기', '칼날 회오리', '졸개 부르기'], r: 0.8, minion: 'na_skull' },

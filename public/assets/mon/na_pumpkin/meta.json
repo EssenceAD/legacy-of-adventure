@@ -1,0 +1,42 @@
+{
+ "frameW": 32,
+ "frameH": 34,
+ "anchor": [
+  16,
+  32
+ ],
+ "region": "any",
+ "source": "Scenario Seedream 4.5 (HARVEST_SPEC) · 코드로 프레임 변형",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 2,
+   "fps": 3,
+   "loop": true
+  },
+  "move": {
+   "row": 1,
+   "frames": 4,
+   "fps": 8,
+   "loop": true
+  },
+  "attack": {
+   "row": 2,
+   "frames": 3,
+   "fps": 10,
+   "loop": false
+  },
+  "hurt": {
+   "row": 3,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "die": {
+   "row": 4,
+   "frames": 3,
+   "fps": 10,
+   "loop": false
+  }
+ }
+}

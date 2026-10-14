@@ -27,6 +27,7 @@ import { $, $$, esc, fmt } from './common';
 import { holdLine, isTalking, talkStory } from './dialogue';
 import { iconSrc } from './kit';
 import { capture } from './photo';
+import { startLanterns } from '../world/harvestDraw';
 import { closeWin, isWinOpen, openWin, setWinLock, toast } from './windows';
 
 // ───────── 대사 틀기 (연출 포함) ─────────
@@ -60,6 +61,8 @@ function fx(k: string) {
     b.innerHTML = `<img class="ledg" src="${iconSrc('m_quest')}" alt="">`;
   } else if (k === 'photo' || k === 'photo_mine') photoThumb();
   else if (k === 'drop') storyFx.drop();
+  // HARVEST §1-7 마지막 밤: 종이 등불 날리기 (마을 그림 위 · world/harvestDraw)
+  else if (k === 'lanterns') startLanterns();
   // STORY v2·v3 연출: 심연 · 별 · 부케 · 기둥 · 노래 · 셔터 · 별바다 · 접힘 · 반짝 글씨
   else if (['abyss', 'stars', 'bouquet', 'pillar', 'song', 'shutter', 'starsea', 'fold', 'sparkle', 'heat', 'lighthouse', 'ember', 'sky', 'deep', 'hush'].includes(k)) {
     b.className = 'sfx-' + k;

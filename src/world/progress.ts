@@ -10,6 +10,7 @@ import { CHEM_PAIRS } from '../data/chem';
 import { RACES, RARITIES, GUEST_KINDS, BASE_GUEST_KINDS } from '../data/classes';
 import { legendHooks, P, S, uiHooks, world, type Actor, type Item } from './state';
 import { heroFirst } from './wind';
+import { dbCount } from './hvLite';
 
 // ───────── 평판 ★ ─────────
 
@@ -147,6 +148,8 @@ export function ensureGoals() {
 
 /** 일이 생길 때마다 불러 목표·통계를 올린다 */
 export function track(event: GoalEvent, n = 1) {
+  // CHECKIN §D1: 오늘의 장부용 누적 기록 (장부를 꺼도 세기만)
+  dbCount(event, n);
   ensureGoals();
   for (const g of P.goals.list) {
     const t = GOAL_TEMPLATES.find((x) => x.id === g.id);

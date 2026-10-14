@@ -45,6 +45,10 @@ export interface CombatResult {
   timeLeft?: number;
   /** v0.24.5 ✕ → 포기로 끝났나 (끝없는 심연: 진 게 아니라 나간 것) */
   quit?: boolean;
+  /** HARVEST §1-4: 잡은 호박 도깨비 · 황금 호박 대왕을 쓰러뜨렸나 · 첫 호박 한 줄을 보여 줬나 */
+  pumpkins?: number;
+  kingDown?: boolean;
+  barked?: boolean;
 }
 
 let F: Field | null = null;
@@ -127,14 +131,14 @@ export function foldedTick(dt: number) {
 /** 접은 판의 파티 (손님 번호) — 저장용 */
 export const foldMembers = (): number[] => (F ? F.allies.map((u) => u.actor?.id ?? 0).filter(Boolean) : []);
 /** 접어 둔 채 앱을 껐을 때: 화면 없이 AUTO로 처음부터 끝까지 (같은 makeField·step) */
-export function runHeadless(region: RegionId, stage: number, members: Actor[]): CombatResult {
-  const f = makeField(region, stage, members, true);
+export function runHeadless(region: RegionId, stage: number, members: Actor[], opts: FieldOpts = {}): CombatResult {
+  const f = makeField(region, stage, members, true, opts);
   f.autoUsed = true;
   const dt = 1 / 30;
   for (let t = 0; t < C.timeLimit + 5 && !f.done; t += dt) step(f, dt);
   for (let i = 0; i < 60; i++) step(f, dt);
   if (!f.done) f.done = 'lose';
-  return { win: f.done === 'win', grade: grade(f), autoUsed: true, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: [...f.picked], raidDmg: 0, bossDown: !!f.elite?.dead };
+  return { win: f.done === 'win', grade: grade(f), autoUsed: true, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills, maxStreak: f.maxStreak, items: [...f.picked], raidDmg: 0, bossDown: !!f.elite?.dead, ...hvRes(f) };
 }
 /** 다시 펼치기 (끝났으면 결과 카드가 그대로 보인다) */
 export function unfoldCombat() {
@@ -168,6 +172,11 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   if (opts.look) {
     ids.add(opts.look.id);
     ids.add(opts.look.minion);
+  }
+  // HARVEST §1-4: 수확제 판이면 호박 도깨비 · 대왕 그림도
+  if (opts.harvest) {
+    ids.add('na_pumpkin');
+    if (opts.harvest.king) ids.add('nb_pumpkingold');
   }
   if (opts.raid) {
     ids.add(opts.raid.look.id);
@@ -410,7 +419,8 @@ function hud() {
   $('#cbGoal').textContent = f.mode === 'raid' ? '' : f.elite ? (f.elite.boss ? `보스 · ${f.elite.boss.name}` : '정예를 쓰러뜨려요!') : `처치 ${f.kills}/${f.killGoal}`;
   // 보스 체력 막대
   const bb = $('#cbBoss');
-  const boss = f.elite?.boss ? f.elite : null;
+  // HARVEST §1-4: 정예/보스가 없을 땐 중간 보스(황금 호박 대왕) 막대
+  const boss = f.elite?.boss ? f.elite : f.mid && !f.mid.dead ? f.mid : null;
   bb.hidden = !boss || boss.dead || boss.st === 'spawn';
   if (boss) {
     $('#cbBossN').textContent = boss.boss!.name + (boss.enraged ? ' · 분노' : '');
@@ -844,10 +854,13 @@ function finish() {
   finishedField = f;
   const res: CombatResult = {
     win: f.done === 'win', grade: grade(f), autoUsed: f.autoUsed, time: Math.round(C.timeLimit - f.time), hits: f.hitsTaken, kills: f.kills,
-    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time), quit: !!f.quit,
+    maxStreak: f.maxStreak, items: [...f.picked], raidDmg: f.raidDmg, bossDown: !!f.elite?.dead, timeLeft: Math.max(0, f.time), quit: !!f.quit, ...hvRes(f),
   };
   onEnd?.(res);
 }
+
+/** HARVEST §1-4: 판 결과에 호박 기록 (수확제 판이 아니면 빈 것) */
+const hvRes = (f: Field): Partial<CombatResult> => (f.hv ? { pumpkins: f.hv.pumpkins, kingDown: f.hv.kingDown, barked: f.hv.barked } : {});
 
 /** 결과 카드를 전투 화면 위에 (hunt UI가 내용을 채운다) */
 export function showCombatResult(html: string, bind: (card: HTMLElement) => void) {

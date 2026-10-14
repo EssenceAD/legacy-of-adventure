@@ -2163,3 +2163,27 @@ html:not([data-size="phone"]) .smo-slot .ic{width:calc(28px * var(--k));height:c
 /* J6 다듬기 R6: 정보 한 줄을 막대 줄 안으로 (위 판 ≤ 1/3) */
 .hdk-pw span small{color:#9aa6d8}
 .sortb.gsort1{flex-wrap:wrap}.sortb.gsort1 button{white-space:nowrap}
+/* ═════ HARVEST §1 수확제 · CHECKIN §D 오늘의 장부 · 여관 연감 · §K2 왼쪽 아이콘 줄 ═════ */
+.hvrib{width:16px;height:16px;image-rendering:pixelated;vertical-align:-3px}
+.hvloot span{color:#ffd36b}
+.hvhd img{image-rendering:pixelated}
+.hvrow img{image-rendering:pixelated}
+.hvrow button{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.hvchron{margin-bottom:8px}.hvchron .hvchb{margin:6px 0 0;font-size:var(--f-small);line-height:1.5;text-align:left}
+.dbrow.off{opacity:.78}.dbrow.pick{box-shadow:0 0 0 2px var(--gold)}.dbrow.pick.ready{box-shadow:0 0 0 2px #6fd04b}
+.dbrow button.on{background:#7a5a20;color:#ffd36b}
+#dbBox,#dbPick{margin-top:6px}#dbBox .kic,.fvrow b .kic{width:16px;height:16px;vertical-align:-3px;image-rendering:pixelated}
+.algrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:6px 0}
+.alc{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-height:44px;padding:3px 0;border:0;background:var(--navy2);box-shadow:0 0 0 2px var(--ink);color:var(--cream);font-size:var(--f-tiny);cursor:pointer}
+.alc img{width:16px;height:16px;image-rendering:pixelated}.alc.lock{opacity:.45}.alc.big{background:#3a2c18}
+.alc.ready{box-shadow:0 0 0 2px #6fd04b;color:#ffd36b;animation:mglow 1s steps(2) infinite}
+.alc.got{opacity:.7}.alc .stp{position:absolute;right:1px;bottom:1px;width:16px;height:16px}
+#leftIcons{display:none}
+body.hud2 #leftIcons{display:block;position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:var(--z-hud)}
+body.hud2 #leftIcons[hidden]{display:none}
+body.hud2 #leftIcons button{position:absolute;left:calc(var(--h2-pad) + 2px);top:calc(var(--h2-top) + (var(--li, 0) + 1) * var(--h2-hit));width:var(--h2-side);height:var(--h2-side);min-width:0;padding:0;gap:0;pointer-events:auto}
+body.hud2 #leftIcons button[hidden]{display:none}
+body.hud2 #leftIcons button::after{content:'';display:block;position:absolute;inset:calc(-1 * var(--h2-pad))}
+body.hud2 #leftIcons button small{display:none}
+body.hud2 #leftIcons img{width:calc(16px * var(--k1));height:calc(16px * var(--k1));image-rendering:pixelated}
+body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor #leftIcons,body.visiting #leftIcons,body.photo #leftIcons{visibility:hidden}

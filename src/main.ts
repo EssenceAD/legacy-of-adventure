@@ -6,6 +6,19 @@ import { loadFlags } from './world/flags';
 import { vis } from './world/visual';
 import { confirmSheet } from './ui/confirmSheet';
 import { initHud2, initVisualClasses } from './ui/hud2';
+import { initLeftIcons } from './ui/leftIcons';
+import { openHarvestShop, tickHarvest } from './ui/harvest';
+import { openDaybook } from './ui/daybook';
+import { openAlmanac } from './ui/almanac';
+import { addRibbons, buyHv, fieldHarvest, finaleState, hvNow, hvPhase, hvState, setHvNow, settleField } from './world/harvest';
+import { HV } from './data/harvest_cfg';
+import { setFlag } from './world/flags';
+import { huntCrew } from './world/hunt';
+import { runHeadless } from './combat/ui';
+import type { RegionId } from './data/items';
+import { festivalProps, lanternFx, startLanterns } from './world/harvestDraw';
+import { dbState } from './world/daybook';
+import { alState } from './world/almanac';
 import { gearHooks, initGear } from './ui/gear';
 import { initPrefsSync } from './ui/prefsSync';
 import { enterSaver, exitSaver, initScreenSaver, ssOn, ssStats } from './ui/screenSaver';
@@ -333,6 +346,8 @@ function tick(dt: number) {
       bd.hidden = !rc;
       bd.textContent = String(rc);
     }
+    // HARVEST §1·§2: 여는 컷 · 마지막 밤 · 첫 노을 · 노을 말풍선 · 연감 닫기 · 수확제 장식 효과
+    tickHarvest();
     // STARFALL §1: 밤 버튼 옆 ★ · 별똥별이 처음 뜬 밤에 모모가 한 번 알려 준다
     syncStarMark();
     if (!P.meta.starHint && starAvailable() && !S.visiting) {
@@ -923,6 +938,29 @@ async function boot() {
   initPowerUI();
   // VISUAL §4 새 HUD (실험실 · 끄면 아무것도 안 함)
   initHud2();
+  // CHECKIN §K2 왼쪽 아이콘 줄 (새 HUD 안 · 오늘의 장부 · 수확제 · 여관 연감)
+  initLeftIcons();
+  if (import.meta.env.DEV)
+    Object.assign(window, {
+      __hv: {
+        now: setHvNow, at: hvNow, state: hvState, phase: hvPhase, shop: openHarvestShop, buy: buyHv, book: openDaybook, almanac: openAlmanac, props: festivalProps, fin: () => finaleState(), db: dbState, al: alState,
+        ribbons: (n: number) => addRibbons(n), lanterns: startLanterns, lanternT: () => lanternFx.t0, cfg: HV, flag: setFlag, field: fieldHarvest,
+        /** 사냥 n판을 화면 없이 (수확제 판 그대로) → 호박·대왕·리본 합 */
+        headless: (region: string, stage: number, n = 1) => {
+          const ms = huntCrew().slice(0, 3);
+          let pumpkins = 0, kings = 0, ribbons = 0;
+          for (let i = 0; i < n; i++) {
+            const h = fieldHarvest(stage);
+            const r = runHeadless(region as RegionId, stage, ms, h.on ? { harvest: { king: h.king, bark: false } } : {});
+            const got = settleField(region, r.pumpkins ?? 0, !!r.kingDown);
+            pumpkins += r.pumpkins ?? 0;
+            kings += r.kingDown ? 1 : 0;
+            ribbons += got.ribbons;
+          }
+          return { pumpkins, kings, ribbons, n: ms.length };
+        },
+      },
+    });
   // CHECKIN §C1·§C2·§L1·§L2 (플래그·실험실 끔이면 아무것도 안 만든다)
   gearHooks.open = () => openSettings();
   initGear();

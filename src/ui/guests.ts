@@ -11,6 +11,8 @@ import { legendByKey } from '../data/legends';
 import { offerItem, showRelic, starUpLegend, tokenNeed } from '../world/legends';
 import { DUST_NAME, GRADE_INFO, OPT_INFO, regionById, SLOT_NAME, SLOTS, STAT_NAME, STATS, type Slot } from '../data/items';
 import { CLASS_WEAPON, CLASSES, KIND_LINES, RACE_NAME, RARE_LINES, RARITY_INFO } from '../data/classes';
+import { hvLine } from '../world/harvest';
+import { ribbonLine } from './harvest';
 import { RARITIES } from '../data/classes';
 import { powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { flag } from '../world/flags';
@@ -183,7 +185,8 @@ export function talkGuest(a: Actor) {
   const pool = kl && Math.random() < 0.5 ? kl : a.rarity !== 'common' && Math.random() < 0.5 ? RARE_LINES[a.rarity] : CONFIG.lines.idle;
   // GROWTH §2: 단골 말 걸기에 가끔 선물 힌트 (직업별 좋아하는 것)
   const hint = a.status === 'regular' && !a.heroId && !a.legendId ? guestHint(a) : null;
-  const line = hint ?? (a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0]);
+  // HARVEST §1-6: 수확제 기간엔 30% 수확제 대사 (직업 · 인연 1단계 이상 이름 있는 인물)
+  const line = hint ?? hvLine(a) ?? (a.mood >= 80 ? '이 여관 정말 좋아요! 오래 묵고 싶어요.' : a.hp < 40 ? '조금 피곤하네요… 푹 쉬고 싶어요.' : a.food < 40 ? '배가 고파요. 맛있는 거 없나요?' : pool[(Math.random() * pool.length) | 0]);
   talk([[speakerOf(a), line], ...(fresh ? [['narr', `${a.name}의 기분이 조금 좋아졌다.`] as TalkLine] : [])]);
 }
 
@@ -426,7 +429,7 @@ export function openBag() {
   const full = n >= bagSize();
   openWin(
     `가방 ${n}/${bagSize()}`,
-    `<p class="sub">${dustLine()}${P.growth.charm || P.growth.whet ? ` · 🧿 부적 ${P.growth.charm} · 🪨 숫돌 ${P.growth.whet}` : ''}<br>재료 ${Object.entries(P.mats)
+    `<p class="sub">${dustLine()}${P.growth.charm || P.growth.whet ? ` · 🧿 부적 ${P.growth.charm} · 🪨 숫돌 ${P.growth.whet}` : ''}${ribbonLine()}<br>재료 ${Object.entries(P.mats)
       .filter(([, v]) => v)
       .map(([r, v]) => `${regionById(r as never).mat} ${v}`)
       .join(' · ') || '없음'}</p>

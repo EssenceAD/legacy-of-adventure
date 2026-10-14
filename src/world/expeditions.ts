@@ -30,6 +30,7 @@ import { addCharm, mealGold } from './growth';
 import { partySpecial, rollUniqueAny } from './uniques';
 import { windQuestGold } from './wind';
 import { blessFx, payRefresh } from './goldsink';
+import { expRibbons, hvNow } from './hvLite';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -358,6 +359,9 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
     }
     addRep(CONFIG.reputation.expeditionWin);
     track('expeditionWin');
+    // HARVEST §1-4: 기간 중 원정 성공 → 수확 리본 1 (30분 이상 의뢰는 2) — 사냥을 안 하는 사람도 모을 수 있게
+    const rb = q.tutorial ? 0 : expRibbons(q.minutes, Math.min(run.end, hvNow()));
+    if (rb) extra.push(['narr', `돌아오는 길, 마을 사람들이 수확제 리본 ${rb}개를 쥐여 주었다.`]);
   }
   // 같은 파티 짝: 친밀도 + 발견
   const newChem: string[] = [];

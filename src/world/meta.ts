@@ -22,6 +22,7 @@ import { markDirty, P, S, uiHooks, world, type Mail } from './state';
 import { ownerHooks } from './owner';
 import { party4Ready } from './party4';
 import { chem5Titles, title5 } from './chemNews';
+import { achStamp, hvTitles } from './hvLite';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -89,6 +90,8 @@ export function claimAch(id: string): AchDef['reward'] | null {
   sfx('coin');
   if (d.reward.gold) S.gold += d.reward.gold;
   if (d.reward.dust) P.dust.n += d.reward.dust;
+  // CHECKIN §D2: 시즌 중 업적 받기 = 연감 도장 1
+  achStamp(id);
   markDirty();
   return d.reward;
 }
@@ -107,6 +110,8 @@ export function titlesOwned(): { t: string; from: string }[] {
   for (const p of chem5Titles()) out.push({ t: title5(p), from: `케미 「${p.name}」 5단계` });
   // DIRECTION §1-1: 여정을 다 채우면
   if (P.legacy.journeyEnd) out.push({ t: CONFIG.direction.journeyTitle, from: '여정 완주' });
+  // HARVEST §1-5 「첫 수확제의 주인」 · CHECKIN §D2 연감 30칸 「수확의 주인」 (영구)
+  out.push(...hvTitles());
   const seen = new Set<string>();
   return out.filter((x) => (seen.has(x.t) ? false : (seen.add(x.t), true)));
 }

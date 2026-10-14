@@ -19,7 +19,9 @@ import { ultName5 } from '../world/chemNews';
 import { addToBag, makeItem, optSum, rollGrade } from '../world/items';
 import type { Grade } from '../data/items';
 import type { Item } from '../world/state';
-import { monDef, REGION_BOSS, stageMons, type BossLook } from './mons';
+import { monDef, PUMPKIN_KING_LOOK, REGION_BOSS, stageMons, type BossLook } from './mons';
+import { HV } from '../data/harvest_cfg';
+import { PUMPKIN_BARKS } from '../data/story/harvest';
 import { partySpecial, specialSum } from '../world/uniques';
 import { isBalanced, memberSynMult, synergyFx, type SynFx } from '../world/synergy';
 import { resolveDmg, resolveOf, resolveTaken } from '../world/wayfind';
@@ -289,6 +291,10 @@ export interface Field {
   comboTele?: number;
   /** WAYFIND §2: 결의 (첫 돌파 못 한 사냥 판에서 연속 패배 → 주는 피해 + · 받는 피해 −) */
   resolve?: number;
+  /** HARVEST §1-4 수확제 (사냥만): 대왕을 낼 판 · 첫 호박 한 줄 · 잡은 호박 · 대왕을 냈나/쓰러뜨렸나 */
+  hv?: { king: boolean; bark: boolean; barked: boolean; pumpkins: number; kingSpawned: boolean; kingDown: boolean };
+  /** 중간 보스 (황금 호박 대왕 — 정예/보스 자리(elite)와 따로 · 쓰러뜨려도 판은 계속) */
+  mid?: Unit | null;
 }
 
 /** 바라보는 쪽(월드 방향) → 화면에서 90° 회전 수 (0 오른쪽 · 1 아래 · 2 왼쪽 · 3 위) */
@@ -336,6 +342,8 @@ export interface FieldOpts {
   rec?: number;
   look?: BossLook;
   noFold?: boolean;
+  /** HARVEST §1-4: 수확제 기간 사냥 판 (부르는 쪽이 fieldHarvest로 정한다) — king = 대왕 차례 · bark = 첫 호박 한 줄 */
+  harvest?: { king: boolean; bark: boolean };
 }
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
@@ -387,6 +395,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
     applyRolesHp(f);
   }
   f.resolve = mode === 'hunt' && !opts.raid ? resolveOf(region, stage) : 0;
+  if (mode === 'hunt' && !opts.raid && opts.harvest) f.hv = { king: opts.harvest.king && stage < 10, bark: opts.harvest.bark, barked: false, pumpkins: 0, kingSpawned: false, kingDown: false };
   if (mode === 'raid' && opts.raid) spawnBoss(f, opts.raid.look, opts.raid.hp, N / 2 + 2.5, N / 2 - 2.5);
   else {
     // 시작: 필드 곳곳에 무리 둘 (나와 떨어진 곳)
@@ -454,8 +463,15 @@ export function spawnPack(f: Field, atEdge: boolean) {
   }
   // 무리 안에서 한두 종이 섞인다
   const main = kinds[Math.floor(Math.random() * kinds.length)];
+  // HARVEST §1-4: 수확제 — 무리가 나올 때 10%로 그중 하나를 호박 도깨비로
+  const pk = f.hv && Math.random() < HV.pumpkinChance ? Math.floor(Math.random() * n) : -1;
+  if (pk >= 0 && f.hv?.bark && !f.hv.barked) {
+    f.hv.barked = true;
+    f.banner = PUMPKIN_BARKS.first;
+    f.bannerT = 3.2;
+  }
   for (let i = 0; i < n; i++) {
-    const k = Math.random() < 0.65 ? main : kinds[Math.floor(Math.random() * kinds.length)];
+    const k = i === pk ? monDef('na_pumpkin') : Math.random() < 0.65 ? main : kinds[Math.floor(Math.random() * kinds.length)];
     const a = Math.random() * Math.PI * 2;
     const rr = 0.4 + Math.random() * 1.1;
     const x = Math.max(0.8, Math.min(N - 0.8, cx + Math.cos(a) * rr));
@@ -482,6 +498,26 @@ function spawnElite(f: Field) {
   f.banner = `정예 ${k.name} 등장!`;
   f.bannerT = 2;
   shake(f, 2);
+}
+
+/** HARVEST §1-4: 황금 호박 대왕 — 중간 보스 (그 지역 보스 체력×0.6 · 공격×0.8) · 정예 자리(elite)는 비워 둔다 */
+export function spawnKing(f: Field) {
+  if (!f.hv || f.hv.kingSpawned) return;
+  f.hv.kingSpawned = true;
+  const N = C.field;
+  const [x, y] = [Math.max(1.5, Math.min(N - 1.5, f.me.x + (f.me.x < N / 2 ? 3.5 : -3.5))), Math.max(1.5, Math.min(N - 1.5, f.me.y + (f.me.y < N / 2 ? -2.5 : 2.5)))];
+  const hp = Math.round(mobBaseHp(f.rec, 10, avgPow(f)) * C.bossHp * HV.kingHp);
+  const look = PUMPKIN_KING_LOOK;
+  const u: Unit = {
+    id: f.nextId++, team: 'mob', mon: look.id, x, y, vx: 0, vy: 0, r: look.r, hp, max: hp, ax: -1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
+    st: 'spawn', stT: 1, atk: (C.mobAtk + f.rec * C.mobAtkK) * C.bossAtk * HV.kingAtk, speed: 1.2 * C.mobSpeed, boss: look, pat: 0,
+  };
+  f.units.push(u);
+  f.mid = u;
+  f.fx.push({ kind: 'puff', x, y, t: 0, dur: 0.8, big: true });
+  f.banner = PUMPKIN_BARKS.king;
+  f.bannerT = 3.2;
+  shake(f, C.shake.boss);
 }
 
 export function spawnBoss(f: Field, look: BossLook, hp: number, x: number, y: number) {
@@ -566,6 +602,15 @@ function killMob(f: Field, m: Unit) {
   f.streakT = C.streakWindow;
   f.maxStreak = Math.max(f.maxStreak, f.streak);
   f.fx.push({ kind: 'puff', x: m.x, y: m.y, t: 0, dur: 0.55, big: true });
+  // HARVEST §1-4: 호박 도깨비(대왕이 부른 꼬마 호박은 빼고) · 황금 호박 대왕
+  if (f.hv) {
+    if (m.mon === 'na_pumpkin' && !m.minion) f.hv.pumpkins++;
+    if (m === f.mid) {
+      f.hv.kingDown = true;
+      f.banner = PUMPKIN_BARKS.kingDown;
+      f.bannerT = 3.2;
+    }
+  }
   // 장비: 원정과 같은 등급표·천장 · 정예/보스는 반드시 1개 (토벌은 장비 대신 보상표)
   if (f.mode === 'hunt' && !m.minion && (m.elite || m.boss || Math.random() < f.dropK * (1 + buffOf('luck')))) {
     const it = makeItem(f.region, rollGrade(f.region, m.boss ? 1 : 0));
@@ -1526,6 +1571,8 @@ export function step(f: Field, dt: number) {
     const alive = f.units.filter((u) => u.team === 'mob' && !u.dead && !u.minion).length;
     if (!f.elite && f.spawned < f.killGoal && alive < C.refillBelow) spawnPack(f, true);
     if (!f.elite && f.kills >= f.killGoal) spawnElite(f);
+    // HARVEST §1-4: 처치 목표의 40%쯤에 황금 호박 대왕 (그 판에 한 번)
+    if (f.hv?.king && !f.hv.kingSpawned && !f.elite && f.kills >= Math.ceil(f.killGoal * HV.kingAt)) spawnKing(f);
     if (f.elite && f.elite.dead) end(f, 'win');
     if (!f.allies.some((a) => !a.dead) || f.time <= 0) end(f, 'lose');
   } else {

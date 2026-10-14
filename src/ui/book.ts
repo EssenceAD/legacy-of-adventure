@@ -36,6 +36,7 @@ import { def } from '../data/catalog';
 import { openPlace, type Place } from './nav';
 import { SYN_IDS, SYN_INFO } from '../world/synergy';
 import { chronPageHtml, contribHtml, fillContrib } from './chronicle';
+import { hvChronHtml } from './harvest';
 
 let dTab = 0;
 /** DIRECTION §1-3: 연대기 펼친 쪽 (-1 = 맨 끝 쪽) */
@@ -75,7 +76,7 @@ export function openDex(tab = dTab) {
   if (tname === '연대기') {
     const n = P.legacy.chron?.length ?? 0;
     if (chPage < 0 || chPage >= n) chPage = n - 1;
-    body = `<p class="sub">여관 연대기 · ${n}쪽</p><p class="note">엔딩을 볼 때마다 한 쪽 — 내가 쌓은 시간</p>${chronPageHtml(chPage)}`;
+    body = `<p class="sub">여관 연대기 · ${n}쪽</p><p class="note">엔딩을 볼 때마다 한 쪽 — 내가 쌓은 시간</p>${hvChronHtml()}${chronPageHtml(chPage)}`;
   } else if (tname === '함께 만든 사람들') body = contribHtml();
   else if (tname === '고유 장비') body = uniqueDexHtml();
   else if (tname === '낚시') body = fishDexHtml();
