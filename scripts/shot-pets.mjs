@@ -159,7 +159,7 @@ for (const w of [360, 1280]) {
   await p.evaluate(() => [...document.querySelectorAll('#dT .tab')].find((t) => t.textContent.includes('동물 친구'))?.click());
   await W(900);
   await shot(p, `${w}_6_dex_partial`);
-  // 전부 (10/10 — 별여우는 그림 자리표시)
+  // 전부 (10/10 — 10마리 모두 그림)
   await p.evaluate(() => { for (const id of ['raccoon', 'mole', 'salamander', 'griffin', 'tengu', 'starcat', 'starfox']) window.__pets.grant(id, 'bundle'); const st = window.__pets.state(); st.card.length = 0; });
   await W(2200);
   await calm(p, W);

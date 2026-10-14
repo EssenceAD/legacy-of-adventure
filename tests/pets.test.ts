@@ -48,6 +48,14 @@ describe('펫 — 표 · 확률 · 천장', () => {
     for (const d of PETS.defs) expect(d.pity).toBe(Math.round(2 / d.p));
   });
 
+  it('10마리 모두 그림이 있다 (마을 도트 + 64×64 초상) — 별여우 포함', () => {
+    for (const id of PET_IDS) {
+      expect(fs.existsSync(`public/assets/pets/pet_${id}.png`), id).toBe(true);
+      const pp = fs.readFileSync(`public/assets/portraits/petp_${id}.png`);
+      expect([pp.readUInt32BE(16), pp.readUInt32BE(20)], id).toEqual([64, 64]);
+    }
+  });
+
   it('rng < p 이면 첫 시도에 만남', () => {
     expect(petTry('fish', lo)).toBe('otter');
     expect(hasPet('otter')).toBe(true);
