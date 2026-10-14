@@ -148,12 +148,14 @@ await p.evaluate(() => document.querySelector('.cat button[data-k="tree"]')?.cli
 await W(1200);
 const badge = await p.evaluate(() => { const e = document.getElementById('propBadge'); return e && !e.hidden ? e.textContent : null; });
 ok((await pending()) >= 1 && !(await card()), `배치 중엔 제안이 대기 (${await pending()})`);
+// v0.25.9+: flags.json에서 storyInbox를 켜면 실험실이 아니어도 모아 보기 쪽 기대값
+const INBOX = LAB || (await p.evaluate(async () => { try { return (await (await fetch('flags.json', { cache: 'no-store' })).json()).storyInbox === true; } catch { return false; } }));
 // 기본: 💌 배지에 단골 제안 1 · LAB(§A2 모아 보기): 끊긴 제안은 「바로 다시」라 배지(곁이야기 수)에 넣지 않는다
-if (!LAB) ok(/단골 제안 1/.test(badge ?? ''), `💌 배지: ${badge} (배치 중이라 대기)`);
+if (!INBOX) ok(/단골 제안 1/.test(badge ?? ''), `💌 배지: ${badge} (배치 중이라 대기)`);
 await p.screenshot({ path: `${dir}/${name}_04_badge.png` });
 await p.evaluate(() => document.querySelector('#placeNo').click());
 await W(200);
-if (LAB) await backAgain('배치 취소(모아 보기)');
+if (INBOX) await backAgain('배치 취소(모아 보기)');
 else {
   // 사진 모드 한마디 같은 다른 대화가 떠 있으면 먼저 넘긴다 (대화 중엔 배지가 안 눌림)
   for (let i = 0; i < 10 && (await dlgOn()) && !(await card()); i++) await skipOther(), await W(300);
