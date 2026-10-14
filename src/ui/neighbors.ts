@@ -9,7 +9,8 @@ import { getVillage, likeVillage, listVillages, myVillage, online, pioneerOfUid,
 import { CONFIG } from '../data/config';
 import { bigMapShift } from '../save/save';
 import { S } from '../world/state';
-import { $$, esc, fmt } from './common';
+import { $$, bindTabs, esc, fmt, tabs } from './common';
+import { gbHasNew, gbOn, lastTopHtml, loadGuestbook, pollGuestbook } from './guestbook';
 import { isWinOpen, openWin, toast } from './windows';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
@@ -50,13 +51,38 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
 let real: Neighbor[] = [];
 let mineRow: Neighbor | null = null;
 let more = false;
+/** LUXE §4: 「🏆 지난주 인기 마을」 줄 (guestbook 끔·서버 준비 전이면 '') */
+let topRow = '';
 let page = CONFIG.cloud.neighborPage;
 /** 「주인 ○○」 · 이름이 없으면 「○○ 여관 주인」 */
 export const ownerLine = (v: Neighbor) => (v.owner ? `주인 ${v.owner}` : `${v.name} 주인`);
 
-export async function openVillage() {
+/** LUXE §4: 이웃 창 탭 (0 이웃 여관 · 1 방명록) — guestbook 켰을 때만 탭이 보인다 */
+let nbTab = 0;
+const NB_TABS = ['이웃 여관', '방명록'];
+const tabBar = (i: number) => (gbOn() && sb ? tabs(NB_TABS, i, 'nbT') : '');
+function bindNbTabs() {
+  if (!gbOn() || !sb) return;
+  bindTabs('nbT', (k) => void openVillage(k));
+  // 새 좋아요 → 「방명록」 탭에 빨간 점 (redDots 규칙: 받을 것이 있는 곳에만)
+  document.querySelector<HTMLElement>('#nbT .tab[data-t="1"]')?.classList.toggle('rdot', gbHasNew());
+}
+
+export async function openVillage(tab = 0) {
   if (S.visiting) {
     game.goHome();
+    return;
+  }
+  nbTab = gbOn() && sb ? tab : 0;
+  if (nbTab === 1) {
+    let n = 0;
+    const draw = (html: string) => {
+      // 불러오는 사이 창을 닫았거나 다른 창·탭으로 갔으면 다시 열지 않는다
+      if (n++ > 0 && (nbTab !== 1 || !isWinOpen() || S.visiting || document.getElementById('winT')?.textContent !== '마을 · 이웃 여관')) return;
+      openWin('마을 · 이웃 여관', tabBar(1) + html);
+      bindNbTabs();
+    };
+    await loadGuestbook(draw, (u) => void visitUser(u));
     return;
   }
   const liked = game.likedSet();
@@ -74,10 +100,13 @@ export async function openVillage() {
       .join('');
     openWin(
       '마을 · 이웃 여관',
-      `<p class="sub">다른 여관주인의 마을을 구경하고 좋아요를 남겨요${online() ? ' (마을마다 하루 한 번)' : ' · 로그인하면 좋아요가 서버에 남아요'}</p>
-      ${sb ? `<p class="sub g">실제 여관 <small>최근 ${CONFIG.cloud.neighborDays}일 · ♥ 많은 순</small></p><div class="steps">${mineRowHtml}${loading ? '<p class="note">불러오는 중…</p>' : realRows || '<p class="note">아직 다른 여관이 없어요</p>'}${more && !loading ? '<button class="bigbtn sm ghost" id="nbMore">더 보기</button>' : ''}</div>` : ''}
+      `${tabBar(0)}<p class="sub">다른 여관주인의 마을을 구경하고 좋아요를 남겨요${online() ? ' (마을마다 하루 한 번)' : ' · 로그인하면 좋아요가 서버에 남아요'}</p>
+      ${sb ? `<p class="sub g">실제 여관 <small>최근 ${CONFIG.cloud.neighborDays}일 · ♥ 많은 순</small></p><div class="steps">${topRow}${mineRowHtml}${loading ? '<p class="note">불러오는 중…</p>' : realRows || '<p class="note">아직 다른 여관이 없어요</p>'}${more && !loading ? '<button class="bigbtn sm ghost" id="nbMore">더 보기</button>' : ''}</div>` : ''}
       <p class="sub g">예시 마을</p><div class="steps">${fakeRows}</div>`,
     );
+    bindNbTabs();
+    const tb = document.querySelector<HTMLElement>('[data-gbtop]');
+    if (tb) tb.onclick = () => void visitUser(tb.dataset.gbtop!);
     game.setVisitList([...real, ...NEIGHBORS]);
     $$('.stp[data-f]').forEach((b) => (b.onclick = () => game.visit(NEIGHBORS[+b.dataset.f!])));
     $$('.stp[data-r]').forEach((b) => (b.onclick = () => game.visit(real[+b.dataset.r!])));
@@ -86,12 +115,14 @@ export async function openVillage() {
   };
   const load = async (n: number) => {
     page = n;
-    const [rows, mine] = await Promise.all([listVillages(n), myVillage(), pioneers()]);
+    // LUXE §4: 방명록 새 좋아요(탭 빨간 점) — pollMin분에 한 번만 실제로 묻는다
+    const [rows, mine, , top] = await Promise.all([listVillages(n), myVillage(), pioneers(), lastTopHtml(), gbOn() ? pollGuestbook() : null]);
+    topRow = top;
     more = rows.length > n;
     real = rows.slice(0, n).map(toNeighbor).filter((x): x is Neighbor => !!x);
     mineRow = mine ? toNeighbor(mine) : null;
     // 불러오는 사이 창을 닫았거나(이웃 방문·다른 창) 방문 중이면 다시 열지 않는다 — 닫힌 창도 제목(#winT)은 남아 있어서 예전엔 늦게 온 응답이 목록 창을 다시 띄웠다 (돌아온 마을에서 끊긴 단골 제안이 막힘)
-    if (isWinOpen() && !S.visiting && document.getElementById('winT')?.textContent === '마을 · 이웃 여관') draw(false);
+    if (nbTab === 0 && isWinOpen() && !S.visiting && document.getElementById('winT')?.textContent === '마을 · 이웃 여관') draw(false);
   };
   draw(!!sb);
   if (!sb) return;

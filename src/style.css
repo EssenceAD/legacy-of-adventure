@@ -2381,3 +2381,16 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 .bd-slot.full{opacity:.6}.bd-ic{width:24px;height:24px;image-rendering:pixelated;grid-column:1}
 .bd-slot button{border:0;background:#3f5fc8;box-shadow:0 0 0 2px var(--ink);padding:4px 8px;cursor:pointer;min-height:36px;grid-column:3;color:inherit;font:inherit}.bd-slot button:is([disabled]){opacity:.45}
 .bd-ok{grid-column:3;color:#6fd04b;font-style:normal}.bd-rsv{color:#ffb86b}
+
+/* LUXE §4 이웃 방명록 (guestbook · vis): 도장 한마디 8개 · 방명록 숫자 두 칸 · 지난주 인기 마을 줄 */
+.gbstamps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
+.gbst{min-height:44px;padding:8px 6px;border:0;background:var(--navy2);color:var(--cream);box-shadow:0 0 0 2px var(--ink);font:inherit;cursor:pointer;text-align:center;line-height:1.25}
+.gbst.on{background:#5a3d1e;color:#ffe9a8;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold)}
+.gbst:disabled{opacity:.5;cursor:default}
+.gbwhy{color:#ffb3a0}
+.gbstat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}
+.gbstat span{display:flex;flex-direction:column;align-items:center;padding:8px 4px;background:var(--navy2);box-shadow:0 0 0 2px var(--ink)}
+.gbstat b{font-size:22px;color:var(--gold)}.gbstat small{color:#9aa6d8}
+.stp.gbtop{box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--gold);background:#3a2c1a}
+.stp.gbtop b{color:#ffe9a8}
+#nbT .tab{position:relative}

@@ -44,6 +44,9 @@ import { sanitizeGrowth } from './world/growth';
 import { sanitizeRegions2 } from './world/regions2';
 import { gradeName } from './world/grade';
 import { likeReal } from './ui/neighbors';
+import { gbOn, openStampSheet } from './ui/guestbook';
+import { gbServer } from './net/guestbook';
+import { mythicHeart } from './world/mythic';
 import { refreshNoticeDot } from './ui/notice';
 import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
 import { closeWin, isWinOpen, toast } from './ui/windows';
@@ -665,7 +668,7 @@ export function updateLike() {
   const v = S.visiting;
   if (!v) return;
   const liked = !v.uid && likedSet().has(v.id);
-  $('#vLike').textContent = `♥ ${fmt(v.like + (liked ? 1 : 0))}`;
+  $('#vLike').textContent = `${v.uid && gbOn() && !gbServer.missing ? '👍' : '♥'} ${fmt(v.like + (liked ? 1 : 0))}`;
 }
 
 export async function likeNeighbor() {
@@ -673,8 +676,26 @@ export async function likeNeighbor() {
   if (!v) return;
   // 실제 유저 마을: 서버 (마을당 하루 한 번)
   if (v.uid) {
-    if (await likeReal(v)) { gsState().cnt.likes++; const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
-    updateLike();
+    const legacyLike = async () => {
+      if (await likeReal(v)) { gsState().cnt.likes++; const [a, b] = landBounds(); floatW((a + b) / 2, (a + b) / 2 - 1, 60, '♥ 좋아요!', 'heart'); }
+      updateLike();
+    };
+    // LUXE §4 방명록 (guestbook · vis): 도장 한마디 고르기 → 서버 like_village(p_village, p_phrase) · 서버 준비 전이면 예전 좋아요
+    if (gbOn())
+      return openStampSheet(
+        v,
+        (likes) => {
+          if (S.visiting !== v) return;
+          v.like = likes;
+          mythicHeart(v.uid!);
+          gsState().cnt.likes++;
+          const [a, b] = landBounds();
+          floatW((a + b) / 2, (a + b) / 2 - 1, 60, '👍 좋아요!', 'heart');
+          updateLike();
+        },
+        () => void legacyLike(),
+      );
+    await legacyLike();
     return;
   }
   const set = likedSet();

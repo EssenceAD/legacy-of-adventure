@@ -10,6 +10,7 @@ import { getPref, readSave, setPref, snapshot, writeSave } from '../save/save';
 import { validRecord } from './local';
 import { chaptersDone, townGrade } from '../world/guide';
 import { addMail, myTitle } from '../world/meta';
+import { pollGuestbook } from './gbSync';
 import { isGuest, me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
@@ -87,6 +88,8 @@ export async function pushNow() {
       P.meta.linkMail = true;
       addMail({ from: 'system', title: '모모의 편지 · 여관을 지키는 법', body: '폰을 바꾸거나 브라우저를 지워도 여관을 지키려면 계정을 연결해 주세요! 메뉴 → 계정 → 「계정 연결하기」. 마을·금화·장비는 그대로예요.', reward: {} });
     }
+    // LUXE §4 방명록: 새 좋아요(빨간 점) · 10개마다 선물 (pollMin분마다 · 플래그 끄면 아무것도 안 함)
+    await pollGuestbook();
   } catch {
     /* 다음 번에 다시 */
   } finally {

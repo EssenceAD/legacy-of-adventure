@@ -16,6 +16,8 @@ export interface DotInput {
   achReady: number;
   goalsReady: boolean;
   unseenDeco: number;
+  /** LUXE §4 방명록: 확인 안 한 새 좋아요 (guestbook 끔이면 0) */
+  gbNew?: number;
 }
 /** 버튼마다 점 하나 켤지 */
 export interface DotPlan {
@@ -28,15 +30,18 @@ export interface DotPlan {
   /** 왼쪽 위 장부 카드 */
   mission: boolean;
   /** 메뉴 격자 칸 */
-  tiles: { mail: boolean; exp: boolean; smith: boolean; garden: boolean; quest: boolean; ach: boolean; goals: boolean };
+  tiles: { mail: boolean; exp: boolean; smith: boolean; garden: boolean; quest: boolean; ach: boolean; goals: boolean; neighbor: boolean };
+  /** LUXE §4 아래 「마을」(이웃) 버튼: 새 좋아요 */
+  village: boolean;
 }
 export function dotPlan(i: DotInput): DotPlan {
   return {
     exp: i.runsDone > 0,
-    menu: i.mailUnread > 0 || i.achReady > 0 || i.smithReady || i.ripe > 0,
+    menu: i.mailUnread > 0 || i.achReady > 0 || i.smithReady || i.ripe > 0 || (i.gbNew ?? 0) > 0,
     build: i.unseenDeco > 0,
     mission: i.missionReady,
-    tiles: { mail: i.mailUnread > 0, exp: i.runsDone > 0, smith: i.smithReady, garden: i.ripe > 0, quest: i.missionReady, ach: i.achReady > 0, goals: i.goalsReady },
+    tiles: { mail: i.mailUnread > 0, exp: i.runsDone > 0, smith: i.smithReady, garden: i.ripe > 0, quest: i.missionReady, ach: i.achReady > 0, goals: i.goalsReady, neighbor: (i.gbNew ?? 0) > 0 },
+    village: (i.gbNew ?? 0) > 0,
   };
 }
 

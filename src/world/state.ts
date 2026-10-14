@@ -307,6 +307,9 @@ export interface PrefsBlob {
   v: Record<string, string>;
 }
 /** 2단계 진행 데이터 (전부 저장된다) */
+/** LUXE §4 방명록 세이브 칸 (옛 저장엔 없음 → 0 = 서버 누적 좋아요를 처음 볼 때 선물 계산 시작) */
+export interface GuestbookState { seen: number; tens: number; week: string; weekN: number }
+export const freshGuestbook = (): GuestbookState => ({ seen: 0, tens: 0, week: '', weekN: 0 });
 export function freshProgress() {
   return {
     nextAdvId: 1,
@@ -651,6 +654,8 @@ export function freshProgress() {
     five: freshFive(),
     /** LUXE §3 마을 회관 꾸러미 (world/bundles.ts bdState()가 칸을 바로잡는다 · 플래그를 꺼도 바친 것·받은 것은 그대로) */
     bundles: freshBundles(),
+    /** LUXE §4 방명록 (world/guestbook.ts gbState()가 칸을 바로잡는다) — seen: 확인한 누적 좋아요(빨간 점) · tens: 선물로 바꾼 10개 묶음 수 · week/weekN: 이번 주(KST) 선물 횟수 */
+    guestbook: freshGuestbook(),
   };
 }
 

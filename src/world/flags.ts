@@ -157,6 +157,8 @@ export const FLAG_DEFAULTS = {
   fiveStars: false,
   /** LUXE §3 마을 회관 꾸러미 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 게시판 「마을 회관」 탭 · 6방 × 꾸러미(N/칸) · 바친 건 사라짐(연금 예약분은 빼고) · 꾸러미 완성 금화·가루 · 방 완성 영구 보상 · 6방 다 = 컷 · 「마을 회관」 건물 · 칭호 · 명품 쿠폰 (숫자 data/luxe_cfg.ts) — 끄면 탭·보상 효과 모두 멈춤 (바친 것·받은 것은 그대로) */
   bundles: false,
+  /** LUXE §4 이웃 방명록 · 좋아요 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 방문 화면 [👍 좋아요] + 도장 한마디 8개(하루 1번 · 로그인 + 장부 2장 · 내 마을 X) · 이웃 창 「방명록」 탭(이번 주 · 누적 · 최근 30 · 새 좋아요 빨간 점) · 10개마다 우편함 선물(주 5번) · 랭킹 「이번 주 인기 마을」 · 이웃 목록 맨 위 「🏆 지난주 인기 마을」 · 서버 supabase/guestbook.sql (없으면 「준비 중」 · 좋아요는 예전처럼) */
+  guestbook: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

@@ -75,5 +75,6 @@
   "fishSfx": true,
   "enhTransfer": true,
   "fiveStars": true,
-  "bundles": false
+  "bundles": false,
+  "guestbook": false
 }
