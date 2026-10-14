@@ -46,11 +46,11 @@ await p.evaluate(() => {
 await W(700);
 await p.evaluate(() => document.querySelector('#winB .tabs .tab[data-t="1"]')?.click());
 await W(500);
-const n = await p.evaluate(() => document.querySelectorAll('#winB [data-enh]:not([disabled])').length);
+const n = await p.evaluate(() => document.querySelectorAll('#winB [data-enh]:not([disabled]):not([aria-disabled="true"])').length);
 ok(n >= 6, `강화할 장비 ${n}개`);
 // 아래쪽 줄로 스크롤해서 그 줄의 강화 버튼 누르기
 const pick = await p.evaluate(() => {
-  const bs = [...document.querySelectorAll('#winB [data-enh]:not([disabled])')];
+  const bs = [...document.querySelectorAll('#winB [data-enh]:not([disabled]):not([aria-disabled="true"])')];
   const btn = bs[Math.floor(bs.length * 0.7)];
   btn.scrollIntoView({ block: 'center' });
   return btn.getAttribute('data-enh');

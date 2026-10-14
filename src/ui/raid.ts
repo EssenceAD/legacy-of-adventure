@@ -34,6 +34,8 @@ import { recButton, roleRow, slotRow, synRow } from './partyUi';
 import { bindDeck, deckGlow, deckGridHtml, deckTopHtml, lock4Cell, type DeckCfg } from './heroCard';
 import { partyBlock, partyPool, recommendFor, rulesV2 } from '../world/partyRules';
 import { vis, fsay } from '../world/visual';
+import { lockAttr, lockNote } from './lockBtn';
+import { raidLock, triesText } from '../world/raidWhy';
 import { track as trackEv } from '../net/telemetry';
 import { huntPartyMax } from '../world/party4';
 import { checkParty4 } from '../world/meta';
@@ -120,8 +122,10 @@ export function openRaidPrep(t: RaidTarget) {
         return `<button class="pm ${on ? 'on' : ''}" data-id="${a.id}"><img src="${pic(a)}" alt=""><span>${lead ? '<b class="g">대장</b> ' : ''}${nameTag(a)} Lv.${a.lvl}<small>${CLASSES[a.kind].name} ${aff}</small></span><em>${fmt(powerOf(a))}</em></button>`;
       })
       .join('') +
-    blocked.map((a) => `<button class="pm" data-id="${a.id}" disabled><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'raid')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
-  const dis = members.length && left > 0 ? '' : 'disabled';
+    blocked.map((a) => `<button class="pm" data-id="${a.id}" ${lockAttr(partyBlock(a, 'raid'))}><img src="${pic(a)}" alt=""><span>${nameTag(a)} Lv.${a.lvl}<small>${esc(partyBlock(a, 'raid')!)}</small></span><em>${fmt(powerOf(a))}</em></button>`).join('');
+  // 회색 버튼엔 이유: 막혀도 눌리고(실행 X) 이유 토스트 · 버튼 아래 한 줄
+  const why = raidLock(t, members.length)?.text ?? null;
+  const dis = lockAttr(why);
   if (vis('heroCards')) {
     // CHECKIN §J6 카드 덱: 맨 위 [추천 편성][직접 토벌] · 자동 토벌·소탕은 격자 아래
     const cfg: DeckCfg = {
@@ -145,7 +149,7 @@ export function openRaidPrep(t: RaidTarget) {
     };
     openWin(
       `토벌 · ${b.name}`,
-      `${top}${deckTopHtml(cfg)}${deckGridHtml(cfg)}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
+      `${top}${deckTopHtml(cfg)}${lockNote(why)}${deckGridHtml(cfg)}<div class="boss-head"><img class="bossimg" src="${bossPic(b)}" alt=""><div>
         <p class="sub">${t.kind === 'weekly' ? '이번 주 보스' : `떠돌이 보스 · ${Math.max(0, Math.ceil((P.raid.wander!.until - Date.now()) / 36e5))}시간 남음`}</p>
         <div class="bhp"><i style="width:${hpPct * 100}%"></i></div>
         <p class="note">${fmt(t.hpLeft)} / ${fmt(t.max)} · ${t.kind === 'weekly' ? `이번 주 누적 ${pct(1 - hpPct)} 처치` : '이 보스 체력도 이어서 깎여요'}</p>
@@ -180,10 +184,10 @@ export function openRaidPrep(t: RaidTarget) {
     <p class="sub">파티 ${members.length}/${max} · 첫 번째가 대장(직접 조작)${max > 3 ? ' · 4번째는 AI' : ''}</p>${slotRow(members, max)}${v2 && crew.length ? recButton('rRec', raidWhy.k === b.id ? raidWhy.text : '') : ''}${roleRow(members)}${synRow(members, crew, max, 'raid')}
     <div class="plist">${rows || '<p class="note">토벌에 갈 단골이 없어요 (체력 30 이상, 원정 중이 아닌 단골·영웅)</p>'}</div>
     <div class="btnrow raidgo">
-      <button class="bigbtn red" id="rgMan" ${members.length && left > 0 ? '' : 'disabled'}>직접 토벌</button>
-      <button class="bigbtn" id="rgAuto" ${members.length && left > 0 ? '' : 'disabled'}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
-      ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${members.length && left > 0 ? '' : 'disabled'}>소탕</button>` : ''}
-    </div>
+      <button class="bigbtn red" id="rgMan" ${dis}>직접 토벌</button>
+      <button class="bigbtn" id="rgAuto" ${dis}>자동 토벌 (보상 ${Math.round(CONFIG.combat.raidAuto * 100)}%)</button>
+      ${canSweep(b) ? `<button class="bigbtn ghost" id="rgSweep" ${dis}>소탕</button>` : ''}
+    </div>${lockNote(why)}
     <p class="note">오늘 남은 도전 ${left}/${triesMax()} · 실패해도 깎은 만큼 보상 · ${rankNote}</p>`,
   );
   $$('.pm').forEach(
@@ -910,7 +914,7 @@ async function showResult(t: RaidTarget, out: RaidOutcome, ex: RaidExpect, mode:
     ${out.personalBest ? '<p class="cen good">개인 최고 기록!</p>' : ''}${streak >= 2 ? `<p class="cen">연속 막기 ${streak}회</p>` : ''}
     <div class="rank">${t.kind === 'wander' ? '떠돌이 보스는 주간 랭킹에 안 들어가요' : rec?.chain ? '도전장 보스는 주간 랭킹에 안 들어가요 (랭킹은 이번 주 첫 보스만)' : '주간 토벌 랭킹 · ' + (rec ? (rec.ok ? (rec.online ? `이번 주 최고 ${fmt(P.raid.best)} · <b class="g" id="rMyRank">순위 확인 중…</b>${rec.reason ? ` <small>${esc(rec.reason)}</small>` : ''}` : `이번 주 최고 ${fmt(P.raid.best)} 기록 저장 <small>(로그인하면 랭킹에 올라가요)</small>`) : `<small>랭킹 기록이 잠시 안 올라갔어요 — 다시 올려볼게요</small>`) : '소탕은 랭킹에 안 들어가요')}</div>${rec?.noWind ? '<p class="cen"><small id="rNoWind">바람 보정 제외 기록</small></p>' : ''}
     ${t.kind === 'weekly' && out.killed ? challengeHtml() : ''}
-    <div class="go">${dead ? '' : `<button class="a" id="rAgain" ${left > 0 ? '' : 'disabled'}>다시 하기 (${left}/${triesMax()})</button>`}<button class="b" id="rHome">${dead ? '닫기' : '마을로'}</button></div>`;
+    <div class="go">${dead ? '' : `<button class="a" id="rAgain" ${lockAttr(left > 0 ? null : triesText())}>다시 하기 (${left}/${triesMax()})</button>`}<button class="b" id="rHome">${dead ? '닫기' : '마을로'}</button></div>${dead ? '' : lockNote(left > 0 ? null : triesText())}`;
   markDirty();
   if (inBattle) {
     const box = document.getElementById('rResBody')!;

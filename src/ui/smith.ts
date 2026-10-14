@@ -6,14 +6,14 @@ import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
-import { craftWhet, gardenLevelState, gardenPlots, whetCost } from '../world/craft';
+import { craftWhet, gardenLevelState, gardenPlots } from '../world/craft';
 import { vis, fsay } from '../world/visual';
 import { def } from '../data/catalog';
 import { maxLevel } from '../world/town';
 import { favActors, favRank } from '../world/growth';
 import { openReforge, reforgeTab } from './reforge';
 import type { Item } from '../world/state';
-import { bossHint, craft, craftCost, enhance, enhanceBossCost, enhanceCost, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
+import { craft, craftCost, enhance, enhanceCost, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
@@ -24,6 +24,9 @@ import { appendMoveButton, openWin, toast } from './windows';
 import { confirmSheet } from './confirmSheet';
 import { enhMsg, enhUse, openEnhance, pityText } from './enhance';
 import { openSmithOne } from './smithOne';
+import { lockAttr, lockNote } from './lockBtn';
+import { costLine, partHtml, shortTip } from './costLine';
+import { craftParts, enhanceParts, transcendParts, whetParts } from '../world/shortage';
 
 let craftRegion: RegionId = 'forest';
 let smTab = 0;
@@ -84,12 +87,11 @@ export function openSmith(o: Building, tab = smTab) {
     const rows = sorted()
       .map((it) => {
         const max = it.enh >= CONFIG.smith.maxEnhance;
-        const cost = enhanceCost(it);
         const own = ownerName(it.owner);
-        const bc = enhanceBossCost(it);
-        const bossShort = !!bc && (P.bossMats[bc.boss.id] ?? 0) < bc.n;
-        const bossTxt = bc ? ` · ${bc.boss.mat} ${bc.n}/${P.bossMats[bc.boss.id] ?? 0}` : '';
-        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${favOf(it) < 99 ? '★ ' : ''}${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${DUST_NAME[it.grade]} ${cost}${bossTxt} · ${pityText(it)}`}${own ? ` · ${esc(own)} 착용` : ''}</small>${bossShort ? `<small class="bad">${bossHint(bc!.boss.id)}</small>` : ''}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, false)}" ${P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${nextGoal(it.enh, false)}까지</button>`}<button data-enh="${it.id}" ${max || P.dust[it.grade] < cost || bossShort ? 'disabled' : ''}>+${it.enh + 1}</button></div>`;
+        // 회색 버튼엔 이유: 재료마다 필요/가진 · 모자라면 빨강 −n · 막힌 버튼은 눌러도 이유
+        const parts = max ? [] : enhanceParts(it);
+        const tip = shortTip(parts);
+        return `<div class="irow">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${favOf(it) < 99 ? '★ ' : ''}${esc(it.name)}${it.enh ? ` +${it.enh}` : ''}</b><small>${max ? '최대 강화 · 「초월」 탭에서 +11부터' : `${parts.map(partHtml).join(' · ')} · ${pityText(it)}`}${own ? ` · ${esc(own)} 착용` : ''}</small></span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, false)}" ${lockAttr(tip)}>+${nextGoal(it.enh, false)}까지</button>`}<button data-enh="${it.id}" ${max ? 'disabled' : lockAttr(tip)}>+${it.enh + 1}</button></div>`;
       })
       .join('');
     body = `<p class="note">비용 (현재 강화+1)² × 10 · +1만 확정 · +${CONFIG.growth.enhance.dropFrom}~+10 실패는 ${Math.round(CONFIG.growth.enhance.dropChance * 100)}% 확률로 1단계 하락(🧿 부적이 막음) · 실패마다 그 장비 +${Math.round(CONFIG.growth.enhance.pity * 100)}%p · 대성공 ${Math.round(CONFIG.growth.enhance.great * 100)}%(+2) · +${CONFIG.smith.bossEnhanceFrom}으로 올릴 땐 그 지역 보스 재료 ${CONFIG.smith.bossEnhanceMats}개</p>${useHtml()}<button class="bigbtn sm" id="bulkEnh">일괄 강화…</button><div class="ilist">${rows || '<p class="note">강화할 장비가 없어요</p>'}</div>`;
@@ -102,12 +104,11 @@ export function openSmith(o: Building, tab = smTab) {
         .filter((it) => it.enh >= CONFIG.smith.maxEnhance)
         .map((it) => {
           const max = it.enh >= T.max;
-          const c = transcendCost(it);
           const own = ownerName(it.owner);
-          const short = S.gold < c.gold || (P.mats[it.region] ?? 0) < c.mats || (P.bossMats[c.boss.id] ?? 0) < c.bossMats || (P.dust[it.grade] ?? 0) < c.dust;
-          const reg = REGIONS.find((r) => r.id === it.region)!;
-          const need = max ? '극의에 닿았어요' : `금화 ${fmt(c.gold)} · ${reg.mat} ${c.mats}/${P.mats[it.region] ?? 0} · ${c.boss.mat} ${c.bossMats}/${P.bossMats[c.boss.id] ?? 0} · ${DUST_NAME[it.grade]} ${c.dust}/${fmt(P.dust[it.grade] ?? 0)}`;
-          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>${pityText(it)}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, true)}" ${short ? 'disabled' : ''}>+${nextGoal(it.enh, true)}까지</button>`}<button data-tr="${it.id}" ${max || short ? 'disabled' : ''}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
+          const parts = max ? [] : transcendParts(it);
+          const tip = shortTip(parts);
+          const need = max ? '극의에 닿았어요' : parts.map(partHtml).join(' · ');
+          return `<div class="irow ${it.enh >= T.max ? 'tr20' : ''}">${itemCell(it, `data-id="${it.id}"`)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)} +${it.enh}</b><small>${need}</small>${max ? '' : `<small>${pityText(it)}${own ? ` · ${esc(own)} 착용` : ''}</small>`}</span>${max ? '' : `<button class="ghost to" data-to="${it.id}" data-g="${nextGoal(it.enh, true)}" ${lockAttr(tip)}>+${nextGoal(it.enh, true)}까지</button>`}<button data-tr="${it.id}" ${max ? 'disabled' : lockAttr(tip)}>${max ? '최고' : `+${it.enh + 1}`}</button></div>`;
         })
         .join('');
       body = `<p class="note">+10 장비를 +${T.max}까지 · 단계마다 능력치 +6% · +${T.nameAt} 「초월한」 · +${T.max} 「극의」 · 실패해도 단계는 그대로, 다음 시도 성공률 +${Math.round(CONFIG.growth.transcend.pity * 100)}%p (+11 ${Math.round(CONFIG.growth.transcend.rates[0] * 100)}% → +20 ${Math.round(CONFIG.growth.transcend.rates[9] * 100)}%)</p>${useHtml()}<button class="bigbtn sm" id="bulkTr">일괄 초월…</button><div class="ilist">${rows || '<p class="note">+10 장비가 없어요 · 강화 탭에서 +10까지 올려요</p>'}</div>`;
@@ -204,18 +205,21 @@ export function bindSalvage(redraw: () => void) {
 /** 제작 탭 본문 · level = 맨 아래 대장간 레벨업 버튼 (J7 smithOne은 창 맨 위 줄로 옮김) */
 export function craftHtml(o: Building, level = true): string {
   let body = '';
-  const c = craftCost(craftRegion);
   const regs = REGIONS.filter((_, i) => i < BASE_REGIONS || huntRegionOpen(i)).map((r) => `<button class="${r.id === craftRegion ? 'on' : ''}" data-r="${r.id}" style="--rc:${r.color}">${r.name}<small>${r.mat} ${P.mats[r.id]}</small></button>`).join('');
   const reg = REGIONS.find((r) => r.id === craftRegion)!;
   const next = nextLevelCost(o);
-  const have = P.bossMats[c.boss.id] ?? 0;
+  // 회색 버튼엔 이유: 재료마다 필요/가진 · 모자라면 빨강 −n (누르면 얻는 곳) · 하나도 못 만들면 버튼이 이유를 말함
+  const cParts = craftParts(craftRegion);
+  const full = P.bag.filter((x) => x.owner == null).length >= bagSize();
+  const cWhy = craftMax(craftRegion) > 0 ? null : full ? fsay('가방이 꽉 찼어요 · 가방 정리에서 비워요', '가방이 꽉 찼어요 · 가방 정리에서 비워 주세요') : shortTip(cParts);
+  const wParts = whetParts(craftRegion);
+  const wWhy = shortTip(wParts);
   body = `<p class="sub"><b class="g">세트 제작</b> — 「${reg.set.name}」 부위를 골라 만들어요</p>
   <div class="regs">${regs}</div>
-  <p class="note">${reg.mat} ${c.mats}/${P.mats[reg.id]} · ${c.boss.mat} ${c.bossMats}/${have} · ${DUST_NAME.n} ${c.dust} · 금화 ${fmt(c.gold)} · 등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
-  ${have < c.bossMats ? `<p class="sub bad">${bossHint(c.boss.id)}</p>` : ''}
+  ${costLine(cParts, '', 'note')}<p class="note">등급은 랜덤(대장간 레벨이 높을수록 ↑)</p>
   ${ashShort(craftRegion) > 0 && swappableAsh() > 0 ? `<button class="bigbtn sm" id="cFill">가루 바꾸기로 채우기 (${DUST_NAME.n} ${fmt(ashShort(craftRegion))} 모자람)</button>` : ''}
-  <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1">1</button><button data-cs="${s}" data-n="5">5</button><button data-cs="${s}" data-n="max">최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>
-  <div class="crow2 whetrow"><span>🪨 <b>행운의 숫돌</b> <small>(가진 것 ${P.growth.whet}) · 다음 1회 강화·초월 성공률 +${Math.round(CONFIG.growth.whet.add * 100)}%p<br>${DUST_NAME.n} ${whetCost(craftRegion).ash}/${fmt(P.dust.n)} · ${reg.mat} ${whetCost(craftRegion).mats}/${P.mats[reg.id]} · 금화 ${fmt(whetCost(craftRegion).gold)}</small></span><button id="cWhet">만들기</button></div>
+  <div class="crows">${SLOTS.map((s) => `<div class="crow2"><b>${SLOT_NAME[s]}</b><button data-cs="${s}" data-n="1" ${lockAttr(cWhy)}>1</button><button data-cs="${s}" data-n="5" ${lockAttr(cWhy)}>5</button><button data-cs="${s}" data-n="max" ${lockAttr(cWhy)}>최대 ${craftMax(craftRegion)}</button></div>`).join('')}</div>${lockNote(cWhy)}
+  <div class="crow2 whetrow"><span>🪨 <b>행운의 숫돌</b> <small>(가진 것 ${P.growth.whet}) · 다음 1회 강화·초월 성공률 +${Math.round(CONFIG.growth.whet.add * 100)}%p<br>${wParts.map(partHtml).join(' · ')}</small></span><button id="cWhet" ${lockAttr(wWhy)}>만들기</button></div>
   <button class="bigbtn sm ghost" id="cSet" ${missingSetSlots(craftRegion).length ? '' : 'disabled'}>세트 맞추기 (없는 부위 ${missingSetSlots(craftRegion).length}개)</button>
   ${!level ? '' : next != null ? `<button class="bigbtn" id="smUp">대장간 Lv.${o.lvl + 1} (${fmt(next)} G) · 가방 +${CONFIG.items.bagPerSmithLevel}칸 · 제작 등급 ↑</button>` : '<p class="note">최고 레벨 대장간이에요</p>'}`;
   return body;

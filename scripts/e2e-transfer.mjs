@@ -128,7 +128,7 @@ const openPanel = async (p, heroId) => {
   await p.locator('#smoTf').click();
   await W(p, 400);
   const lst = await p.evaluate((s) => {
-    const rows = [...document.querySelectorAll('.tf-row')].map((r) => ({ g: +r.dataset.tg, r: +r.dataset.tr, dis: r.querySelector('button').disabled, txt: r.innerText.replace(/\s+/g, ' ') }));
+    const rows = [...document.querySelectorAll('.tf-row')].map((r) => ({ g: +r.dataset.tg, r: +r.dataset.tr, dis: (r.querySelector('button').getAttribute('aria-disabled') === 'true'), txt: r.innerText.replace(/\s+/g, ' ') }));
     return { rows, self: rows.some((x) => x.g === x.r), give: rows.find((x) => x.g === s.giver && x.r === s.recv) };
   }, s);
   ok(!lst.self, '같은 장비: 자기 자신은 목록에 없음');
@@ -148,7 +148,7 @@ const openPanel = async (p, heroId) => {
     document.getElementById('smoTf')?.click();
     await T(400);
     const r = document.querySelector(`#tfRecv .tf-row[data-tg="${s.giver}"][data-tr="${s.relic}"]`);
-    const out = r ? { dis: r.querySelector('button').disabled, txt: r.innerText.replace(/\s+/g, ' ') } : null;
+    const out = r ? { dis: (r.querySelector('button').getAttribute('aria-disabled') === 'true'), txt: r.innerText.replace(/\s+/g, ' ') } : null;
     // 다시 영웅 무기로
     document.getElementById('tfBack').click();
     await T(400);
@@ -177,7 +177,7 @@ const openPanel = async (p, heroId) => {
     document.getElementById('smoTf')?.click();
     await T(400);
     const row = document.querySelector(`#tfRecv .tf-row[data-tg="${s.giver}"][data-tr="${s.recv}"]`);
-    const giverBlocked = !!row && row.querySelector('button').disabled && row.innerText.includes('원정 중이라 주는 장비를 뺄 수 없어요');
+    const giverBlocked = !!row && (row.querySelector('button').getAttribute('aria-disabled') === 'true') && row.innerText.includes('원정 중이라 주는 장비를 뺄 수 없어요');
     hero.runId = null;
     // 받는 쪽 원정: 받는 장비를 다른 영웅에게 끼우고 그 영웅을 원정으로
     const other = Wd.actors.find((a) => a.id === s.other);
@@ -200,7 +200,7 @@ const openPanel = async (p, heroId) => {
       document.getElementById('smoTf')?.click();
       await T(400);
       const r2 = document.querySelector(`#tfRecv .tf-row[data-tg="${s.giver}"][data-tr="${s.recv}"]`);
-      recvBlocked = !!r2 && r2.querySelector('button').disabled && r2.innerText.includes('원정 중이라 받는 장비를 손댈 수 없어요');
+      recvBlocked = !!r2 && (r2.querySelector('button').getAttribute('aria-disabled') === 'true') && r2.innerText.includes('원정 중이라 받는 장비를 손댈 수 없어요');
       other.runId = null;
       other.equip.weapon = prev ? prev.id : null;
       if (prev) prev.owner = other.id;
