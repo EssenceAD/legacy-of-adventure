@@ -27,15 +27,17 @@ function load(file: string) {
   const r = placeLayout(d.buildings.map((b: { kind: Kind; tx: number; ty: number; lvl: number; hue?: number; flip?: boolean; fromProp?: boolean }) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl ?? 1, hue: b.hue ?? null, flip: !!b.flip, extra: b.fromProp ? { fromProp: true } : {} })), d.land);
   return { innName: d.innName as string, moved: r.moved, dropped: r.dropped };
 }
-/** 이 어울림만, 3개 제한 n으로 계산 */
-function alone(h: HarmonyDef, cap: number): boolean {
+/** 이 어울림만 계산 (cap을 주면 크기 상관없이 큰 건물 제한 = cap · 안 주면 지금 규칙) */
+function alone(h: HarmonyDef, cap?: number): boolean {
   const keep = HARMONIES.splice(0, HARMONIES.length, h);
   const pb = H.perBuilding;
-  H.perBuilding = cap;
+  const bs = H.perBuildingBySize;
+  if (cap !== undefined) (H.perBuilding = cap), (H.perBuildingBySize = {});
   try {
     return computeSets(world.objs).some((s) => s.id === h.id);
   } finally {
     H.perBuilding = pb;
+    H.perBuildingBySize = bs;
     HARMONIES.splice(0, HARMONIES.length, ...keep);
   }
 }
@@ -101,11 +103,11 @@ describe.skipIf(!SAVES.every(([, f]) => fs.existsSync(f)))('K10 어울림 점검
           continue;
         }
         let r: string;
-        if (alone(h, H.perBuilding)) {
+        if (alone(h)) {
           r = '**앞 어울림이 물건을 먼저 가져감** (혼자 계산하면 성립)';
           blocked++;
         } else if (alone(h, 99)) {
-          r = '**한 물건 최대 3개 제한** (제한 없으면 성립)';
+          r = '**큰 건물 개수 제한** (제한 없으면 성립)';
           blocked++;
         } else r = why(h);
         out.push(`| ${h.id} | ${h.name} | ✗${P.harmony.found.includes(h.id) ? ' (예전에 발견)' : ''} | ${r} | ${v2.has(h.id) ? '**✓ 성립**' : '✗'} |`);
@@ -119,5 +121,29 @@ describe.skipIf(!SAVES.every(([, f]) => fs.existsSync(f)))('K10 어울림 점검
     }
     console.log(out.join('\n'));
     expect(out.length).toBeGreaterThan(10);
+  });
+});
+
+// 형철 #22 리플레이: 실제 저장 전부에서 큰 건물 크기별 제한(2×2 4 · 3×3 6) 전/후 어울림 수 — 전에 성립한 건 그대로 성립해야
+const REAL = fs.existsSync('tests/fixtures') ? fs.readdirSync('tests/fixtures').filter((f) => /^real_.*\.json$/.test(f)).map((f) => 'tests/fixtures/' + f) : [];
+describe.skipIf(!REAL.length)('형철 #22 어울림 리플레이 (실제 저장 전부)', () => {
+  it('크기별 제한 전/후', () => {
+    const rows: string[] = [];
+    for (const f of REAL) {
+      load(f);
+      setFlag('harmonyV2', true);
+      const bs = H.perBuildingBySize;
+      H.perBuildingBySize = {};
+      const before = computeSets(world.objs);
+      H.perBuildingBySize = bs;
+      const after = computeSets(world.objs);
+      const b = new Set(before.map((s) => s.id));
+      const a = new Set(after.map((s) => s.id));
+      const lost = [...b].filter((id) => !a.has(id));
+      const gained = [...a].filter((id) => !b.has(id));
+      rows.push(`${f}: 어울림 ${b.size} → ${a.size} (세트 ${before.length} → ${after.length})${gained.length ? ' · 새로 성립 #' + gained.join(',#') : ''}${lost.length ? ' · ⚠ 빠짐 #' + lost.join(',#') : ''}`);
+      expect(lost, f).toEqual([]);
+    }
+    console.log(rows.join('\n'));
   });
 });

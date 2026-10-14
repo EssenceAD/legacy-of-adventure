@@ -6,7 +6,7 @@ import { def, type Kind } from '../src/data/catalog';
 import { HARMONIES, type HarmonyDef, type HarmonyPart } from '../src/data/harmony';
 import { migrate } from '../src/save/save';
 import { setFlag } from '../src/world/flags';
-import { computeSets, gap } from '../src/world/harmony';
+import { capOf, computeSets, gap } from '../src/world/harmony';
 import { resetProgress, S, world, type Building } from '../src/world/state';
 import { placeLayout } from '../src/world/town';
 
@@ -107,6 +107,40 @@ describe('K10 규칙', () => {
   });
 });
 
+describe('형철 #22 큰 건물 크기별 어울림 개수', () => {
+  it('capOf: 2×2 → 4 · 3×3 → 6 · 그 밖(2×1·4×4·5×5) → 3', () => {
+    expect(capOf({ fw: 2, fh: 2 })).toBe(4);
+    expect(capOf({ fw: 3, fh: 3 })).toBe(6);
+    for (const [fw, fh] of [[2, 1], [4, 4], [5, 5], [1, 1]]) expect(capOf({ fw, fh })).toBe(H.perBuilding);
+    expect(H.perBuilding).toBe(3);
+  });
+  it('3×3 주점 한 채가 어울림 4개(1·7·18·35)에 — 옛 3개 제한이면 쌍둥이 주점이 빠짐', () => {
+    const objs = () => [mk('tavern', 10, 10), mk('tavern', 16, 10), mk('fire', 8, 10), mk('barrels', 10, 8), mk('garden', 10, 14)];
+    const o = objs();
+    expect(computeSets(o).filter((s) => s.members.includes(o[0])).map((s) => s.id).sort((a, b) => a - b)).toEqual([1, 7, 18, 35]);
+    const keep = H.perBuildingBySize;
+    H.perBuildingBySize = {};
+    try {
+      const p = objs();
+      expect(computeSets(p).filter((s) => s.members.includes(p[0])).length).toBe(3);
+      expect(forms(p, 35)).toBe(false);
+    } finally {
+      H.perBuildingBySize = keep;
+    }
+  });
+  it('2×2 분수는 4개까지 · 5번째는 안 됨 (가짜 어울림 5개로 시험)', () => {
+    const fake = [901, 902, 903, 904, 905].map((id, i) => ({ id, name: 'x' + id, text: '', hint: '', parts: [{ k: ['fountain'] as Kind[] }, { k: [(['bench', 'flowerbed', 'lamppost', 'statue', 'well'] as Kind[])[i]] }] }));
+    const keep = HARMONIES.splice(0, HARMONIES.length, ...fake);
+    try {
+      const f = mk('fountain', 20, 20);
+      const objs = [f, mk('bench', 18, 20), mk('flowerbed', 22, 20), mk('lamppost', 20, 18), mk('statue', 20, 22), mk('well', 23, 23)];
+      expect(computeSets(objs).filter((s) => s.members.includes(f)).length).toBe(4);
+    } finally {
+      HARMONIES.splice(0, HARMONIES.length, ...keep);
+    }
+  });
+});
+
 const SAVES = ['tests/fixtures/real_gonu_harm.json', 'tests/fixtures/real_hyeongcheol.json'];
 describe.skipIf(!SAVES.every((f) => fs.existsSync(f)))('K10 실제 저장 (붐비는 마을)', () => {
   it('새 규칙에서 성립 어울림이 줄지 않고 · 규칙 탓에 막힌 것 0', () => {
@@ -129,10 +163,10 @@ describe.skipIf(!SAVES.every((f) => fs.existsSync(f)))('K10 실제 저장 (붐�
         const alone = computeSets(world.objs).some((s) => s.id === h.id);
         HARMONIES.splice(0, HARMONIES.length, ...keep);
         if (!alone) continue;
-        // 명세: 큰 건물은 3개 그대로 — 혼자 계산할 때 쓰는 큰 건물이 이미 다른 어울림 3개에 들어 있으면 허용 (보고)
-        const full = world.objs.filter((o) => !(def(o.kind).deco && o.fw === 1 && o.fh === 1) && computeSets(world.objs).filter((x) => x.members.includes(o)).length >= H.perBuilding && h.parts.some((p) => kindOf(p) === o.kind));
+        // 명세: 큰 건물은 크기별 제한 (형철 #22: 2×2 4 · 3×3 6 · 나머지 3) — 혼자 계산할 때 쓰는 큰 건물이 이미 다른 어울림 3개에 들어 있으면 허용 (보고)
+        const full = world.objs.filter((o) => !(def(o.kind).deco && o.fw === 1 && o.fh === 1) && computeSets(world.objs).filter((x) => x.members.includes(o)).length >= capOf(o) && h.parts.some((p) => kindOf(p) === o.kind));
         expect(full.length, `#${h.id} ${h.name}`).toBeGreaterThan(0);
-        console.log(f, `#${h.id} ${h.name}: 큰 건물 3개 제한 (${full.map((o) => def(o.kind).name).join(', ')})`);
+        console.log(f, `#${h.id} ${h.name}: 큰 건물 개수 제한 (${full.map((o) => def(o.kind).name).join(', ')})`);
       }
       console.log(f, '옛', old.size, '→ 새', now.size);
     }

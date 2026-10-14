@@ -939,6 +939,8 @@ export const CONFIG = {
     /** 발자국 가장자리 사이 빈칸이 이 이하면 어울린다 (대각선 포함) */
     range: 2,
     perBuilding: 3,
+    /** 형철 #22 (harmonyV2): 큰 건물 발자국 크기별 어울림 최대 개수 (「가로x세로」 · 없으면 perBuilding) */
+    perBuildingBySize: { '2x2': 4, '3x3': 6 } as Record<string, number>,
     /** 발견 보상: 금화 goldStep × ceil(번호/6) · 평판 */
     goldStep: 100,
     rep: 3,

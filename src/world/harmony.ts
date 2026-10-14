@@ -104,8 +104,10 @@ function computeSetsV1(objs: Building[]): HSet[] {
 /** 이름이 같은 장식은 같은 물건으로 본다 (술통 더미 barrels·barrel_stack · 장미 아치 arbor·rose_arch) */
 const SAME: Partial<Record<Kind, Kind[]>> = { barrels: ['barrel_stack'], barrel_stack: ['barrels'], arbor: ['rose_arch'], rose_arch: ['arbor'] };
 const matches2 = (p: HarmonyPart, o: Building) => matches(p, o) || (Array.isArray(p.k) && p.k.some((k) => SAME[k]?.includes(o.kind)));
-/** 1칸 장식은 어울림 개수 제한 없음 (큰 건물만 CONFIG.harmony.perBuilding) */
+/** 1칸 장식은 어울림 개수 제한 없음 (큰 건물만 capOf) */
 const smallDeco = (o: Building) => !!def(o.kind).deco && o.fw === 1 && o.fh === 1;
+/** 형철 #22: 큰 건물 한 채가 낄 수 있는 어울림 수 — 2×2는 4 · 3×3은 6 · 나머지는 perBuilding(3) */
+export const capOf = (o: { fw: number; fh: number }) => H.perBuildingBySize[`${o.fw}x${o.fh}`] ?? H.perBuilding;
 /** 앵커에서 시작해 이 어울림 한 세트 (못 만들면 null) — 구역 어울림은 「이어진 덩어리」: 새 부품은 이미 고른 부품 중 하나와 R칸 안 */
 function setFrom(h: HarmonyDef, anchor: Building, live: Building[], ok: (o: Building) => boolean): Building[] | null {
   const [first, ...rest] = h.parts;
@@ -152,7 +154,7 @@ export function computeSetsV2(objs: Building[]): HSet[] {
   const live = objs.filter((o) => o.build === undefined);
   const has = new Map<Building, Set<number>>();
   const got = (o: Building) => has.get(o) ?? has.set(o, new Set()).get(o)!;
-  const free = (o: Building, id: number) => !got(o).has(id) && (smallDeco(o) || got(o).size < H.perBuilding);
+  const free = (o: Building, id: number) => !got(o).has(id) && (smallDeco(o) || got(o).size < capOf(o));
   const out: HSet[] = [];
   const take = (h: HarmonyDef, m: Building[]) => {
     for (const o of m) got(o).add(h.id);
