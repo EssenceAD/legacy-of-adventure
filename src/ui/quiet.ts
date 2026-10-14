@@ -97,9 +97,12 @@ function placeTag(now: number) {
   const w = tag.offsetWidth || 40;
   let x = r.right + 4 - H.left;
   let y = r.top + (r.height - (tag.offsetHeight || 18)) / 2 - H.top;
-  if (x + w > H.width - 4) {
-    x = r.left - H.left;
-    y = r.bottom + 2 - H.top;
+  // 버닝 띠(남은 시간 + 두 번째 줄)가 떠 있으면 글자 옆 대신 띠 아래로 (남은 시간을 덮지 않게)
+  const burnBand = t!.id === 'newsBand' && t!.classList.contains('burn');
+  if (burnBand || x + w > H.width - 4) {
+    const b = burnBand ? t!.getBoundingClientRect() : r;
+    x = b.left - H.left;
+    y = b.bottom + 2 - H.top;
   }
   tag.style.left = `${Math.round(x)}px`;
   tag.style.top = `${Math.round(y)}px`;
