@@ -76,5 +76,6 @@
   "enhTransfer": true,
   "fiveStars": true,
   "bundles": false,
+  "luxeShop": false,
   "guestbook": false
 }

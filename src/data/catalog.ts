@@ -1,6 +1,7 @@
 // 건물 목록: 이름·발판·가격·손님 행동·레벨업 그림·열리는 땅 단계
 import { vis } from '../world/visual';
 import { CONFIG } from './config';
+import { LUXE_SHOP } from './luxe_cfg';
 
 export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon' | 'pet' | 'pray' | 'read' | 'brew' | 'mail' | 'stargaze' | 'brag';
 
@@ -41,6 +42,8 @@ export interface BuildingDef {
   showcase?: boolean;
   /** DECO_DROP §2: 뽐내기 장식 (건설 창 「특별 장식」 탭 · 금화만 · 하나씩) */
   luxury?: boolean;
+  /** LUXE §1 명품관 장식 (상점 「명품관」 탭에서만 · 산 건 보관함으로 · 건설 목록에 없음) — set 세트 · weekly 이번 주 명품 · small 작은 사치 */
+  luxe?: 'set' | 'weekly' | 'small';
   /** EASTER: 베타 개척자 전용 장식 (그 사람만 · 건설 목록에 없음 · 팔 수 없음) */
   pioneerDeco?: boolean;
   /** v0.24.2: 여관·주점 레벨 장식 (그 레벨이 되면 저절로 · 건설 목록에 없음 · 팔 수 없음 · 값 0) */
@@ -149,6 +152,35 @@ export const CATALOG = {
   harvest_table: { name: '수확제 잔칫상', sprite: 'harvest_table', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 근처 손님 포만 +5/시간' },
   harvest_arch: { name: '수확제 아치', sprite: 'harvest_arch', size: [1, 1], cost: 0, deco: true, unlock: 1, desc: '첫 수확제 · 아래를 지나가면 한 해 운이 좋아진대요' },
   pumpkin_carriage: { name: '호박 마차', sprite: 'pumpkin_carriage', size: [2, 2], cost: 0, deco: true, unique: true, unlock: 1, desc: '첫 수확제 · 밤 등불 · 근처 손님 기분 +5' },
+  // LUXE §1 명품관 (플래그 luxeShop): 세트 16 · 이번 주 명품 6 (asset_raw/luxe → public/assets/sprites) · 작은 사치 6 (기존 그림 색 바꾸기 · data/luxe_cfg tints) — 값은 data/luxe_cfg LUXE_SHOP
+  moon_lantern: { name: '달빛 등롱', sprite: 'moon_lantern', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '밤이면 푸른 달빛이 번져요 · 달빛 정원 1' },
+  silver_bench: { name: '은빛 벤치', sprite: 'silver_bench', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '달빛 정원 2' },
+  moon_pond: { name: '월광 연못', sprite: 'moon_pond', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '물 위로 은빛 반짝이 · 달빛 정원 3' },
+  moon_gazebo: { name: '초승달 정자', sprite: 'moon_gazebo', size: [3, 3], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '밤에 등롱 셋이 켜져요 · 달빛 정원 중심' },
+  flag_pole: { name: '깃발 기둥', sprite: 'flag_pole', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '깃발이 펄럭여요 · 용사의 광장 1' },
+  weapon_rack: { name: '무기 진열대', sprite: 'weapon_rack', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '용사의 광장 2' },
+  hero_trainer: { name: '훈련 동상', sprite: 'hero_trainer', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '가끔 칼끝이 번쩍 · 용사의 광장 3' },
+  victory_arch: { name: '승리의 개선문', sprite: 'victory_arch', size: [2, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '아래를 지나는 손님이 흥얼거려요 · 용사의 광장 중심' },
+  flower_tower: { name: '꽃바구니 탑', sprite: 'flower_tower', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '꽃잎이 흩날려요 · 꽃 축제 1' },
+  flower_swing: { name: '꽃 그네', sprite: 'flower_swing', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '그네가 살랑 · 꽃 축제 2' },
+  flower_carousel: { name: '꽃 회전목마', sprite: 'flower_carousel', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '통통 돌아가요 · 꽃 축제 3' },
+  flower_clock: { name: '꽃 시계탑', sprite: 'flower_clock', size: [3, 3], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '정각마다 종이 울려요 · 꽃 축제 중심' },
+  star_telescope: { name: '별자리 망원경', sprite: 'star_telescope', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '밤에 렌즈가 반짝 · 별의 서재 1' },
+  float_books: { name: '떠다니는 책더미', sprite: 'float_books', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '책이 둥실 · 별의 서재 2' },
+  armillary: { name: '천구의', sprite: 'armillary', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '별 반짝이 · 별의 서재 3' },
+  star_library: { name: '별빛 도서탑', sprite: 'star_library', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'set', unlock: 1, desc: '밤이면 창에 불빛 · 별의 서재 중심' },
+  gold_carriage: { name: '황금 마차', sprite: 'gold_carriage', size: [3, 2], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 금빛 반짝' },
+  dragon_nest: { name: '용 둥지 장식', sprite: 'dragon_nest', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 알 하나가 가끔 들썩여요' },
+  rainbow_fountain: { name: '무지개 분수', sprite: 'rainbow_fountain', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 무지개 물방울' },
+  sky_balloon: { name: '하늘 열기구', sprite: 'sky_balloon', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 둥실둥실' },
+  turtle_statue: { name: '여관 수호 거북 동상', sprite: 'turtle_statue', size: [2, 2], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 가끔 눈을 깜빡여요' },
+  aurora_pillar: { name: '오로라 기둥', sprite: 'aurora_pillar', size: [1, 1], cost: 0, deco: true, unique: true, luxe: 'weekly', unlock: 1, desc: '이번 주 명품 · 색이 천천히 바뀌어요' },
+  lx_pot_blue: { name: '꽃화분 (파랑)', sprite: 'lx_pot_blue', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 파란 화분' },
+  lx_pot_mint: { name: '꽃화분 (민트)', sprite: 'lx_pot_mint', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 민트 화분' },
+  lx_pot_violet: { name: '꽃화분 (보라)', sprite: 'lx_pot_violet', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 보라 화분' },
+  lx_mini_fountain: { name: '작은 분수', sprite: 'lx_mini_fountain', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 분홍 대리석 물그릇' },
+  lx_cat_house: { name: '고양이 집', sprite: 'lx_cat_house', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 파란 칠 고양이 상자' },
+  lx_color_flag: { name: '색 깃발', sprite: 'lx_color_flag', size: [1, 1], cost: 0, deco: true, luxe: 'small', unlock: 1, desc: '작은 사치 · 하늘색 깃발' },
   dungeon: { name: '던전 입구', sprite: 'dungeon', size: [3, 3], cost: 0, unique: true, fixed: true, act: 'dungeon', unlock: 1, desc: '파티가 원정을 떠나요' },
   // TOWN T1/T5: 꾸미기 장식 41종 (asset_raw/deco_final) — 지금은 이웃 쇼케이스 마을에만 · 값·여는 조건은 T5에서
   cat_crate: { name: '고양이 상자', sprite: 'cat_crate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '고양이 상자' },
@@ -197,6 +229,8 @@ export const CATALOG = {
 // DECO_DROP §1: 꾸미기 장식 41종 값·여는 땅 단계는 CONFIG.deco에서
 for (const [land, row] of Object.entries(CONFIG.deco.land)) for (const [k, cost] of Object.entries(row)) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { cost, unlock: +land });
 for (const [k, s] of Object.entries(CONFIG.deco.seasonal)) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { cost: s.cost, unlock: 1 });
+// LUXE §1: 명품관 값 (data/luxe_cfg LUXE_SHOP 한 곳)
+for (const it of [...LUXE_SHOP.sets.flatMap((x) => x.items), ...LUXE_SHOP.weekly, ...LUXE_SHOP.small]) Object.assign((CATALOG as Record<string, BuildingDef>)[it.kind], { cost: it.price });
 
 export type Kind = keyof typeof CATALOG;
 export const def = (k: Kind): BuildingDef => CATALOG[k];

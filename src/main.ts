@@ -43,6 +43,7 @@ import { initFiveStars } from './ui/fivestars';
 import { overlayHold } from './ui/overlays';
 import * as decodrop from './world/decodrop';
 import { initLuxury } from './ui/luxury';
+import { initLuxeShop, openLuxeShop } from './ui/luxeShop';
 import { initOnboard, promiseTomorrow, tapFirstGuest } from './ui/onboard';
 import { funnel } from './net/funnel';
 import { dialogueHooks } from './ui/dialogue';
@@ -92,7 +93,7 @@ import { initDialogue, isTalking, isTyping, setOnNamed } from './ui/dialogue';
 import { cancelPlace, initHud, movePlacement, setOnZoom, setZoom, startMove, startMoveEntrance, startPlace, syncZoomLabel, tempZoom, tickHud } from './ui/hud';
 import { hasZoomPref, initScreen, landZoom, screen, setOnScreenChange, zoomIdx, zoomsNow } from './ui/screen';
 import { buildThumbs, initWindows, isWinOpen, openBuild, openLand, openReport, showObj, toast, toastHtml } from './ui/windows';
-import { initMenu, openAttend, openGridMenu, openManual, openSettings } from './ui/menu';
+import { initMenu, openAttend, openGridMenu, openManual, openSettings, openShop } from './ui/menu';
 import { _abyss } from './ui/abyss';
 import { _dice } from './ui/dice';
 import { initHarmonyUI, openPropInfo } from './ui/harmony';
@@ -936,6 +937,7 @@ async function boot() {
   initFishingUI();
   // DECO_DROP §2: 뽐내기 장식 (영웅 동상 · 불꽃놀이 · 시계탑 종) — 건물 창 덧붙이기는 어울림·시설 뒤에
   initLuxury();
+  initLuxeShop();
   // EASTER: 베타 개척자 (금빛 편지 · 카메오 · 전용 장식)
   initEaster();
   // FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · 끄면 아무것도 안 함)
@@ -1120,6 +1122,8 @@ async function boot() {
   // GROWTH e2e: 손님(번호)·모모의 화면 좌표
   // LUXE §3: 게시판 탭 바로 열기 (봇·스크린샷)
   if (import.meta.env.DEV) Object.assign(window, { __openBoard: (t?: number) => openBoard(t) });
+  // LUXE §1 시트용: 명품관 바로 열기
+  if (import.meta.env.DEV) Object.assign(window, { __openLuxe: () => openLuxeShop(), __openShop: () => openShop() });
   if (import.meta.env.DEV) Object.assign(window, { __acctDel: { test: _delTest, open: openDelete, account: openAccount, me: SRV.me, halted: savesHalted, haltCloud: _haltCloud } });
   if (import.meta.env.DEV) Object.assign(window, { __actorXY: (id: number | string) => { const a = world.actors.find((x) => (id === 'momo' ? x.role === 'npc' : x.id === id)); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; } });
   if (import.meta.env.DEV) Object.assign(window, { __guestXY: () => { const a = world.actors.find((x) => x.firstGuest); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __decor: { view: decorView, pathN: () => pathT.size, xy: (x: number, y: number) => { const r = cv.getBoundingClientRect(); return [r.left + (view.OX + sx(x + 0.5, y + 0.5)) * view.SC, r.top + (view.OY + sy(x + 0.5, y + 0.5)) * view.SC]; } }, __propose: proposeTalk, __cap: () => capacity(), __town: { ground, renderFrame, landBounds, addObj, rebuildPaths }, __S: S, __world: world, __game: game, __view: view, __stats: stats, __recolored: recolored, __pending: pendingEvents, __P: P, __showObj: showObj, __placing: () => placing.pl, __movePlacement: movePlacement, __def: def, __undoMax: UNDO_MAX, __dd: decodrop, __cameoXY: (id: string) => { const a = world.actors.find((x) => x.cameo === id); if (!a) return null; const r = cv.getBoundingClientRect(); const [X, Y] = scr(a.x, a.y); return [r.left + X * view.SC, r.top + (Y - 14) * view.SC]; }, __raidW: raidW, __claim: claimMail, __store: { putAway, open: openStore }, __easter: { open: openPioneerLetter, cameo: (id: string) => { const [ex, ey] = entrance(); const a = makeCameo(id as never, ex, ey); arrive(a); return a; }, mail: (id: string) => addMail({ from: 'system', title: '💌 모모의 금빛 편지', body: 'test', reward: { pioneer: id } }) }, __enterPhoto: enterPhoto, __exitPhoto: exitPhoto, __pendingProp: () => pendingWith('prop'), __openDex: openDex, __autoTiles: () => [...pathT].map((k) => [k % N, Math.floor(k / N)]).filter(([x, y]) => !P.decor.paint[`${x},${y}`]), __saveNow: writeSave, __gradeProps: () => gradeProps().map((p) => ({ key: propKey(p), k: p.k, x: p.x, y: p.y })), __openManual: (k?: string) => openManual(k), __openMenu: () => openGridMenu(), __mythic: { seed: debugMythic, prog: mythicProgress }, __showActor: showActor, __renderMem: () => ({ lru: { ...assetMem(), look: lookMem(), ...renderMem() }, dpr: devicePixelRatio, sc: view.SC }), __drawFails: drawFails, __spriteOk: spriteOk, __breakSprite: () => { const o = world.objs.find((b) => b.sprite && !isFlipKey(b.sprite) && b.hue == null && b.kind !== 'inn' && IMG[b.sprite] instanceof HTMLImageElement); if (!o?.sprite) return null; breakSpriteForTest(o.sprite); return o.sprite; }, __tintPending: tintWarmPending, __dailyAttend: dailyAttend, __openNotices: openNotices, __abyss: _abyss, __dice: _dice, __pmenu: openPersonMenu,

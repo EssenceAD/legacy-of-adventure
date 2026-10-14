@@ -13,6 +13,8 @@ import { floatW } from './fx';
 import { dailyAdd } from './daily';
 import { flag } from './flags';
 import { josa } from '../data/josa';
+import type { LuxeSetFx } from '../data/luxe_cfg';
+import { luxeMoodSets, luxeSetFx } from './luxeShop';
 
 const H = CONFIG.harmony;
 export interface HSet {
@@ -254,7 +256,8 @@ export function hfx(key: Exclude<keyof HarmonyFx, 'incKind' | 'night' | 'moodNig
     if (f.night && !isNight()) continue;
     v += (f[key] as number | undefined) ?? 0;
   }
-  return v;
+  // LUXE §1: 「명품 세트」 효과 (광장 = 피해 · 꽃 = 새 손님 방문) — 플래그 끄면 0
+  return v + luxeSetFx(key as keyof LuxeSetFx);
 }
 /** 이 건물에 붙은 효과 합 (세트마다) */
 export function bfx(o: Building, key: 'trainXp' | 'bath' | 'harvest'): number {
@@ -290,6 +293,14 @@ export function tickHarmonyAura() {
       if (a.hidden || a.role || !a.id) continue;
       const near = s.members.some((o) => gap(o, { tx: Math.round(a.x), ty: Math.round(a.y), fw: 1, fh: 1 }) <= H.range);
       if (near) a.mood = Math.min(100, a.mood + f.mood);
+    }
+  }
+  // LUXE §1: 「명품 세트」 기분 (달빛 정원 = 밤 기분) — 세트 둘레 손님
+  for (const s of luxeMoodSets()) {
+    if (s.night && !isNight()) continue;
+    for (const a of world.actors) {
+      if (a.hidden || a.role || !a.id) continue;
+      if (s.members.some((o) => gap(o, { tx: Math.round(a.x), ty: Math.round(a.y), fw: 1, fh: 1 }) <= H.range)) a.mood = Math.min(100, a.mood + s.mood);
     }
   }
 }

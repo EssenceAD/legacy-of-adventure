@@ -656,8 +656,19 @@ export function freshProgress() {
     bundles: freshBundles(),
     /** LUXE §4 방명록 (world/guestbook.ts gbState()가 칸을 바로잡는다) — seen: 확인한 누적 좋아요(빨간 점) · tens: 선물로 바꾼 10개 묶음 수 · week/weekN: 이번 주(KST) 선물 횟수 */
     guestbook: freshGuestbook(),
+    /** LUXE §1 명품관 (world/luxeShop.ts lxState()가 칸을 바로잡는다 · 플래그를 꺼도 산 것은 그대로) */
+    luxe: freshLuxe(),
   };
 }
+
+/**
+ * LUXE §1: got = 명품관에서 산 종류(한 번이라도 · 순서대로) · spent = 쓴 금화 합 · coupons = 쓴 「이번 주 명품」 무료 쿠폰 수 (쿠폰 자체는 P.bundles.coupon)
+ *  · seen = 명품관을 처음 열어 봄 · week = 마지막으로 본 「이번 주 명품」 주 키 (새 주 빨간 점)
+ */
+export function freshLuxe() {
+  return { got: [] as string[], spent: 0, coupons: 0, seen: false, week: '' };
+}
+export type LuxeState = ReturnType<typeof freshLuxe>;
 
 /**
  * LUXE §3: seen = 처음 열기(무너진 회관 + 버나드)를 봤나 · put = 칸에 바친 수 ("꾸러미id:칸번호" → 개수) · done = 완성한 꾸러미(보상 받음)

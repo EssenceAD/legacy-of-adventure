@@ -7,6 +7,7 @@
 import { decoAsObjects } from './levelDeco';
 import { def, SMOKE } from '../data/catalog';
 import { drawFireworks, statueName } from './luxury';
+import { drawLuxeBody, drawLuxeFx, LX_BODY } from './luxeDraw';
 import { decorView } from './decor';
 import { plotLeft } from './craft';
 import { sfx } from '../audio/sfx';
@@ -846,12 +847,16 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   } else {
     // TOWN T2: 이어지는 장식 — 뒤쪽 이웃 칸의 같은 장식과 띠로 잇는다 (가로·세로·모서리)
     if (CONNECT[o.kind]) drawJoins(ctx, o, im, x, y);
-    ctx.drawImage(im, x, y);
+    // LUXE §1: 몸통이 움직이는 명품 장식 (깃발·그네·책·회전목마·열기구·알·오로라)
+    if (LX_BODY.has(o.kind)) drawLuxeBody(ctx, o, im, x, y);
+    else ctx.drawImage(im, x, y);
   }
   // 3) 이 건물을 그린 직후 창문 불빛
   drawLight(ctx, o.sprite, x, y);
   // DECO_DROP §2: 뽐내기 장식 — 밤 빛 · 동상 이름판 · 금빛 간판 여관 이름
   if (def(o.kind).luxury) drawLuxury(ctx, o, x, y, im);
+  // LUXE §1: 명품관 장식 — 밤 빛 · 반짝이 · 입자 · 세트 완성 반짝이 (그린 직후 = 앞 건물이 가린다)
+  if (def(o.kind).luxe) drawLuxeFx(ctx, o, x, y, im, Math.max(NL / CONFIG.dayNight.tintSteps, duskLight));
   // EASTER: 개척자 전용 장식 — 김 · 길 반짝 · 밤 등불 · 바람개비
   if (def(o.kind).pioneerDeco) drawPioneer(ctx, o, x, y, im);
   // TOWN T5: 꾸미기 장식 — 밤 불빛 · 물 반짝 · 풍차

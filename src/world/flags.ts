@@ -159,6 +159,8 @@ export const FLAG_DEFAULTS = {
   bundles: false,
   /** LUXE §4 이웃 방명록 · 좋아요 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 방문 화면 [👍 좋아요] + 도장 한마디 8개(하루 1번 · 로그인 + 장부 2장 · 내 마을 X) · 이웃 창 「방명록」 탭(이번 주 · 누적 · 최근 30 · 새 좋아요 빨간 점) · 10개마다 우편함 선물(주 5번) · 랭킹 「이번 주 인기 마을」 · 이웃 목록 맨 위 「🏆 지난주 인기 마을」 · 서버 supabase/guestbook.sql (없으면 「준비 중」 · 좋아요는 예전처럼) */
   guestbook: false,
+  /** LUXE §1 명품관 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 상점 창 「명품관」 탭(장부 4장부터 · 그 전엔 자물쇠) · 세트 장식 4×4(하나씩 · 보관함으로 · 4점을 2칸 안에 모으면 「명품 세트」 효과·반짝이) · 이번 주 명품(월요일 0시 KST · 6주마다 돌아옴 · 마을 회관 쿠폰 무료) · 작은 사치(매일 하나 −30%) · 「영웅 의상」 줄은 luxeShopHooks.outfits (숫자 data/luxe_cfg.ts LUXE_SHOP) — 끄면 탭·사기·세트 효과·반짝이 멈춤 (산 것·놓은 것은 그대로) */
+  luxeShop: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

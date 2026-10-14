@@ -8,6 +8,7 @@ import { BOSSES } from '../data/bosses';
 import { BASE_REGIONS, REGIONS } from '../data/items';
 import { CONFIG } from '../data/config';
 import { LIT_SPRITES } from '../data/catalog';
+import { LUXE_SHOP } from '../data/luxe_cfg';
 import { GUEST_KINDS, RACES } from '../data/classes';
 import { canvas, hsl, hslToRgb } from './pixel';
 import { canvasAlive, drawable, Lru } from './lru';
@@ -144,6 +145,54 @@ export async function loadAssets(onProgress?: (p: number) => void) {
     // 캔버스에 쓰는 글꼴은 미리 불러 둬야 첫 프레임부터 도트 글꼴로 나온다
     document.fonts.load('10px "Galmuri9"').then(tick, tick),
   ]);
+  // LUXE §1-4: 작은 사치 = 기존 그림 색 바꾸기 (불러온 그림에서 만든다)
+  for (const k of Object.keys(LUXE_SHOP.tints)) makeTint(k);
+}
+
+// ───────── LUXE §1-4 색 바꾼 그림 (작은 사치 · 새 그림 없음) ─────────
+
+/** 바꿀 픽셀: 줄 범위(band) 안 · 원래 색상 범위(hues) 안의 유채색 → 색상만 hue로 / gray면 무채색에 hue·채도를 입힌다 */
+export function tintPixels(D: Uint8ClampedArray | Uint8Array, w: number, h: number, t: { hue: number; band: [number, number]; cols?: [number, number]; hues?: [number, number]; gray?: number }) {
+  const y0 = Math.floor(h * t.band[0]);
+  const y1 = Math.ceil(h * t.band[1]);
+  const x0 = Math.floor(w * (t.cols?.[0] ?? 0));
+  const x1 = Math.ceil(w * (t.cols?.[1] ?? 1));
+  const inHue = (x: number) => !t.hues || (t.hues[0] <= t.hues[1] ? x >= t.hues[0] && x <= t.hues[1] : x >= t.hues[0] || x <= t.hues[1]);
+  for (let y = Math.max(0, y0); y < Math.min(h, y1); y++)
+    for (let x = Math.max(0, x0); x < Math.min(w, x1); x++) {
+      const j = (y * w + x) * 4;
+      if (!D[j + 3]) continue;
+      const [hh, ss, ll] = hsl(D[j], D[j + 1], D[j + 2]);
+      if (ll < 0.12 || ll > 0.95) continue;
+      let rgb: [number, number, number] | null = null;
+      if (t.gray != null && ss < 0.15) rgb = hslToRgb(t.hue, t.gray, ll) as [number, number, number];
+      else if (t.gray == null && ss >= 0.2 && inHue(hh)) rgb = hslToRgb(t.hue, Math.min(0.75, ss), ll) as [number, number, number];
+      if (!rgb) continue;
+      D[j] = rgb[0];
+      D[j + 1] = rgb[1];
+      D[j + 2] = rgb[2];
+    }
+}
+/** 색 바꾼 그림 하나 (원본이 없거나 못 그리면 건너뜀 · 다시 불러올 때도 이 길) */
+function makeTint(k: string): boolean {
+  const t = LUXE_SHOP.tints[k];
+  const src = t && IMG[t.from];
+  if (!t || !src || !drawable(src)) return false;
+  const c = canvas(src.width, src.height);
+  const x = c.getContext('2d');
+  if (!x) return false;
+  try {
+    x.drawImage(src, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height);
+    tintPixels(d.data, c.width, c.height, t);
+    x.putImageData(d, 0, 0);
+  } catch {
+    return false;
+  }
+  IMG[k] = named(c, k);
+  if (META[t.from]) META[k] = { ...META[t.from] };
+  makeFlipped(k);
+  return true;
 }
 
 // ───────── 좌우 반전 그림 (건물 방향 바꾸기) ─────────
@@ -234,6 +283,12 @@ const SRC_OF = (name: string): string | null => {
  */
 export function reloadSprite(name: string) {
   if (name === 'unknown') return;
+  // LUXE §1-4: 색 바꾼 그림은 원본에서 다시 만든다 (원본이 깨졌으면 원본을 다시 받는다)
+  const tk = baseKey(name);
+  if (LUXE_SHOP.tints[tk]) {
+    if (!makeTint(tk)) reloadSprite(LUXE_SHOP.tints[tk].from);
+    return;
+  }
   const R = CONFIG.render;
   const now = performance.now();
   const st = (reloadAt[name] ??= { at: -Infinity, n: 0 });
