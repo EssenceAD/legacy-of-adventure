@@ -2025,7 +2025,9 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 #uiHideBar small{color:var(--cream);font-size:var(--f-small);text-shadow:1px 1px 0 var(--ink);opacity:.8}
 /* ── CHECKIN §J6 영웅 카드 (heroCards · 실험실) — 숙박 카드 틀 guestcard_9 (32×32 · 9-slice 10) × --k 정수 배율 · 글자 크기는 기존 변수만 ── */
 .hcd{position:relative;display:flex;flex-direction:column;align-items:stretch;min-width:0;border:0;margin:0;cursor:pointer;color:var(--ink);text-align:left;background:none;
-  padding:calc(7px * var(--k)) calc(2px * var(--k)) calc(3px * var(--k));box-shadow:0 0 0 2px var(--rc,#cfd8ff);-webkit-tap-highlight-color:transparent}
+  padding:calc(7px * var(--k)) calc(2px * var(--k)) calc(3px * var(--k));box-shadow:0 0 0 2px var(--rc,#cfd8ff);-webkit-tap-highlight-color:transparent;
+  /* 웅스 제보: 카드 안 z-index(금테 .hcd-lf 3 · 대장/역할/왕관 2)가 카드 밖 쌓임 맥락으로 새어 덱 위 고정 판(.hdk-top z3)·고정 탭 위에 그려졌다 → 카드마다 따로 쌓기 */
+  isolation:isolate}
 .hcd::before{content:'';position:absolute;inset:0;border:calc(10px * var(--k)) solid transparent;border-image:var(--ui-guestcard-9) 10 fill / calc(10px * var(--k)) / 0 stretch;pointer-events:none;z-index:0}
 .hcd>*{position:relative;z-index:1}
 .hcd-pic{display:block;height:calc(30px * var(--k));overflow:hidden;background:#141a3a;box-shadow:0 0 0 1px var(--ink)}
@@ -2165,7 +2167,8 @@ html[data-size="phone"] .hdk-grid.few .hcd-pw{font-size:var(--f-ui)}
 .smo-pick{width:100%;margin:0;border:0;color:var(--cream);text-align:left;cursor:pointer}
 .smo-pick:active{transform:translateY(1px)}
 .smo-pk0{margin:2px 0 4px}
-.smo-heroes{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:4px 3px 6px;margin:4px -2px 2px;scrollbar-width:thin}
+/* 고른 카드 바깥 테두리(전설 5px · 신화 7px)가 가로 스크롤 칸에 잘리지 않게 안쪽 여백 7px · 바깥 여백으로 되돌려 자리는 그대로 */
+.smo-heroes{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:7px 7px 8px;margin:1px -6px 0;scrollbar-width:thin}
 .smo-heroes .hcd{flex:none;width:calc(30px * var(--k))}
 .smo-bagc .smo-bagpic{display:flex;align-items:center;justify-content:center}
 .smo-bagc .smo-bagpic img{width:auto;height:auto;margin:0;transform:none}
