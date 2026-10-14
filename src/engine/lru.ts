@@ -61,7 +61,10 @@ export class Lru<K, V> {
 export function canvasAlive(c: { width: number; height: number; getContext?: (t: '2d') => unknown }): boolean {
   if (!c.width || !c.height) return false;
   try {
-    return !c.getContext || c.getContext('2d') != null;
+    if (!c.getContext) return true;
+    const x = c.getContext('2d') as { isContextLost?: () => boolean } | null;
+    // 크롬 99+: GPU 메모리가 모자라 컨텍스트를 잃으면 폭은 그대로인데 그림은 비어 있다 (isContextLost) → 죽은 것으로
+    return x != null && !(typeof x.isContextLost === 'function' && x.isContextLost());
   } catch {
     return false;
   }
