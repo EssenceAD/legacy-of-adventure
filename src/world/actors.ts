@@ -32,6 +32,7 @@ import { dailyAdd } from './daily';
 import { windMoodDecay, windPasser, windRegularCut } from './wind';
 import { fsay } from './visual';
 import { perkMealMult } from './bundlePerks';
+import { petMealMood, petTry } from './pets';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -324,6 +325,8 @@ export function enter(a: Actor, o: Building) {
 }
 
 /** 건물 안에서 욕구가 채워진다 */
+/** 시험용 (LUXE §2 펫 「주점 식사」 시도 확인) */
+export const _actorsTest = { fillNeeds: (a: Actor, act: Act | undefined) => fillNeeds(a, act) };
 function fillNeeds(a: Actor, act: Act | undefined) {
   const tired = a.hp < 30;
   // 핫픽스: 모험에서 지쳐 돌아온 손님(체력 60 미만)도 쉬고 일어나면 아리아 부탁 1회
@@ -352,6 +355,10 @@ function fillNeeds(a: Actor, act: Act | undefined) {
     }
     if (!S.visiting && a.id) {
       P.counters.tavernMeals++;
+      // LUXE §2 배부른 강아지(꺼내 둔 펫): 식사한 손님 기분 +1 · 단골 식사 = 시도 1
+      const pm = petMealMood();
+      if (pm) a.mood = clamp(a.mood + pm);
+      petTry('meal');
       track('meal');
       ownerGain('meal');
     }

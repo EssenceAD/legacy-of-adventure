@@ -17,6 +17,8 @@ export interface Neighbor {
   like: number;
   /** FEEDBACK23 §5: 옮긴 마을 입구 x (없으면 자동) */
   ent?: number;
+  /** LUXE §2: 그 마을에 꺼내 둔 펫 id (최대 3 · 플래그 pets가 켜졌을 때만 그린다) */
+  pets?: string[];
   /** [종류, x, y, 레벨, 지붕 hue, 좌우 반전] */
   layout: [Kind, number, number, number?, (number | null)?, boolean?][];
 }
@@ -209,7 +211,7 @@ const SPA: Neighbor = {
   // 달무리 온천 (땅 6단계 26×26 · 하늘색 200 · 하늘색·나무색·흰색 · 소나무·자작나무, 단풍은 정자 둘레만): 입구(16,29) → 화로·쌍가로등 둘레길 x=16 → 온천 + 바위 폭포 + 잉어 연못(초점) → 여관
   //  구역: 뒤 왼쪽 정자 단풍 정원(산울타리 · 장미 아치) · 뒤 오른쪽 주점·예배당(돌담 · 흰 울타리 문) · 앞 왼쪽 개울 건너 별채(흰 울타리 · 문) · 앞 오른쪽 노천탕 평상(산울타리 · 장미 아치)
   //  장면: ① 수건 걸린 평상(벤치 + 술통) ② 화로·쌍가로등 둘레길 ③ 정자 + 단풍 ④ 아치 다리 건너 별채
-  id: 'spa', name: '달무리 온천', owner: '온천냥', land: 6, like: 470, grade: 3,
+  id: 'spa', name: '달무리 온천', owner: '온천냥', land: 6, like: 470, grade: 3, pets: ['otter', 'slime', 'starcat'],
   layout: [
     ['inn', 14, 6, 5, 200], ['dungeon', 29, 18],
     // 초점: 온천 + 바위 폭포 + 잉어 연못 · 화로

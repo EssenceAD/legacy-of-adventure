@@ -656,8 +656,20 @@ export function freshProgress() {
     bundles: freshBundles(),
     /** LUXE §4 방명록 (world/guestbook.ts gbState()가 칸을 바로잡는다) — seen: 확인한 누적 좋아요(빨간 점) · tens: 선물로 바꾼 10개 묶음 수 · week/weekN: 이번 주(KST) 선물 횟수 */
     guestbook: freshGuestbook(),
+    /** LUXE §2 펫 「동물 친구」 (world/pets.ts petState()가 칸을 바로잡는다 · 플래그를 꺼도 만난 펫은 그대로) */
+    pets: freshPets(),
   };
 }
+
+/**
+ * LUXE §2: got = 만난 펫 (id → 지은 이름 · 만난 시각) · out = 마을에 꺼내 둔 펫(최대 3 · 효과도 이 펫들만)
+ *  · tries = 아직 못 만난 펫의 시도 수(천장 게이지 · 숨김) · hint = 「작은 발소리」 힌트를 본 펫 · pat = 쓰다듬은 날(한국 날짜)
+ *  · card = 아직 카드(이름 짓기)를 못 본 펫
+ */
+export function freshPets() {
+  return { got: {} as Record<string, { name: string; at: number }>, out: [] as string[], tries: {} as Record<string, number>, hint: [] as string[], pat: {} as Record<string, string>, card: [] as string[] };
+}
+export type PetState = ReturnType<typeof freshPets>;
 
 /**
  * LUXE §3: seen = 처음 열기(무너진 회관 + 버나드)를 봤나 · put = 칸에 바친 수 ("꾸러미id:칸번호" → 개수) · done = 완성한 꾸러미(보상 받음)

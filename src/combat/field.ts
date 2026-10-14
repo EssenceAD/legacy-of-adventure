@@ -25,6 +25,7 @@ import { PUMPKIN_BARKS } from '../data/story/harvest';
 import { partySpecial, specialSum } from '../world/uniques';
 import { isBalanced, memberSynMult, synergyFx, type SynFx } from '../world/synergy';
 import { resolveDmg, resolveOf, resolveTaken } from '../world/wayfind';
+import { petAbyssDmg } from '../world/pets';
 
 const HC = CONFIG.hunter;
 
@@ -360,13 +361,15 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   // GROWTH §3-4 고유 효과 「파티 전원 받는 피해 −N%」
   const partyCut = partySpecial(ms, 'partyHp');
   const rolesOn = flag('rolesV2');
+  // LUXE §2 별고양이(꺼내 둔 펫): 심연(추천 전투력을 직접 받는 판) 피해 +2%
+  const petM = opts.rec != null && !opts.raid ? petAbyssDmg() : 1;
   const mk = (a: Actor, i: number): Unit => {
     const job = JOB_OF[a.kind] ?? 'warrior';
     const { key, def } = appearance(a);
     const max = Math.round(C.hpBase + a.lvl * C.hpPerLv);
     return {
       id: i + 1, team: 'ally', x: N / 2 + (i ? Math.cos(SLOTS[i]) * C.allyGap : 0), y: N / 2 + 0.8 + (i ? Math.sin(SLOTS[i]) * C.allyGap : 0), slot: SLOTS[i], vx: 0, vy: 0, r: 0.32, hp: max, max, ax: 1, ay: 0, moving: false, flash: 0, stun: 0, t: 0, dead: false, deadT: 0,
-      actor: a, job, power: powerOf(a) * rm * memberSynMult(a, syn) * (1 + buffOf('power')) * mythicAtk(ms, region, !!opts.raid), role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
+      actor: a, job, power: powerOf(a) * rm * memberSynMult(a, syn) * (1 + buffOf('power')) * mythicAtk(ms, region, !!opts.raid) * petM, role: job === 'knight' ? 'tank' : job === 'priest' ? 'heal' : 'dps', frames: framesFor(key, def),
       combo: 0, comboT: 0, swing: 0, dodge: 0, dodgeCd: 0, inv: 0, cd: [0, 0], cdMax: [C.skillCd[0] * (1 - syn.cdCut), C.skillCd[1] * (1 - syn.cdCut)], taunt: 0, guard: 0, atkAnim: 0,
       critAdd: (optSum(a, 'critPct') + specialSum(a, 'crit')) / 100 + syn.crit, dmgCut: Math.min(0.5, (optSum(a, 'dmgCut') + partyCut) / 100 + syn.dmgCut),
       spd: specialSum(a, 'speed') / 100, revive: specialSum(a, 'reviveOnce') / 100, stunFirst: specialSum(a, 'firstHitStun') > 0, bounce: specialSum(a, 'bounce') / 100,

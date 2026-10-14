@@ -26,6 +26,7 @@ import { stripWind, windRaid } from './wind';
 import { flag } from './flags';
 import { gatesOn, queueRankWeek, wanderMet, wanderPity } from './paceGates';
 import { perkRaidMats, perkRaidTries } from './bundlePerks';
+import { petRaidDmg, petTry } from './pets';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -327,7 +328,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   }
   P.raid.lastSettled = runId;
   const b = t.boss;
-  damage = Math.max(0, Math.round(damage));
+  // LUXE §2 꼬마 텐구(꺼내 둔 펫): 토벌 피해 +2% (소탕은 그대로 · 랭킹 기록은 부르는 쪽 원래 피해)
+  damage = Math.max(0, Math.round(mode === 'sweep' ? damage : damage * petRaidDmg()));
   const applied = Math.min(damage, t.hpLeft);
   let killed = false;
   // PACE §1: 이번 주 n번째 보스 (2·3번째 = 도전장 · 금화·재료 배수 · 랭킹 X)
@@ -422,6 +424,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   // 4단계: 함께 싸운 영웅·전설 인연 + · 주인 담력 · 직접 조작은 불씨 +
   if (mode !== 'sweep') {
     P.counters.raidTries++;
+    // LUXE §2 펫: 토벌 도전 = 꼬마 텐구 시도 1
+    petTry('raid');
     tieRaid(members);
     ownerGain('raid');
     if (mode === 'manual') {

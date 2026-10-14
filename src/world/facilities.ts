@@ -4,6 +4,7 @@ import { CONFIG } from '../data/config';
 import { markDirty, P, world, type Building } from './state';
 import { bestOf } from './town';
 import { perkKeepAlch, perkPotionMult } from './bundlePerks';
+import { petBrewSave, petTry } from './pets';
 
 const NB = CONFIG.newBuildings;
 const PO = CONFIG.potions;
@@ -112,6 +113,13 @@ export function brew(id: string): string | null {
   const why = canBrew(id);
   if (why) return why;
   for (const [c, n] of Object.entries(PO.list[id].need)) P.crops[c] -= n;
+  // LUXE §2 물약 슬라임(꺼내 둔 펫): 10% 확률로 재료 1개 돌려받기 (가장 많이 쓴 재료)
+  if (petBrewSave()) {
+    const top = Object.entries(PO.list[id].need).sort((a, b) => b[1] - a[1])[0];
+    if (top) P.crops[top[0]] = (P.crops[top[0]] ?? 0) + 1;
+  }
+  // LUXE §2 펫: 물약 만들기 = 물약 슬라임 시도 1
+  petTry('brew');
   if (id === 'rest') {
     const v = Math.round(PO.list.rest.v * potionBoost());
     for (const a of world.home?.actors ?? world.actors) if (a.id && !a.role) a.mood = Math.min(100, a.mood + v);

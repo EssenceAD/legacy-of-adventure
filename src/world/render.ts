@@ -43,9 +43,10 @@ import { drawSpecNpc, drawSpectacleEmotes, spectacleThings, type SpecNpc } from 
 import { drawBldStatus, hasBubble, setBldHooks } from './bldStatusDraw';
 import { drawFestLight, drawFestProp, drawLanterns, drawLeaves, festivalProps, type FestProp } from './harvestDraw';
 import { DUSK_ALPHA, DUSK_RGB, duskOf, nightOverlay, sunsetOn } from './sunset';
+import { drawPet, petThings, type PetRT } from './petsDraw';
 
 /** 깊이 정렬에서 "건물처럼" 다루는 것: 건물·야생 나무(1×1)·배치 미리보기 */
-type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc } | { fp: FestProp });
+type Thing = { d: number; tx: number; ty: number; fw: number; fh: number } & ({ o: Building } | { w: Wild } | { pr: Prop } | { fk: ReturnType<typeof folkNow>[number] } | { iv: ReturnType<typeof tourThings>[number]['iv'] } | { sn: SpecNpc } | { fp: FestProp } | { pt: PetRT });
 
 /**
  * 캐릭터가 이 건물보다 앞(나중에 그림)인가 — x+y 합이 아니라 발판으로 판정
@@ -230,6 +231,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   for (const fk of folkNow()) movers.push({ d: depthActor(fk.x, fk.y), tx: Math.floor(fk.x), ty: Math.floor(fk.y), fw: 1, fh: 1, fk });
   // 베타: 평가단 순회
   if (!S.visiting) movers.push(...tourThings(), ...spectacleThings());
+  // LUXE §2 펫: 꺼내 둔 3마리(이웃 방문 땐 그 마을 펫) — 꾸미기·사람 없는 사진에선 숨김 (움직임은 그래도 진행)
+  const pets = petThings(dt);
+  if ((!photoState.on || photoState.people) && !decorView.on) movers.push(...pets);
   for (const m of movers.sort((p, q) => p.d - q.d)) {
     let last = -1;
     for (let i = 0; i < things.length; i++) if (inFrontOf({ x: m.tx, y: m.ty } as Actor, things[i]) === true) last = i;
@@ -282,9 +286,10 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
       else if ('fk' in it) drawFolk(ctx, it.fk);
       else if ('iv' in it) drawInspector(ctx, it.iv);
       else if ('sn' in it) drawSpecNpc(ctx, it.sn);
+      else if ('pt' in it) drawPet(ctx, it.pt);
       else drawWild(ctx, it.w);
     } catch {
-      recoverCtx(ctx, 'o' in it ? (it.o.sprite ?? it.o.kind) : 'w' in it ? it.w.k : 'pr' in it ? 'prop:' + it.pr.k : 'fp' in it ? 'fest:' + it.fp.k : 'thing');
+      recoverCtx(ctx, 'o' in it ? (it.o.sprite ?? it.o.kind) : 'w' in it ? it.w.k : 'pr' in it ? 'prop:' + it.pr.k : 'fp' in it ? 'fest:' + it.fp.k : 'pt' in it ? 'pet:' + it.pt.id : 'thing');
     }
   }
   ctx.globalAlpha = 1;

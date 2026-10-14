@@ -38,12 +38,14 @@ import { openPlace, type Place } from './nav';
 import { SYN_IDS, SYN_INFO } from '../world/synergy';
 import { chronPageHtml, contribHtml, fillContrib } from './chronicle';
 import { hvChronHtml } from './harvest';
+import { bindPetDex, PET_TAB, petDexHtml } from './pets';
+import { petsOn } from '../world/pets';
 
 let dTab = 0;
 /** DIRECTION §1-3: 연대기 펼친 쪽 (-1 = 맨 끝 쪽) */
 let chPage = -1;
 /** 도감 탭 이름들 (여정 지도에서 이름으로 연다) */
-export const dexNames = () => ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시', '파티', '연대기', '함께 만든 사람들'];
+export const dexNames = () => ['손님', '아이템', '케미', '영웅', '전설', '어울림', '장식', '신화', ...(P.regions2.scatter ? ['지역'] : []), '고유 장비', '낚시', ...(petsOn() ? [PET_TAB] : []), '파티', '연대기', '함께 만든 사람들'];
 /** 이름으로 도감 탭 열기 (없는 탭이면 첫 탭) */
 export function openDexTab(name: string, page?: number) {
   if (page != null) chPage = page;
@@ -81,6 +83,7 @@ export function openDex(tab = dTab) {
   } else if (tname === '함께 만든 사람들') body = contribHtml();
   else if (tname === '고유 장비') body = uniqueDexHtml();
   else if (tname === '낚시') body = fishDexHtml();
+  else if (tname === PET_TAB) body = petDexHtml();
   else if (tname === '파티') body = partyDexHtml();
   else if (tab === 0) {
     const kinds = GUEST_KINDS.filter((k) => !gKind || k === gKind);
@@ -222,6 +225,7 @@ export function openDex(tab = dTab) {
     openDex(tab);
   }));
   if (tname === '함께 만든 사람들') void fillContrib();
+  if (tname === PET_TAB) bindPetDex(() => keepScroll(() => openDex(tab)));
   $$('[data-db]').forEach(
     (b) =>
       (b.onclick = () => {

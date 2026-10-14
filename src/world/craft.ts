@@ -20,6 +20,7 @@ import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
 import { brag, uniqueSalvageMult } from './growth';
 import { windHarvest } from './wind';
 import { perkEnhDust } from './bundlePerks';
+import { petEnhDust, petHarvestPlus, petTry } from './pets';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -128,7 +129,8 @@ export function salvageBulk(grades: Grade[], o: BulkOpts = {}): { count: number;
 // ───────── 강화 ─────────
 
 /** LUXE §3 대장간 완성: 가루 −5% (perkEnhDust · 끄면 그대로) */
-export const enhanceCost = (it: Item) => perkEnhDust((it.enh + 1) * (it.enh + 1) * SM.enhanceCost);
+/** LUXE §2 불도마뱀(꺼내 둔 펫): 가루 −2% (petEnhDust · 끄면 그대로) */
+export const enhanceCost = (it: Item) => petEnhDust(perkEnhDust((it.enh + 1) * (it.enh + 1) * SM.enhanceCost));
 /** 강화 성공 보너스 합 (주인 손재주 · 어울림 · 마법사의 탑 · 불꽃 대장장이 세트) */
 export const enhanceBonusAll = () => enhanceBonus() + hfx('enhance') + towerEnhance() + setEnhance();
 /** GROWTH §3-2: 강화 가루는 그 장비 등급의 가루로 낸다. +1만 확정, 그다음은 목표별 확률 + 보너스 + 그 장비 천장 (+ 숫돌) */
@@ -158,6 +160,8 @@ export function enhance(it: Item, o: EnhOpts = {}): 'ok' | 'fail' | 'max' | 'poo
   legendHooks.bond('enhanceTry');
   gsState().cnt.smith++;
   ownerGain('enhance');
+  // LUXE §2 펫: 강화 시도 = 불도마뱀 시도 1
+  petTry('enhance');
   markDirty();
   // GROWTH §3-2: 목표별 확률 · +7~+10 실패 30% 하락(부적) · 천장 · 대성공
   const G = P.growth;
@@ -197,7 +201,7 @@ export const transcendOpen = () => (smithObj()?.lvl ?? 0) >= TR().smithLv;
 export function transcendCost(it: Item) {
   const n = it.enh + 1;
   const k = n - 10;
-  return { n, gold: TR().gold * 2 ** (n - 11), mats: TR().mats * k, boss: regionBoss(it.region), bossMats: TR().boss * k, dust: TR().dust * k };
+  return { n, gold: TR().gold * 2 ** (n - 11), mats: TR().mats * k, boss: regionBoss(it.region), bossMats: TR().boss * k, dust: petEnhDust(TR().dust * k) };
 }
 /** GROWTH §3-2: 목표별(+11 40% → +20 6%) + 대장간 Lv당 + 세트 + 천장(실패마다 +2%p) (+ 숫돌) */
 export function transcendRate(it: Item, whet = false): number {
@@ -220,6 +224,8 @@ export function transcend(it: Item, o: EnhOpts = {}): TranscendResult {
   P.mats[it.region] -= c.mats;
   P.bossMats[c.boss.id] -= c.bossMats;
   P.dust[it.grade] -= c.dust;
+  // LUXE §2 펫: 초월 시도도 불도마뱀 시도 1
+  petTry('enhance');
   markDirty();
   const whet = !!o.whet && P.growth.whet > 0;
   if (whet) {
@@ -354,10 +360,13 @@ export function harvest(o: Building, i: number): number {
   const p = plotsOf(o)[i];
   if (!p || plotLeft(p) !== 0) return 0;
   // DIRECTION §1-2 풍년: 수확 +30%
-  const n = windHarvest(GD.crops[p.crop!].yield + bfx(o, 'harvest'));
+  // LUXE §2 꼬마 두더지(꺼내 둔 펫): 10% 확률로 +1
+  const n = windHarvest(GD.crops[p.crop!].yield + bfx(o, 'harvest')) + petHarvestPlus();
   // BUILDINGS_SPEC §3: 작물별 창고 (주점은 먹을 수 있는 것을 자동으로 · 공방은 골라 쓴다)
   addCrop(p.crop!, n);
   P.counters.harvests++;
+  // LUXE §2 펫: 텃밭 수확 = 꼬마 두더지 시도 1
+  petTry('harvest');
   legendHooks.bond('harvest');
   ownerGain('harvest');
   legendHooks.req('newCrop', 1, p.crop!);

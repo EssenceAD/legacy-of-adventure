@@ -24,6 +24,7 @@ import { party4Ready } from './party4';
 import { chem5Titles, title5 } from './chemNews';
 import { fsay } from './visual';
 import { achStamp, hvTitles } from './hvLite';
+import { petCount, petsOn } from './pets';
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -72,6 +73,8 @@ function stat(k: AchStat, d?: AchDef): number {
     case 'fishLegend': return FISH.filter((x) => x.grade === 'l' && (P.growth.fish.rec[x.id]?.n ?? 0) > 0).length;
     // GOLDSINK §8
     case 'diceAch': return d && P.gs?.dice?.ach?.includes(d.id) ? 1 : 0;
+    // LUXE §2 (꺼지면 0)
+    case 'pets': return petsOn() ? petCount() : 0;
   }
 }
 
@@ -81,6 +84,8 @@ export function achProgress(d: AchDef) {
 }
 /** 숨김 업적이 보이나: 이뤘거나 장부 7장을 마쳤으면 */
 export const achVisible = (d: AchDef) => !d.hidden || achProgress(d).done || chaptersDone() >= 7;
+/** 업적 창에 보이는 목록 (LUXE §2 펫 업적은 플래그 pets가 켜졌을 때만) */
+export const achList = (): AchDef[] => ACHIEVEMENTS.filter((d) => d.stat !== 'pets' || petsOn());
 /** 받을 수 있는 업적 수 (메뉴 빨간 점) */
 export const achReady = () => ACHIEVEMENTS.filter((d) => !P.meta.ach.includes(d.id) && achProgress(d).done).length;
 

@@ -11,6 +11,7 @@ import { bestOf } from './town';
 import { gotGold, markDirty, P, S, uiHooks, world } from './state';
 import { windMealGrade } from './wind';
 import { perkBait, perkFishWin } from './bundlePerks';
+import { petFishWin, petTry } from './pets';
 
 const F = () => CONFIG.growth.fish;
 export type FishWhere = 'pond' | 'sea';
@@ -101,7 +102,7 @@ export function cast(where: FishWhere, rng: () => number = Math.random): Cast | 
   const fish = (fishForce.id && fishById(fishForce.id)) || pickFish(where, rng);
   fishForce.id = '';
   const bite = F().biteFrom + rng() * (F().biteTo - F().biteFrom);
-  return { where, fish, size: rollSize(fish, rng), bite, win: fish.win + perkFishWin(), len: F().seconds };
+  return { where, fish, size: rollSize(fish, rng), bite, win: fish.win + perkFishWin() + petFishWin(), len: F().seconds };
 }
 /** 판정: 입질 뒤 판정 창 안에 눌렀나 (t = 던진 뒤 누른 시각 · 초) */
 export const judge = (c: Pick<Cast, 'bite' | 'win'>, t: number) => t >= c.bite && t <= c.bite + c.win;
@@ -121,6 +122,8 @@ export function land(c: Pick<Cast, 'fish' | 'size'>): Catch {
   r.n++;
   if (record) r.max = c.size;
   f.bag[c.fish.id] = (f.bag[c.fish.id] ?? 0) + 1;
+  // LUXE §2 펫: 낚시 성공 = 아기 수달 시도 1
+  petTry('fish');
   markDirty();
   if (c.fish.grade === 'l') brag('fish', null, `${c.fish.name}(${c.size}cm)`);
   return { fish: c.fish, size: c.size, first, record };
