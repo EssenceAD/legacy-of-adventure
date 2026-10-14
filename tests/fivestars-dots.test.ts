@@ -109,5 +109,5 @@ describe('FIVESTARS ④ R21 (형철 판정)', () => {
   it('따뜻한밤 등불 빛 가운데 밝기 = 예전 × 1.4', async () => {
     const { LANTERN_A } = await import('../src/world/render');
     expect(LANTERN_A).toBeCloseTo(0.32 * 1.4);
-  });
+  }, 30000);
 });

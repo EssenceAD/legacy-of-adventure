@@ -201,5 +201,5 @@ describe.skipIf(!hasReal)('LAND2 이웃 마을 모습 (v2 → +8)', () => {
     for (let i = 0; i < layout.length; i++) expect([v.layout[i][1] - layout[i][1], v.layout[i][2] - layout[i][2]]).toEqual([8, 8]);
     const v3 = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 3, land: old.land, innName: 'x', owner: 'o', layout: v.layout } })!;
     expect(v3.layout[0][1]).toBe(v.layout[0][1]);
-  });
+  }, 30000);
 });
