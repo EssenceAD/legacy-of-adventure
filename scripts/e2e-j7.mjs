@@ -246,6 +246,10 @@ const res = {};
   await p.evaluate(() => document.querySelector('.smo-pick')?.click());
   await W(p, 300);
   ok(await p.evaluate(() => !!document.querySelector('.smo-panel') || !!document.querySelector('#bagTidy')), '할 만한 것 누르기 → 바로 그 화면');
+  // R9: 지붕 색은 [건물]을 눌렀을 때만
+  ok(await p.evaluate(() => document.querySelectorAll('[data-roof]').length === 0 && !!document.getElementById('smBld')), '지붕 색은 처음엔 숨김 · [건물] 버튼');
+  await p.evaluate(() => document.getElementById('smBld').click());
+  await p.waitForTimeout(300);
   const hue = await p.evaluate(() => { const b = document.querySelectorAll('[data-roof]')[2]; b.click(); return window.__world.objs.find((o) => o.kind === 'smith').hue; });
   ok(hue != null && (await p.evaluate(() => document.querySelectorAll('[data-roof]').length)) >= 5, `지붕 색 줄 → hue ${hue}`);
   ok(await p.evaluate(() => /Lv\.\d/.test(document.querySelector('.smo-top')?.textContent ?? '') && /장비 강화/.test(document.querySelector('.smo-top')?.textContent ?? '')), '맨 위 설명 + 레벨 줄');
@@ -262,7 +266,9 @@ const res = {};
 {
   const { ctx, p } = await boot(URL, false);
   await openSmith(p);
-  ok(await p.evaluate(() => !document.querySelector('.smo-heroes') && document.querySelectorAll('#smT .tab').length === 5), '실험실 끔: 예전 탭 5개 그대로');
+  // v0.25.10부터 flags.json에서 smithOne 켬 → 실험실을 꺼도 새 화면 · 꺼져 있을 때만 예전 탭 5개
+  const sOn = await p.evaluate(async () => { try { return (await (await fetch('flags.json', { cache: 'no-store' })).json()).smithOne === true; } catch { return false; } });
+  ok(await p.evaluate((on) => (on ? !!document.querySelector('.smo-heroes') && document.querySelectorAll('#smT .tab').length === 3 : !document.querySelector('.smo-heroes') && document.querySelectorAll('#smT .tab').length === 5), sOn), sOn ? '실험실 끔 + flags.json smithOne 켬: 새 한 화면' : '실험실 끔: 예전 탭 5개 그대로');
   await ctx.close();
 }
 await b.close();

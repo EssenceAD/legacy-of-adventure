@@ -31,13 +31,13 @@ import { appendMoveButton, openWin, toast } from './windows';
 
 const SM = () => CONFIG.smith;
 /** 지금 탭 · 고른 영웅(-1 = 가방 장비) · 고른 칸 · 가방에서 고른 장비 */
-const st = { tab: 0, hero: null as number | null, slot: null as Slot | null, bagItem: null as number | null };
+const st = { tab: 0, hero: null as number | null, slot: null as Slot | null, bagItem: null as number | null, bld: false };
 /** 다음 그리기에 한 번 보여 줄 연출 */
 let fxNext: { kind: 'ok' | 'great' | 'fail' | 'drop'; text: string } | null = null;
 
 const whetOn = () => enhUse.whet && P.growth.whet > 0;
 
-/** 창 맨 위: 설명 한 줄 · 레벨업 줄 · 지붕 색 */
+/** 창 맨 위: 설명 한 줄 · 레벨업 줄 · [건물] (R9: 지붕 색은 [건물]을 눌렀을 때만 — 머리 줄을 낮게) */
 function headHtml(o: Building): string {
   const d = def('smith');
   const g = gardenLevelState(o);
@@ -50,8 +50,9 @@ function headHtml(o: Building): string {
         : g.state === 'con'
           ? '<span class="note">🔨 공사 중</span>'
           : '';
-  const roofs = d.roofable && !S.visiting ? `<div class="roofs smo-roofs"><span class="note">지붕 색</span>${ROOFS.map(([n, h]) => `<button data-roof="${h}" title="${n}" aria-label="${n}" class="${o.hue === h ? 'on' : ''}" style="background:${h == null ? '#8a8a96' : `hsl(${h} 55% 45%)`}"></button>`).join('')}</div>` : '';
-  return `<div class="qhd brdln smo-top"><span class="sub objinfo">${esc(d.desc)} · <b>Lv.${g.lv}</b>${g.state === 'max' ? ' 최대' : ` <small>(다음: ${esc(d.levelText ?? '')})</small>`}</span>${btn}</div>${roofs}`;
+  const bld = d.roofable && !S.visiting ? `<button id="smBld" class="${st.bld ? 'on' : ''}" aria-expanded="${st.bld}">건물</button>` : '';
+  const roofs = d.roofable && !S.visiting && st.bld ? `<div class="roofs smo-roofs"><span class="note">지붕 색</span>${ROOFS.map(([n, h]) => `<button data-roof="${h}" title="${n}" aria-label="${n}" class="${o.hue === h ? 'on' : ''}" style="background:${h == null ? '#8a8a96' : `hsl(${h} 55% 45%)`}"></button>`).join('')}</div>` : '';
+  return `<div class="qhd brdln smo-top"><span class="sub objinfo">${esc(d.desc)} · <b>Lv.${g.lv}</b>${g.state === 'max' ? ' 최대' : ` <small>(다음: ${esc(d.levelText ?? '')})</small>`}</span>${btn}${bld}</div>${roofs}`;
 }
 
 /** 「지금 할 만한 것」 (최대 2개 · 누르면 바로 그 화면) */
@@ -75,6 +76,8 @@ export function openSmithOne(o: Building, tab = st.tab) {
   const redraw = () => keepScroll(() => openSmithOne(o));
   bindTabs('smT', (i) => openSmithOne(o, i));
   // 맨 위 줄
+  const bb = document.getElementById('smBld');
+  if (bb) bb.onclick = () => ((st.bld = !st.bld), redraw());
   const up = document.getElementById('smUp');
   if (up) up.onclick = () => game.upgrade(o);
   $$('[data-roof]').forEach(
