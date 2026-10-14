@@ -2406,3 +2406,20 @@ body.hud2.winopen #leftIcons,.talking #leftIcons,.placing #leftIcons,body.decor 
 #qGoalTag[hidden]{display:none}
 body.qband #chatlog{visibility:hidden}
 body.winopen #qGoalTag,.talking #qGoalTag,body.photo #qGoalTag,body.uihide #qGoalTag{visibility:hidden}
+
+/* ── FIRSTLOOK §4 (flTeaserFit · body.flteaser): 티저·타이틀이 폰 화면을 채우게 — 숫자 CONFIG.firstLook.title (--flt-*) ── */
+body.flteaser #teaser .tbar{display:none}
+body.flteaser #tCap{bottom:calc(env(safe-area-inset-bottom,0px) + 28px)}
+body.flteaser .tscene.cover{position:absolute;inset:0;top:0;transform:none;display:block;overflow:hidden}
+body.flteaser .tscene.cover .tcv{max-width:none}
+body.flteaser .tdim{position:absolute;inset:0;background:#05060f;opacity:var(--flt-dim)}
+body.flteaser .tstage.fit .tlogo{top:0;bottom:0;justify-content:center;pointer-events:auto;z-index:2}
+body.flteaser :is(.logo,.tlogo) .ko .ko1{font-size:calc(var(--f-big) * var(--flt-k));line-height:1.15}
+body.flteaser :is(.logo,.tlogo) .ko .ko2{font-size:min(calc(var(--f-big) * 1.75 * var(--flt-k)),calc((100vw - var(--flt-pad)) / 7.6));line-height:1.15}
+html:not([data-size="phone"]) body.flteaser :is(.logo,.tlogo) .ko .ko2{font-size:min(calc(var(--f-big) * 2.1 * var(--flt-k)),calc((100vw - var(--flt-pad)) / 7.6))}
+body.flteaser #title{background:none}
+body.flteaser #title::before{content:'';position:absolute;inset:0;z-index:-1;background:#05060f;opacity:var(--flt-dim);pointer-events:none}
+body.flteaser #teaser.gate .tgate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:transparent;animation:none}
+body.flteaser #teaser.gate .tgate::before{content:'';position:absolute;inset:0;z-index:-1;background:#05060f;opacity:var(--flt-dim)}
+body.flteaser #teaser.gate .tgo{font-size:var(--f-big);color:#cfd8ff;letter-spacing:2px;animation:beat 1.4s ease infinite}
+body.flteaser #teaser.gate .tstage{background:transparent}

@@ -1330,6 +1330,8 @@ export const CONFIG = {
       floatMergeMs: 900,
       bandHideMs: 10000,
     },
+    /** §4 flTeaserFit: 타이틀·「터치해서 시작」·티저 마지막 컷 — 뒤 마을 = 티저 3번째 컷(등급 g · 낮) · 그 위 어둡게(dim 알파) · 제목 배율 koScale(지금 크기 × · 폰은 화면 폭 − fitPad 안에 들게 줄임) · 마을 간판 이름 */
+    title: { g: 4, night: false, dim: 0.55, koScale: 2, fitPad: 24, innName: '솔바람 여관' },
   },
   /**
    * FIVESTARS 「다섯 별의 원정대」 (플래그 fiveStars · world/fivestars.ts) — 부탁(장부 3막 장 5칸) 크기 · 신화 영웅 · 세트 「다섯 별」 · 장식

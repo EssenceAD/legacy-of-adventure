@@ -102,6 +102,7 @@ import { showSettlement, tickSettle } from './ui/daily';
 import { betaMigrate, syncGuideIdx } from './world/beta';
 import { initPowerUI, tickPowerUI } from './ui/power';
 import { playTeaser, teaserCut, teaserOn, teaserTouchGate } from './teaser/director';
+import { applyTeaserFitClass, shouldAutoTeaser } from './teaser/fit';
 import { battleMusic, initSound, tickSound } from './ui/sound';
 import { _fakeNewer, APP_VERSION, giftNote, initUpdate, loadPatchNotes, openPatchNotes } from './ui/update';
 import { directionStarted, initDirection } from './ui/opsbox';
@@ -887,6 +888,8 @@ async function boot() {
   initKit();
   // VISUAL 실험실 §4·§5: 켠 기기만 body.hud2 / body.ui2 (글자 크기 변수보다 먼저)
   initVisualClasses();
+  // FIRSTLOOK §4 (flTeaserFit): 타이틀·티저는 저장보다 먼저 뜬다 — 플래그(flags.json)·실험실은 여기서 이미 읽힘
+  applyTeaserFitClass();
   initScreen();
   uiHooks.toast = toast;
   uiHooks.toastHtml = (html) => toastHtml(html, 2800);
@@ -1112,7 +1115,7 @@ async function boot() {
   game.titleBackdrop();
   // 티저: 처음 실행(저장 없음)이면 한 번 자동 · 타이틀 「미리보기」로 언제든
   document.getElementById('tTeaser')!.onclick = () => playTeaser(false, () => game.titleBackdrop());
-  if (!readSave() && !getPref('teaserSeen', false)) {
+  if (shouldAutoTeaser(!!readSave(), getPref('teaserSeen', false))) {
     setPref('teaserSeen', true);
     teaserTouchGate(() => game.newGame());
   }

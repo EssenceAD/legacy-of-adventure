@@ -163,6 +163,8 @@ export const FLAG_DEFAULTS = {
   flQuiet: false,
   /** FIRSTLOOK §3 폰에서 키보드 안내 숨기기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 터치 기기(pointer: coarse)면 대화창 「Z NEXT」「X SKIP」 대신 「탭: 다음」 + [건너뛰기] 버튼 · 건너뛰기는 열린 뒤 0.35초 동안 안 먹음(티저 건너뛰기도) · PC는 그대로 (숫자·글자 CONFIG.firstLook.touch) */
   flTouchHints: false,
+  /** FIRSTLOOK §4 티저·타이틀이 폰 화면을 채우게 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 티저 작은 캔버스 컷(사냥·보스·다락)은 화면을 꽉 채우게(cover · 정수 배율 · 가운데 기준으로 좌우 자름) · 위아래 검은 띠 없음 · 타이틀·「터치해서 시작」·티저 마지막 컷 = 마을 낮(티저 3번째 컷)을 어둡게 깔고 큰 제목 (숫자 CONFIG.firstLook.title) */
+  flTeaserFit: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

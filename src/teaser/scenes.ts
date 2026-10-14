@@ -13,6 +13,7 @@ import { S, world } from '../world/state';
 import { doorOf, findKind, landBounds, placeLayout, rebuildPaths, sizeFor, type LayoutEntry } from '../world/town';
 import { drawChar, LH, LW, LANES } from '../ui/battle';
 import { dpr } from '../ui/kit';
+import { coverFit, teaserFitOn, type Fit } from './fit';
 
 const CITY = NEIGHBORS.find((v) => v.id === 'moon') ?? NEIGHBORS[NEIGHBORS.length - 1];
 
@@ -62,6 +63,15 @@ export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5): { cv
   cv.height = h;
   // 비어 있는 자리 상자 말고 무대 크기로 (상자는 아직 높이가 0)
   const r = (host.parentElement ?? host).getBoundingClientRect();
+  // FIRSTLOOK §4 (flTeaserFit): 무대를 꽉 채우게 (cover · 가운데 기준으로 자름)
+  if (teaserFitOn()) {
+    const f = coverFit(w, h, r.width, r.height, dpr());
+    placeCover(host, cv, f);
+    host.appendChild(cv);
+    const ctx = cv.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    return { cv, ctx, sc: f.k / dpr() };
+  }
   const k = Math.max(1, Math.floor(Math.min((r.width * dpr()) / w, (r.height * maxH * dpr()) / h)));
   const sc = k / dpr();
   cv.style.width = w * sc + 'px';
@@ -71,6 +81,13 @@ export function sceneCanvas(host: HTMLElement, w = LW, h = LH, maxH = 0.5): { cv
   const ctx = cv.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   return { cv, ctx, sc };
+}
+
+/** cover 자리: 상자는 무대 전체 · 캔버스는 무대 가운데 (넘치는 만큼 잘림) */
+export function placeCover(host: HTMLElement, cv: HTMLCanvasElement, f: Fit) {
+  host.classList.add('cover');
+  cv.className = 'tcv';
+  Object.assign(cv.style, { position: 'absolute', width: f.w + 'px', height: f.h + 'px', left: f.left + 'px', top: f.top + 'px' });
 }
 
 const FR: Record<string, CharFrames> = {};

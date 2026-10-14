@@ -15,7 +15,9 @@ import { anim, startGradeAnim, teaserView } from '../world/grade';
 import { startTour, tour } from '../world/evalTour';
 import { S, world } from '../world/state';
 import { findKind } from '../world/town';
-import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
+import { ATTIC_H, ATTIC_W, drawAttic, placeCover, sceneCanvas, village } from './scenes';
+import { coverFit, teaserFitOn } from './fit';
+import { CONFIG } from '../data/config';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
 import { skipFrame } from '../engine/fps';
@@ -223,6 +225,11 @@ const CUTS: Cut[] = [
         // 천천히 줌인: 정수 배율로 한 단계 (도트가 번지지 않게)
         if (t > 2.4 && !a.cv.dataset.z) {
           a.cv.dataset.z = '1';
+          // FIRSTLOOK §4: 꽉 채운 채로 한 단계 더 (가운데 기준)
+          if (host.classList.contains('cover')) {
+            const r = stage.getBoundingClientRect();
+            return placeCover(host, a.cv, coverFit(ATTIC_W, ATTIC_H, r.width, r.height, window.devicePixelRatio, 1));
+          }
           const k = Math.round(a.sc * window.devicePixelRatio) + 1;
           a.cv.style.width = (ATTIC_W * k) / window.devicePixelRatio + 'px';
           a.cv.style.height = (ATTIC_H * k) / window.devicePixelRatio + 'px';
@@ -236,7 +243,14 @@ const CUTS: Cut[] = [
     cap: '',
     trans: 'flash',
     enter: () => {
-      stage.classList.add('dark');
+      // FIRSTLOOK §4 (flTeaserFit): 마을 낮(3번째 컷)을 어둡게 깔고 큰 제목
+      if (teaserFitOn()) {
+        const c = CONFIG.firstLook.title;
+        anim.on = false;
+        village(c.g, c.night);
+        stage.classList.add('world', 'fit');
+        el('<i class="tdim"></i>');
+      } else stage.classList.add('dark');
       $('#teaser').classList.add('open');
       el(`<div class="tlogo"><div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div><div class="en">LEGACY OF ADVENTURE</div><p>당신의 이야기는, 다음 세대의 유산이 된다.</p><button class="bigbtn" id="tGo">${auto ? '시작하기' : '타이틀로'}</button></div>`);
       $('#tGo').onclick = finish;
@@ -383,6 +397,10 @@ export function teaserTouchGate(done: () => void) {
   const root = $('#teaser');
   root.hidden = false;
   root.classList.add('gate');
+  // FIRSTLOOK §4 (flTeaserFit): 「터치해서 시작」 = 타이틀과 같은 얼굴 (어둡게 깐 마을 낮 + 큰 제목 · 뒤 마을은 titleBackdrop)
+  const gate = root.querySelector<HTMLElement>('.tgate');
+  if (gate && teaserFitOn() && !gate.querySelector('.logo'))
+    gate.innerHTML = `<div class="logo"><div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div><div class="en">LEGACY OF ADVENTURE</div></div><span class="tgo">${gate.textContent}</span>`;
   $('#title').hidden = true;
   const go = () => {
     root.removeEventListener('pointerdown', go);
