@@ -88,6 +88,8 @@ interface News {
   keep?: boolean;
   /** 글 뒤에 잘리지 않게 붙는 짧은 꼬리 (남은 시간) */
   tail?: string;
+  /** 두 번째 줄 (작게 · 버닝 「접속해 있을 때만 2배예요」) */
+  sub?: string;
   tap: () => void;
 }
 const el = (s: string) => document.querySelector<HTMLElement>(s);
@@ -97,7 +99,7 @@ function collect(): News[] {
   const out: News[] = [];
   // RAIDWEAPON §6 버닝 주말: 기간 중 맨 앞 (다른 소식과 4초마다 번갈아 · 한 번에 하나)
   const burn = S.visiting ? '' : burnBandText();
-  if (burn) out.push({ key: 'burn', icon: '', text: burn, tail: `${burnLeftText()} 남음`, hot: false, keep: true, tap: () => toast('🔥 버닝 주말 — 사냥·의뢰 경험치·골드 2배 · 재료 1.5배 · 하늘 균열 조각 2배 · 토벌 도전 +1') });
+  if (burn) out.push({ key: 'burn', icon: '', text: burn, tail: `${burnLeftText()} 남음`, sub: '접속해 있을 때만 2배예요', hot: false, keep: true, tap: () => toast('🔥 버닝 주말 — 사냥·의뢰 경험치·골드 2배 · 재료 1.5배 · 하늘 균열 조각 2배 · 토벌 도전 +1') });
   const m = el('#mission');
   if (m && !m.hidden && m.innerHTML) {
     const t = [txt(m.querySelector('b')), txt(m.querySelector('em'))].filter(Boolean).join(' · ');
@@ -155,7 +157,7 @@ function drawBand(now: number) {
   }
   cur = list[idx];
   shownKey = cur.key;
-  const html = `${cur.icon ? `<img src="${cur.icon}" alt="">` : ''}<span>${esc(cur.text)}</span>${cur.tail ? `<b class="ntail">${esc(cur.tail)}</b>` : ''}${list.length > 1 ? `<i>${idx + 1}/${list.length}</i>` : ''}`;
+  const html = `${cur.icon ? `<img src="${cur.icon}" alt="">` : ''}<span>${esc(cur.text)}</span>${cur.tail ? `<b class="ntail">${esc(cur.tail)}</b>` : ''}${cur.sub ? `<small class="nsub">${esc(cur.sub)}</small>` : ''}${list.length > 1 ? `<i>${idx + 1}/${list.length}</i>` : ''}`;
   if (band.innerHTML !== html) band.innerHTML = html;
   band.classList.toggle('hot', cur.hot);
   band.classList.toggle('burn', cur.key === 'burn');
