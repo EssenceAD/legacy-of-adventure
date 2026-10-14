@@ -1186,6 +1186,27 @@ export const CONFIG = {
     unique: { hunt: 0.005, raid: 0.01, exp: 0.05, expTier: 6, expRegion: 3, dupDustMult: 2 },
     /** §3-4 재련: 그 등급 가루 · 금화 · 옵션 하나 잠그면 비용 × */
     reforge: { dust: { r: 30, e: 60, l: 120, a: 200 } as Record<string, number>, gold: { r: 500, e: 1500, l: 4000, a: 8000 } as Record<string, number>, lockMult: 2 },
+    /**
+     * 웅스 건의 「강화 전수」 (플래그 enhTransfer): 같은 부위 · 받는 장비 등급 ≥ 주는 장비 등급 · 주는 장비 +minEnh 이상 · 유물(a) 받는 장비는 유물에게서만 (웅스 추가 규칙)
+     *  옮겨지는 단계 = 주는 단계 − gradeDrop[등급 차(최대 2)] − (주는 단계 ≥ +11 이면 trExtra) · 결과 = max(받는 단계, 옮겨지는 단계)
+     *  비용(받는 장비 등급 가루 · 금화) = 결과 단계를 +0에서 직접 올릴 때의 기댓값 × 35% — cost.dust[L−1] · cost.gold[L−1]
+     *   기댓값은 오프라인 계산(tests/transfer-table.ts · 가치 반복): 강화 = growth.enhance 확률·천장·대성공·하락(부적 없음)·보너스 0 ·
+     *   가루 (현재+1)²×smith.enhanceCost / 초월 = growth.transcend 확률 + 대장간 Lv.5(초월 최저) 보너스 · 천장 · 금화 transcend.gold×2^(목표−11) · 가루 transcend.dust×(목표−10)
+     *   지역·보스 재료는 셈에 안 넣음 · 가루 10 단위 · 금화 1,000 단위 반올림 (보고 reports/pace/transfer.md · 표가 계산과 어긋나면 tests/transfer.test.ts 가 잡음)
+     *  결과 +charmFrom 이상이면 강화 보호 부적 1개 더 · 주는 장비는 사라지고 분해 가루는 그대로 받음
+     */
+    transfer: {
+      minEnh: 3,
+      share: 0.35,
+      gradeDrop: [0, 1, 2],
+      trExtra: 1,
+      charmFrom: 11,
+      cost: {
+        //     +1  +2  +3   +4   +5   +6   +7   +8    +9    +10   +11   +12   +13   +14   +15   +16   +17   +18   +19   +20
+        dust: [0, 20, 50, 120, 220, 420, 830, 1670, 3380, 6990, 7030, 7110, 7240, 7440, 7700, 8050, 8510, 9110, 9860, 10830],
+        gold: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15000, 47000, 118000, 272000, 607000, 1353000, 3035000, 6872000, 15420000, 35431000],
+      },
+    },
     /** §3-5 [알림] 자랑: 같은 사람 간격(ms) · 같은 종류 하루 최대 */
     brag: { gapMs: 10 * 60 * 1000, perKindDay: 3 },
     /** §3-6 「다음 목표」 단계 */

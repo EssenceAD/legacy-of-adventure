@@ -27,8 +27,10 @@ import { openReforge } from './reforge';
 import { nextGoal, openBulkEnhance, openBulkFor, runToGoal } from './bulkSmith';
 import { autoSalvageHtml, bindAutoSalvage, openTidyConfirm, tidyBtnHtml } from './bulkSalvage';
 import { bindCraft, bindSalvage, craftHtml, dustLine, salvageHtml, sorted } from './smith';
-import { appendMoveButton, openWin, toast } from './windows';
-import { fsay } from '../world/visual';
+import { appendMoveButton, openWin, toast, winBack } from './windows';
+import { fsay, vis } from '../world/visual';
+import { openTransfer } from './enhTransfer';
+import { stampFx } from './checkin';
 
 const SM = () => CONFIG.smith;
 /** 지금 탭 · 고른 영웅(-1 = 가방 장비) · 고른 칸 · 가방에서 고른 장비 */
@@ -217,7 +219,7 @@ function panelHtml(it: Item, a: Actor | null): string {
     <div class="btnrow smo-go"><button class="bigbtn" id="smoGo" ${tryable && !act.short ? '' : 'disabled'}>${label}</button>${act.reforge ? '<button class="bigbtn sm ghost" id="smoRf">재련</button>' : ''}</div>
     ${tryable ? `<p class="note">${riskText(it)}</p>${cost}` : ''}${it.enh >= SM().maxEnhance ? `<p class="note">${trRule()}</p>` : ''}
     ${tryable ? `<div class="enhuse"><label class="tog ${dropStep ? '' : 'dim'}"><input type="checkbox" id="smoCharm" ${enhUse.charm ? 'checked' : ''} ${G.charm > 0 ? '' : 'disabled'}> 🧿 부적 <small>(${G.charm}개 · 하락을 막을 때만)</small></label><label class="tog"><input type="checkbox" id="smoWhet" ${enhUse.whet ? 'checked' : ''} ${G.whet > 0 ? '' : 'disabled'}> 🪨 숫돌 <small>(${G.whet}개 · +${Math.round(CONFIG.growth.whet.add * 100)}%p)</small></label></div>` : ''}
-    <div class="btnrow smo-sub">${tryable && to > it.enh ? `<button class="bigbtn sm ghost" id="smoTo" ${act.short ? 'disabled' : ''}>+${to}까지</button>` : ''}<button class="bigbtn sm ghost" id="smoInfo">자세히</button>${a && a.runId == null ? '<button class="bigbtn sm ghost" id="smoSwap">바꾸기</button>' : ''}</div>
+    <div class="btnrow smo-sub">${tryable && to > it.enh ? `<button class="bigbtn sm ghost" id="smoTo" ${act.short ? 'disabled' : ''}>+${to}까지</button>` : ''}<button class="bigbtn sm ghost" id="smoInfo">자세히</button>${vis('enhTransfer') ? '<button class="bigbtn sm ghost" id="smoTf">전수</button>' : ''}${a && a.runId == null ? '<button class="bigbtn sm ghost" id="smoSwap">바꾸기</button>' : ''}</div>
     ${who ? `<div class="irow smo-who"><img src="${pic(who.a)}" alt=""><span>누가 끼면 좋을까 · ${isFav(who.a) ? '★ ' : ''}${esc(who.a.name)} <em class="good">▲ ${fmt(who.gain)}</em></span><button id="smoWear">끼우기</button></div>` : ''}
   </div>`;
 }
@@ -305,6 +307,23 @@ function bindGear(o: Building, redraw: () => void) {
       if (it.enh > before) fxNext = { kind: 'ok', text: `+${it.enh}` };
       redraw();
     };
+  // 웅스 건의 강화 전수 (enhTransfer): 이 장비 기준 받기·주기 → 확인 시트 → 받은 장비 칸으로 돌아와 도장 「쿵」
+  const tf = document.getElementById('smoTf');
+  if (tf)
+    tf.onclick = () =>
+      // 돌아가기·완료 모두 한 칸 뒤로(대장간) 간 뒤 다시 그린다 — 전수 창이 쌓이지 않게 (← 가 지난 목록으로 가지 않게)
+      openTransfer(it, () => (winBack(), openSmithOne(o)), (r, recv) => {
+        if (r.wearer || recv.owner != null) {
+          st.hero = r.wearer?.id ?? recv.owner!;
+          st.slot = recv.slot;
+        } else {
+          st.hero = -1;
+          st.bagItem = recv.id;
+        }
+        winBack();
+        openSmithOne(o);
+        stampFx('transfer', document.querySelector<HTMLElement>('.smo-slot.on .ic') ?? document.querySelector<HTMLElement>('.smo-bag .ic.smo-on') ?? document.getElementById('smoIc'));
+      });
   const inf = document.getElementById('smoInfo');
   if (inf) inf.onclick = () => showItem(it, back);
   const wr = document.getElementById('smoWear');
