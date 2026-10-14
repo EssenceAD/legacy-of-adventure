@@ -19,6 +19,7 @@ import { ATTIC_H, ATTIC_W, drawAttic, sceneCanvas, village } from './scenes';
 import { bossCut, huntCut, preloadTeaserField, TF_H, TF_W } from './field';
 import { flushScene } from '../audio/scene';
 import { skipFrame } from '../engine/fps';
+import { skipTapOk } from '../ui/touchHints';
 
 /** 전투 컷 캔버스: 논리 TF_W×TF_H를 기기 픽셀 정수배로 (숫자·이름표는 기기 픽셀로 따로) */
 function fieldCanvas(host: HTMLElement): { ctx: CanvasRenderingContext2D; k: number } {
@@ -254,6 +255,8 @@ let cur = -1;
 let t = 0;
 let lastPerf = 0;
 let skipped = false;
+/** FIRSTLOOK §3: 건너뛰기 버튼이 나타난 때 */
+let skipShownAt = 0;
 let faded = false;
 let raf = 0;
 let saved: { land: number; night: boolean; nightT: number; innName: string; cam: [number, number]; zoom: number; focus: { m: number; size: number } } | null = null;
@@ -313,7 +316,11 @@ function frame(now: number) {
     faded = true;
     teaserFade(2);
   }
-  $('#tSkip').hidden = t < 2 || i === CUTS.length - 1;
+  // FIRSTLOOK §3: 건너뛰기가 막 나타난 때 (터치면 0.35초 동안 안 먹음)
+  const sk = $('#tSkip');
+  const hide = t < 2 || i === CUTS.length - 1;
+  if (sk.hidden && !hide) skipShownAt = performance.now();
+  sk.hidden = hide;
   raf = requestAnimationFrame(frame);
 }
 
@@ -332,6 +339,7 @@ export function playTeaser(isAuto: boolean, done: () => void) {
   root.classList.remove('open');
   stage = $('#tStage');
   $('#tSkip').onclick = () => {
+    if (!skipTapOk(skipShownAt)) return;
     skipped = true;
     t = START[CUTS.length - 1];
     teaserFade(1.5);

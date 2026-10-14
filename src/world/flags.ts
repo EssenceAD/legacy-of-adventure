@@ -159,6 +159,8 @@ export const FLAG_DEFAULTS = {
   bundles: false,
   /** LUXE §4 이웃 방명록 · 좋아요 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 방문 화면 [👍 좋아요] + 도장 한마디 8개(하루 1번 · 로그인 + 장부 2장 · 내 마을 X) · 이웃 창 「방명록」 탭(이번 주 · 누적 · 최근 30 · 새 좋아요 빨간 점) · 10개마다 우편함 선물(주 5번) · 랭킹 「이번 주 인기 마을」 · 이웃 목록 맨 위 「🏆 지난주 인기 마을」 · 서버 supabase/guestbook.sql (없으면 「준비 중」 · 좋아요는 예전처럼) */
   guestbook: false,
+  /** FIRSTLOOK §3 폰에서 키보드 안내 숨기기 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 터치 기기(pointer: coarse)면 대화창 「Z NEXT」「X SKIP」 대신 「탭: 다음」 + [건너뛰기] 버튼 · 건너뛰기는 열린 뒤 0.35초 동안 안 먹음(티저 건너뛰기도) · PC는 그대로 (숫자·글자 CONFIG.firstLook.touch) */
+  flTouchHints: false,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

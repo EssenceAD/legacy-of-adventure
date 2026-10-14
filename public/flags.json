@@ -76,5 +76,6 @@
   "enhTransfer": true,
   "fiveStars": true,
   "bundles": false,
-  "guestbook": false
+  "guestbook": false,
+  "flTouchHints": false
 }

@@ -274,6 +274,9 @@ small,.note,.stp small,.quest small,.glist small,.pm small,.irow small,.regs sma
 #dText{font-size:var(--f-dlg);line-height:1.75;min-height:5.25em}
 #dlg.narr #dText{font-size:var(--f-big);line-height:1.4;min-height:4.2em}
 #dlg .keys{font-size:var(--f-big)}
+/* FIRSTLOOK §3 (flTouchHints): 폰 대화창 — 「탭: 다음」은 작게 · [건너뛰기]는 티저 건너뛰기(#tSkip)와 같은 버튼 */
+#dlg .keys.touch{display:flex;align-items:center;gap:10px;font-size:var(--f-ui);letter-spacing:0}
+#dlg .keys.touch button{background:rgba(5,6,20,.6);color:#cfd8ff;font-size:var(--f-small);padding:6px 10px;box-shadow:0 0 0 2px #161420;text-shadow:none}
 .dk button{font-size:var(--f-ui)}
 .wrow{padding:6px 8px;background:var(--navy2)}
 .bagb{margin-left:auto}

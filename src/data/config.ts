@@ -28,6 +28,11 @@ export interface HarmonyFx {
 }
 
 export const CONFIG = {
+  /** FIRSTLOOK 첫인상 패스 (FIRSTLOOK_SPEC.md) — 섹션마다 키 하나 */
+  firstLook: {
+    /** §3 flTouchHints: 터치 기기 대화창 안내 글자 · 건너뛰기가 열린 뒤 안 먹는 시간(ms · 확인 시트와 같은 350) */
+    touch: { nextLabel: '탭: 다음', skipLabel: '건너뛰기', guardMs: 350 },
+  },
   /** 핫픽스 v0.23.4: 모바일 탭 — 손가락은 이만큼(px) 덜 움직이고 이 시간(ms) 안에 떼면 탭 · 손님은 건물과 겹치면 이 거리(px) 안일 때만 먼저 · tap_miss 기록 기기당 하루 */
   touchTap: { slopPx: 14, maxMs: 450, actorFirstPx: 8, missLogPerDay: 30 },
   /** 유저 톡방 (카카오톡 오픈채팅) — 게임 안 모든 톡방 링크는 여기서 읽는다 */
