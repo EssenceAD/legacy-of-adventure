@@ -125,9 +125,21 @@ function pick(list: string[], key: string): string {
 
 /** 마을 곡이 끝남 → 20~60초 쉼 (마을 소리) → 다음 곡 */
 function onEnded(d: Deck) {
-  if (decks[cur] !== d || !VILLAGE.has(scene)) return;
+  if (decks[cur] !== d || scene === 'none' || teaserMode) return;
+  // 2차 추가: 전투 곡이 둘 이상이면 끝나고 바로 다른 곡 (사냥 09↔20 · 토벌 11↔23 …)
+  if (!VILLAGE.has(scene)) {
+    const list = PLAYLISTS[scene];
+    if (list.length > 1 && !previewing) play(pick(list, scene), 1.2, 0, false);
+    return;
+  }
   d.track = null;
   rest();
+}
+/** 전투·이벤트 곡: 하나면 그 곡 반복 · 둘 이상이면 번갈아 (직전 곡 빼고) */
+function playScene(s: Exclude<Scene, 'none'>, fade: number) {
+  const list = PLAYLISTS[s];
+  if (list.length > 1) play(pick(list, s), fade, 0, false);
+  else play(list[0], fade, 0, true);
 }
 function rest() {
   clearTimeout(restT);
@@ -190,7 +202,7 @@ export function setScene(next: Scene) {
     if (r) return play(r.track, 1.2, r.t);
     return play(pick(PLAYLISTS[next as 'day'], next), 1.2);
   }
-  play(PLAYLISTS[next][0], raidSwap ? 2 : 1.2, 0, true);
+  playScene(next, raidSwap ? 2 : 1.2);
 }
 export const currentScene = () => scene;
 
@@ -222,7 +234,7 @@ onUnlock(() => {
   if (VILLAGE.has(s)) play(pick(PLAYLISTS[s as 'day'], s), 0.8);
   else {
     scene = s;
-    play(PLAYLISTS[s][0], 0.8, 0, true);
+    playScene(s, 0.8);
   }
   scene = s;
 });

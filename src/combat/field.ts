@@ -11,7 +11,8 @@ import { flag } from '../world/flags';
 import type { Actor } from '../world/state';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { TH, TW } from '../engine/iso';
-import { sfx } from '../audio/sfx';
+import { sfx, smallWin } from '../audio/sfx';
+import { winFanfare } from '../audio/fanfare';
 import { recPower } from '../world/hunt';
 import { bondOf, pairOf } from '../world/chem';
 import { roleMult } from '../world/party';
@@ -24,7 +25,7 @@ import { HV } from '../data/harvest_cfg';
 import { PUMPKIN_BARKS } from '../data/story/harvest';
 import { partySpecial, specialSum } from '../world/uniques';
 import { isBalanced, memberSynMult, synergyFx, type SynFx } from '../world/synergy';
-import { resolveDmg, resolveOf, resolveTaken } from '../world/wayfind';
+import { resolveDmg, resolveOf, resolveTaken, unclearedStage } from '../world/wayfind';
 import { petAbyssDmg } from '../world/pets';
 
 const HC = CONFIG.hunter;
@@ -286,6 +287,8 @@ export interface Field {
   /** GOLDSINK §7 끝없는 심연: 보스 그림(다른 지역 보스) · 접기 없음 */
   look?: BossLook;
   noFold?: boolean;
+  /** RAIDWEAPON §0: 이기면 팡파르 (부르는 쪽이 정했을 때만) */
+  fanfare?: boolean;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
   /** ROLES (플래그 rolesV2): 켜졌나 · 사제 한 번 살리기 남은 횟수 · 탱·힐·딜 조합 (예고 +초) */
@@ -349,7 +352,13 @@ export interface FieldOpts {
   noFold?: boolean;
   /** HARVEST §1-4: 수확제 기간 사냥 판 (부르는 쪽이 fieldHarvest로 정한다) — king = 대왕 차례 · bark = 첫 호박 한 줄 */
   harvest?: { king: boolean; bark: boolean };
+  /** MUSIC 2차: 특별한 전투 곡 (RAIDWEAPON §1 보스 연전 = 'abyss_rush' · §3 월드 레이드 = 'world_raid') — 이기면 늘 팡파르 */
+  music?: 'abyss_rush' | 'world_raid';
+  /** RAIDWEAPON §0: 이기면 팡파르를 틀지 부르는 쪽이 정함 (심연: 보스 층만) · 없으면 winFanfare 기본 규칙 */
+  fanfare?: boolean;
 }
+/** combat/ui가 채운다: 지금 판이 접혀 있나 (접은 판 승리는 팡파르 없이) */
+export const fieldSound = { folded: () => false };
 export function makeField(region: RegionId, stage: number, members: Actor[], auto: boolean, opts: FieldOpts = {}): Field {
   const N = C.field;
   // PARTY §3: 4번째 자리가 열리면 4명까지 (파티 창이 인원을 정한다)
@@ -394,6 +403,7 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.bossLine = opts.bossLine;
   f.look = opts.look;
   f.noFold = opts.noFold;
+  f.fanfare = opts.music ? true : opts.fanfare;
   f.syn = syn;
   if (rolesOn) {
     f.roles = true;
@@ -1639,7 +1649,9 @@ function end(f: Field, r: 'win' | 'lose') {
   if (f.done) return;
   f.done = r;
   f.doneT = 0;
-  sfx(r);
+  // RAIDWEAPON §0: 반복·자동·접은 판 승리는 팡파르 없이 작은 coin
+  if (r === 'win' && !winFanfare({ mode: f.mode, first: unclearedStage(f.region, f.stage), boss: f.stage >= 10, auto: f.autoUsed, folded: fieldSound.folded(), bossDown: !!f.elite?.dead, force: f.fanfare })) smallWin();
+  else sfx(r);
 }
 
 /** 평가 (전투 2차): 맞은 횟수 + 시간 + 최대 KILLS 연속 — 점수로 합쳐 S/A/B */

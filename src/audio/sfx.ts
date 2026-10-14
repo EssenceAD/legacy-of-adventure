@@ -4,6 +4,7 @@ import { ctx, duck, onUnlock, sfxBus } from './engine';
 import { holdSfx, setScenePlayer } from './scene';
 import { COMBAT_SYNTH, combatSynth } from './combatSfx';
 import { FISH_SFX, fishSamples, type FishSfx } from './fishSynth';
+import { makeFanfarePicker, SMALL_WIN_VOL, type FanfareKind } from './fanfare';
 
 export type SfxName =
   | 'tap' | 'open' | 'close' | 'coin' | 'build' | 'place_bad' | 'levelup' | 'fail' | 'item' | 'rare' | 'harmony' | 'mission' | 'chapter' | 'grade_up'
@@ -13,8 +14,9 @@ export type SfxName =
 const BASE = 'audio/';
 const FILE_SFX = ['tap', 'open', 'close', 'coin', 'build', 'place_bad', 'mission', 'event', 'heart', 'night', 'item', 'rare', 'fail', 'hit', 'crit', 'skill', 'block', 'perfect'] as const;
 /** 팡파르: [파일, 음량, 덕킹 초] */
+//  RAIDWEAPON §0: win · levelup · chapter의 파일은 fanfare.ts가 고른다 (J1·J6·J7 돌려 쓰기 · J8 · 45초 규칙)
 const JINGLE: Partial<Record<SfxName, [string, number, number]>> = {
-  levelup: ['J1', 0.9, 0],
+  levelup: ['J8', 0.9, 0],
   chapter: ['J1', 1, 2.4],
   win: ['J1', 1, 2.4],
   lose: ['J2', 1, 2.6],
@@ -83,11 +85,15 @@ function playBuffer(b: AudioBuffer, vol: number, when: number, rate = 1) {
   s.start(when);
 }
 
+const fanfare = makeFanfarePicker();
+/** 팡파르 대신: 작은 coin (전투 화면에서도 울린다) */
+export const smallWin = (): void => sfx('coin', { vol: SMALL_WIN_VOL, force: true });
+
 /** 효과음 하나 (소리가 아직 안 열렸거나 꺼져 있으면 조용히) */
 /** 개발용: 최근에 부른 효과음 */
 export const sfxLog: string[] = [];
 setScenePlayer((n) => sfx(n));
-export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean } = {}) {
+export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean } = {}): void {
   if (import.meta.env.DEV) {
     sfxLog.push(name);
     if (sfxLog.length > 60) sfxLog.shift();
@@ -116,10 +122,24 @@ export function sfx(name: SfxName | string, opt: { vol?: number; force?: boolean
   const n = name as SfxName;
   const jg = JINGLE[n];
   if (jg) {
-    const [file, vol, dk] = jg;
+    const vol = jg[1];
+    let [file, , dk] = jg;
+    if (n === 'win' || n === 'levelup' || n === 'chapter') {
+      const f = fanfare.pick(n as FanfareKind, performance.now() / 1000);
+      // 45초 안에 같은 팡파르 → 작은 coin
+      if (!f) {
+        smallWin();
+        return;
+      }
+      file = f;
+      // 짧은 J6·J7은 덕킹도 짧게
+      if (n === 'win' && f !== 'J1') dk = 1.6;
+    }
     if (dk) duck(dk);
     void load(`jingle/${file}.mp3`).then((b) => {
       if (b) playBuffer(b, vol * v0, ctx!.currentTime + 0.02);
+      // J8이 없으면 J5 (음량 0.6)
+      else if (n === 'levelup') void load('jingle/J5.mp3').then((b5) => (b5 ? playBuffer(b5, 0.6 * v0, ctx!.currentTime + 0.02) : synth(n)));
       else synth(n);
     });
     // 전설 평가: J3 뒤 0.8초 늦게 J4를 겹친다

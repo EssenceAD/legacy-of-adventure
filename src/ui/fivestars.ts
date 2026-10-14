@@ -19,6 +19,7 @@ import { S, world, type Actor } from '../world/state';
 import { entrance } from '../world/town';
 import { esc } from './common';
 import { playStory, storyBusy } from './story';
+import { musicFlags } from './sound';
 import { closeWin, toastHtml } from './windows';
 
 /** 그림이 아직 없을 때 대신 보일 초상 (형철 그림이 오면 저절로 그 그림) */
@@ -47,6 +48,8 @@ function quickCut(html: string, ms: number, done: () => void) {
 }
 /** 합류 컷: 카메오 초상 → 신화 초상 (별가루 · 무지갯빛 테두리) → 대사 */
 function playJoin(id: StarId, a: Actor) {
+  // MUSIC 2차: 컷 · 합류 대화 동안 25 「다섯 별의 원정대」
+  musicFlags.five = true;
   portraitFallbacks();
   const d = STARS[id];
   const html = `<div class="fc-frame"><img class="fc-a" src="${PORTRAITS['p_' + id] ?? ''}" alt=""><img class="fc-b" src="${PORTRAITS['star_' + id] ?? ''}" alt=""><i class="fc-dust"></i><b>${esc(d.name)}</b></div>`;
@@ -61,9 +64,10 @@ function playJoin(id: StarId, a: Actor) {
   });
 }
 /** 세트 4명 첫 전투 (combat/ui.ts startCombat): 「다섯 별」 1초 */
-export function fiveSetCut(ms: Actor[]) {
-  if (!fiveSetCutDue(ms)) return;
+export function fiveSetCut(ms: Actor[]): boolean {
+  if (!fiveSetCutDue(ms)) return false;
   quickCut(setLineHtml(FIVE_SET_LINE[4]), CONFIG.fiveStars.set4CutMs, () => {});
+  return true;
 }
 /** 「…」 한마디는 크게 · 뒤의 효과 글은 작게 */
 function setLineHtml(s: string) {

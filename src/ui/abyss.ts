@@ -218,7 +218,7 @@ export function climb(f: number, ms: Actor[]) {
       }
       markDirty();
     },
-    { rec: floorRec(f), noFold: true, ...(boss ? { look: boss.look } : {}) },
+    { rec: floorRec(f), noFold: true, fanfare: !!boss, ...(boss ? { look: boss.look } : {}) },
   );
 }
 

@@ -1,7 +1,7 @@
 // 소리 화면: 상황 → 배경음악 고르기(0.5초마다) · 설정 「소리」 묶음 · 음악 목록 · 스피커 버튼(전체 음소거) · 버튼 「톡」
 import { applyPrefs, initAudioEngine, prefs, toggleMute } from '../audio/engine';
 import { heard, isPreviewing, previewTrack, setScene } from '../audio/music';
-import { TRACKS, type Scene } from '../audio/playlists';
+import { battleScene, TRACKS, type BattleSpecial, type Scene } from '../audio/playlists';
 import { sfx } from '../audio/sfx';
 import { P as PX } from '../engine/pixel';
 import { hourNow, onNightFlip } from '../world/clock';
@@ -16,9 +16,9 @@ import { onWinClose } from './windows';
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 
 /** 이벤트 곡 (owner·dialogue가 켠다): 엔딩 > 불씨 > 인연 */
-export const musicFlags = { ending: null as null | 'ending_adv' | 'ending_inn', ember: false };
-/** 사냥 지역 · 토벌 보스 체력 30% 아래 (전투 화면이 알려 준다) */
-export const battleMusic = { huntRegion: 'forest', raidLow: false };
+export const musicFlags = { ending: null as null | 'ending_adv' | 'ending_inn', ember: false, five: false };
+/** 사냥 지역 · 토벌 보스 체력 30% 아래 · 특별한 전투(다섯 별 세트 첫 판 · 보스 연전 · 월드 레이드) — 전투 화면이 알려 준다 */
+export const battleMusic = { huntRegion: 'forest', raidLow: false, special: null as BattleSpecial };
 
 function wanted(): Scene {
   const titleOn = !$('#title').hidden || !S.started;
@@ -28,10 +28,13 @@ function wanted(): Scene {
   if (titleOn) return 'title';
   if (musicFlags.ember && isTalking()) return 'ember';
   if (musicFlags.ember) musicFlags.ember = false;
+  // MUSIC 2차: 다섯 별 합류 컷 + 이어지는 대화
+  if (musicFlags.five && (document.getElementById('fiveCut') || isTalking())) return 'five';
+  musicFlags.five = false;
   // 핫픽스 9: 곡 15(인연)는 인연 단계가 오르는 긴 대화에만 · 다른 대화·사건은 곡을 바꾸지 않고 덕킹
   if (isTalking() && isBondUp()) return 'bond';
-  if (document.getElementById('hunt')) return battleMusic.huntRegion === 'forest' ? 'hunt_forest' : 'hunt_deep';
-  if (document.getElementById('raid')) return battleMusic.raidLow ? 'raid2' : 'raid';
+  if (document.getElementById('hunt')) return battleScene('hunt', battleMusic);
+  if (document.getElementById('raid')) return battleScene('raid', battleMusic);
   battleMusic.raidLow = false;
   if (tour.on) return 'eval';
   if (S.visiting) return 'neighbor';
@@ -42,7 +45,7 @@ function wanted(): Scene {
 let acc = 0;
 let lastSwitch = -1e9;
 /** 전투·타이틀·엔딩처럼 바로 바꿔야 하는 장면 */
-const URGENT = /^(hunt|raid|title|ending|ember|none)/;
+const URGENT = /^(hunt|raid|title|ending|ember|none|five|abyss_rush|world_raid)/;
 export function tickSound(dt: number) {
   acc += dt;
   if (acc < 0.5) return;

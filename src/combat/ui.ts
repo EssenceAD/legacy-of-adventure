@@ -14,7 +14,7 @@ import { uiHooks, type Actor, type Item } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { ACTION_NAME, actionOf, capKey, COMBAT_ACTIONS, isPointerFine, keyLabel, keysFor, keysShown, type Action } from '../engine/keys';
 import { getPref, setPref } from '../save/save';
-import { attack, dodge, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
+import { attack, dodge, fieldSound, GRADE_COLOR, grade, hitBonus, makeField, SKILL_NAMES, skill, step, ultimate, type Field, type FieldOpts, type Unit } from './field';
 import { digits, draw, drawVignette, fxLite, labelsOut, loadFx, numsOut, setFxLite, sheets } from './draw';
 import { loadHuntProps } from './theme';
 import { monDef, REGION_BOSS, stageMons } from './mons';
@@ -98,6 +98,7 @@ function noteFrame(now: number, work: number) {
 
 // ───────── 핫픽스 10 §13: 사냥 「접기」 — 화면은 닫고 그 판은 AUTO로 마저 (같은 step · 새 규칙 없음) ─────────
 let folded = false;
+fieldSound.folded = () => folded;
 let foldEnded = false;
 export const foldHooks = { fold: () => {}, done: (_win: boolean) => {} };
 /** 접어 둔 판: 지역·스테이지 · 남은 시간 · 끝났나 */
@@ -205,11 +206,13 @@ export async function startCombat(region: RegionId, stage: number, members: Acto
   if ([...ids].some((id) => !sheets[id])) await Promise.all(['slime', 'goblin'].map(async (id) => (sheets[id] = (await loadMon(id)) ?? undefined)));
   for (const id of ids) if (!sheets[id]) sheets[id] = monDef(id).hop ? sheets.slime : sheets.goblin;
   battleMusic.huntRegion = region;
+  battleMusic.special = opts.music ?? null;
   dmgNums = getPref<boolean>('dmgNums', true);
   // REGIONS2: 50% 컷 — 전투를 멈추고 (일시정지 창 없이) 대화창을 전투 위에 · 끝나면 이어서
   const userHalf = opts.talkHalf;
   // FIVESTARS: 세트 「다섯 별」 4명 첫 전투 — 1초 컷 (한 번만 · 탭하면 넘김)
-  fiveSetCut(members);
+  //  MUSIC 2차: 그 판은 25 「다섯 별의 원정대」
+  if (fiveSetCut(members)) battleMusic.special = 'five';
   F = makeField(region, stage, members, auto, userHalf ? { ...opts, half: () => {
     paused = true;
     holding = false;
