@@ -204,7 +204,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const { LW, LH, OX, OY } = view;
   const T = S.T;
   const pnt = photoState.on ? PHOTO_NT[photoState.time] : null;
-  const decorDay = !photoState.on && decorView.on && !S.visiting && flag('decorDayLight');
+  // 꾸미기 · 건설 배치 · 건물 옮기기(placing.pl) 중엔 낮 조명 (게임 시계는 그대로 · 같은 플래그 decorDayLight)
+  const decorDay = !photoState.on && (decorView.on || !!placing.pl) && !S.visiting && flag('decorDayLight');
   if (photoState.on || S.visiting) decorMix = 0;
   else {
     decorMix = decorMixStep(decorMix, decorDay, dt, decorCalm());
