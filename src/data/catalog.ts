@@ -238,6 +238,14 @@ export const def = (k: Kind): BuildingDef => CATALOG[k];
 /** 밤에 창문 불이 켜지는 그림 */
 export const LIT_SPRITES = ['inn', 'inn3', 'inn5', 'inn8', 'tavern', 'tavern2', 'tavern4', 'smith', 'cottage', 'bath', 'monument'];
 
+/**
+ * 대장간 화덕 바닥 빛 (그림 왼쪽 위 기준, 안 뒤집은 그림): 입구 밑변 가운데 앞 바닥의 납작한 타원 [cx, cy, rx, ry] · 입구 윗변 y (openTop)
+ *  빛은 cy − ry 아래(바닥 쪽)로만 — 입구 위 들보·지붕으로는 절대 올라가지 않는다 (scripts/light-openings.json 의 smith 입구와 맞춤)
+ */
+export const FORGE_GLOW: Record<string, { cx: number; cy: number; rx: number; ry: number; openTop: number; openBottom: number }> = {
+  smith: { cx: 29, cy: 76, rx: 17, ry: 6, openTop: 47, openBottom: 74 },
+};
+
 /** 굴뚝 연기 자리 (그림 왼쪽 위 기준) */
 export const SMOKE: Record<string, [number, number][]> = {
   inn: [[44, 8]],

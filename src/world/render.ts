@@ -25,7 +25,7 @@ import { signLabelOn } from './firstCam';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
-import { drawAmbient, drawLight, glow, NL, sceneNight, setDecorDay, setPhotoNL } from './daynight';
+import { drawAmbient, drawForgeGlow, drawLight, glow, NL, sceneNight, setDecorDay, setPhotoNL } from './daynight';
 import { decorMixStep } from './decorLight';
 import { flag } from './flags';
 import { puff, updDrawParts } from './fx';
@@ -919,6 +919,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
   }
   // 3) 이 건물을 그린 직후 창문 불빛
   drawLight(ctx, o.sprite, x, y);
+  // 대장간 화덕 빛: 입구 앞 바닥으로만 (깊이 순서 안 · v0.25.24 불빛 가림 규칙)
+  drawForgeGlow(ctx, o.sprite, x, y, im.width, S.T);
   // DECO_DROP §2: 뽐내기 장식 — 밤 빛 · 동상 이름판 · 금빛 간판 여관 이름
   if (def(o.kind).luxury) drawLuxury(ctx, o, x, y, im);
   // LUXE §1: 명품관 장식 — 밤 빛 · 반짝이 · 입자 · 세트 완성 반짝이 (그린 직후 = 앞 건물이 가린다)

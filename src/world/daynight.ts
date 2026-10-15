@@ -1,6 +1,7 @@
 // 낮밤: 게임 시계(world/clock.ts)를 따라 22:00~06:00이 밤. 1.1초에 걸쳐 부드럽게. 건물별 밤 색조와 창문 불빛.
 import { CONFIG } from '../data/config';
-import { LIGHTS } from '../engine/assets';
+import { FORGE_GLOW } from '../data/catalog';
+import { baseKey, isFlipKey, LIGHTS } from '../engine/assets';
 import { P } from '../engine/pixel';
 import { jumpTo, onNightFlip, tickClock } from './clock';
 import { S } from './state';
@@ -52,6 +53,41 @@ export function drawLight(ctx: CanvasRenderingContext2D, sprite: string | null, 
   ctx.globalAlpha = NL / D.tintSteps;
   ctx.drawImage(L, x, y);
   ctx.globalAlpha = 1;
+}
+
+/** 대장간 화덕 바닥 빛 자리 (화면 그림 기준 · 뒤집힌 그림은 x를 거울로) — 없으면 null. 빛 위쪽 끝(top)은 늘 입구 밑변 근처 아래 */
+export function forgeGlowGeom(sprite: string | null, w: number) {
+  if (!sprite) return null;
+  const g = FORGE_GLOW[baseKey(sprite)];
+  if (!g) return null;
+  const cx = isFlipKey(sprite) ? w - g.cx : g.cx;
+  return { cx, cy: g.cy, rx: g.rx, ry: g.ry, top: g.cy - g.ry, openTop: g.openTop };
+}
+
+/**
+ * 대장간 화덕 빛이 입구 앞 바닥에 번지는 것 (건물을 그린 직후 · 깊이 순서 안 → 앞 건물·사람이 나중에 그려지며 가린다)
+ *  납작한 타원의 아래 절반 + 위 끝은 입구 밑변 근처까지만 잘라서 — 들보·지붕 쪽으로는 빛이 올라가지 않는다
+ */
+export function drawForgeGlow(ctx: CanvasRenderingContext2D, sprite: string | null, x: number, y: number, w: number, T: number) {
+  if (!NL) return;
+  const g = forgeGlowGeom(sprite, w);
+  if (!g) return;
+  const a = Math.min(1, (NL / D.tintSteps) * 0.42 * (0.92 + Math.sin(T * 7) * 0.05 + Math.sin(T * 13.3) * 0.03) * windLight());
+  const X = x + g.cx, Y = y + g.cy;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(X - g.rx, y + g.top, g.rx * 2, g.ry * 2);
+  ctx.clip();
+  ctx.translate(X, Y);
+  ctx.scale(1, g.ry / g.rx);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, g.rx);
+  gr.addColorStop(0, `rgba(255,170,70,${a})`);
+  gr.addColorStop(0.55, `rgba(255,130,50,${a * 0.45})`);
+  gr.addColorStop(1, 'rgba(255,110,40,0)');
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = gr;
+  ctx.fillRect(-g.rx, -g.rx, g.rx * 2, g.rx * 2);
+  ctx.restore();
 }
 
 /** 모닥불 둥근 빛 (맨 위에 더하기로) */
