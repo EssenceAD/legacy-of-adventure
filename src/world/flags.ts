@@ -49,6 +49,8 @@ export const FLAG_DEFAULTS = {
   keycapLabels: true,
   /** 유저 톡방(카카오 오픈채팅) 링크 — 커뮤 홍보 전 형철 결정으로 꺼 둠(10/16) · 코드는 그대로 · 제보는 「모모에게 편지」로만 · 다시 켜면 메뉴·공지 카드·편지 링크·제보 폼 줄이 돌아옴 */
   communityLinks: false,
+  /** v0.25.55 로그인 안 한 손님도 「모모에게 편지」 (기기 번호·버전·화면 정보만 · 기기당 하루 3통 · 서버 reports/_tmp/guest_letters.sql 없으면 예전처럼 로그인 안내) */
+  guestLetters: true,
   /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
   zoomDedupe: true,
   /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */

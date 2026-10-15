@@ -33,7 +33,8 @@ let queue: Ev[] = [];
 let started = 0;
 const session = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-function device(): string {
+/** 이 기기의 무작위 번호 (개인정보 아님 · 손님 편지에도 씀) */
+export function device(): string {
   let d = getPref<string>('device', '');
   if (!d) {
     d = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 36);

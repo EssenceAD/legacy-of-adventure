@@ -138,7 +138,7 @@ function letterCard(l: LetterRow): string {
   return `<div class="opc st-${l.status}"><p><b>${esc(l.nickname ?? '?')}</b> <small>${new Date(l.created_at).toLocaleString('ko-KR')} · ${esc(l.app_version ?? '')} · 반영 ${l.fixed_n}건${k ? ` · ${esc(k)}` : ''}</small></p>
   <p class="opbody">${esc(l.body.replace(/^\[[^\]]+\]\s*/, ''))}</p>
   <div class="oprow"><select data-lst="${l.id}">${ST.map((s) => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select><input data-lvf="${l.id}" maxlength="32" placeholder="반영 버전 (예: 0.23.0)" value="${esc(l.ver_fixed ?? '')}"></div>
-  <textarea data-lrp="${l.id}" rows="2" maxlength="1000" placeholder="답장 (쓰면 그 유저 우편함에 「운영자의 답장」)">${esc(l.reply ?? '')}</textarea>
+  ${l.user_id ? `<textarea data-lrp="${l.id}" rows="2" maxlength="1000" placeholder="답장 (쓰면 그 유저 우편함에 「운영자의 답장」)">${esc(l.reply ?? '')}</textarea>` : '<p class="note">손님(비로그인) 편지라 답장을 받을 곳이 없어요 · 상태·반영 버전만</p>'}
   <div class="btnrow"><small>${l.reply ? (l.reply_read ? '답장 읽음' : '답장 배달 대기') : ''}</small><button class="bigbtn sm" data-ls="${l.id}">저장</button></div></div>`;
 }
 

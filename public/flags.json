@@ -91,5 +91,6 @@
   "burnWeekend": true,
   "worldRaid": true,
   "decorDayLight": true,
-  "communityLinks": false
+  "communityLinks": false,
+  "guestLetters": true
 }

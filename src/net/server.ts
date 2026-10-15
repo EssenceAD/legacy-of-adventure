@@ -3,6 +3,7 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG } from '../data/config';
 import { vis } from '../world/visual';
+import { device } from './telemetry';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
@@ -460,10 +461,23 @@ export async function reportChat(messageId: number): Promise<boolean> {
 
 // ───────── 제보 편지 · 공지 ─────────
 
-export async function sendLetter(body: string, appVersion: string): Promise<boolean> {
-  if (!sb || !me.profile) return false;
-  const { error } = await sb.from('bug_letters').insert({ user_id: me.profile.id, body: body.slice(0, 1000), app_version: appVersion });
-  return !error;
+/** 제보 편지 · 로그인이면 내 편지(답장 받음) · 아니면 손님 편지(기기 번호·버전·화면 정보만 · 답장 없음)
+ *  손님: limit = 오늘 3통 다 씀 · busy = 손님 편지가 너무 몰림 · nosrv = 서버에 손님 편지 준비가 아직 안 됨 */
+export type LetterResult = 'ok' | 'limit' | 'busy' | 'nosrv' | 'fail';
+export async function sendLetter(body: string, appVersion: string): Promise<LetterResult> {
+  if (!sb) return 'fail';
+  if (me.profile) {
+    const { error } = await sb.from('bug_letters').insert({ user_id: me.profile.id, body: body.slice(0, 1000), app_version: appVersion });
+    return error ? 'fail' : 'ok';
+  }
+  const info = `${innerWidth}x${innerHeight}@${Math.round(devicePixelRatio * 100) / 100} ${matchMedia('(pointer: coarse)').matches ? 'touch' : 'mouse'}`;
+  const { error } = await sb.from('bug_letters').insert({ user_id: null, body: body.slice(0, 320), app_version: appVersion.slice(0, 32), guest_device: device(), guest_info: info.slice(0, 120) });
+  if (!error) return 'ok';
+  const m = `${error.code ?? ''} ${error.message ?? ''}`;
+  if (/guest_daily_limit/.test(m)) return 'limit';
+  if (/guest_busy/.test(m)) return 'busy';
+  if (/PGRST204|42703|42501|row-level security/.test(m)) return 'nosrv';
+  return 'fail';
 }
 
 export interface NoticeRow {

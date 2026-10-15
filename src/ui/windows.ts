@@ -28,7 +28,7 @@ import { APP_VERSION } from './update';
 import { track as trackEv } from '../net/telemetry';
 import { holdUi } from '../audio/scene';
 import * as game from '../game';
-import { addReport } from '../save/save';
+import { addReport, getPref, setPref } from '../save/save';
 import { talk } from './dialogue';
 import { startMove, startPlace } from './hud';
 import { cheerCon, cheerReady, clock, conLeft, conProgress } from '../world/construct';
@@ -809,15 +809,25 @@ function bindConPanel(o: Building) {
 
 // ───────── 우체부 모모: 제보 편지 ─────────
 
+/** 로그인 안내 (손님 편지가 꺼졌거나 서버 준비가 아직일 때 · 핫픽스 7: 손님에게 "잘 받았어요"라고 거짓 안내하지 않는다) */
+function askLoginForLetter() {
+  talk([['post', '편지는 계정이 있어야 배달할 수 있어요. 로그인하고 다시 와 주세요!']], () => {
+    openWin('모모에게 편지', `<p class="sub">로그인하면 편지가 개발자님께 바로 배달돼요.</p><div class="menu"><button class="bigbtn" id="repLogin">로그인/가입하기</button></div>`);
+    $('#repLogin').onclick = () => openAccount();
+  });
+}
+
+/** 손님 편지: 기기당 하루(KST) 3통 — 서버도 같은 규칙으로 막는다 (여기선 헛걸음만 줄임) */
+const GUEST_DAY_MAX = 3;
+const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const guestSent = () => {
+  const g = getPref<{ d: string; n: number }>('guestLetters', { d: '', n: 0 });
+  return g.d === kstDay() ? g.n : 0;
+};
+
 export function openReport() {
-  // 핫픽스 7 (8-4): 편지는 로그인한 사람만 (손님에게 "잘 받았어요"라고 거짓 안내하지 않는다)
-  if (!online()) {
-    talk([['post', '편지는 계정이 있어야 배달할 수 있어요. 로그인하고 다시 와 주세요!']], () => {
-      openWin('모모에게 편지', `<p class="sub">로그인하면 편지가 개발자님께 바로 배달돼요.</p><div class="menu"><button class="bigbtn" id="repLogin">로그인/가입하기</button></div>`);
-      $('#repLogin').onclick = () => openAccount();
-    });
-    return;
-  }
+  const guest = !online();
+  if (guest && !flag('guestLetters')) return askLoginForLetter();
   talk(
     [
       ['post', '안녕하세요! 우체부 모모예요.'],
@@ -826,8 +836,9 @@ export function openReport() {
     () => {
       openWin(
         '모모에게 편지 쓰기',
-        `<form class="report" id="rep"><label>종류<select id="rk"><option>버그 제보</option><option>개선 건의</option><option>칭찬</option></select></label><label>내용<textarea id="rt" rows="4" maxlength="300" placeholder="예) 온천 옆에서 손님이 길을 잃었어요"></textarea></label><button>편지 보내기</button></form><p class="note">${flag('communityLinks') ? `급한 건 카톡방에서 더 빨리 답해 드려요 → ${communityLink('report', '톡방')}` : '보내주신 편지는 운영자가 직접 읽어요 💌'}</p>`,
+        `<form class="report" id="rep"><label>종류<select id="rk"><option>버그 제보</option><option>개선 건의</option><option>칭찬</option></select></label><label>내용<textarea id="rt" rows="4" maxlength="300" placeholder="예) 온천 옆에서 손님이 길을 잃었어요"></textarea></label><button>편지 보내기</button></form><p class="note">${flag('communityLinks') ? `급한 건 카톡방에서 더 빨리 답해 드려요 → ${communityLink('report', '톡방')}` : '보내주신 편지는 운영자가 직접 읽어요 💌'}</p>${guest ? `<p class="note">답장 받으려면 로그인해 주세요 <button class="bigbtn ghost sm" id="repLogin" type="button">로그인</button></p>` : ''}`,
       );
+      if (guest) $('#repLogin').onclick = () => openAccount();
       ($('#rep') as HTMLFormElement).onsubmit = (e) => {
         e.preventDefault();
         const text = ($('#rt') as HTMLTextAreaElement).value.trim();
@@ -835,16 +846,28 @@ export function openReport() {
           toast('내용을 적어 주세요');
           return;
         }
+        if (guest && guestSent() >= GUEST_DAY_MAX) {
+          talk([['post', `오늘은 편지를 ${GUEST_DAY_MAX}통 다 보냈어요. 내일 또 써 주세요!`]]);
+          return;
+        }
         const kind = ($('#rk') as HTMLSelectElement).value;
         const btn = $('#rep button') as HTMLButtonElement;
         btn.disabled = true;
         btn.textContent = '배달 중…';
         // 서버(bug_letters) 결과를 확인하고 나서만 "잘 받았어요"
-        void sendLetter(`[${kind}] ${text.slice(0, 300)}`, `v${APP_VERSION}`).then((ok) => {
-          if (ok) {
+        void sendLetter(`[${kind}] ${text.slice(0, 300)}`, `v${APP_VERSION}`).then((r) => {
+          if (r === 'ok') {
             addReport({ kind, text, at: Date.now() });
+            if (guest) setPref('guestLetters', { d: kstDay(), n: guestSent() + 1 });
             closeWin();
-            talk([['post', '편지 잘 받았어요! 운영자님이 읽고 답장하면 우편함으로 보내 드릴게요~']]);
+            talk([['post', guest ? '편지 잘 받았어요! 운영자님이 꼭 읽어 볼게요~' : '편지 잘 받았어요! 운영자님이 읽고 답장하면 우편함으로 보내 드릴게요~']]);
+          } else if (r === 'nosrv') {
+            closeWin();
+            askLoginForLetter();
+          } else if (r === 'limit') {
+            setPref('guestLetters', { d: kstDay(), n: GUEST_DAY_MAX });
+            btn.textContent = '편지 보내기';
+            talk([['post', `오늘은 편지를 ${GUEST_DAY_MAX}통 다 보냈어요. 내일 또 써 주세요!`]]);
           } else {
             btn.disabled = false;
             btn.textContent = '편지 보내기';

@@ -46,7 +46,7 @@ onAuthChange(() => void refreshAdmin());
 export interface LetterRow {
   id: number;
   created_at: string;
-  user_id: string;
+  user_id: string | null;
   nickname: string | null;
   body: string;
   app_version: string | null;
