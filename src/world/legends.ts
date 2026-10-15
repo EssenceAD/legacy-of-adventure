@@ -90,10 +90,14 @@ export function checkRumors() {
 /** 인연 활동: 그 활동을 좋아하는 (소문 열린) 영웅들의 게이지 +1~3% */
 export function bond(e: BondEvent, times = 1) {
   if (S.visiting) return;
+  // 배율(조화·별지기 일기장·바람)은 한 번 부르는 동안 안 바뀐다 — 한 번만 센다 (손님 전원 장비를 훑어서 무겁다)
+  let boost: number | null = null;
   for (const d of LEGENDS) {
     const st = P.legends[d.key];
     if (!st || st.st !== 'rumor' || !d.bond.includes(e)) continue;
-    for (let i = 0; i < times; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * linkedGauge(d.key) * (1 + hfx('legend') + starBondBonus() + windLegend())));
+    boost ??= 1 + hfx('legend') + starBondBonus() + windLegend();
+    const k = linkedGauge(d.key) * boost;
+    for (let i = 0; i < times && st.gauge < 100; i++) st.gauge = Math.min(100, st.gauge + Math.round(rand(L.gaugeMin, L.gaugeMax) * k));
     if (st.gauge >= 100 && !st.full) st.full = Date.now();
     markDirty();
   }
