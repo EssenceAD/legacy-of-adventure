@@ -25,7 +25,9 @@ import { signLabelOn } from './firstCam';
 import { framesFor, type CharFrames } from '../engine/sprites';
 import { appearance } from './adventurers';
 import { showerOn, starAvailable } from './legends';
-import { drawAmbient, drawLight, glow, NL, setPhotoNL } from './daynight';
+import { drawAmbient, drawLight, glow, NL, sceneNight, setDecorDay, setPhotoNL } from './daynight';
+import { decorMixStep } from './decorLight';
+import { flag } from './flags';
 import { puff, updDrawParts } from './fx';
 import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, litGround, lookFor, signSpot, treeImg, trimGround, type Wild } from './ground';
 import { litHex } from './nightLook';
@@ -173,11 +175,43 @@ function drawDusk(ctx: CanvasRenderingContext2D, LW: number, LH: number, dk: { s
 /** PHOTO_SPEC: 사진 모드 — 시간(밤 색조·노을)과 손님 보이기, 겹침 UI(이름판·별·팻말 글씨·어울림 선·배치) 빼기 */
 export const photoState = { on: false, time: 'now' as 'now' | 'morning' | 'sunset' | 'night', people: true };
 const PHOTO_NT: Record<string, number | null> = { now: null, morning: 0, sunset: 0.35, night: 1 };
+
+/**
+ * 꾸미기 낮 조명 (이카몰리): 꾸미기 중엔 밤 단계 0으로 그린다 (밤 색조·창문 불빛·등불·노을·반딧불 모두 낮)
+ *  · 바닥은 낮 그림 그대로(litGround가 굽지 않음) · 구워 둔 밤 바닥(gr.lit)·밤 색조 그림(TINT)은 안 건드려 두고 끝나면 그대로 다시 쓴다
+ *  · 끝날 때: 마지막 꾸미기 화면(낮 · 겹침 UI 전)을 한 장 들고 있다가 지금 시간 빛 위에 0.4초 동안 흐리게 겹친다
+ *    → 중간 밤 단계(1~9)를 새로 물들이거나 굽지 않는다. 그 사이 카메라·화면 크기가 바뀌면 바로 끝
+ *  · 사진 모드(자기 시간)·이웃 방문은 그대로 · 움직임 줄이기 · 배터리 절약이면 바로
+ */
+let decorMix = 0;
+let decorSnap: HTMLCanvasElement | null = null;
+let snapAt = '';
+const snapKey = () => `${view.LW}x${view.LH}@${view.OX},${view.OY}`;
+let rmq: MediaQueryList | null | undefined;
+function decorCalm(): boolean {
+  if (rmq === undefined)
+    try {
+      rmq = matchMedia('(prefers-reduced-motion: reduce)');
+    } catch {
+      rmq = null;
+    }
+  return !!rmq?.matches || saverOn();
+}
+/** 시험·봇용: 지금 낮 섞임 정도 */
+export const decorLightMix = () => decorMix;
 export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   const { LW, LH, OX, OY } = view;
   const T = S.T;
   const pnt = photoState.on ? PHOTO_NT[photoState.time] : null;
-  const nt = pnt ?? S.nightT;
+  const decorDay = !photoState.on && decorView.on && !S.visiting && flag('decorDayLight');
+  if (photoState.on || S.visiting) decorMix = 0;
+  else {
+    decorMix = decorMixStep(decorMix, decorDay, dt, decorCalm());
+    if (!decorDay && decorMix > 0 && (!decorSnap || snapAt !== snapKey())) decorMix = 0;
+  }
+  if (!decorMix) decorSnap = null;
+  setDecorDay(decorDay, decorDay ? 1 : decorMix);
+  const nt = pnt ?? (decorDay ? 0 : S.nightT);
   setPhotoNL(pnt);
   // 불빛 정도 (그리기 순서 안에서 불마다 쓴다 · 노을 등불은 지난 프레임 값)
   frameLight = Math.max(nt, duskLight);
@@ -322,7 +356,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   updDrawParts(ctx, dt);
 
   // HARVEST §2 노을: 17~19시 노을 색 · 19~22시 밤 색조로 (22시에 지금의 밤과 같게) — 사진 모드는 따로 · 밤 로직은 그대로
-  const dk = !photoState.on && sunsetOn() ? duskSmooth(dt) : null;
+  const dk0 = !photoState.on && sunsetOn() ? duskSmooth(dt) : null;
+  const dk = decorDay ? null : dk0;
   if (dk) drawDusk(ctx, LW, LH, dk);
   duskLight = dk && !saverOn() ? dk.light : 0;
   const lt = Math.max(nt, duskLight);
@@ -340,6 +375,24 @@ export function renderFrame(ctx: CanvasRenderingContext2D, dt: number) {
   if (!S.visiting && curWind()) drawWindSky(ctx, T, LW, LH);
   // HARVEST §1-7: 마지막 밤 등불 날리기
   drawLanterns(ctx, LW, LH);
+  // 꾸미기 낮 조명: 꾸미기 중엔 이 화면(낮 · 겹침 UI 전)을 한 장 들고 있고, 끝난 뒤 0.4초 동안 지금 빛 위에 흐리게 겹친다
+  if (!photoState.on && !S.visiting) {
+    if (decorDay) {
+      if (!decorSnap || decorSnap.width !== LW || decorSnap.height !== LH || !canvasAlive(decorSnap)) decorSnap = canvas(LW, LH);
+      const sx2 = decorSnap.getContext('2d');
+      if (sx2) {
+        sx2.globalCompositeOperation = 'source-over';
+        sx2.globalAlpha = 1;
+        sx2.drawImage(ctx.canvas, 0, 0);
+        snapAt = snapKey();
+      }
+    } else if (decorMix > 0 && decorSnap) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = decorMix;
+      ctx.drawImage(decorSnap, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+  }
   // 사진: 노을은 주황빛 · 아침은 살짝 밝게
   if (photoState.on && photoState.time === 'sunset') {
     ctx.globalCompositeOperation = 'multiply';
@@ -586,7 +639,7 @@ function paintStar(ctx: CanvasRenderingContext2D, x: number, y: number, T: numbe
  *  별이 많은 해 = 밤하늘 반짝이 · 풍년 = 낮에 가을빛 · 축제의 해 = 화면 위 깃발 줄 (낮)
  */
 function drawWindSky(ctx: CanvasRenderingContext2D, T: number, LW: number, LH: number) {
-  const nt = S.nightT;
+  const nt = sceneNight();
   const p = P(ctx);
   if (windIs('stars') && nt > 0.2) {
     ctx.globalAlpha = Math.min(1, nt);
@@ -1407,8 +1460,9 @@ function drawDoorActors(ctx: CanvasRenderingContext2D, o: Building, list: Actor[
     ctx.fillRect(x0, y0, w, h);
     ctx.fillStyle = '#3a2418';
     ctx.fillRect(x0, y0, w, 1);
-    if (S.nightT > 0.01) {
-      ctx.globalAlpha = CONFIG.actors.doorNightAlpha * S.nightT;
+    const dnt = sceneNight();
+    if (dnt > 0.01) {
+      ctx.globalAlpha = CONFIG.actors.doorNightAlpha * dnt;
       ctx.fillStyle = CONFIG.actors.doorNightLight;
       ctx.fillRect(x0, y0 + 1, w, h - 1);
       ctx.globalAlpha = 1;

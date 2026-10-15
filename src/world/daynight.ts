@@ -13,8 +13,20 @@ export let NL = 0;
 
 export function blendNight(dt: number) {
   S.nightT += ((S.night ? 1 : 0) - S.nightT) * Math.min(1, dt * D.blendRate);
-  NL = Math.round((photoNT ?? S.nightT) * D.tintSteps);
+  NL = Math.round((photoNT ?? (decorDay ? 0 : S.nightT)) * D.tintSteps);
 }
+/** 꾸미기 낮 조명 (이카몰리): 꾸미기 중이면 낮으로 그린다 · mix = 끝난 뒤 낮→지금 빛 섞임 (1→0, render가 0.4초에 걸쳐 줄인다) */
+let decorDay = false;
+let decorMix = 0;
+export const decorDayOn = () => decorDay;
+export function setDecorDay(on: boolean, mix: number) {
+  decorDay = on;
+  decorMix = mix;
+  NL = Math.round((photoNT ?? (decorDay ? 0 : S.nightT)) * D.tintSteps);
+}
+/** 화면에 보이는 밤 정도 (반딧불·문 불빛·밤하늘 등 S.nightT를 바로 읽던 곳) — 꾸미기 중 0 · 끝난 뒤 0.4초에 걸쳐 원래대로 · 사진 모드는 원래 값 */
+export const sceneNight = () => (decorDay ? 0 : S.nightT * (1 - decorMix));
+
 /** PHOTO_SPEC: 사진 모드 동안만 밤 정도를 덮어쓴다 (null = 원래 시간) */
 let photoNT: number | null = null;
 export function setPhotoNL(nt: number | null) {
@@ -56,9 +68,10 @@ export function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: num
 
 /** 밤: 반딧불 / 낮: 구름 그림자 */
 export function drawAmbient(ctx: CanvasRenderingContext2D, T: number, LW: number, LH: number) {
-  if (S.nightT > 0.01) {
+  const nt = sceneNight();
+  if (nt > 0.01) {
     const p = P(ctx);
-    ctx.globalAlpha = Math.min(1, S.nightT * 1.2);
+    ctx.globalAlpha = Math.min(1, nt * 1.2);
     for (let i = 0; i < 16; i++) {
       const x = ((i * 53 + Math.sin(T * 0.6 + i) * 20 + LW * 4) % LW) | 0;
       const y = ((i * 97 + Math.cos(T * 0.5 + i * 1.3) * 16 + LH * 4) % LH) | 0;
@@ -66,8 +79,8 @@ export function drawAmbient(ctx: CanvasRenderingContext2D, T: number, LW: number
     }
     ctx.globalAlpha = 1;
   }
-  if (S.nightT < 0.99) {
-    ctx.globalAlpha = 0.08 * (1 - S.nightT);
+  if (nt < 0.99) {
+    ctx.globalAlpha = 0.08 * (1 - nt);
     ctx.fillStyle = '#1c2a40';
     for (let i = 0; i < 3; i++) {
       const x = ((T * 6 + i * 160) % (LW + 200)) - 100;

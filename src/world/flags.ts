@@ -185,6 +185,8 @@ export const FLAG_DEFAULTS = {
   burnWeekend: false,
   /** RAIDWEAPON §3' 하늘 균열 (형철 확인 전 꺼짐 · 「새 화면 미리 보기」로 켜 봄 — vis()) — 서버에 보스 하나(매일 05:00 KST 새 보스 · 3종 순환) · 모두가 같은 체력을 깎음 · 마을 하늘 보라 금 + 오른쪽 위 「🌌 하늘 균열」 알약(토벌 열림부터) · 한 판 60초 피해만(승패 없음 · 전멸이면 그때까지) · 하루 3번(토벌과 따로) · 결과 「내 피해 · 오늘 순위 · 마을 전체 %」 · 랭킹 창 「하늘 균열」 탭 · 보상은 다음 05:00 정산 → 접속하면 우편함(조각 · 가루 · 칭호 「균열의 영웅」 · 주간 상위 선택 상자) (숫자 CONFIG.raidWeapon.world · 서버 supabase/world_raid.sql) — 서버 SQL이 없으면 알약·금이 안 보임 · 끄면 알약·금·탭 없음 (받은 것은 그대로) */
   worldRaid: false,
+  /** 꾸미기 낮 조명 (이카몰리 요청 · 켜진 채 배포 · 끄는 스위치) — 꾸미기 모드 동안 낮 빛으로 그림(밤 색조·창문 불빛·등불·노을·반딧불·밤하늘 끔 · 게임 시계는 그대로) · 끝나면 0.4초에 걸쳐 지금 시간 빛으로(움직임 줄이기면 바로) · 사진 모드·이웃 방문은 그대로 (world/decorLight.ts · render.ts) — 끄면 예전처럼 지금 시간 빛 그대로 */
+  decorDayLight: true,
 };
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
 const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };

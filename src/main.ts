@@ -86,7 +86,7 @@ import { settleOfflineCons } from './game';
 import { getPref, readSave, savesHalted, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, queueProposal, updActors } from './world/actors';
 import { hourNow } from './world/clock';
-import { blendNight, NL, onNightChange, tickDayNight } from './world/daynight';
+import { blendNight, decorDayOn, NL, onNightChange, tickDayNight } from './world/daynight';
 import { pendingEvents, pendingSide, pendingWith, pumpEvents, runFirstSide } from './world/events';
 import { burstOn, posBubbles } from './world/fx';
 import { buildingAt, objTL, renderFrame, renderMem, starInfo } from './world/render';
@@ -423,7 +423,8 @@ function tick(dt: number) {
   t = mark('dom', t);
   // 밤 색조: 낮↔밤이 넘어가는 중이면 다음 단계를 미리 (창이 열려 있는 동안엔 쉰다 · 다 만들었으면 부르지도 않는다)
   const goalNL = S.night ? CONFIG.dayNight.tintSteps : 0;
-  warmTintLevel(NL === goalNL ? -1 : NL + Math.sign(goalNL - NL));
+  //  꾸미기 낮 조명 중엔 쉰다 (NL이 0이라 밤 1단계를 쓸데없이 만들어 캐시의 밤 그림을 밀어내지 않게)
+  warmTintLevel(decorDayOn() || NL === goalNL ? -1 : NL + Math.sign(goalNL - NL));
   if (!winOpen && tintWarmPending()) pumpTintWarmup(3);
   mark('warm', t);
   const w = performance.now() - t0;

@@ -89,5 +89,6 @@
   "abyssRush": false,
   "exWeapons": false,
   "burnWeekend": false,
-  "worldRaid": false
+  "worldRaid": false,
+  "decorDayLight": true
 }

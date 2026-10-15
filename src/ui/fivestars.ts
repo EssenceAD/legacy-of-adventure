@@ -11,6 +11,7 @@ import type { SLine } from '../data/story/v1';
 import { PORTRAITS } from '../engine/assets';
 import { myPioneer } from '../net/server';
 import { arrive } from '../world/actors';
+import { sceneNight } from '../world/daynight';
 import { decorView } from '../world/decor';
 import { say } from '../world/fx';
 import { constellationOn, fiveChapterNew, fiveChapterViewed, fiveHeart, fiveHooks, fiveNoticeTake, fiveLedger, fiveOn, fiveOswinTale, fiveSetCutDue, fiveTick, makeStar, selfStarId, setSelfStar } from '../world/fivestars';
@@ -135,7 +136,9 @@ export function fiveTalk(a: Actor): boolean {
 
 let sky: HTMLDivElement | null = null;
 function syncSky() {
-  const on = constellationOn() && !S.visiting && S.nightT > 0.05;
+  // 꾸미기 낮 조명: 꾸미기 중엔 밤하늘도 숨김 · 끝나면 0.4초에 걸쳐 (sceneNight)
+  const nt = sceneNight();
+  const on = constellationOn() && !S.visiting && nt > 0.05;
   if (!on) {
     sky?.remove();
     sky = null;
@@ -148,7 +151,7 @@ function syncSky() {
     sky.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
     (document.getElementById('view') ?? document.body).appendChild(sky);
   }
-  sky.style.opacity = String(Math.min(1, S.nightT) * 0.9);
+  sky.style.opacity = String(Math.min(1, nt) * 0.9);
 }
 
 export function initFiveStars() {
