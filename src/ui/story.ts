@@ -215,7 +215,7 @@ export const winSettling = (now = performance.now()) => {
   return isWinOpen() || now - winClosedAt < WIN_GRACE_MS;
 };
 const busy = () =>
-  !S.started || S.visiting || isTalking() || winSettling() || placing.pl || tour.on || !!document.getElementById('hunt') || !!document.getElementById('raid') || !!document.getElementById('cbCv') || !($('#settle') as HTMLElement).hidden ||
+  !S.started || S.visiting || isTalking() || isWinOpen() || placing.pl || tour.on || !!document.getElementById('hunt') || !!document.getElementById('raid') || !!document.getElementById('cbCv') || !($('#settle') as HTMLElement).hidden ||
   // v0.25.8: 화면 보호·UI 끄기 동안엔 이야기 대사를 띄우지 않는다 (끝난 뒤 「다녀오셨어요」 카드 위로 겹치던 것)
   document.body.classList.contains('ssaver') || document.body.classList.contains('uihide');
 
