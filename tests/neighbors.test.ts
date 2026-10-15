@@ -25,8 +25,8 @@ describe('이웃 마을 배치', () => {
       const [a, b] = landBounds(v.land);
       const used = world.objs.filter((o) => o.kind !== 'dungeon').reduce((s, o) => s + o.fw * o.fh, 0);
       expect(used / ((b - a) * (b - a))).toBeGreaterThan(0.2);
-      // 던전은 (29,18) 고정
-      expect(v.layout.some(([k, x, y]) => k === 'dungeon' && x === 29 && y === 18)).toBe(true);
+      // 던전은 (29,18) 고정 → LAND10: 맵 44 · +12 → (41,30)
+      expect(v.layout.some(([k, x, y]) => k === 'dungeon' && x === 41 && y === 30)).toBe(true);
     });
 });
 

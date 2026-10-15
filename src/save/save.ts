@@ -190,6 +190,8 @@ export function readSave(): SaveData | null {
     if (d && typeof d.version === 'number' && d.version < 7 && !localStorage.getItem(CONFIG.save.key + '.bak')) localStorage.setItem(CONFIG.save.key + '.bak', raw);
     // LAND2(v8): 맵 32로 좌표를 옮기기 전 원본을 따로 한 번 (.bak7)
     if (d && typeof d.version === 'number' && d.version < 8 && !localStorage.getItem(CONFIG.save.key + '.bak7')) localStorage.setItem(CONFIG.save.key + '.bak7', raw);
+    // LAND10(v9): 맵 44로 좌표를 옮기기 전 원본을 따로 한 번 (.bak8)
+    if (d && typeof d.version === 'number' && d.version < 9 && !localStorage.getItem(CONFIG.save.key + '.bak8')) localStorage.setItem(CONFIG.save.key + '.bak8', raw);
     const out = validate(migrate(d));
     if (!out && d && typeof d.version === 'number') migrateFailed = true;
     return out;
@@ -230,7 +232,15 @@ function moveToBigMap(d: any): any {
 const shiftKey = (k: string, n: number) => k.replace(/^(-?\d+),(-?\d+)$/, (_m, x: string, y: string) => `${+x + n},${+y + n}`);
 const shiftMap = (o: unknown, n: number) => (o && typeof o === 'object' && !Array.isArray(o) ? Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [shiftKey(k, n), v])) : o);
 export function moveToV8(d: any): any {
-  const k = CONFIG.v7.shift;
+  return shiftSave(d, CONFIG.v7.shift);
+}
+/** LAND10(v8→v9): 맵 32 → 44 · 모든 칸 좌표 +12 (v8 것 + 옮긴 입구 x · 던전 숲속 원래 자리) — 땅 8~10단계가 뒤·옆으로 커질 자리 */
+export function moveToV9(d: any): any {
+  return shiftSave(d, CONFIG.v8.shift);
+}
+/** 등급 장식 옛 이름표 「종류@x,y」(· 자리 id 없는 「종류@slot:x,y」) 좌표 옮기기 — 「@slot:id」는 그대로 */
+const shiftGradeKey = (key: string, k: number) => String(key).replace(/@(slot:)?(-?\d+),(-?\d+)$/, (_m: string, sl: string | undefined, x: string, y: string) => `@${sl ?? ''}${+x + k},${+y + k}`);
+function shiftSave(d: any, k: number): any {
   const buildings = (Array.isArray(d.buildings) ? d.buildings : []).map((b: any) => {
     if (!b || !Number.isFinite(b.tx) || !Number.isFinite(b.ty)) return b;
     const con = b.con && Array.isArray(b.con.from) ? { ...b.con, from: [b.con.from[0] + k, b.con.from[1] + k] } : b.con;
@@ -240,8 +250,20 @@ export function moveToV8(d: any): any {
   const pr = d.progress;
   if (!pr || typeof pr !== 'object') return { ...d, buildings, adventurers };
   const moved = pr.harmony?.moved;
-  const harmony = Array.isArray(moved) ? { ...pr.harmony, moved: moved.map((key: string) => String(key).replace(/@(-?\d+),(-?\d+)$/, (_m: string, x: string, y: string) => `@${+x + k},${+y + k}`)) } : pr.harmony;
-  const decor = pr.decor && typeof pr.decor === 'object' ? { ...pr.decor, paint: shiftMap(pr.decor.paint, k), round: shiftMap(pr.decor.round, k), noPath: shiftMap(pr.decor.noPath, k) } : pr.decor;
+  const harmony = Array.isArray(moved) ? { ...pr.harmony, moved: moved.map((key: string) => shiftGradeKey(key, k)) } : pr.harmony;
+  const dc = pr.decor;
+  // LAND10: 옮긴 입구 x(entX) · 던전 숲속 원래 자리(dgHome)도 같이 (FEEDBACK23 뒤에 생긴 칸 · 없으면 그대로)
+  const decor =
+    dc && typeof dc === 'object'
+      ? {
+          ...dc,
+          paint: shiftMap(dc.paint, k),
+          round: shiftMap(dc.round, k),
+          noPath: shiftMap(dc.noPath, k),
+          ...(typeof dc.entX === 'number' && Number.isFinite(dc.entX) ? { entX: dc.entX + k } : {}),
+          ...(Array.isArray(dc.dgHome) && dc.dgHome.length === 2 && dc.dgHome.every(Number.isFinite) ? { dgHome: [dc.dgHome[0] + k, dc.dgHome[1] + k] } : {}),
+        }
+      : dc;
   return { ...d, buildings, adventurers, progress: { ...pr, ...(harmony ? { harmony } : {}), ...(decor ? { decor } : {}) } };
 }
 
@@ -283,6 +305,8 @@ export function migrate(d: any): any {
   if (d.version === 6) d = { ...moveToBigMap(d), version: 7 };
   // v7 → v8 LAND2: 맵 24 → 32 · 모든 좌표 +8 (땅 6·7단계가 뒤·옆으로 커질 자리)
   if (d.version === 7) d = { ...moveToV8(d), version: 8 };
+  // v8 → v9 LAND10: 맵 32 → 44 · 모든 좌표 +12 (땅 8·9·10단계가 뒤·옆으로 커질 자리)
+  if (d.version === 8) d = { ...moveToV9(d), version: 9 };
   if (d.version !== CONFIG.save.version) return null;
   return d;
 }

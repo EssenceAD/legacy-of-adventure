@@ -24,11 +24,11 @@ function oldSave(land: number) {
 }
 
 describe('땅 단계', () => {
-  it('맵 32 · 단계마다 앞쪽 가장자리 30 그대로 · 다음 단계가 앞 단계를 다 품는다 (LAND2: 7단계)', () => {
-    expect(N).toBe(32);
+  it('맵 44 · 단계마다 앞쪽 가장자리 42 그대로 · 다음 단계가 앞 단계를 다 품는다 (LAND2: 7단계 · LAND10: 10단계)', () => {
+    expect(N).toBe(44);
     for (let s = 1; s <= CONFIG.land.length; s++) {
       const [a, b] = landBounds(s);
-      expect(b).toBe(30);
+      expect(b).toBe(42);
       expect(a).toBeGreaterThanOrEqual(0);
       if (s > 1) {
         const [pa, pb] = landBounds(s - 1);
@@ -55,13 +55,13 @@ describe('땅 단계', () => {
   });
 });
 
-describe('옛 저장 옮기기 (v6 → v7 → v8)', () => {
+describe('옛 저장 옮기기 (v6 → v7 → v8 → v9)', () => {
   for (const land of [1, 3, 5])
     it(`${land}단계 저장: 상대 위치 같음 · 겹침 0 · 땅 밖 0 · 맵 밖 0`, () => {
       const old = oldSave(land);
-      const k = bigMapShift(land) + CONFIG.v7.shift;
+      const k = bigMapShift(land) + CONFIG.v7.shift + CONFIG.v8.shift;
       const d = migrate(JSON.parse(JSON.stringify(old)));
-      expect(d.version).toBe(8);
+      expect(d.version).toBe(9);
       const nb = d.buildings as { kind: Kind; tx: number; ty: number; lvl: number }[];
       expect(nb.length).toBe(old.buildings.length);
       // 상대 위치: 던전(고정) 빼고 모두 같은 만큼 옮겨졌다
@@ -91,7 +91,7 @@ describe('옛 저장 옮기기 (v6 → v7 → v8)', () => {
     const old = oldSave(3);
     old.progress.harmony = { ...(old.progress.harmony ?? {}), moved: ['lamppost@5,12', 'bench@7,13'] };
     const d = migrate(old);
-    const k = bigMapShift(3) + CONFIG.v7.shift;
+    const k = bigMapShift(3) + CONFIG.v7.shift + CONFIG.v8.shift;
     expect(d.progress.harmony.moved).toEqual([`lamppost@${5 + k},${12 + k}`, `bench@${7 + k},${13 + k}`]);
   });
   it('1단계 저장의 던전은 맵 안 (새 게임 던전 자리)', () => {
@@ -105,19 +105,19 @@ describe('옛 저장 옮기기 (v6 → v7 → v8)', () => {
 // 실제 유저 저장(real_*)은 로컬 전용 — 없으면 건너뜀
 const REAL = 'tests/fixtures/real_lotte.json';
 const hasReal = fs.existsSync(REAL);
-describe.skipIf(!hasReal)('LAND2 저장 옮기기 (v7 → v8 · +8)', () => {
+describe.skipIf(!hasReal)('LAND2 저장 옮기기 (v7 → v8 · +8 → LAND10 v9 · +12 = +20)', () => {
   const v7 = () => JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
-  it('실제 v7 저장: 건물·손님 모두 +8 · 수·레벨 그대로 · 배치 옮김·뺌 0', () => {
+  it('실제 v7 저장: 건물·손님 모두 +20 · 수·레벨 그대로 · 배치 옮김·뺌 0', () => {
     const old = v7();
     expect(old.version).toBe(7);
     const d = migrate(JSON.parse(JSON.stringify(old)));
-    expect(d.version).toBe(8);
+    expect(d.version).toBe(9);
     expect(d.buildings.length).toBe(old.buildings.length);
     for (let i = 0; i < d.buildings.length; i++) {
-      expect([d.buildings[i].tx - old.buildings[i].tx, d.buildings[i].ty - old.buildings[i].ty]).toEqual([8, 8]);
+      expect([d.buildings[i].tx - old.buildings[i].tx, d.buildings[i].ty - old.buildings[i].ty]).toEqual([20, 20]);
       expect(d.buildings[i].lvl).toBe(old.buildings[i].lvl);
     }
-    for (let i = 0; i < d.adventurers.length; i++) expect(d.adventurers[i].x - old.adventurers[i].x).toBeCloseTo(8);
+    for (let i = 0; i < d.adventurers.length; i++) expect(d.adventurers[i].x - old.adventurers[i].x).toBeCloseTo(20);
     S.visiting = null as never;
     S.land = d.land;
     const r = placeLayout(d.buildings.map((b: { kind: Kind; tx: number; ty: number; lvl: number }) => ({ kind: b.kind, tx: b.tx, ty: b.ty, lvl: b.lvl ?? 1, hue: null })), d.land);
@@ -126,19 +126,19 @@ describe.skipIf(!hasReal)('LAND2 저장 옮기기 (v7 → v8 · +8)', () => {
     expect(r.moved).toBe(1);
     expect(d.buildings.some((b: { kind: string; ty: number }) => b.kind === 'bath' && b.ty + 3 === CONFIG.land[d.land - 1].to)).toBe(true);
   });
-  it('칠한 칸 · 둥근 모서리 · 지운 자동 길 · 공사 원래 자리 · 등급 장식 기록도 +8', () => {
+  it('칠한 칸 · 둥근 모서리 · 지운 자동 길 · 공사 원래 자리 · 등급 장식 기록도 +8 (+12)', () => {
     const old = v7();
     old.progress.decor = { autoPath: true, paint: { '10,12': 'stone' }, round: { '10,12': 1 }, noPath: { '3,4': 1 } };
     old.progress.harmony = { ...(old.progress.harmony ?? {}), moved: ['bench@7,13'] };
     const b = old.buildings.find((x: { kind: string }) => x.kind !== 'dungeon');
     b.con = { kind: 'up', end: 1, total: 10, to: 2, cut: 0, cost: 100, from: [b.tx, b.ty] };
     const d = migrate(old);
-    expect(d.progress.decor.paint).toEqual({ '18,20': 'stone' });
-    expect(d.progress.decor.round).toEqual({ '18,20': 1 });
-    expect(d.progress.decor.noPath).toEqual({ '11,12': 1 });
-    expect(d.progress.harmony.moved).toEqual(['bench@15,21']);
+    expect(d.progress.decor.paint).toEqual({ '30,32': 'stone' });
+    expect(d.progress.decor.round).toEqual({ '30,32': 1 });
+    expect(d.progress.decor.noPath).toEqual({ '23,24': 1 });
+    expect(d.progress.harmony.moved).toEqual(['bench@27,33']);
     const nb = d.buildings.find((x: { con?: { from: number[] } }) => x.con);
-    expect(nb.con.from).toEqual([b.tx + 8, b.ty + 8]);
+    expect(nb.con.from).toEqual([b.tx + 20, b.ty + 20]);
   });
 });
 
@@ -191,15 +191,17 @@ describe('여관 Lv.10 · 주점 Lv.6 (§11)', () => {
   });
 });
 
-describe.skipIf(!hasReal)('LAND2 이웃 마을 모습 (v2 → +8)', () => {
-  it('옛 클라이언트가 올린 v2 모습: 보는 쪽에서 +8 · 배치 그대로', async () => {
+describe.skipIf(!hasReal)('LAND2 이웃 마을 모습 (v2 → +8 · LAND10 +12)', () => {
+  it('옛 클라이언트가 올린 v2 모습: 보는 쪽에서 +20 · v3는 +12 · 배치 그대로', async () => {
     const { toNeighbor } = await import('../src/ui/neighbors');
     const old = JSON.parse(fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8'));
     const layout = old.buildings.map((b: { kind: string; tx: number; ty: number; lvl: number }) => [b.kind, b.tx, b.ty, b.lvl, null, false]);
     const v = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 2, land: old.land, innName: 'x', owner: 'o', layout } })!;
     expect(v.layout.length).toBe(layout.length);
-    for (let i = 0; i < layout.length; i++) expect([v.layout[i][1] - layout[i][1], v.layout[i][2] - layout[i][2]]).toEqual([8, 8]);
-    const v3 = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 3, land: old.land, innName: 'x', owner: 'o', layout: v.layout } })!;
-    expect(v3.layout[0][1]).toBe(v.layout[0][1]);
+    for (let i = 0; i < layout.length; i++) expect([v.layout[i][1] - layout[i][1], v.layout[i][2] - layout[i][2]]).toEqual([20, 20]);
+    const v4 = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 4, land: old.land, innName: 'x', owner: 'o', layout: v.layout } })!;
+    expect(v4.layout[0][1]).toBe(v.layout[0][1]);
+    const v3 = toNeighbor({ user_id: 'u', likes: 3, updated_at: '', snapshot: { v: 3, land: old.land, innName: 'x', owner: 'o', layout } })!;
+    expect(v3.layout[0][1]).toBe(layout[0][1] + 12);
   }, 30000);
 });

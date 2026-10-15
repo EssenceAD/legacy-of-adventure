@@ -34,6 +34,7 @@ import { litHex } from './nightLook';
 import { vis } from './visual';
 import { shadowGap, walkBob } from './charPop';
 import { stars } from './progress';
+import { landReqs } from './landreq';
 import { drawFelling } from './felling';
 import { anim, animF, gradeNow, type Prop } from './grade';
 import { drawFolk, drawGradeLights, drawProp, drawPropLight, folkNow, propsNow } from './gradeDraw';
@@ -547,11 +548,13 @@ function drawSignLabel(ctx: CanvasRenderingContext2D) {
   if (!sg) return;
   const next = S.land + 1;
   const need = CONFIG.landStars[next - 1] ?? 0;
-  const txt = stars() < need ? `★${need} 필요` : `땅 넓히기 ${CONFIG.land[next - 1].cost}G`;
+  // LAND10: ★6은 별(★5까지)로는 못 채우는 조건 — 7~10단계 대체 조건(★5 + 별의 심연 돌파)을 채웠으면 「★6 필요」 대신 비용
+  const starOk = stars() >= need || (landReqs(next).find((r) => r.text.startsWith('평판'))?.ok ?? true);
+  const txt = !starOk ? `★${need} 필요` : `땅 넓히기 ${CONFIG.land[next - 1].cost}G`;
   const X = Math.round(view.OX + sx(sg[0] + 0.5, sg[1] + 0.5));
   const Y = Math.round(view.OY + sy(sg[0] + 0.5, sg[1] + 0.5) - 44);
   // FIRSTLOOK §1 flFirstCam: 「땅 넓히기 ○G」 글씨는 장부 1장을 마친 뒤에만 (그 전엔 팻말 그림만 · 누르는 자리는 그대로)
-  if (stars() >= need && !signLabelOn()) return void Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
+  if (starOk && !signLabelOn()) return void Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
   ctx.font = '8px "Galmuri9"';
   const w = Math.ceil(ctx.measureText(txt).width) + 6;
   const p = P(ctx);
