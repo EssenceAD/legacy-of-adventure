@@ -430,13 +430,13 @@ function hud() {
   const hb = hitBonus(f.hit);
   $('#cbHitB').textContent = f.hit >= 2 && hb > 0 ? `+${Math.round(hb * 100)}% DMG` : '';
   $('#cbKills').textContent = f.streak >= 2 ? `${f.streak} KILLS` : '';
-  // 목표: 처치 n/목표 → 정예 등장
-  $('#cbGoal').textContent = f.mode === 'raid' ? '' : f.elite ? (f.elite.boss ? `보스 · ${f.elite.boss.name}` : '정예를 쓰러뜨려요!') : `처치 ${f.kills}/${f.killGoal}`;
   // 보스 체력 막대
   const bb = $('#cbBoss');
   // HARVEST §1-4: 정예/보스가 없을 땐 중간 보스(황금 호박 대왕) 막대
   const boss = f.elite?.boss ? f.elite : f.mid && !f.mid.dead ? f.mid : null;
   bb.hidden = !boss || boss.dead || boss.st === 'spawn';
+  // 목표: 처치 n/목표 → 정예 등장 — 보스 막대가 보이면 막대 위 이름 하나만 (R32: 같은 자리에 「보스 · 이름」이 겹쳐 두 번 보였음 · 보스 연전 등)
+  $('#cbGoal').textContent = f.mode === 'raid' || (!bb.hidden && boss === f.elite) ? '' : f.elite ? (f.elite.boss ? `보스 · ${f.elite.boss.name}` : '정예를 쓰러뜨려요!') : `처치 ${f.kills}/${f.killGoal}`;
   if (boss) {
     $('#cbBossN').textContent = boss.boss!.name + (boss.enraged ? ' · 분노' : '');
     $('#cbBossHp').style.width = Math.max(0, Math.round((boss.hp / boss.max) * 100)) + '%';

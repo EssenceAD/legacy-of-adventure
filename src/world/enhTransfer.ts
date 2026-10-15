@@ -69,12 +69,12 @@ export function transferPlan(giver: Item, recv: Item): TransferPlan {
   const no = (why: string, rule = true): TransferPlan => ({ ok: false, why, rule, ...base });
   if (giver === recv || giver.id === recv.id) return no('같은 장비끼리는 전수할 수 없어요');
   if (giver.slot !== recv.slot) return no(`같은 부위끼리만 전수돼요 (${SLOT_NAME[giver.slot]} → ${SLOT_NAME[recv.slot]} X)`);
+  // RAIDWEAPON §2: 전용 무기는 전용 → 전용 · 고유·유물 → 전용 (한 방향) · 전용 → 고유/유물/일반 X
+  const exw = exTransferWhy(giver, recv);
+  if (exw) return no(exw);
   if (gap < 0) return no('받는 장비 등급이 주는 장비보다 낮아요');
   // 웅스 추가 규칙: 유물(a) 받는 장비는 유물에게서만 (초월 금화 2^(n−11) · 유물 재료 구간을 낮은 등급으로 건너뛰지 않게)
   if (recv.grade === 'a' && giver.grade !== 'a') return no('유물 강화는 유물끼리만 옮길 수 있어요');
-  // RAIDWEAPON §2: 전용 무기는 전용 → 전용만 (유물 → 유물 규칙처럼)
-  const exw = exTransferWhy(giver, recv);
-  if (exw) return no(exw);
   if (giver.enh < T.minEnh) return no(`+${T.minEnh} 이상 장비만 강화를 물려줄 수 있어요`);
   if (!P.bag.includes(giver) || !P.bag.includes(recv)) return no('가방에 없는 장비예요');
   if (giver.locked) return no('잠긴 장비는 물려줄 수 없어요 (잠금을 먼저 풀어 주세요)');

@@ -139,7 +139,7 @@ describe('끼우기 조건', () => {
   });
 });
 
-describe('전수 — 전용 → 전용만', () => {
+describe('전수 — 전용 → 전용 · 고유·유물 → 전용', () => {
   it('전용↔일반은 막히고 전용끼리는 규칙대로', () => {
     S.gold = 1e9;
     const a = grantEx('leon')!;
@@ -148,7 +148,8 @@ describe('전수 — 전용 → 전용만', () => {
     P.bag.push(relic);
     a.enh = 8;
     relic.enh = 8;
-    expect(transferPlan(relic, b).why).toContain('전용 무기끼리만');
+    // R32: 고유·유물 → 전용은 한 방향으로 열림 · 전용 → 유물은 그대로 막힘
+    expect(transferPlan(relic, b).why).not.toContain('전용');
     expect(transferPlan(a, relic).why).toContain('전용 무기에게만');
     expect(transferPlan(a, b).why).not.toContain('전용');
   });

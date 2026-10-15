@@ -21,6 +21,8 @@ export function rwState(): RaidWeaponState {
   for (const [k, v] of Object.entries(f.got)) if (!okN(v)) delete f.got[k];
   if (!Array.isArray(f.awoke)) f.awoke = [];
   f.awoke = f.awoke.filter((x, i, a) => typeof x === 'string' && a.indexOf(x) === i);
+  if (!Array.isArray(f.inh)) f.inh = [];
+  f.inh = f.inh.filter((x, i, a) => typeof x === 'string' && a.indexOf(x) === i);
   if (typeof f.bundle !== 'boolean') f.bundle = false;
   if (typeof f.abyssWk !== 'string') f.abyssWk = '';
   if (!okN(f.abyssHi)) f.abyssHi = 0;

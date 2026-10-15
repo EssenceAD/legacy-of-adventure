@@ -19,16 +19,24 @@ export interface SheetOpts {
   no?: string;
   /** 빨간(위험) 확인 버튼 */
   danger?: boolean;
+  /** 세 번째 버튼 (choiceSheet · 확인 바로 오른쪽 · 보통 버튼) — 있으면 순서 [확인] [alt] [그만두기] */
+  alt?: string;
 }
 
-let cur: { done: (v: boolean) => void } | null = null;
+type Pick3 = 'ok' | 'alt' | null;
+let cur: { done: (v: Pick3) => void } | null = null;
 
 /** 열린 시트가 있나 (e2e · 다른 키 처리용) */
 export const sheetOpen = () => !!cur;
 
 /** 아래 확인 시트: 확인 → true · 그만두기/뒤로/Esc/바깥 → false */
 export function confirmSheet(o: SheetOpts): Promise<boolean> {
-  cur?.done(false);
+  return choiceSheet({ ...o, alt: undefined }).then((v) => v === 'ok');
+}
+
+/** 세 갈래 시트 (o.alt 버튼): 확인 → 'ok' · alt → 'alt' · 그만두기/뒤로/Esc/바깥 → null */
+export function choiceSheet(o: SheetOpts): Promise<Pick3> {
+  cur?.done(null);
   const view = document.getElementById('view') ?? document.body;
   const scrim = document.createElement('div');
   scrim.className = 'cshScrim';
@@ -37,7 +45,8 @@ export function confirmSheet(o: SheetOpts): Promise<boolean> {
   el.id = 'csheet';
   el.setAttribute('role', 'alertdialog');
   el.setAttribute('aria-modal', 'true');
-  el.innerHTML = `<b class="csht">${esc(o.title)}</b>${o.body ? `<p class="sub">${esc(o.body)}</p>` : ''}<div class="btnrow cshrow"><button class="bigbtn ghost" id="cshNo">${esc(o.no ?? '그만두기')}</button><button class="bigbtn${o.danger ? ' red' : ''}" id="cshOk">${esc(o.ok)}</button></div>`;
+  const no = `<button class="bigbtn ghost" id="cshNo">${esc(o.no ?? '그만두기')}</button>`;
+  el.innerHTML = `<b class="csht">${esc(o.title)}</b>${o.body ? `<p class="sub">${esc(o.body)}</p>` : ''}<div class="btnrow cshrow${o.alt ? ' c3' : ''}">${o.alt ? '' : no}<button class="bigbtn${o.danger ? ' red' : ''}" id="cshOk">${esc(o.ok)}</button>${o.alt ? `<button class="bigbtn" id="cshAlt">${esc(o.alt)}</button>${no}` : ''}</div>`;
   const quick = saverOn() || shakeLv() === 'off';
   if (quick) el.classList.add('quick');
   view.append(scrim, el);
@@ -51,9 +60,9 @@ export function confirmSheet(o: SheetOpts): Promise<boolean> {
       scrim.classList.add('on');
       el.classList.add('on');
     });
-  return new Promise<boolean>((resolve) => {
+  return new Promise<Pick3>((resolve) => {
     let off = () => {};
-    const done = (v: boolean) => {
+    const done = (v: Pick3) => {
       if (cur !== me) return;
       cur = null;
       off();
@@ -63,14 +72,16 @@ export function confirmSheet(o: SheetOpts): Promise<boolean> {
     };
     const me = { done };
     cur = me;
-    off = pushLayer(() => done(false));
-    (el.querySelector('#cshNo') as HTMLButtonElement).onclick = () => done(false);
+    off = pushLayer(() => done(null));
+    (el.querySelector('#cshNo') as HTMLButtonElement).onclick = () => done(null);
     // 확인은 열린 뒤 0.35초부터 (방금 누른 손가락이 그대로 확인을 누르지 않게)
-    (el.querySelector('#cshOk') as HTMLButtonElement).onclick = () => performance.now() - openedAt >= 350 && done(true);
+    (el.querySelector('#cshOk') as HTMLButtonElement).onclick = () => performance.now() - openedAt >= 350 && done('ok');
+    const alt = el.querySelector('#cshAlt') as HTMLButtonElement | null;
+    if (alt) alt.onclick = () => performance.now() - openedAt >= 350 && done('alt');
     scrim.onclick = (e) => {
       e.stopPropagation();
       if (performance.now() - openedAt < 450) return;
-      done(false);
+      done(null);
     };
   });
 }
