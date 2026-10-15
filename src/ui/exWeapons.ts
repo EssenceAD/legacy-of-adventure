@@ -6,10 +6,10 @@ import { CONFIG } from '../data/config';
 import { exShort } from '../data/exweapons';
 import { exOwnerKey, exOwnerName, exWhy, exHooks, exHeroColor } from '../world/exGate';
 import { josa } from '../data/josa';
-import { boxChoices, boxCount, EX_WEAPONS, exDef, exOwned, exOwnedN, exRetro, fragsToBox, makeEx, openBox, recruitedKeys } from '../world/exWeapons';
+import { boxChoices, boxCount, EX_WEAPONS, exDef, exInherit, exInheritPlan, exInheritUsed, exOwned, exOwnedN, exRetro, fragsToBox, makeEx, openBox, recruitedKeys } from '../world/exWeapons';
 import { exOn, rwState } from '../world/frags';
 import { equip, itemById, itemIcon, itemPower } from '../world/items';
-import { confirmSheet } from './confirmSheet';
+import { choiceSheet, confirmSheet } from './confirmSheet';
 import { grantEx } from '../world/exWeapons';
 import { addFrags } from '../world/frags';
 import { openBag, showItem } from './guests';
@@ -91,7 +91,7 @@ export function exItemHtml(it: Item): string {
         : why
           ? `<p class="zz">🔒 ${esc(why)} (지금 ★${owner.stars ?? 1})</p>`
           : `<button class="bigbtn sm" data-exwear="${owner.id}">${esc(owner.name)}님에게 끼우기</button>`;
-  return `<div class="exbox"><b class="g">전용 무기 · ${esc(exOwnerName(d))}</b><small> — 그 영웅만 낄 수 있어요 · 강화·초월·재련은 유물 규칙 그대로 · 전수는 전용 무기끼리만</small>${state}</div>`;
+  return `<div class="exbox"><b class="g">전용 무기 · ${esc(exOwnerName(d))}</b><small> — 그 영웅만 낄 수 있어요 · 강화·초월·재련은 유물 규칙 그대로 · 전수는 전용·고유·유물 → 전용만</small>${state}</div>`;
 }
 /** 아이템 상세 그린 뒤 버튼 묶기 (redraw = 다시 그리기) */
 export function bindExItem(it: Item, redraw: () => void) {
@@ -100,24 +100,48 @@ export function bindExItem(it: Item, redraw: () => void) {
       (b.onclick = async () => {
         const a = homeActors().find((x) => x.id === +b.dataset.exwear!);
         if (!a || !P.bag.includes(it)) return;
-        const w = exWhy(a, it);
-        if (w) return toast(w);
-        // 지금 낀 무기가 더 세면(강화한 무기 → +0 전용 무기) 한 번 확인 — 모르고 전투력이 떨어지지 않게
-        const old = itemById(a.equip[it.slot]);
-        const diff = old ? itemPower(it) - itemPower(old) : 0;
-        if (old && diff < 0) {
-          const ok = await confirmSheet({
-            title: '지금 무기가 더 세요',
-            body: `「${old.name}${old.enh ? ` +${old.enh}` : ''}」 대신 끼우면 무기 능력치가 ${Math.abs(Math.round(diff)).toLocaleString('ko-KR')} 낮아져요. 전용 무기를 강화하면 따라잡아요.`,
-            ok: '그래도 끼우기',
-          });
-          if (!ok || !P.bag.includes(it)) return;
-        }
-        equip(a, it);
-        markDirty();
-        redraw();
+        if (await exWear(a, it)) redraw();
       }),
   );
+}
+/** 전용 무기 끼우기 (아이템 상세 · 장비 칸 고르기 공통) — 끼웠으면 true · 취소/못 낌 false
+ *  · 그 영웅 첫 깨어남 + 지금 낀 무기 강화가 더 높으면: 「강화 이어받기」(1번 무료) [이어받고 끼우기] [그냥 끼우기] [취소]
+ *  · 그 밖엔 지금 낀 무기가 더 세면(강화한 무기 → +0 전용 무기) 한 번 확인 — 모르고 전투력이 떨어지지 않게 */
+export async function exWear(a: Actor, it: Item): Promise<boolean> {
+  const w = exWhy(a, it);
+  if (w) {
+    toast(w);
+    return false;
+  }
+  const plan = exInheritPlan(a, it);
+  if (plan) {
+    const { old, enh } = plan;
+    const v = await choiceSheet({
+      title: '강화 이어받기 · 첫 깨어남 무료',
+      body: `지금 낀 「${old.name} +${enh}」의 강화·초월 단계를 「${it.name}」에 그대로 옮겨요 (+${it.enh} → +${enh}). 원래 무기는 +0이 돼요.
+영웅마다 처음 한 번만 무료예요.`,
+      ok: '이어받고 끼우기',
+      alt: '그냥 끼우기',
+      no: '취소',
+    });
+    if (!v || !P.bag.includes(it) || exWhy(a, it)) return false;
+    if (v === 'ok') exInherit(a, it);
+    else exInheritUsed(it.ex!);
+  } else {
+    const old = itemById(a.equip[it.slot]);
+    const diff = old ? itemPower(it) - itemPower(old) : 0;
+    if (old && diff < 0) {
+      const ok = await confirmSheet({
+        title: '지금 무기가 더 세요',
+        body: `「${old.name}${old.enh ? ` +${old.enh}` : ''}」 대신 끼우면 무기 능력치가 ${Math.abs(Math.round(diff)).toLocaleString('ko-KR')} 낮아져요. 전용 무기를 강화하면 따라잡아요.`,
+        ok: '그래도 끼우기',
+      });
+      if (!ok || !P.bag.includes(it)) return false;
+    }
+  }
+  equip(a, it);
+  markDirty();
+  return true;
 }
 /** 가방 맨 위 한 줄: 무기 조각 · 상자 [열기] (꺼져 있으면 '') */
 export function exBagLine(): string {

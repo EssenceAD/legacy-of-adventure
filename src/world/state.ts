@@ -676,10 +676,11 @@ export function freshProgress() {
 /**
  * RAIDWEAPON: frags = 무기 조각 (공통 재화 · 10개 = 선택 상자 1) · boxes = 따로 받은 선택 상자(월드 레이드 상위 등)
  *  · got = 받은 전용 무기 (영웅 키 → 받은 수 · 도감 ✦) · awoke = 처음 끼워 깨어난 영웅 키 (컷 1번만)
+ *  · inh = 「강화 이어받기」(첫 깨어남 1번 무료)를 쓴 영웅 키 — 이어받기든 그냥 끼우기든 고르면 들어감 (취소는 그대로)
  *  · bundle = 「토벌 전리품」 방 조각을 줬나 (1번만 · 옛 저장도) · abyssWk/abyssHi = 이번 주(한국 시간) 심연 조각을 준 가장 높은 층
  */
 export function freshRaidWeapon() {
-  return { frags: 0, boxes: 0, got: {} as Record<string, number>, awoke: [] as string[], bundle: false, abyssWk: '', abyssHi: 0 };
+  return { frags: 0, boxes: 0, got: {} as Record<string, number>, awoke: [] as string[], inh: [] as string[], bundle: false, abyssWk: '', abyssHi: 0 };
 }
 export type RaidWeaponState = ReturnType<typeof freshRaidWeapon>;
 

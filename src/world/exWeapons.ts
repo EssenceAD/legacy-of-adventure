@@ -174,12 +174,55 @@ export function exRetro(): void {
   bundleFrags();
 }
 
-// ───────── 전수 (전용 → 전용만) ─────────
+// ───────── 전수 (전용 → 전용 · 고유·유물 → 전용 한 방향) ─────────
 
-/** 전수 규칙: 둘 중 하나라도 전용이면 둘 다 전용이어야 ('' = 괜찮음) */
-export function exTransferWhy(giver: Pick<Item, 'ex'>, recv: Pick<Item, 'ex'>): string {
+/** 전수 규칙 ('' = 괜찮음): 전용 → 전용 · 고유·유물(유물 등급) → 전용 (한 방향) · 전용 → 일반/고유/유물은 막힘 */
+export function exTransferWhy(giver: Pick<Item, 'ex' | 'grade'>, recv: Pick<Item, 'ex' | 'grade'>): string {
   if (!!giver.ex === !!recv.ex) return '';
-  return recv.ex ? '전용 무기 강화는 전용 무기끼리만 옮길 수 있어요' : '전용 무기의 강화는 다른 전용 무기에게만 물려줄 수 있어요';
+  if (giver.ex) return '전용 무기의 강화는 다른 전용 무기에게만 물려줄 수 있어요';
+  return giver.grade === 'a' ? '' : '전용 무기는 고유·유물 장비나 다른 전용 무기에게서만 강화를 받아요';
+}
+
+// ───────── 첫 깨어남 「강화 이어받기」 (영웅마다 1번 · 무료) ─────────
+
+/** 이어받기 미리 보기: 그 영웅이 처음 전용 무기를 낄 때 · 지금 낀 무기가 전용 무기보다 강화가 높으면 → { old, enh } · 아니면 null */
+export function exInheritPlan(a: Actor, it: Item): { old: Item; enh: number } | null {
+  if (!exOn() || !it.ex || it.slot !== 'weapon') return null;
+  if (exOwnerKey(a) !== it.ex) return null;
+  const st = rwState();
+  if (st.inh.includes(it.ex) || st.awoke.includes(it.ex)) return null;
+  const old = P.bag.find((x) => x.id === a.equip.weapon);
+  if (!old || old === it || old.ex || !(old.enh > it.enh)) return null;
+  return { old, enh: old.enh };
+}
+/** 이름 앞 「초월한」·「극의」를 단계에 맞게 */
+export function exEnhName(name: string, enh: number): string {
+  const TR = CONFIG.smith.transcend;
+  const nm = name.replace(/^(초월한|극의) /, '');
+  return enh >= TR.max ? `극의 ${nm}` : enh >= TR.nameAt ? `초월한 ${nm}` : nm;
+}
+/** 이어받기 한 번 쓴 것으로 (그냥 끼우기 · 이어받기 모두 — 다음부터는 보통 확인만) */
+export function exInheritUsed(id: string): void {
+  const st = rwState();
+  if (!st.inh.includes(id)) st.inh.push(id);
+  markDirty();
+}
+/** 이어받기 실행: 지금 낀 무기의 강화·초월 단계(이름표 포함)를 전용 무기로 · 원래 무기는 +0 (이름표 지움) — 끼우기는 부른 쪽이 */
+export function exInherit(a: Actor, it: Item): boolean {
+  const p = exInheritPlan(a, it);
+  if (!p) return false;
+  const { old, enh } = p;
+  it.enh = enh;
+  it.name = exEnhName(it.name, enh);
+  delete it.ePity;
+  if (it.tPity) it.tPity = 0;
+  old.enh = 0;
+  old.name = exEnhName(old.name, 0);
+  delete old.ePity;
+  if (old.tPity) old.tPity = 0;
+  P.counters.enhanceMax = Math.max(P.counters.enhanceMax, enh);
+  exInheritUsed(it.ex!);
+  return true;
 }
 
 /** 화면용: 무기 주인 이름 */

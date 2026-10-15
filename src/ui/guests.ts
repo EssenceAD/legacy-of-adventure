@@ -42,7 +42,7 @@ import { confirmSheet } from './confirmSheet';
 import { equipCandidates } from '../world/firstFlow';
 import { bindWardrobeBtn, wardrobeBtnHtml } from './wardrobe';
 import { heroCardHtml, sagaFirst } from './heroCard';
-import { bindExBag, bindExItem, exBagLine, exItemHtml } from './exWeapons';
+import { bindExBag, bindExItem, exBagLine, exItemHtml, exWear } from './exWeapons';
 import { exWhy } from '../world/exGate';
 
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -434,8 +434,14 @@ export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActo
   );
   $$('.ilist button.irow').forEach(
     (b) =>
-      (b.onclick = () => {
-        equip(a, P.bag.find((x) => x.id === +b.dataset.id!)!);
+      (b.onclick = async () => {
+        const it = P.bag.find((x) => x.id === +b.dataset.id!)!;
+        // RAIDWEAPON §2: 전용 무기는 첫 깨어남 「강화 이어받기」 · 약해지면 확인 (exWear)
+        if (it.ex) {
+          if (await exWear(a, it)) back();
+          return;
+        }
+        equip(a, it);
         markDirty();
         back();
       }),
