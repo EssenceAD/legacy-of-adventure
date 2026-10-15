@@ -8,6 +8,7 @@ import { PORTRAITS } from '../engine/assets';
 import { mcPortrait } from '../data/origins';
 import { P, S, world, type Actor, type TalkChoice, type TalkLine } from '../world/state';
 import { applyDlgHints, skipTapOk } from './touchHints';
+import { submitEnter } from './ime';
 
 /** [누가, 대사, 'name'이면 이 줄 다음에 여관 이름 짓기, 이름표] — 누가: narr(해설)·hero·keeper·post·직업 */
 export type Line = TalkLine;
@@ -305,7 +306,8 @@ function askName() {
   };
   $('#nameOk').onclick = ok;
   inp.onkeydown = (e) => {
-    if (e.key === 'Enter') ok(e);
+    // 10/16: 한글 조합 중 Enter는 글자 확정만 (마지막 글자가 빠지지 않게)
+    if (submitEnter(e)) ok(e);
   };
 }
 

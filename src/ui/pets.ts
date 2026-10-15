@@ -10,6 +10,7 @@ import { S } from '../world/state';
 import { vis } from '../world/visual';
 import { $$, esc } from './common';
 import { closeWin, openWin, pushLayer, toast } from './windows';
+import { charLen, submitEnter } from './ime';
 
 // ───────── 만남 ─────────
 
@@ -39,6 +40,31 @@ function bindPortraits() {
   });
 }
 
+/** 펫 이름 칸 — 10/16: maxlength는 조합 중 마지막 글자를 잘라 먹어서 걸지 않는다 (저장할 때 8자로 · 옆에 「3/8」) */
+const NAME_MAX = 8;
+const nameInput = (v: string) => `<input id="pcName" value="${esc(v)}" autocomplete="off" enterkeyhint="done"> <small id="pcLen" class="pclen">${charLen(v)}/${NAME_MAX}</small>`;
+function bindNameInput(go: () => void) {
+  const inp = document.getElementById('pcName') as HTMLInputElement | null;
+  const len = document.getElementById('pcLen');
+  if (!inp) return;
+  const upd = () => {
+    if (!len) return;
+    const n = charLen(inp.value.trim());
+    len.textContent = `${n}/${NAME_MAX}`;
+    len.classList.toggle('over', n > NAME_MAX);
+  };
+  inp.addEventListener('input', upd);
+  inp.addEventListener('compositionend', upd);
+  // 조합 중 Enter는 글자 확정만 · 다른 전역 단축키(대화 Z·X · 전투 · 마을 단축키)로 새지 않게
+  inp.onkeydown = (e) => {
+    e.stopPropagation();
+    if (submitEnter(e)) {
+      e.preventDefault();
+      go();
+    }
+  };
+}
+
 export function openPetCard(id: string) {
   const d = petDef(id);
   // 이미 본 카드(✕로 닫았거나 다른 길로 봄)는 다시 안 띄운다
@@ -46,15 +72,19 @@ export function openPetCard(id: string) {
   const html = `<div class="petcard"><div class="pcport">${portImg(id)}</div>
     <p class="sub">${esc(d.where)}에서 만났어요!</p>
     <p class="pcfx">${esc(d.fxText)} <small>(마을에 데려간 친구만 · 쓰다듬은 날 ×${PETS.patMult})</small></p>
-    <label class="pcname">이름 짓기 <input id="pcName" maxlength="8" value="${esc(petName(id))}" autocomplete="off"></label>
+    <label class="pcname">이름 짓기 ${nameInput(petName(id))}</label>
     <button class="bigbtn" id="pcGo">마을에 데려가기</button></div>`;
   // 창을 ✕로 닫아도 다시 뜨지 않게 여는 순간 「봤음」 (기본 이름 · 자리가 있으면 마을로) — 버튼은 이름만 정한다
   const r = closeCard(id);
   openWin('새 친구!', html);
   bindPortraits();
+  let done = false;
   const go = () => {
+    // 10/16: 한 번만 (조합 Enter + 확정 Enter로 두 번 돌면 두 번째엔 칸이 없어 기본 이름으로 되돌아갔다)
+    if (done) return;
+    done = true;
     const inp = document.getElementById('pcName') as HTMLInputElement | null;
-    renamePet(id, inp?.value ?? '');
+    renamePet(id, inp?.value ?? petName(id));
     closeWin();
     if (r === 'out') {
       toast(`${petName(id)}${josaWa(petName(id))} 함께 마을로!`);
@@ -63,8 +93,7 @@ export function openPetCard(id: string) {
   };
   const b = document.getElementById('pcGo');
   if (b) b.onclick = go;
-  const inp = document.getElementById('pcName') as HTMLInputElement | null;
-  if (inp) inp.onkeydown = (e) => e.key === 'Enter' && go();
+  bindNameInput(go);
 }
 function josaWa(w: string): string {
   const c = w.charCodeAt(w.length - 1);
@@ -129,18 +158,20 @@ export function openPetMenu(id: string, x: number, y: number, guest = false) {
   }, 0);
 }
 function openRename(id: string, back?: () => void) {
-  openWin('이름 바꾸기', `<div class="petcard"><div class="pcport">${portImg(id)}</div><label class="pcname">새 이름 <input id="pcName" maxlength="8" value="${esc(petName(id))}" autocomplete="off"></label><button class="bigbtn" id="pcGo">바꾸기</button></div>`);
+  openWin('이름 바꾸기', `<div class="petcard"><div class="pcport">${portImg(id)}</div><label class="pcname">새 이름 ${nameInput(petName(id))}</label><button class="bigbtn" id="pcGo">바꾸기</button></div>`);
   bindPortraits();
+  let done = false;
   const go = () => {
-    const n = renamePet(id, (document.getElementById('pcName') as HTMLInputElement | null)?.value ?? '');
+    if (done) return;
+    done = true;
+    const n = renamePet(id, (document.getElementById('pcName') as HTMLInputElement | null)?.value ?? petName(id));
     toast(`이제 「${n}」예요`);
     if (back) back();
     else closeWin();
   };
   const b = document.getElementById('pcGo');
   if (b) b.onclick = go;
-  const inp = document.getElementById('pcName') as HTMLInputElement | null;
-  if (inp) inp.onkeydown = (e) => e.key === 'Enter' && go();
+  bindNameInput(go);
 }
 
 // ───────── 도감 「동물 친구」 ─────────

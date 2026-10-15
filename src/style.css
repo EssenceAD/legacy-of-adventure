@@ -1581,6 +1581,7 @@ body.cbtalk #storyFx{z-index:45}
 .petimg.miss{visibility:hidden}.pcport:has(.petimg.miss)::after,.pcell2:has(.petimg.miss)::before{content:'?';color:#ff8fc2;font-size:28px}
 .pcfx{margin:0;color:#ffd6ec}.pcfx small{display:block;color:#9aa6d8}
 .pcname{display:flex;flex-direction:column;gap:4px;font-size:var(--f-small);color:#cfd8ff}.pcname input{font:inherit;font-size:var(--f-ui);padding:6px 8px;width:180px;text-align:center;background:#0f1330;color:#fff;border:0;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--line)}
+.pcname .pclen{align-self:center;color:#9aa4c8}.pcname .pclen.over{color:#ff8a7a}
 .petgrid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))}.petgrid .pcell2 img{width:56px;height:56px;max-height:56px}
 .petgrid .pcell2 img.petsil{width:auto;height:auto;max-height:none;transform:scale(2.5);margin:18px 0 20px;filter:brightness(0) opacity(.55)}
 .pcell2.out{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #ff8fc2}

@@ -677,6 +677,8 @@ export function startBattle(t: RaidTarget, members: Actor[], manual: boolean, ex
   };
   const onKey = (e: KeyboardEvent) => {
     if (!S.on || S.auto) return;
+    const tg = (e.target as HTMLElement)?.tagName;
+    if (tg === 'INPUT' || tg === 'TEXTAREA') return;
     if (e.key === 'ArrowUp') S.lane = Math.max(0, S.lane - 1);
     if (e.key === 'ArrowDown') S.lane = Math.min(2, S.lane + 1);
     if (e.key === ' ' || e.key === 'z') attack(S, hooks, T);

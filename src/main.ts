@@ -95,6 +95,7 @@ import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/sta
 import { def, type Kind } from './data/catalog';
 import { firstCamClose, firstCamFx, firstCamZoom, placeFirstCam, pullOnLand, pullZoom, resetPull } from './world/firstCam';
 import { grantGradeGate } from './world/gradeGate';
+import { installImeGuard, isImeEnter } from './ui/ime';
 import { addObj, autoEntranceX, canMoveKind, canPlace, dungeonHome, capacity, doorOf, entrance, findKind, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
@@ -1157,8 +1158,13 @@ async function boot() {
       (document.getElementById('chatv') as HTMLInputElement | null)?.focus();
     }
   });
+  // 10/16: 한글 조합 중 Enter로 폼(채팅·편지·로그인…)이 보내지지 않게
+  installImeGuard();
   addEventListener('keydown', (e) => {
     const title = document.getElementById('title')!;
+    // 10/16: 글 쓰는 중(타이틀 편지·이름 칸)이나 한글 조합 중 Enter는 게임 시작이 아니다
+    const tg = (e.target as HTMLElement)?.tagName;
+    if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT' || isImeEnter(e)) return;
     if (!title.hidden && !title.classList.contains('out') && (e.key === 'Enter' || e.key === 'z' || e.key === 'Z')) {
       const cont = document.getElementById('tCont') as HTMLButtonElement;
       if (!cont.disabled) game.continueGame();
