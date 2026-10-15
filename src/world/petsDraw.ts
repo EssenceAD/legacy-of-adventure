@@ -13,7 +13,7 @@ import { av } from '../engine/ver';
 import { NL } from './daynight';
 import { petsOn, petState, pattedToday } from './pets';
 import { S, world } from './state';
-import { astar, bestOf, blockedAt, doorOf, walkable } from './town';
+import { astar, bestOf, blockedAt, doorOf, landBounds, walkable } from './town';
 
 const BASE = import.meta.env.BASE_URL + 'assets/';
 
@@ -93,7 +93,9 @@ function anchor(): [number, number] {
     const [x, y] = doorOf(inn);
     return [x, y + 1];
   }
-  return [16, 22];
+  // LAND10: 맵 좌표가 바뀌어도 땅 가운데 앞쪽 (예전 [16, 22] = 맵 32 기준)
+  const [a, b] = landBounds();
+  return [Math.floor((a + b) / 2), b - 3];
 }
 /** 화면에서 가리지 않는 칸 (앞쪽 두 줄에 건물이 없음 — 작은 펫이 건물 뒤에 숨지 않게) */
 const FRONT: [number, number][] = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2]];

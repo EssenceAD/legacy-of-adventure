@@ -1187,6 +1187,8 @@ async function boot() {
   // GROWTH e2e: 손님(번호)·모모의 화면 좌표
   // LUXE §3: 게시판 탭 바로 열기 (봇·스크린샷)
   if (import.meta.env.DEV) Object.assign(window, { __openBoard: (t?: number) => openBoard(t) });
+  // LAND10 검사용: 맵 크기 · 땅 단계 바로 바꾸기 (조건·비용 없이 — 바닥·길·카메라만 다시)
+  if (import.meta.env.DEV) Object.assign(window, { __N: N, __setLand: (l: number) => { S.land = Math.max(1, Math.min(CONFIG.land.length, l)); rebuildPaths(); game.landCamera(false); markDirty(); return landBounds(); } });
   // LUXE §1 시트용: 명품관 바로 열기
   if (import.meta.env.DEV) Object.assign(window, { __openLuxe: () => openLuxeShop(), __openShop: () => openShop() });
   // LUXE §1-3: 의상 비교 시트 (봇·스크린샷 · scripts/shot-outfits.mjs)

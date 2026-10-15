@@ -123,7 +123,7 @@ describe('§4 던전 입구 옮기기', () => {
     writeSave();
     const d = readSave()!;
     expect(d.buildings.find((b) => b.kind === 'dungeon')).toMatchObject({ tx: a + 2, ty: a + 1 });
-    expect(d.progress.decor.dgHome).toEqual([29, 18]);
+    expect(d.progress.decor.dgHome).toEqual([41, 30]); // LAND10: (29,18) + 12
   });
 });
 
@@ -224,8 +224,12 @@ describe('§5 마을 입구 옮기기', () => {
   it('이웃 마을 모습: ent가 있으면 그 입구, 없으면 자동', async () => {
     const { toNeighbor } = await import('../src/ui/neighbors');
     const layout = [['inn', 26, 24, 1, null, false]];
-    const v = toNeighbor({ user_id: 'u', likes: 0, updated_at: '', snapshot: { v: 3, land: 3, innName: 'x', owner: 'o', layout, ent: 18 } } as never)!;
-    expect(v.ent).toBe(18);
+    const v = toNeighbor({ user_id: 'u', likes: 0, updated_at: '', snapshot: { v: 4, land: 3, innName: 'x', owner: 'o', layout, ent: 30 } } as never)!;
+    expect(v.ent).toBe(30);
+    // LAND10: v3(맵 32) 입구는 배치와 같이 +12
+    const v3 = toNeighbor({ user_id: 'u', likes: 0, updated_at: '', snapshot: { v: 3, land: 3, innName: 'x', owner: 'o', layout, ent: 18 } } as never)!;
+    expect(v3.ent).toBe(30);
+    expect(v3.layout[0].slice(1, 3)).toEqual([38, 36]);
     const w = toNeighbor({ user_id: 'u', likes: 0, updated_at: '', snapshot: { v: 3, land: 3, innName: 'x', owner: 'o', layout } } as never)!;
     expect(w.ent).toBeUndefined();
   }, 30000); // 동적 import(ui/neighbors) — 전체 테스트가 몰리면 5초를 넘겨 배포를 막던 것

@@ -204,7 +204,7 @@ async function run(variant) {
       if (!o) return { err: 'no building' };
       S.nightT = 1;
       v.goal = null;
-      const N = 32;
+      const N = window.__N ?? 32; // LAND10: 맵 44
       v.cam.x = ((o.tx + o.fw / 2 - (o.ty + o.fh / 2)) * 32) / 2;
       v.cam.y = ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - N) * 16) / 2 - 20;
       v.OX = Math.round(v.LW / 2 - 0 - v.cam.x);
@@ -235,7 +235,7 @@ async function run(variant) {
       for (let i = 0; i < 20; i++) {
         v.goal = null;
         v.cam.x = ((o.tx + o.fw / 2 - (o.ty + o.fh / 2)) * 32) / 2;
-        v.cam.y = ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - 32) * 16) / 2;
+        v.cam.y = ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - (window.__N ?? 32)) * 16) / 2;
         v.OX = Math.round(v.LW / 2 - v.cam.x);
         v.OY = Math.round(v.LH * 0.5 - 256 - v.cam.y);
         window.__town.renderFrame(document.querySelector('#view canvas').getContext('2d'), 0);

@@ -319,5 +319,5 @@ describe('저장 (T2)', () => {
     expect(r.progress.daybook).toEqual(s.progress.daybook);
     expect(r.progress.almanac).toEqual(s.progress.almanac);
   });
-  it('저장 버전은 그대로 (올리지 않음)', () => expect(CONFIG.save.version).toBe(8));
+  it('저장 버전은 그대로 (올리지 않음 · LAND10이 9로)', () => expect(CONFIG.save.version).toBe(9));
 });

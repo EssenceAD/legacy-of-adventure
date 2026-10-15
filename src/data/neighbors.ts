@@ -1,6 +1,7 @@
 // 이웃 마을 (지금은 가짜 데이터 — 나중에 서버에서 받아온다)
 // 그릴 때 world/town.ts의 placeLayout()이 내 마을과 같은 배치 검사를 한 번 더 한다.
 import type { Kind } from './catalog';
+import { CONFIG } from './config';
 
 export interface Neighbor {
   id: string;
@@ -26,6 +27,7 @@ export interface Neighbor {
 }
 
 // LAND2 (맵 32): 땅 s단계 = [from, 30) — from = 22·19·16·12·8·4·0. 던전은 (29,18) 3×3 고정 (땅 오른쪽 앞 가장자리).
+//  LAND10: 아래 좌표는 그대로 (맵 32 기준) — 맨 아래 toV4가 +12 (땅 [from+12, 42) · 던전 (41,30))
 // SHOWCASE: 「와, 나도 이렇게 꾸미고 싶다」 — 예시 마을 5곳은 같은 규칙으로 꾸민다 (SHOWCASE_SPEC §0)
 //  초점 하나 · 입구(앞 가장자리 y=29) → 여관 큰길 하나 + 구역으로 갈라지는 오솔길 · 울타리로 감싼 구역 3~4개(문 하나씩)
 //  · 가운데 촘촘 가장자리 성기게 · 나무 액자(입구 쪽은 열기) · 빈 잔디 20%+ · 이야기 장면 4~5개 · 지붕 hue 하나 · 조명 12+
@@ -245,4 +247,10 @@ const SPA: Neighbor = {
   ],
 };
 
-export const NEIGHBORS: Neighbor[] = [MOON, PETAL, MARKET, MOSS, SPA];
+/** LAND10: 위 배치표는 LAND2(맵 32) 좌표 그대로 적어 두고, 맵 44에 맞게 +12 해서 내보낸다 (이웃 모습 v3 → v4와 같은 규칙) */
+const toV4 = (v: Neighbor): Neighbor => ({
+  ...v,
+  ...(typeof v.ent === 'number' ? { ent: v.ent + CONFIG.v8.shift } : {}),
+  layout: v.layout.map((e) => [e[0], e[1] + CONFIG.v8.shift, e[2] + CONFIG.v8.shift, ...e.slice(3)] as Entry),
+});
+export const NEIGHBORS: Neighbor[] = [MOON, PETAL, MARKET, MOSS, SPA].map(toV4);

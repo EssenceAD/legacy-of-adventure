@@ -69,8 +69,11 @@ await W(1500);
 await p.locator('#tCont').click();
 await W(3000);
 await settle();
+// LAND10: LAND=10 이면 불러온 뒤 땅 단계를 바로 올린다 (개발용 __setLand · 조건·비용 없이)
+if (process.env.LAND) console.log('땅 단계 →', process.env.LAND, JSON.stringify(await p.evaluate((l) => window.__setLand(l), Number(process.env.LAND))));
+await W(1500);
 const info = await p.evaluate(() => ({ n: window.__world.objs.length, size: document.documentElement.dataset.size, guard: !!window.__spriteGuard }));
-console.log(`저장 ${file} · 건물 ${info.n}채 · data-size=${info.size}`);
+console.log(`저장 ${file} · 건물 ${info.n}채 · data-size=${info.size} · 땅 ${await p.evaluate(() => window.__S.land)}단계`);
 ok(info.n > 100, '큰 마을(100채 넘게)');
 ok(info.size === 'phone', '폰 크기');
 
@@ -79,7 +82,9 @@ const centerOn = (key) =>
   p.evaluate((key) => {
     const o = window.__world.objs.find((b) => b.sprite === key);
     const v = window.__view;
-    v.goal = { x: ((o.tx + o.fw / 2 - (o.ty + o.fh / 2)) * 32) / 2, y: ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - 32) * 16) / 2 };
+    // LAND10: 맵 크기(32 → 44)는 게임에서 읽는다 (옛 빌드는 32)
+    const N = window.__N ?? 32;
+    v.goal = { x: ((o.tx + o.fw / 2 - (o.ty + o.fh / 2)) * 32) / 2, y: ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - N) * 16) / 2 };
     v.cam.x = v.goal.x;
     v.cam.y = v.goal.y;
   }, key);
@@ -261,7 +266,7 @@ if (!info.guard) {
         const o = objs[Math.floor((objs.length * s) / 4)];
         v.goal = null;
         v.cam.x = ((o.tx + o.fw / 2 - (o.ty + o.fh / 2)) * 32) / 2;
-        v.cam.y = ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - 32) * 16) / 2;
+        v.cam.y = ((o.tx + o.fw / 2 + o.ty + o.fh / 2 - (window.__N ?? 32)) * 16) / 2;
         await frames(90);
         const a = mem().tint.evicted;
         const f0 = window.__stats.frames;

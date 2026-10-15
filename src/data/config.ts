@@ -37,8 +37,8 @@ export const CONFIG = {
   fullRoomToast: '방이 꽉 찼어요 — 손님을 내보내거나 별채를 더 지어요',
   community: { kakao: 'https://open.kakao.com/o/g1KwZ2Ri' },
   map: {
-    /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) */
-    size: 32,
+    /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) · LAND10: 32 → 44 (땅 42 + 여유 2 · 8~10단계) */
+    size: 44,
     tileW: 32,
     tileH: 16,
   },
@@ -105,17 +105,24 @@ export const CONFIG = {
   // 땅 개편 (v0.10): 앞쪽(입구) 가장자리 to=22 는 단계가 바뀌어도 그대로, 뒤쪽(입구 반대)으로 커진다
   //  단계 수 5 · 비용 · 열리는 것 · 평판 별 조건은 그대로. 옛 저장은 OLD_LAND_TO 기준으로 좌표를 옮긴다 (save.ts v7)
   //  LAND2 (v8): 맵 32 · 모든 좌표 +8 (앞쪽 가장자리 22 → 30) · 6·7단계는 재료·보스 재료·장부 장도 필요
+  //  LAND10 (v9): 맵 44 · 모든 좌표 +12 (앞쪽 가장자리 30 → 42) · 8·9·10단계 = 3→7단계처럼 단계마다 뒤·옆으로 4칸 (34·38·42)
+  //   비용 = 7단계 × 3 · × 6 · × 10 (금화·재료·보스 재료 같은 비율) · 평판 ★6 (7단계와 같은 조건 — 별은 ★5가 끝이라 ★5 + 별의 심연 10 돌파로도)
   land: [
-    { size: '8×8', from: 22, to: 30, cost: 0, opens: '여관 본관, 우물, 모닥불' },
-    { size: '11×11', from: 19, to: 30, cost: 300, opens: '나무 자리' },
-    { size: '14×14', from: 16, to: 30, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
-    { size: '18×18', from: 12, to: 30, cost: 1600, opens: '객실 별채' },
-    { size: '22×22', from: 8, to: 30, cost: 3000, opens: '온천' },
-    { size: '26×26', from: 4, to: 30, cost: 500000, opens: '더 넓은 마을 · 큰 뽐내기 장식(3×3) 자리', mats: { forest: 100, swamp: 100 }, chapter: 7 },
-    { size: '30×30', from: 0, to: 30, cost: 2000000, opens: '최대 크기', mats: { mine: 150, ice: 150, abyss: 150 }, bossMats: { eye: 3 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
+    { size: '8×8', from: 34, to: 42, cost: 0, opens: '여관 본관, 우물, 모닥불' },
+    { size: '11×11', from: 31, to: 42, cost: 300, opens: '나무 자리' },
+    { size: '14×14', from: 28, to: 42, cost: 800, opens: '주점·훈련장·텃밭·게시판·대장간' },
+    { size: '18×18', from: 24, to: 42, cost: 1600, opens: '객실 별채' },
+    { size: '22×22', from: 20, to: 42, cost: 3000, opens: '온천' },
+    { size: '26×26', from: 16, to: 42, cost: 500000, opens: '더 넓은 마을 · 큰 뽐내기 장식(3×3) 자리', mats: { forest: 100, swamp: 100 }, chapter: 7 },
+    { size: '30×30', from: 12, to: 42, cost: 2000000, opens: '더 넓은 마을', mats: { mine: 150, ice: 150, abyss: 150 }, bossMats: { eye: 3 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
+    { size: '34×34', from: 8, to: 42, cost: 6000000, opens: '더 넓은 마을', mats: { mine: 450, ice: 450, abyss: 450 }, bossMats: { eye: 9 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
+    { size: '38×38', from: 4, to: 42, cost: 12000000, opens: '더 넓은 마을', mats: { mine: 900, ice: 900, abyss: 900 }, bossMats: { eye: 18 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
+    { size: '42×42', from: 0, to: 42, cost: 20000000, opens: '최대 크기', mats: { mine: 1500, ice: 1500, abyss: 1500 }, bossMats: { eye: 30 }, chapter: 7, starsAlt: { stars: 5, abyss: 10 } },
   ] as { size: string; from: number; to: number; cost: number; opens: string; mats?: Partial<Record<'forest' | 'swamp' | 'mine' | 'ice' | 'abyss', number>>; bossMats?: Record<string, number>; chapter?: number; starsAlt?: { stars: number; abyss: number } }[],
   /** LAND2: v7(맵 24) 때 값 — 옛 저장 옮기기(v6→v7)는 이 값으로, 그다음 v7→v8에서 +8 */
   v7: { mapSize: 24, landTo: 22, dungeon: [21, 10] as [number, number], shift: 8 },
+  /** LAND10: v8(맵 32) → v9(맵 44) 좌표 이동 (저장 · 이웃 모습 v3 → v4 · 예시 마을 배치표) */
+  v8: { mapSize: 32, shift: 12 },
   /** 땅 개편 전(맵 14) 단계별 앞쪽 가장자리 — 옛 저장 좌표 옮기기용 (dx = dy = 22 - 이 값) */
   oldLandTo: [10, 11, 12, 13, 14],
   economy: {
@@ -344,9 +351,9 @@ export const CONFIG = {
     dayStartHour: 6,
     nightStartHour: 22,
   },
-  /** 땅 넓히기에 필요한 평판 별 (단계 1~5) */
+  /** 땅 넓히기에 필요한 평판 별 (단계 1~10) — 평판 별은 ★5까지라 ★6(7~10단계)은 land[].starsAlt(★5 + 별의 심연 10 돌파)로 채운다 */
   // 핫픽스 8: 땅 4단계 ★3 → ★2 (장부 4장 대장간 자리가 없을 때 땅을 넓힐 수 있게)
-  landStars: [0, 1, 2, 2, 4, 5, 6],
+  landStars: [0, 1, 2, 2, 4, 5, 6, 6, 6, 6],
   /** 꺼져 있던 동안 (방치) */
   offline: {
     /** 이만큼(현실 시간)까지만 쌓인다 (ECONOMY §1 economy.idleHours와 같게) */
@@ -1461,7 +1468,7 @@ export const CONFIG = {
   save: {
     key: 'legacy-of-adventure-save',
     reportKey: 'legacy-of-adventure-reports',
-    version: 8,
+    version: 9,
     /** 자동 저장 간격 (초). 건설·레벨업 직후에도 저장 */
     autosaveSeconds: 10,
   },

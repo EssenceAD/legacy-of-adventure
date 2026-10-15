@@ -156,13 +156,22 @@ export function litGround(gr: Ground, L: NightLook, bounds: [number, number] = l
 /** 지금 밤 단계의 바닥 색 규칙 (render가 쓴다) */
 export const lookFor = (nl: number) => nightLook(nl, CONFIG.dayNight.tintSteps, vis('calmWorld'));
 
+/**
+ * LAND10: 바닥 그림이 덮는 칸 범위 [R0, R1) (x·y 같이). 앞쪽은 늘 맵 끝 + 숲 M겹.
+ *  뒤쪽은 맵 0 − M 대신 「땅 뒤 가장자리 − M」과 0 중 작은 쪽 → 땅 1~7단계는 LAND2 때와 같은 크기(56칸 · 1792×896)·같은 숲 무늬,
+ *  8·9·10단계만 4칸씩 커진다 (60·64·68칸 → 10단계 2176×1088). 맵(44)만큼 늘 크게 굽지 않게 (폰 메모리)
+ */
+export function groundSpan(stage = curLand()): [number, number] {
+  return [Math.min(0, landBounds(stage)[0] - M), N + M];
+}
 function drawGround(g: number, key: string): Ground {
-  const W = N * TW + TW * 2 * M;
-  const H = N * TH + TH * 2 * M;
+  const [R0, R1] = groundSpan();
+  const W = (R1 - R0) * TW;
+  const H = (R1 - R0) * TH;
   const c = canvas(W, H);
   const p = P(c.getContext('2d')!);
   const ox = W / 2;
-  const oy = TH * M;
+  const oy = -R0 * TH;
   const r = rng(11);
   // 맵 밖 숲 바닥
   p.rect(0, 0, W, H, calmForest('#3e6a34'));
@@ -176,8 +185,8 @@ function drawGround(g: number, key: string): Ground {
   //  다음 단계 땅은 미리 보여 준다 (조금 밝은 숲 바닥 · 어린 나무 · 점선 테두리)
   const st = curLand();
   const nextIn = (x: number, y: number) => st < CONFIG.land.length && inLand(x, y, st + 1) && !inLand(x, y);
-  for (let y = -M; y < N + M; y++)
-    for (let x = -M; x < N + M; x++) {
+  for (let y = R0; y < R1; y++)
+    for (let x = R0; x < R1; x++) {
       const X = ox + sx(x, y);
       const Y = oy + sy(x, y);
       const land = inLand(x, y);
@@ -265,8 +274,8 @@ function drawGround(g: number, key: string): Ground {
   const keep = new Set<string>();
   for (const pr of gradeProps(g)) for (let j = -1; j <= pr.fh; j++) for (let i = -1; i <= pr.fw; i++) keep.add(`${pr.x + i},${pr.y + j}`);
   for (const fk of gradeFolk(g)) keep.add(`${Math.floor(fk.x)},${Math.floor(fk.y)}`);
-  for (let y = -M; y < N + M; y++)
-    for (let x = -M; x < N + M; x++) {
+  for (let y = R0; y < R1; y++)
+    for (let x = R0; x < R1; x++) {
       const v = wr();
       const k0: Wild['k'] = wr() < 0.6 ? 'pine' : 'tree';
       const k: Wild['k'] = nextIn(x, y) ? (wr() < 0.7 ? 'sapling' : k0) : k0;

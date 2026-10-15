@@ -27,9 +27,10 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
   if (!layout.some((e) => e[0] === 'inn')) return null;
   // 땅 개편 전(v1, 맵 14) 마을: 내 저장과 같은 규칙으로 좌표를 옮긴다
   // LAND2: v1(맵 14) → v7 옮김 + 8 · v2(맵 24) → +8
+  // LAND10: v1·v2 → (위) + 12 · v3(맵 32) → +12 · v4(맵 44) 그대로
   const ver = s.v ?? 1;
-  if (ver < 3) {
-    const k = (ver < 2 ? bigMapShift(Number(s.land) || 1) : 0) + CONFIG.v7.shift;
+  const k = ver < 4 ? (ver < 3 ? (ver < 2 ? bigMapShift(Number(s.land) || 1) : 0) + CONFIG.v7.shift : 0) + CONFIG.v8.shift : 0;
+  if (k) {
     for (const e of layout) {
       e[1] += k;
       e[2] += k;
@@ -50,7 +51,8 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     title: typeof (s as { title?: unknown }).title === 'string' ? ((s as { title: string }).title).slice(0, 12) : '',
     layout,
     // FEEDBACK23 §5: 옮긴 입구 (v3부터만 · 숫자가 아니면 자동)
-    ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) } : {}),
+    // LAND10: v3 입구는 맵 32 좌표 → +12 (layout과 같은 만큼)
+    ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) + (ver < 4 ? CONFIG.v8.shift : 0) } : {}),
     // LUXE §2: 꺼내 둔 펫 (아는 id · 3개까지 · 없으면 빼기)
     ...(cleanPetIds((s as { pets?: unknown }).pets).length ? { pets: cleanPetIds((s as { pets?: unknown }).pets) } : {}),
   };

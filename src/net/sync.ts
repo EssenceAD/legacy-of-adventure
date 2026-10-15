@@ -30,7 +30,8 @@ export function villageSnapshot() {
   return {
     // v2 = 땅 개편(맵 24) 좌표. v1(맵 14)은 보는 쪽(toNeighbor)에서 옮긴다
     // v3 = LAND2(맵 32) 좌표. v1·v2는 보는 쪽(toNeighbor)에서 옮긴다
-    v: 3,
+    // v4 = LAND10(맵 44) 좌표. v1~v3는 보는 쪽(toNeighbor)에서 옮긴다 (v3 → +12)
+    v: 4,
     land: world.home?.land ?? S.land,
     innName: S.innName,
     // GUEST_SPEC §2: 게스트는 주인 이름 대신 「○○ 여관 주인」(보는 쪽에서)
@@ -42,7 +43,7 @@ export function villageSnapshot() {
     grade: townGrade(),
     title: myTitle(),
     trophies: [...P.trophies],
-    // FEEDBACK23 §5: 옮긴 마을 입구 x (v3 좌표 · 옮긴 적 없으면 빼서 보는 쪽이 자동으로)
+    // FEEDBACK23 §5: 옮긴 마을 입구 x (v4 좌표 · 옮긴 적 없으면 빼서 보는 쪽이 자동으로)
     ...(typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
     // LUXE §2: 꺼내 둔 펫 (켰고 있을 때만 — 보는 쪽은 아는 id만 그린다)
     ...(petSnapshot().length ? { pets: petSnapshot() } : {}),

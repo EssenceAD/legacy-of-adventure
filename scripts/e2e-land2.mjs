@@ -3,6 +3,8 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const name = process.argv[2] ?? 'phone';
+// LAND10: v7 → v9는 +8 +12 = +20 · 7단계 땅 [12,42)
+const SH = 20;
 const raw = fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8');
 const old = JSON.parse(raw);
 const DEV = { phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, pc: { viewport: { width: 1440, height: 900 } } };
@@ -45,12 +47,12 @@ await settle();
 // ── v7 → v8: 건물 수 · 좌표 +8 (배치 검사로 옮겨진 건 v7 때도 옮겨지던 1개만)
 const objs = await p.evaluate(() => window.__world.objs.map((o) => [o.kind, o.tx, o.ty, o.lvl]));
 ok(objs.length === old.buildings.length, `건물 수 그대로 ${old.buildings.length} → ${objs.length}`);
-const unmatched = old.buildings.filter((b) => !objs.some(([k, x, y, l]) => k === b.kind && x === b.tx + 8 && y === b.ty + 8 && l === b.lvl));
-ok(unmatched.length <= 1, `+8 그대로 놓인 건물 ${old.buildings.length - unmatched.length}/${old.buildings.length} (다른 것: ${unmatched.map((b) => b.kind).join(',') || '없음'})`);
+const unmatched = old.buildings.filter((b) => !objs.some(([k, x, y, l]) => k === b.kind && x === b.tx + SH && y === b.ty + SH && l === b.lvl));
+ok(unmatched.length <= 1, `+${SH} 그대로 놓인 건물 ${old.buildings.length - unmatched.length}/${old.buildings.length} (다른 것: ${unmatched.map((b) => b.kind).join(',') || '없음'})`);
 ok(await p.evaluate(() => window.__S.land === 5), '땅 5단계 그대로');
 await p.screenshot({ path: `${dir}/${name}_01_v8.png` });
 await p.evaluate(() => window.__saveNow());
-ok(await p.evaluate(() => JSON.parse(localStorage.getItem('legacy-of-adventure-save')).version === 8), '다시 저장하면 v8');
+ok(await p.evaluate(() => JSON.parse(localStorage.getItem('legacy-of-adventure-save')).version === 9), '다시 저장하면 v9');
 const f5 = await fps();
 ok(f5 >= 25, `땅 5단계 fps ${f5}`);
 
@@ -97,18 +99,18 @@ await W(3500);
 await settle();
 ok(await p.evaluate(() => window.__S.land === 7 && window.__P.bossMats.eye === 2), '7단계로 넓힘 (30×30) · 보스 재료 3 냄');
 const lb = await p.evaluate(() => window.__town.landBounds());
-ok(lb[0] === 0 && lb[1] === 30, '땅 [0,30)');
+ok(lb[0] === 12 && lb[1] === 42, '땅 [12,42)');
 await p.screenshot({ path: `${dir}/${name}_04_land7.png` });
 // 새 땅(뒤쪽 모서리)에 짓기
 const built = await p.evaluate(() => {
   const before = window.__world.objs.length;
-  window.__placeAt?.('tree', 1, 1);
+  window.__placeAt?.('tree', 13, 13);
   return [before, window.__world.objs.length];
 });
 if (built[1] === built[0]) {
-  await p.evaluate(() => { window.__town.addObj('tree', 1, 1); window.__town.rebuildPaths(); });
+  await p.evaluate(() => { window.__town.addObj('tree', 13, 13); window.__town.rebuildPaths(); });
 }
-ok(await p.evaluate(() => window.__world.objs.some((o) => o.kind === 'tree' && o.tx === 1 && o.ty === 1)), '새 땅 맨 뒤 모서리(1,1)에 장식');
+ok(await p.evaluate(() => window.__world.objs.some((o) => o.kind === 'tree' && o.tx === 13 && o.ty === 13)), '새 땅 맨 뒤 모서리(13,13)에 장식');
 const f7 = await fps();
 ok(f7 >= 25, `땅 7단계 fps ${f7}`);
 // 폰 ×0.5: 7단계 땅이 화면에 거의 다 들어온다
