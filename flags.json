@@ -96,5 +96,6 @@
   "giftDecoFree": true,
   "repPick": true,
   "gateFix": true,
-  "pixText": true
+  "pixText": true,
+  "nbTabs": true
 }
