@@ -17,7 +17,7 @@ export interface GroundPal {
   rune: string;
 }
 export type Particle = 'leaf' | 'spore' | 'dust' | 'snow' | 'star' | 'spray' | 'sand' | 'ember' | 'petal' | 'upfall';
-export type Light = 'sun' | 'fog' | 'lamp' | 'cold' | 'rise' | 'dusk' | 'noon' | 'lava' | 'skylight' | 'dark';
+export type Light = 'sun' | 'fog' | 'lamp' | 'cold' | 'rise' | 'dusk' | 'noon' | 'lava' | 'skylight' | 'dark' | 'rift';
 export interface Theme {
   pal: GroundPal;
   /** 필드 안 바닥 한 점 (wx, wy = 필드 칸 좌표 · h = 점마다 난수 · n = 큰 얼룩 노이즈) */

@@ -291,6 +291,8 @@ export interface Field {
   fanfare?: boolean;
   /** RAIDWEAPON §3' 하늘 균열 판: 보라 하늘 (승패 없이 피해만 · 화면은 ui/rift.ts) */
   world?: boolean;
+  /** RIFTART: 균열 보스 모습 키 (sky · ember · frost — 하늘 배경 소품·금 배치가 이걸로 정해진다) */
+  riftKey?: string;
   /** PARTY §2: 이 판의 조합 보너스 */
   syn?: SynFx;
   /** ROLES (플래그 rolesV2): 켜졌나 · 사제 한 번 살리기 남은 횟수 · 탱·힐·딜 조합 (예고 +초) */
@@ -410,7 +412,10 @@ export function makeField(region: RegionId, stage: number, members: Actor[], aut
   f.look = opts.look;
   f.noFold = opts.noFold;
   f.fanfare = opts.music ? true : opts.fanfare;
-  if (opts.world) f.world = true;
+  if (opts.world) {
+    f.world = true;
+    f.riftKey = (opts.raid?.look.id ?? '').replace(/^rift_/, '') || 'sky';
+  }
   f.syn = syn;
   if (rolesOn) {
     f.roles = true;

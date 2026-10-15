@@ -1450,9 +1450,9 @@ export const CONFIG = {
       daily: { frags: 1, dust: 40, kill: 1, topN: 3, top: 2, title: '균열의 영웅' },
       weekly: { boxTop: 3, fragTop: 10, fragN: 3 },
       bosses: {
-        sky: { name: '하늘을 삼킨 것', base: 'nb_deep', minion: 'na_slime4', scale: 1.5, hue: 40, sat: 1.2, r: 1.1 },
-        ember: { name: '잿불 거인', base: 'nb_flam', minion: 'na_flam2', scale: 1.5, hue: -40, sat: 1.1, r: 0.95 },
-        frost: { name: '서리 뱀', base: 'nb_dragong', minion: 'na_spirit', scale: 1, hue: 150, sat: 0.8, r: 0.95 },
+        sky: { name: '하늘을 삼킨 것', base: 'nb_deep', minion: 'na_butterfly', scale: 1.5, hue: 40, sat: 1.2, r: 1.1 },
+        ember: { name: '잿불 거인', base: 'nb_flam', minion: 'na_lantern', scale: 1.5, hue: -40, sat: 1.1, r: 0.95 },
+        frost: { name: '서리 뱀', base: 'nb_dragong', minion: 'na_owl', scale: 1, hue: 150, sat: 0.8, r: 0.95 },
       } as Record<string, { name: string; base: string; minion: string; scale: number; hue: number; sat: number; r: number }>,
       notices: [0.5, 0.25, 0],
       rankTop: 30,

@@ -4,6 +4,7 @@ import { CONFIG } from '../data/config';
 import type { BossLook } from './mons';
 import { loadMon, type MonSheet } from './mon';
 import { sheets } from './draw';
+import { RIFT_ART } from '../data/riftArt';
 
 const PAD = 3;
 const AURA = [162, 75, 255];
@@ -127,12 +128,23 @@ export function riftLook(look: string): BossLook {
   return { id: `rift_${key}`, name: `균열 너머의 ${c.name}`, pats: ['균열 돌진', '별빛 내려찍기', '그림자 부르기'], r: c.r, minion: c.minion };
 }
 
-/** 균열 보스 시트를 미리 만들어 sheets 에 넣는다 (이미 있으면 그대로) — 실패하면 false (그땐 startCombat 이 예비 그림) */
+/** RIFTART: 이 모습의 손그림 시트가 있나 (public/assets/mon/rift_<look>/ · scripts/copy-rift-art.mjs 가 목록을 만든다) */
+export const riftArtOf = (key: string, list: readonly string[] = RIFT_ART.bosses): boolean => list.includes(key);
+
+/** 균열 보스 시트를 미리 만들어 sheets 에 넣는다 (이미 있으면 그대로) — 실패하면 false (그땐 startCombat 이 예비 그림)
+ *  RIFTART: 손그림(rift_<look>)이 있으면 그 시트 그대로 · 없거나 못 불러오면 지금처럼 기존 보스를 키우고 색을 돌린 시트 */
 export async function prepRiftSheet(look: string): Promise<boolean> {
   const B = CONFIG.raidWeapon.world.bosses;
   const key = B[look] ? look : 'sky';
   const id = `rift_${key}`;
   if (sheets[id]) return true;
+  if (riftArtOf(key)) {
+    const art = await loadMon(id);
+    if (art) {
+      sheets[id] = art;
+      return true;
+    }
+  }
   const c = B[key];
   const base = await loadMon(c.base);
   if (!base) return false;

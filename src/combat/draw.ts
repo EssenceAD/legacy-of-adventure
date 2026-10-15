@@ -9,6 +9,7 @@ import { frameAt, flipOf, whiteOf, type MonSheet } from './mon';
 import { GRADE_COLOR, quarterOf, screenDx, type Field, type Unit } from './field';
 import { deepen, placeProps, PROP_IMG, themeOf, type GroundPal, type Theme } from './theme';
 import { saverOn } from '../engine/fps';
+import { bgMode, drawRiftCrack, drawRiftSky, RIFT_THEME, riftCalm, riftIsland } from './riftBg';
 
 /** PARTY §3: 4인 + 보스 + 부하에서 그리기가 30fps 아래로 떨어지면 이펙트 줄이기 (배터리 절약과 같은 가벼운 그림) — ui.ts가 잰다 */
 let autoLite = false;
@@ -109,9 +110,8 @@ function tile(ctx: CanvasRenderingContext2D, X: number, Y: number, fill: (px: nu
     }
   }
 }
-function buildGround(region: string, deep: boolean): HTMLCanvasElement {
+function buildGround(T: Theme, deep: boolean): HTMLCanvasElement {
   const N = C.field;
-  const T = themeOf(region);
   // 보스 「깊은 곳」: 같은 무늬를 어둡게
   const P = deep ? (Object.fromEntries(Object.entries(T.pal).map(([k, v]) => [k, k === 'rune' ? v : deepen(v, 0.32)])) as unknown as GroundPal) : T.pal;
   const pad = 3;
@@ -153,22 +153,6 @@ function buildGround(region: string, deep: boolean): HTMLCanvasElement {
       });
     }
   return c;
-}
-// ───────── RAIDWEAPON §3' 하늘 균열 배경 ─────────
-const RIFT_VOID = '#170a2c';
-const RIFT_TINT = 'rgba(118, 52, 206, 0.18)';
-/** 보라 하늘 별: 카메라를 조금 따라오는 점 (화면 크기와 상관없이 같은 자리) · 천천히 반짝 */
-function riftStars(ctx: CanvasRenderingContext2D, LW: number, LH: number, ox: number, oy: number) {
-  const t = performance.now() / 1000;
-  for (let i = 0; i < 70; i++) {
-    const hx = hash(i * 7.1, 3.3);
-    const hy = hash(i * 1.7, 9.1);
-    const x = Math.round(((hx * 997 + ox * 0.3) % LW + LW) % LW);
-    const y = Math.round(((hy * 991 + oy * 0.3) % LH + LH) % LH);
-    const tw = 0.5 + 0.5 * Math.sin(t * (0.8 + hx * 1.6) + i);
-    ctx.fillStyle = i % 5 ? `rgba(201, 166, 255, ${0.25 + tw * 0.5})` : `rgba(255, 236, 255, ${0.4 + tw * 0.6})`;
-    ctx.fillRect(x, y, 1, 1);
-  }
 }
 /** 문양 점: 각도를 여덟으로 나눈 나머지 (-0.5~0.5) */
 const fr8 = (a: number) => {
@@ -214,14 +198,17 @@ export function digits(ctx: CanvasRenderingContext2D, text: string, x: number, y
 let camX = 0;
 let camY = 0;
 export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: number) {
-  const deep = f.stage >= 10;
-  const T = themeOf(f.region);
-  const gk = `${f.region}|${deep ? 1 : 0}|${f.stage}`;
+  // RIFTART: 하늘 균열 판은 심연 바닥이 아니라 밤하늘 + 구름 섬 (riftBg.ts)
+  const rift = bgMode(f) === 'rift';
+  const deep = !rift && f.stage >= 10;
+  const T = rift ? RIFT_THEME : themeOf(f.region);
+  const gk = rift ? `rift|0|${f.riftKey ?? 'sky'}` : `${f.region}|${deep ? 1 : 0}|${f.stage}`;
   if (groundKey !== gk) {
-    if (groundKey.split('|').slice(0, 2).join('|') !== gk.split('|').slice(0, 2).join('|')) ground = buildGround(f.region, deep);
+    if (groundKey.split('|').slice(0, 2).join('|') !== gk.split('|').slice(0, 2).join('|')) ground = rift ? riftIsland(buildGround(T, false)) : buildGround(T, deep);
     groundKey = gk;
-    edgeProps = placeProps(f.region, f.stage, C.field);
+    edgeProps = rift ? [] : placeProps(f.region, f.stage, C.field);
   }
+  const calm = rift && (fxLite() || riftCalm());
   const N = C.field;
   // 카메라: 주인공을 따라 (정수 px) + 흔들림
   const tx = sx(f.me.x, f.me.y);
@@ -245,15 +232,14 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     oy += Math.round((Math.random() * 2 - 1) * a);
   }
   const W = (x: number, y: number): [number, number] => [ox + Math.round(sx(x, y)), oy + Math.round(sy(x, y))];
-  ctx.fillStyle = f.world ? RIFT_VOID : deep ? deepen(T.pal.void, 0.32) : T.pal.void;
-  ctx.fillRect(0, 0, LW, LH);
-  // RAIDWEAPON §3' 하늘 균열: 보라 밤하늘 별 (바닥 밖) → 바닥 → 보라 빛 한 겹
-  if (f.world) riftStars(ctx, LW, LH, ox, oy);
-  if (ground) ctx.drawImage(ground, ox - ground.width / 2, oy - 20 - 3 * TH - TH / 2 + TH / 2);
-  if (f.world) {
-    ctx.fillStyle = RIFT_TINT;
+  // RIFTART 하늘 균열: 밤하늘(그라데이션 · 별 · 소품) → 구름 섬 → 빛나는 금 (싸우는 이들은 그 위)
+  if (rift) drawRiftSky(ctx, LW, LH, f.riftKey ?? 'sky', calm);
+  else {
+    ctx.fillStyle = deep ? deepen(T.pal.void, 0.32) : T.pal.void;
     ctx.fillRect(0, 0, LW, LH);
   }
+  if (ground) ctx.drawImage(ground, ox - ground.width / 2, oy - 20 - 3 * TH - TH / 2 + TH / 2);
+  if (rift) drawRiftCrack(ctx, calm);
   // REGIONS2 §4: 심연의 바닥 — 바닥 별 자국 넷 (보스 체력 25%마다 하나씩 켜짐)
   if (T.light === 'dark') starMarks(ctx, f, W, false);
 
@@ -888,6 +874,13 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
         ctx.ellipse(x, y, 60, 22, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+  } else if (T.light === 'rift') {
+    // RIFTART: 위쪽 금에서 내려오는 옅은 보라 빛
+    const g = ctx.createLinearGradient(0, 0, 0, LH * 0.55);
+    g.addColorStop(0, 'rgba(176,112,255,0.14)');
+    g.addColorStop(1, 'rgba(176,112,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, Math.ceil(LH * 0.55));
   } else if (T.light === 'dark') {
     // 아주 어둡게 · 위로 아득한 입구에 작은 빛 하나 · 켜진 별 자국만 빛난다
     ctx.fillStyle = `rgba(2,2,10,${deep ? 0.42 : 0.32})`;
@@ -907,8 +900,9 @@ function atmos(ctx: CanvasRenderingContext2D, f: Field, T: Theme, deep: boolean,
   }
   // ── 공기 입자 (저사양이면 끔) ──
   if (low) return;
-  if (moteRegion !== f.region) {
-    moteRegion = f.region;
+  const mk = f.world ? 'rift' : f.region;
+  if (moteRegion !== mk) {
+    moteRegion = mk;
     motes.length = 0;
     for (let i = 0; i < MOTES; i++) motes.push(spawnMote(T.particle, LW, LH, true));
   }
