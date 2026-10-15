@@ -9,14 +9,17 @@
 --  · 「하루」 = 한국 시각에서 5시간을 뺀 날짜 (05:00 ~ 다음 날 04:59 가 같은 날) → world_bosses.day
 --  · 한 사람 하루(= 그 보스) 3번 · 한 판 피해는 서버가 자른다: 파티 전투력 합 × c_cap · 보스 최대 체력 × c_hit_max_frac (시험 보스는 이 줄 없음)
 --  · 이상치: 피해 ÷ 전투력 > c_flag_ratio 이거나 보낸 값이 잘렸으면 world_hits.flagged = true (막지 않음 · 나중에 형철/Claude가 본다)
---  · 다음 날 체력 = 전날 최대 체력 × (24시간 ÷ 전날 기간) × (처치했으면 1.15 · 못 했으면 0.8) → [c_hp_min, c_hp_max]
---    (첫날은 기간이 짧으니 하루치로 늘려서 계산)
+--  · 체력 (10/15 형철 정정 · 시간 늘리기 없음):
+--    첫 보스 = world_seed(c_hp_first = 300만 · 맨 아래 한 줄) · 둘째 보스(둘째 날) = c_hp_second 600만 고정
+--    그 뒤 = 전날 최대 체력 × (처치했으면 c_kill_mult 1.15 · 못 했으면 c_miss_mult 0.8) → [c_hp_min 300만, c_hp_max 3,000만]
 --  · 보상은 기간이 끝난 뒤(다음 05:00) world_settle → world_rewards 표 → 클라이언트가 접속할 때 world_claim()으로 한 번만 받아 우편함에 넣는다
 --    (우편함은 클라이언트 저장 안에만 있어서 서버 표로 건넨다 · claimed_at 이 있으면 다시 안 줌)
 --    버닝 주말 조각 ×2 는 클라이언트가 받을 때 그 보상의 day 로 판정한다 (서버 값은 그대로)
 --  · 주간 = 월요일 05:00 ~ 다음 월요일 05:00 (day 기준 date_trunc('week')) · 주가 끝나면 world_roll 이 world_settle_week
 --  · pg_cron 이 없으면: 클라이언트가 앱을 켤 때 world_roll() 을 한 번 부른다 (가볍고 여러 번 불러도 같다 · 동시에 불러도 잠금으로 한 번만)
---  · 운영·테스트 계정(profiles.is_test)은 순위·상위 보상에서 빠진다 (참여·처치 보상은 받음)
+--  · 운영·테스트 계정(profiles.is_test · 운영자 public.admins)은 순위(오늘 상위 · 내 순위 · 주간 합산)·상위 보상에서 빠진다 (참여·처치 보상은 받음)
+--    → world_ranked(user_id) 한 곳에서 판정 · 시험 보스 피해도 순위·주간 합산에 안 들어감
+--  · world_rank 는 user_id 를 돌려주지 않는다 (여관 이름 · 대표 영웅 · 피해 · 순위 · 내 줄 표시 mine 만) · 내 순위는 서버가 auth.uid() 로 계산
 --  · 숫자는 src/data/config.ts CONFIG.raidWeapon.world 와 같게 (서버 값이 진짜 · 바꾸면 둘 다)
 
 begin;
@@ -34,10 +37,12 @@ as $$
     when 'flag_ratio'   then 35           -- 피해 ÷ 전투력 > 이 값이면 표시만 (world.flagRatio)
     when 'hit_max_frac' then 0.1          -- 한 판 피해 ≤ 보스 최대 체력 × 이 값 (world.hitMaxFrac · 시험 보스 제외)
     when 'max_power'    then 100000000    -- 전투력으로 믿는 최대값 (넘으면 이 값으로)
-    when 'hp_min'       then 1000000      -- 다음 날 체력 하한 (world.hpMin)
-    when 'hp_max'       then 500000000    -- 다음 날 체력 상한 (world.hpMax)
-    when 'kill_mult'    then 1.15         -- 전날 처치 → × (world.killMult)
-    when 'miss_mult'    then 0.8          -- 전날 못 잡음 → × (world.missMult)
+    when 'hp_first'     then 3000000      -- 첫 보스 체력 (맨 아래 world_seed 예시 · world.hpFirst)
+    when 'hp_second'    then 6000000      -- 둘째 보스(둘째 날) 체력 고정 (world.hpSecond)
+    when 'hp_min'       then 3000000      -- 셋째 날부터 체력 하한 (world.hpMin)
+    when 'hp_max'       then 30000000     -- 셋째 날부터 체력 상한 (world.hpMax)
+    when 'kill_mult'    then 1.15         -- 셋째 날부터: 전날 처치 → × (world.killMult)
+    when 'miss_mult'    then 0.8          -- 셋째 날부터: 전날 못 잡음 → × (world.missMult)
     when 'd_frags'      then 1            -- 그날 참여: 무기 조각 (world.daily.frags)
     when 'd_dust'       then 40           -- 그날 참여: 잿빛 가루 (world.daily.dust)
     when 'd_kill'       then 1            -- 그날 처치 성공(참여자 모두): 조각 + (world.daily.kill)
@@ -136,6 +141,18 @@ alter table public.world_rewards enable row level security;
 alter table public.world_weeks enable row level security;
 revoke all on table public.world_bosses, public.world_hits, public.world_rewards, public.world_weeks from anon, authenticated;
 
+-- 순위에 넣나: 프로필이 있고 · 테스트 계정(profiles.is_test)이 아니고 · 운영자(public.admins)가 아님
+--  (오늘 상위 · 내 순위 · 주간 합산 · 하루/주간 순위 보상 모두 이것 하나로)
+create or replace function public.world_ranked(p_uid uuid)
+ returns boolean
+ language sql
+ stable
+ set search_path to 'public'
+as $$
+  select exists (select 1 from public.profiles p where p.id = p_uid and not coalesce(p.is_test, false))
+     and not exists (select 1 from public.admins a where a.user_id = p_uid);
+$$;
+
 -- ───────── 2. 보스 상태 (안에서만 쓴다) ─────────
 --  {"id","name","look","hp_max","hp_left","starts_at","ends_at","day","test","killed","killer_inn","players","my_tries","my_total","my_rank","tries_max","now"}
 
@@ -151,8 +168,9 @@ as $$
   ),
   rk as (
     select t.user_id, t.dmg, rank() over (order by t.dmg desc) as r
-      from tot t join public.profiles p on p.id = t.user_id
-     where not coalesce(p.is_test, false) and t.dmg > 0
+      from tot t
+     where t.dmg > 0
+       and (public.world_ranked(t.user_id) or exists (select 1 from public.world_bosses b0 where b0.id = p_boss and b0.test))  -- 시험 보스는 운영자도 내 순위 보이게
   )
   select jsonb_build_object(
     'id', b.id, 'name', b.name, 'look', b.look, 'hp_max', b.hp_max, 'hp_left', b.hp_left,
@@ -256,7 +274,12 @@ end $$;
 
 -- ───────── 5. world_rank(p_boss, p_limit) — 하늘 균열 순위: 그날(보스) 피해 상위 n + 내 순위 · 이번 주 합산 상위 n + 내 순위 ─────────
 --  p_boss 가 null 이면 지금(또는 마지막) 보스 · 같은 피해면 같은 순위 · 줄 순서는 먼저 그 피해에 닿은 사람이 위
---  {"boss_id","day","week_start","name","day_rows":[{rank,user_id,inn_name,nickname,rep_hero,dmg}],"me_day":{rank,dmg}|null,"week_rows":[…],"me_week":{rank,dmg}|null}
+--  테스트 계정·운영자(world_ranked = false)는 줄에도 · 순위 번호에도 · 주간 합산에도 없음 · 시험 보스 피해도 없음
+--  user_id 는 돌려주지 않는다 — 줄마다 mine(= 부른 사람 auth.uid() 의 줄인가)만 · 내 순위·내 피해 합은 서버가 따로 계산
+--  {"boss_id","day","week_start","name",
+--   "day_rows":[{rank,inn_name,rep_hero,dmg,mine}],"my_rank":n|null,"my_total":n,
+--   "week_rows":[…],"my_week_rank":n|null,"my_week_total":n}
+--  my_rank = 순위에 없음(기록 없음 · 로그인 안 함 · 테스트 계정)이면 null · my_total = 내 피해 합 (없으면 0)
 
 create or replace function public.world_rank(p_boss bigint default null, p_limit integer default 30)
  returns jsonb
@@ -272,8 +295,10 @@ declare
   v_uid uuid := auth.uid();
   v_day jsonb;
   v_week jsonb;
-  v_me_d jsonb;
-  v_me_w jsonb;
+  v_my_r bigint;
+  v_my_t bigint;
+  v_myw_r bigint;
+  v_myw_t bigint;
 begin
   if p_boss is not null then select * into v_b from public.world_bosses where id = p_boss and not test;
   else select * into v_b from public.world_bosses where not test and starts_at <= now() order by starts_at desc limit 1;
@@ -284,13 +309,14 @@ begin
   with tot as (
     select h.user_id, sum(h.dmg)::bigint as dmg, max(h.created_at) as last_at from public.world_hits h where h.boss_id = v_b.id group by h.user_id
   ), rk as (
-    select t.*, rank() over (order by t.dmg desc) as r from tot t join public.profiles p on p.id = t.user_id where not coalesce(p.is_test, false) and t.dmg > 0
+    select t.*, rank() over (order by t.dmg desc) as r from tot t where t.dmg > 0 and public.world_ranked(t.user_id)
   )
   select
-    coalesce((select jsonb_agg(jsonb_build_object('rank', x.r, 'user_id', x.user_id, 'inn_name', p.inn_name, 'nickname', p.nickname, 'rep_hero', p.rep_hero, 'dmg', x.dmg) order by x.dmg desc, x.last_at asc)
+    coalesce((select jsonb_agg(jsonb_build_object('rank', x.r, 'inn_name', p.inn_name, 'rep_hero', p.rep_hero, 'dmg', x.dmg, 'mine', coalesce(x.user_id = v_uid, false)) order by x.dmg desc, x.last_at asc)
       from (select * from rk order by dmg desc, last_at asc limit v_n) x join public.profiles p on p.id = x.user_id), '[]'::jsonb),
-    (select jsonb_build_object('rank', x.r, 'dmg', x.dmg) from rk x where x.user_id = v_uid)
-  into v_day, v_me_d;
+    (select x.r from rk x where x.user_id = v_uid),
+    (select t.dmg from tot t where t.user_id = v_uid)
+  into v_day, v_my_r, v_my_t;
 
   with tot as (
     select h.user_id, sum(h.dmg)::bigint as dmg, max(h.created_at) as last_at
@@ -298,16 +324,18 @@ begin
      where not b.test and b.day >= v_ws and b.day < v_ws + 7
      group by h.user_id
   ), rk as (
-    select t.*, rank() over (order by t.dmg desc) as r from tot t join public.profiles p on p.id = t.user_id where not coalesce(p.is_test, false) and t.dmg > 0
+    select t.*, rank() over (order by t.dmg desc) as r from tot t where t.dmg > 0 and public.world_ranked(t.user_id)
   )
   select
-    coalesce((select jsonb_agg(jsonb_build_object('rank', x.r, 'user_id', x.user_id, 'inn_name', p.inn_name, 'nickname', p.nickname, 'rep_hero', p.rep_hero, 'dmg', x.dmg) order by x.dmg desc, x.last_at asc)
+    coalesce((select jsonb_agg(jsonb_build_object('rank', x.r, 'inn_name', p.inn_name, 'rep_hero', p.rep_hero, 'dmg', x.dmg, 'mine', coalesce(x.user_id = v_uid, false)) order by x.dmg desc, x.last_at asc)
       from (select * from rk order by dmg desc, last_at asc limit v_n) x join public.profiles p on p.id = x.user_id), '[]'::jsonb),
-    (select jsonb_build_object('rank', x.r, 'dmg', x.dmg) from rk x where x.user_id = v_uid)
-  into v_week, v_me_w;
+    (select x.r from rk x where x.user_id = v_uid),
+    (select t.dmg from tot t where t.user_id = v_uid)
+  into v_week, v_myw_r, v_myw_t;
 
   return jsonb_build_object('boss_id', v_b.id, 'day', v_b.day, 'week_start', v_ws, 'name', v_b.name,
-    'day_rows', v_day, 'me_day', v_me_d, 'week_rows', v_week, 'me_week', v_me_w);
+    'day_rows', v_day, 'my_rank', v_my_r, 'my_total', coalesce(v_my_t, 0),
+    'week_rows', v_week, 'my_week_rank', v_myw_r, 'my_week_total', coalesce(v_myw_t, 0));
 end $$;
 
 -- ───────── 6. 정산: world_settle(보스) — 하루 보상 (기간이 끝난 보스만 · 한 번만) ─────────
@@ -328,7 +356,7 @@ begin
     with tot as (
       select h.user_id, sum(h.dmg)::bigint as dmg, max(h.created_at) as last_at from public.world_hits h where h.boss_id = v_b.id group by h.user_id having sum(h.dmg) > 0
     ), rk as (
-      select t.user_id, rank() over (order by t.dmg desc, t.last_at asc) as r from tot t join public.profiles p on p.id = t.user_id where not coalesce(p.is_test, false)
+      select t.user_id, rank() over (order by t.dmg desc, t.last_at asc) as r from tot t where public.world_ranked(t.user_id)
     )
     insert into public.world_rewards (user_id, ref, kind, day, boss_id, payload)
     select t.user_id, 'd:' || v_b.id, 'daily', v_b.day, v_b.id,
@@ -365,7 +393,7 @@ begin
      where not b.test and b.day >= v_wk and b.day < v_wk + 7
      group by h.user_id having sum(h.dmg) > 0
   ), rk as (
-    select t.user_id, t.dmg, rank() over (order by t.dmg desc, t.last_at asc) as r from tot t join public.profiles p on p.id = t.user_id where not coalesce(p.is_test, false)
+    select t.user_id, t.dmg, rank() over (order by t.dmg desc, t.last_at asc) as r from tot t where public.world_ranked(t.user_id)
   )
   insert into public.world_rewards (user_id, ref, kind, day, week, payload)
   select rk.user_id, 'w:' || v_wk, 'weekly', v_wk + 6, v_wk,
@@ -391,8 +419,8 @@ declare
   v_last public.world_bosses;
   v_r record;
   v_look text;
-  v_secs numeric;
   v_hp numeric;
+  v_n integer;
   v_day date := public.world_day(now());
 begin
   perform pg_advisory_xact_lock(hashtext('world_roll'));
@@ -412,11 +440,17 @@ begin
   -- 4. 첫 보스(world_seed) 전이면 아무것도 안 함
   select * into v_last from public.world_bosses b where not b.test order by b.starts_at desc limit 1;
   if v_last.id is null then return null; end if;
-  -- 5. 다음 보스: 순환 · 체력 = 전날 최대 × (하루 ÷ 전날 기간) × 처치 1.15 / 못 잡음 0.8 → [하한, 상한]
+  -- 5. 다음 보스: 순환 · 체력 (시간 늘리기 없음)
+  --    둘째 보스(지금까지 시험 아닌 보스가 1마리) = hp_second 고정
+  --    그 뒤 = 전날 최대 × 처치 kill_mult / 못 잡음 miss_mult → [hp_min, hp_max]
   v_look := case v_last.look when 'sky' then 'ember' when 'ember' then 'frost' else 'sky' end;
-  v_secs := greatest(3600, extract(epoch from (v_last.ends_at - v_last.starts_at)));
-  v_hp := v_last.hp_max * 86400.0 / v_secs * case when v_last.killed_at is not null then public.world_c('kill_mult') else public.world_c('miss_mult') end;
-  v_hp := least(public.world_c('hp_max'), greatest(public.world_c('hp_min'), round(v_hp)));
+  select count(*) into v_n from public.world_bosses b where not b.test;
+  if v_n <= 1 then
+    v_hp := public.world_c('hp_second');
+  else
+    v_hp := v_last.hp_max * case when v_last.killed_at is not null then public.world_c('kill_mult') else public.world_c('miss_mult') end;
+    v_hp := least(public.world_c('hp_max'), greatest(public.world_c('hp_min'), round(v_hp)));
+  end if;
   insert into public.world_bosses (name, look, hp_max, hp_left, starts_at, ends_at, day)
   values (public.world_boss_name(v_look), v_look, v_hp::bigint, v_hp::bigint, public.world_day_start(v_day), public.world_day_start(v_day + 1), v_day)
   on conflict do nothing
@@ -456,6 +490,7 @@ create or replace function public.world_seed(p_hp bigint, p_look text default 's
 as $$
 declare v_id bigint; v_day date := public.world_day(now());
 begin
+  perform pg_advisory_xact_lock(hashtext('world_roll'));  -- world_roll 과 같은 잠금 (동시에 돌아도 보스 하나)
   select b.id into v_id from public.world_bosses b where not b.test and now() >= b.starts_at and now() < b.ends_at limit 1;
   if v_id is not null then return v_id; end if;
   insert into public.world_bosses (name, look, hp_max, hp_left, starts_at, ends_at, day)
@@ -485,6 +520,7 @@ revoke all on function public.world_c(text) from public, anon, authenticated;
 revoke all on function public.world_boss_name(text) from public, anon, authenticated;
 revoke all on function public.world_day(timestamptz) from public, anon, authenticated;
 revoke all on function public.world_day_start(date) from public, anon, authenticated;
+revoke all on function public.world_ranked(uuid) from public, anon, authenticated;
 revoke all on function public.world_state(bigint, uuid) from public, anon, authenticated;
 revoke all on function public.world_settle(bigint) from public, anon, authenticated;
 revoke all on function public.world_settle_week(date) from public, anon, authenticated;
@@ -499,18 +535,17 @@ grant execute on function public.world_current(boolean) to authenticated;
 grant execute on function public.world_hit(bigint, bigint, integer) to authenticated;
 grant execute on function public.world_roll() to authenticated;
 grant execute on function public.world_claim() to authenticated;
--- 순위는 다른 랭킹처럼 로그인 안 해도 볼 수 있게 (여관 이름 · 닉네임 · 피해만)
+-- 순위는 다른 랭킹처럼 로그인 안 해도 볼 수 있게 (여관 이름 · 대표 영웅 · 피해만 · user_id 없음)
 grant execute on function public.world_rank(bigint, integer) to anon, authenticated;
 
 commit;
 
 -- ═════════ ② 첫 보스 (이 파일을 실행한 뒤 · 켜는 날 밤에 한 번) ═════════
---  켜는 순간부터 다음 05:00 KST 까지가 1회차. 체력 = 「Claude가 정함」 아래 숫자 (첫 회는 짧아서 작게):
---   시트(real_woongs · 중간 헤비)에서 한 판(60초) 피해 ≈ 40만 · 운영 세이브 ≈ 400만 → 한 판 상한(체력 × 10% = 60만)에 많이 닿음
---   첫 밤(밤 10~11시 켜기 → 05:00) 참여 ≈ 15명 × 1.5판 × 평균 35만 ≈ 800만 → 600만이면 새벽 전에 쓰러질 만함
---   다음 날부터는 world_roll 이 자동: 하루치로 늘려(× 24시간 ÷ 첫 회 기간) × 1.15(처치) / × 0.8(못 잡음) — 600만·6.5시간 처치면 둘째 날 ≈ 2,550만
+--  켜는 순간부터 다음 05:00 KST 까지가 1회차. 체력 = 300만 (10/15 형철 확정 · world_c('hp_first') · config world.hpFirst)
+--   한 판 상한 = 체력 × 10% = 30만
+--   둘째 날(05:00) = 600만 고정 (hp_second) · 셋째 날부터 world_roll 이 자동: 전날 처치 × 1.15 / 못 잡음 × 0.8 → [300만, 3,000만]
 --
--- select public.world_seed(6000000 /* ← HP_FIRST · Claude가 정함 (600만) · 바꿔도 됨 */, 'sky');
+-- select public.world_seed(3000000, 'sky');
 
 -- ═════════ ③ (있으면) pg_cron — 매일 05:01 KST(= 20:01 UTC) 정산 + 다음 보스 ═════════
 --  Database → Extensions 에서 pg_cron 이 켜져 있을 때만. 없으면 건너뛰어도 된다 (클라이언트가 앱을 켤 때 world_roll() 을 부름)

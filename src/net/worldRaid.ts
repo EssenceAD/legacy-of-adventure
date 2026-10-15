@@ -24,8 +24,11 @@ export interface RiftBoss {
   /** 서버 시각 (ms) — 받은 순간 기기 시계와의 차이를 잰다 */
   now: number;
 }
-export interface RiftRankRow { rank: number; user_id: string; inn_name: string; nickname: string; rep_hero: string | null; dmg: number }
-export interface RiftRank { bossId: number; day: string; weekStart: string; name: string; dayRows: RiftRankRow[]; meDay: { rank: number; dmg: number } | null; weekRows: RiftRankRow[]; meWeek: { rank: number; dmg: number } | null }
+/** 순위 한 줄 — 서버는 user_id·닉네임을 돌려주지 않는다 (여관 이름 · 대표 영웅 · 피해 · 순위 · 내 줄이면 mine) */
+export interface RiftRankRow { rank: number; inn_name: string; rep_hero: string | null; dmg: number; mine: boolean }
+/** 내 순위 (서버가 auth.uid() 로 계산 · 순위에 없으면 rank null — 기록 없음 · 테스트 계정) */
+export interface RiftMe { rank: number | null; dmg: number }
+export interface RiftRank { bossId: number; day: string; weekStart: string; name: string; dayRows: RiftRankRow[]; meDay: RiftMe | null; weekRows: RiftRankRow[]; meWeek: RiftMe | null }
 export interface RiftReward { id: number; kind: 'daily' | 'weekly'; day: string; week: string | null; payload: { frags?: number; dust?: number; boxes?: number; title?: string; rank?: number; killed?: boolean; dmg?: number; name?: string } }
 export type HitResult = { ok: true; dmg: number; killedNow: boolean; boss: RiftBoss } | { ok: false; why: 'login' | 'no_boss' | 'ended' | 'tries' | 'missing' | 'net'; boss?: RiftBoss };
 
@@ -95,10 +98,16 @@ export async function worldHit(boss: number, dmg: number, power: number): Promis
 }
 
 const rankRow = (x: Record<string, unknown>): RiftRankRow => ({
-  rank: num(x.rank), user_id: String(x.user_id), inn_name: str(x.inn_name, 12) || '이름 없는 여관', nickname: str(x.nickname, 8), rep_hero: typeof x.rep_hero === 'string' ? x.rep_hero : null, dmg: num(x.dmg),
+  rank: num(x.rank), inn_name: str(x.inn_name, 12) || '이름 없는 여관', rep_hero: typeof x.rep_hero === 'string' ? x.rep_hero : null, dmg: num(x.dmg), mine: x.mine === true,
 });
-const rows = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && typeof (x as { user_id?: unknown }).user_id === 'string').map(rankRow);
-const meOf = (v: unknown) => (v && typeof v === 'object' && me.profile ? { rank: num((v as Record<string, unknown>).rank), dmg: num((v as Record<string, unknown>).dmg) } : null);
+const rows = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && num((x as { rank?: unknown }).rank) > 0).map(rankRow);
+/** 내 순위·내 피해 합 (서버 my_rank·my_total) — 로그인 안 했거나 순위도 피해도 없으면 null */
+const meOf = (rank: unknown, total: unknown): RiftMe | null => {
+  if (!me.profile) return null;
+  const r = rank == null ? null : num(rank) || null;
+  const t = num(total);
+  return r == null && !(t > 0) ? null : { rank: r, dmg: t };
+};
 
 /** 순위 (그날 · 이번 주) — 함수 없음이면 'missing' · 보스가 아직 없거나 오류면 null */
 export async function worldRank(limit: number, boss: number | null = null): Promise<RiftRank | null | 'missing'> {
@@ -106,7 +115,7 @@ export async function worldRank(limit: number, boss: number | null = null): Prom
   if (err === 'missing') return 'missing';
   if (err || !data || typeof data !== 'object') return null;
   const d = data as Record<string, unknown>;
-  return { bossId: num(d.boss_id), day: str(d.day, 10), weekStart: str(d.week_start, 10), name: str(d.name, 20), dayRows: rows(d.day_rows), meDay: meOf(d.me_day), weekRows: rows(d.week_rows), meWeek: meOf(d.me_week) };
+  return { bossId: num(d.boss_id), day: str(d.day, 10), weekStart: str(d.week_start, 10), name: str(d.name, 20), dayRows: rows(d.day_rows), meDay: meOf(d.my_rank, d.my_total), weekRows: rows(d.week_rows), meWeek: meOf(d.my_week_rank, d.my_week_total) };
 }
 
 /** 받을 보상 (서버가 받는 순간 claimed 로 바꾼다 — 한 번만) */

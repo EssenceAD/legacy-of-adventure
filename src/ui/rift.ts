@@ -9,7 +9,7 @@ import { prepRiftSheet, riftLook } from '../combat/riftLook';
 import { sheets } from '../combat/draw';
 import { me, onAuthChange, online } from '../net/server';
 import { amAdmin } from '../net/direction';
-import { riftServer, worldClaim, worldCurrent, worldHit, worldRank, worldRoll, type RiftBoss, type RiftRankRow } from '../net/worldRaid';
+import { riftServer, worldClaim, worldCurrent, worldHit, worldRank, worldRoll, type RiftBoss, type RiftMe, type RiftRankRow } from '../net/worldRaid';
 import { powerOf } from '../world/adventurers';
 import { addMail } from '../world/meta';
 import { huntPartyMax } from '../world/party4';
@@ -253,6 +253,8 @@ export async function openRift() {
 }
 
 async function openRiftRank() {
+  // 창을 먼저 연다 (모듈을 기다리는 사이 서재 쪽지 같은 이야기 대사가 끼어들지 않게 · 같은 제목이라 openRank 가 그대로 다시 그림)
+  openWin('랭킹', '<p class="note">불러오는 중…</p>');
   const m = await import('./rank');
   void m.openRank(m.riftTabIndex());
 }
@@ -370,8 +372,9 @@ async function endRift(b: RiftBoss, power: number, res: CombatResult) {
 
 // ───────── 랭킹 탭 ─────────
 
-const rkRow = (r: RiftRankRow, mine = false) =>
-  `<button class="rkrow ${mine ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}" data-u="${esc(r.user_id)}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b><small>${esc(r.nickname)}</small></span><i>${fmt(r.dmg)}</i></button>`;
+// 서버가 user_id·닉네임을 주지 않는다 → 줄을 눌러 마을 구경 없음 (data-u 없음 → rank.ts bindRows 가 건너뜀) · 내 줄 = 서버 mine
+const rkRow = (r: Pick<RiftRankRow, 'rank' | 'inn_name' | 'rep_hero' | 'dmg'>, mine = false) =>
+  `<button class="rkrow ${mine ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><em>${r.rank}</em><img src="${(r.rep_hero && PORTRAITS[r.rep_hero]) || PORTRAITS.hero || ''}" alt=""><span><b>${esc(r.inn_name)}</b></span><i>${fmt(r.dmg)}</i></button>`;
 
 /** 랭킹 창 「하늘 균열」 탭 내용 (오늘 상위 30 + 내 순위 · 이번 주 합산) */
 export async function riftRankHtml(): Promise<string> {
@@ -380,21 +383,22 @@ export async function riftRankHtml(): Promise<string> {
   const d = await worldRank(top);
   if (d === 'missing') return '<p class="note">🌌 하늘 균열은 준비 중이에요</p>';
   if (!d) return '<p class="note">아직 열린 균열이 없어요 · 매일 05:00에 새 균열이 열려요</p>';
-  const uid = me.profile?.id;
-  const meLine = (m: { rank: number; dmg: number } | null, rows: RiftRankRow[], what: string) =>
+  // 내 순위·내 피해 합은 서버(my_rank · my_total)가 auth.uid() 로 계산 — 순위에 없는 계정(운영·테스트)은 rank null
+  const meLine = (m: RiftMe | null, rows: RiftRankRow[], what: string) =>
     !online()
       ? '<p class="note">로그인하면 내 순위가 보여요</p>'
-      : m
-        ? rows.some((r) => r.user_id === uid)
+      : m?.rank
+        ? rows.some((r) => r.mine)
           ? ''
-          : `<p class="sub">내 순위</p>${rkRow({ rank: m.rank, user_id: uid ?? '', inn_name: me.profile?.inn_name ?? '내 여관', nickname: me.profile?.nickname ?? '', rep_hero: me.profile?.rep_hero ?? null, dmg: m.dmg }, true)}`
-        : `<p class="note">${what} 기록이 아직 없어요${lock ? ` · ${esc(lock)}` : ''}</p>`;
-  const list = (rows: RiftRankRow[]) => rows.map((r) => rkRow(r, r.user_id === uid)).join('') || '<p class="note">아직 아무도 없어요 · 첫 번째가 되어 보세요!</p>';
+          : `<p class="sub">내 순위</p>${rkRow({ rank: m.rank, inn_name: me.profile?.inn_name ?? '내 여관', rep_hero: me.profile?.rep_hero ?? null, dmg: m.dmg }, true)}`
+        : m
+          ? `<p class="note">${what} 내 피해 ${fmt(m.dmg)} · 운영·테스트 계정은 순위에서 빠져요</p>`
+          : `<p class="note">${what} 기록이 아직 없어요${lock ? ` · ${esc(lock)}` : ''}</p>`;
+  const list = (rows: RiftRankRow[]) => rows.map((r) => rkRow(r, r.mine)).join('') || '<p class="note">아직 아무도 없어요 · 첫 번째가 되어 보세요!</p>';
   return `<p class="note">🌌 균열 너머의 ${esc(d.name)} (${esc(d.day.slice(5).replace('-', '/'))} 05:00 ~) · 피해 합 순위 · 그날 1~${W().daily.topN}위는 조각 +${W().daily.top} · 칭호 「${esc(W().daily.title)}」</p>
     ${meLine(d.meDay, d.dayRows, '오늘')}<p class="sub">오늘 상위 ${top}</p><div class="rklist">${list(d.dayRows)}</div>
     <p class="sub">이번 주 합산 (${esc(d.weekStart.slice(5).replace('-', '/'))} 월요일 05:00부터) · 1~${W().weekly.boxTop}위 선택 상자 · ~${W().weekly.fragTop}위 조각 ${W().weekly.fragN}</p>
-    ${meLine(d.meWeek, d.weekRows, '이번 주')}<div class="rklist">${list(d.weekRows)}</div>
-    <p class="note">누르면 그 마을을 구경해요</p>`;
+    ${meLine(d.meWeek, d.weekRows, '이번 주')}<div class="rklist">${list(d.weekRows)}</div>`;
 }
 
 /** 창이 열려 있으면 다시 그리기용 (시트) */

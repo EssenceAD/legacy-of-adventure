@@ -35,7 +35,7 @@ export const riftTabIndex = () => {
   return i < 0 ? 0 : BOARDS.length + i;
 };
 const bindRows = () =>
-  $$('.rkrow').forEach(
+  $$('.rkrow[data-u]').forEach(  // 하늘 균열 줄은 user_id 가 없다 (data-u 없음 → 누르기 없음)
     (b) =>
       (b.onclick = () => {
         const u = b.dataset.u!;

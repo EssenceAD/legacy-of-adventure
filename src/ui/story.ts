@@ -31,7 +31,7 @@ import { capture } from './photo';
 import { startLanterns } from '../world/harvestDraw';
 import { fireworks } from '../world/luxury';
 import { mountSky } from './skyStars';
-import { closeWin, isWinOpen, openWin, setWinLock, toast } from './windows';
+import { closeWin, isWinOpen, onWinClose, openWin, setWinLock, toast } from './windows';
 
 // ───────── 대사 틀기 (연출 포함) ─────────
 
@@ -200,8 +200,22 @@ function banner(text: string) {
 // ───────── 차례 (1초마다) ─────────
 
 const queue: SLine[][] = [];
+/**
+ * 하늘 균열 R31 (10/15 형철): 창(랭킹 등)이 열려 있는 동안엔 서재 쪽지(손님 일기 「서재에서 ○장을 찾았다」)·이야기 대사를 띄우지 않고
+ *  창을 닫은 뒤에 보여 준다. 창을 닫고 곧바로 다른 창을 여는 사이(전투 결과 → 「순위」 등)에 끼어들지 않게 닫은 뒤 WIN_GRACE_MS 동안도 기다린다
+ */
+const WIN_GRACE_MS = 1500;
+let winClosedAt = -Infinity;
+let winHooked = false; // windows.ts 와 서로 import → 모듈을 읽는 순간이 아니라 처음 물을 때 건다
+export const winSettling = (now = performance.now()) => {
+  if (!winHooked) {
+    winHooked = true;
+    onWinClose(() => (winClosedAt = performance.now()));
+  }
+  return isWinOpen() || now - winClosedAt < WIN_GRACE_MS;
+};
 const busy = () =>
-  !S.started || S.visiting || isTalking() || isWinOpen() || placing.pl || tour.on || !!document.getElementById('hunt') || !!document.getElementById('raid') || !!document.getElementById('cbCv') || !($('#settle') as HTMLElement).hidden ||
+  !S.started || S.visiting || isTalking() || winSettling() || placing.pl || tour.on || !!document.getElementById('hunt') || !!document.getElementById('raid') || !!document.getElementById('cbCv') || !($('#settle') as HTMLElement).hidden ||
   // v0.25.8: 화면 보호·UI 끄기 동안엔 이야기 대사를 띄우지 않는다 (끝난 뒤 「다녀오셨어요」 카드 위로 겹치던 것)
   document.body.classList.contains('ssaver') || document.body.classList.contains('uihide');
 

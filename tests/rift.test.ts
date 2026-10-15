@@ -162,7 +162,8 @@ describe('서버 부르기 (가짜)', () => {
     rpc.mockImplementation(async (fn: string, a: Record<string, unknown>) => {
       if (fn === 'world_current') return { data: a.p_test ? null : srvBoss(), error: null };
       if (fn === 'world_hit') return { data: { r: 'ok', dmg: 60000, killed_now: false, ...srvBoss({ my_tries: 2, hp_left: 2440000 }) }, error: null };
-      if (fn === 'world_rank') return { data: { boss_id: 7, day: '2026-10-15', week_start: '2026-10-12', name: '하늘을 삼킨 것', day_rows: [{ rank: 1, user_id: 'u1', inn_name: '솔바람 여관', nickname: '솔', rep_hero: null, dmg: 900000 }], me_day: { rank: 2, dmg: 460000 }, week_rows: [], me_week: null }, error: null };
+      // R31: user_id·닉네임 없음 · 내 줄은 mine · 내 순위/피해 합은 서버 my_rank·my_total (auth.uid())
+      if (fn === 'world_rank') return { data: { boss_id: 7, day: '2026-10-15', week_start: '2026-10-12', name: '하늘을 삼킨 것', day_rows: [{ rank: 1, inn_name: '솔바람 여관', rep_hero: null, dmg: 900000, mine: false }, { rank: 2, inn_name: '시험 여관', rep_hero: null, dmg: 460000, mine: true }], my_rank: 2, my_total: 460000, week_rows: [], my_week_rank: null, my_week_total: 0 }, error: null };
       return { data: null, error: null };
     });
     const b = await worldCurrent();
@@ -175,6 +176,9 @@ describe('서버 부르기 (가짜)', () => {
     const r = await worldRank(30);
     expect(r !== 'missing' && r?.dayRows[0].inn_name).toBe('솔바람 여관');
     expect(r !== 'missing' && r?.meDay).toEqual({ rank: 2, dmg: 460000 });
+    expect(r !== 'missing' && r?.meWeek).toBeNull();
+    expect(r !== 'missing' && r?.dayRows.map((x) => x.mine)).toEqual([false, true]);
+    expect(r !== 'missing' && Object.keys(r!.dayRows[0])).not.toContain('user_id');
   });
   it('하루 3번 넘으면 서버가 tries', async () => {
     rpc.mockResolvedValue({ data: { r: 'tries', ...srvBoss({ my_tries: 3 }) }, error: null });
@@ -249,5 +253,91 @@ describe('보상 → 우편함 (한 번만)', () => {
     expect(rewardMail({ id: 2, kind: 'daily', day: '2026-10-16', week: null, payload: { frags: 2 } }).reward.frags).toBe(2);
     riftMultHook.fn = () => NaN;
     expect(riftRewardMult('2026-10-17')).toBe(1);
+  });
+});
+
+describe('R31 (10/15 형철) — 순위 user_id 없음 · 내 순위는 서버', () => {
+  const rankData = (o: Record<string, unknown>) => ({ boss_id: 7, day: '2026-10-15', week_start: '2026-10-12', name: '하늘을 삼킨 것', day_rows: [], week_rows: [], ...o });
+  it('내 순위 = 서버 my_rank·my_total (줄에서 user_id 를 찾지 않는다)', async () => {
+    rpc.mockResolvedValue({ data: rankData({ day_rows: [{ rank: 1, inn_name: '솔바람 여관', rep_hero: 'hero', dmg: 9e5, mine: false, user_id: 'u-me' }], my_rank: 31, my_total: 1234, my_week_rank: 4, my_week_total: 99999 }), error: null });
+    const r = await worldRank(30);
+    if (!r || r === 'missing') throw new Error('rank');
+    // 서버가 실수로 user_id 를 보내도 버린다 · 내 줄 표시는 mine 만
+    expect(r.dayRows[0]).toEqual({ rank: 1, inn_name: '솔바람 여관', rep_hero: 'hero', dmg: 9e5, mine: false });
+    expect(r.meDay).toEqual({ rank: 31, dmg: 1234 });
+    expect(r.meWeek).toEqual({ rank: 4, dmg: 99999 });
+  });
+  it('테스트 계정은 서버가 순위에서 뺀다 → my_rank null · 피해 합만 (줄·순위 번호·주간 합산 제외는 SQL world_ranked)', async () => {
+    rpc.mockResolvedValue({ data: rankData({ my_rank: null, my_total: 5000, my_week_rank: null, my_week_total: 0 }), error: null });
+    const r = await worldRank(30);
+    if (!r || r === 'missing') throw new Error('rank');
+    expect(r.meDay).toEqual({ rank: null, dmg: 5000 });
+    expect(r.meWeek).toBeNull();
+  });
+  it('로그인 안 했으면 내 순위 없음 · 순위 번호 없는 줄은 버림', async () => {
+    me.profile = null;
+    rpc.mockResolvedValue({ data: rankData({ day_rows: [{ inn_name: '이상한 줄' }, { rank: 1, inn_name: 'A', dmg: 1 }], my_rank: 1, my_total: 1 }), error: null });
+    const r = await worldRank(30);
+    if (!r || r === 'missing') throw new Error('rank');
+    expect(r.dayRows.map((x) => x.inn_name)).toEqual(['A']);
+    expect(r.meDay).toBeNull();
+  });
+});
+
+describe('R31 — SQL ↔ config 같은 숫자 (supabase/world_raid.sql world_c)', async () => {
+  const fs = await import('node:fs');
+  const sql = fs.readFileSync('supabase/world_raid.sql', 'utf8');
+  const c = (k: string) => {
+    const m = sql.match(new RegExp(`when '${k}'\\s+then\\s+([0-9.]+)`));
+    if (!m) throw new Error(`world_c ${k} 없음`);
+    return Number(m[1]);
+  };
+  it('체력 규칙: 첫 300만 · 둘째 600만 · ×1.15 / ×0.8 · [300만, 3,000만]', () => {
+    expect(W.hpFirst).toBe(3_000_000);
+    expect(W.hpSecond).toBe(6_000_000);
+    expect([W.hpMin, W.hpMax, W.killMult, W.missMult]).toEqual([3_000_000, 30_000_000, 1.15, 0.8]);
+    expect(c('hp_first')).toBe(W.hpFirst);
+    expect(c('hp_second')).toBe(W.hpSecond);
+    expect(c('hp_min')).toBe(W.hpMin);
+    expect(c('hp_max')).toBe(W.hpMax);
+    expect(c('kill_mult')).toBe(W.killMult);
+    expect(c('miss_mult')).toBe(W.missMult);
+    expect(sql).toContain("select public.world_seed(3000000, 'sky');");
+    expect(sql).not.toContain('86400');
+  });
+  it('나머지 상수도 같다 (도전 · 상한 · 보상)', () => {
+    expect([c('tries'), c('cap'), c('flag_ratio'), c('hit_max_frac')]).toEqual([W.tries, W.cap, W.flagRatio, W.hitMaxFrac]);
+    expect([c('d_frags'), c('d_dust'), c('d_kill'), c('d_top_n'), c('d_top')]).toEqual([W.daily.frags, W.daily.dust, W.daily.kill, W.daily.topN, W.daily.top]);
+    expect([c('w_box_top'), c('w_frag_top'), c('w_frag_n')]).toEqual([W.weekly.boxTop, W.weekly.fragTop, W.weekly.fragN]);
+  });
+  it('world_rank 는 user_id·nickname 을 내보내지 않음 · world_seed 첫 줄은 잠금 · 순위는 world_ranked 하나로', () => {
+    const rank = sql.slice(sql.indexOf('create or replace function public.world_rank('), sql.indexOf('-- ───────── 6.'));
+    expect(rank).not.toMatch(/'user_id'|'nickname'/);
+    expect(rank).toContain("'my_rank'");
+    expect(rank).toContain("'my_week_total'");
+    expect(rank.match(/public\.world_ranked\(t\.user_id\)/g)).toHaveLength(2);
+    const seed = sql.slice(sql.indexOf('create or replace function public.world_seed('));
+    expect(seed.slice(seed.indexOf('begin'), seed.indexOf('begin') + 80)).toMatch(/^begin\s+perform pg_advisory_xact_lock\(hashtext\('world_roll'\)\);/);
+    expect(sql).not.toMatch(/join public\.profiles p on p\.id = t\.user_id where not coalesce\(p\.is_test/);
+  });
+});
+
+describe('R31 — 창이 열려 있으면 서재 쪽지(이야기 대사)를 미룬다', () => {
+  it('창이 열려 있는 동안 · 닫은 뒤 잠깐(다른 창으로 넘어가는 사이)도 기다린 뒤 보여 줌', async () => {
+    if (!document.getElementById('win')) document.body.insertAdjacentHTML('beforeend', '<div id="win"></div>');
+    for (const id of ['winT', 'winB', 'winF', 'winBack', 'scrim']) if (!document.getElementById(id)) document.body.insertAdjacentHTML('beforeend', `<div id="${id}"></div>`);
+    const { winSettling } = await import('../src/ui/story');
+    const { closeWin } = await import('../src/ui/windows');
+    const win = document.getElementById('win')!;
+    win.classList.remove('on');
+    const t0 = performance.now() + 10_000;
+    expect(winSettling(t0)).toBe(false);
+    win.classList.add('on');
+    expect(winSettling(t0)).toBe(true);
+    closeWin(true);
+    await new Promise((r) => setTimeout(r, 5));
+    const t1 = performance.now();
+    expect(winSettling(t1)).toBe(true); // 막 닫음 → 아직 기다림
+    expect(winSettling(t1 + 2000)).toBe(false); // 닫고 1.5초 뒤 → 보여 줌
   });
 });

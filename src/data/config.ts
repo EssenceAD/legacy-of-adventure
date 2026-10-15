@@ -1428,9 +1428,17 @@ export const CONFIG = {
       cap: 60,
       flagRatio: 35,
       hitMaxFrac: 0.1,
-      hpMin: 1_000_000,
-      hpMax: 500_000_000,
+      // 체력 규칙 (10/15 형철 확정) — supabase/world_raid.sql world_c() 와 반드시 같게 (서버 값이 진짜 · 바꾸면 둘 다)
+      /** 첫 보스 체력 = SQL 맨 아래 예시 world_seed(3000000) (world_c 'hp_first') */
+      hpFirst: 3_000_000,
+      /** 둘째 보스(둘째 날) 체력 고정 (world_c 'hp_second') */
+      hpSecond: 6_000_000,
+      /** 셋째 날부터: 전날 체력 × killMult / missMult → [hpMin, hpMax] (world_c 'hp_min' · 'hp_max') — 시간 늘리기 없음 */
+      hpMin: 3_000_000,
+      hpMax: 30_000_000,
+      /** 전날 처치 → × (world_c 'kill_mult') */
       killMult: 1.15,
+      /** 전날 못 잡음 → × (world_c 'miss_mult') */
       missMult: 0.8,
       daily: { frags: 1, dust: 40, kill: 1, topN: 3, top: 2, title: '균열의 영웅' },
       weekly: { boxTop: 3, fragTop: 10, fragN: 3 },
