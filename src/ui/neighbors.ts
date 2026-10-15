@@ -168,7 +168,13 @@ const villageRow = (v: Neighbor, i: number) =>
 const mineHtml = () =>
   mineRow ? `<div class="stp real mine"><img src="${(mineRow.repHero && repPort(mineRow)) || PORTRAITS.hero || ''}" alt=""><span><b>내 여관 · ${esc(mineRow.name)}</b><small>이웃들이 보는 내 마을</small></span><em>♥ ${fmt(mineRow.like)}</em></div>` : '';
 const exampleHtml = () =>
-  `<details class="nbex"><summary>예시 마을 ${NEIGHBORS.length}곳 <small>(아직 이웃이 적어서 보여 드려요)</small></summary><div class="steps">${NEIGHBORS.map((v, i) => `<button class="stp" data-f="${i}"><span style="grid-column:1/3"><b>${v.name}</b><small>예시 마을 · 주인 ${v.owner} · 땅 ${v.land}단계</small></span></button>`).join('')}</div></details>`;
+  `<details class="nbex"><summary>예시 마을 ${NEIGHBORS.filter((v) => !v.note).length}곳 <small>(아직 이웃이 적어서 보여 드려요)</small></summary><div class="steps">${NEIGHBORS.map((v, i) => (v.note ? '' : `<button class="stp" data-f="${i}"><span style="grid-column:1/3"><b>${v.name}</b><small>예시 마을 · 주인 ${v.owner} · 땅 ${v.land}단계</small></span></button>`)).join('')}</div></details>`;
+/** 10/16 별무리 항구: 「이만큼 키울 수 있다」 최종 목표 예시 마을 — 추천 맨 위에 늘 (예시 마을 접기와 따로) */
+const goalHtml = () => {
+  const i = NEIGHBORS.findIndex((v) => !!v.note);
+  const v = NEIGHBORS[i];
+  return v ? `<button class="stp showcase" data-f="${i}"><span style="grid-column:1/3"><b>🏆 ${esc(v.name)}</b><small>예시 마을 · ${esc(v.note!)}</small></span><em>♥ ${fmt(v.like)}</em></button>` : '';
+};
 
 function subBody(loading: boolean): string {
   if (!sb) return `<p class="note">서버에 연결하지 못해 예시 마을만 보여요</p>${exampleHtml()}`;
@@ -177,7 +183,7 @@ function subBody(loading: boolean): string {
   if (nbSub === 'sug') {
     if (loading && !sugCache) return '<p class="note">불러오는 중…</p>';
     const rows = sugCache ?? [];
-    return `<p class="sub g">추천 여관 <small>요즘 들르는 · 비슷한 땅 · 새로 온 여관</small></p><div class="steps">${rows.length ? rows.map(villageRow).join('') : '<p class="note">아직 다른 여관이 없어요</p>'}</div>
+    return `<p class="sub g">추천 여관 <small>요즘 들르는 · 비슷한 땅 · 새로 온 여관</small></p><div class="steps">${goalHtml()}${rows.length ? rows.map(villageRow).join('') : '<p class="note">아직 다른 여관이 없어요</p>'}</div>
       <button class="bigbtn sm ghost" id="nbAgain" ${loading ? 'disabled' : ''}>↻ 다른 여관 보기</button>${rows.length < CONFIG.social.exampleUnder ? exampleHtml() : ''}`;
   }
   if (nbSub === 'pop') {

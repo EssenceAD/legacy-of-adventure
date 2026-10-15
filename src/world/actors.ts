@@ -12,6 +12,7 @@ import { josa } from '../data/josa';
 import { heroById } from '../data/heroes';
 import { sx, sy } from '../engine/iso';
 import { blankActor, gainXp, makeAdventurer, makeHero, powerOf } from './adventurers';
+import { legendByKey } from '../data/legends';
 import { addBond, pairOf, pruneBonds, type BondGain } from './chem';
 import { orderPair } from '../data/chem';
 import { chemTalk, notifyChem } from './chemNews';
@@ -73,6 +74,14 @@ export function spawnExtras(n = capacity()) {
     const k = GUEST_KINDS[i % GUEST_KINDS.length];
     const a = blankActor(k, '손님', d[0] + (Math.random() * 2 - 1), d[1] + Math.random());
     a.race = pick(['human', 'elf', 'dwarf', 'halfling'] as const);
+    world.actors.push(a);
+  }
+  // 10/16 별무리 항구: 예시 마을에 돌아다니는 전설 영웅 (구경용 — 내 저장·인연에는 닿지 않는다)
+  for (const key of (S.visiting && !S.visiting.uid ? S.visiting.legends : null) ?? []) {
+    const L = legendByKey(key);
+    if (!L) continue;
+    const a = blankActor(L.kind, L.name, d[0] + (Math.random() * 4 - 2), d[1] + 1 + Math.random() * 2);
+    Object.assign(a, { legendId: key, race: L.race, hair: L.hair, rarity: 'legend', lvl: 15, stars: 1 });
     world.actors.push(a);
   }
 }

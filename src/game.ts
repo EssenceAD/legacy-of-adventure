@@ -693,6 +693,10 @@ export function visit(v: Neighbor) {
     $('#visitfoot').hidden = false;
     $('#vName').textContent = v.name;
     $('#vSub').textContent = `${v.title ? `「${v.title}」 ` : ''}${v.owner ? `주인 ${v.owner}` : `${v.name} 주인`} · 마을 등급 ${gradeName(v.grade ?? Math.max(0, v.land - 1))}`;
+    // 10/16: 예시 마을 한 줄 소개 (별무리 항구 「땅 10단계 · 새 건물 7종이 모두 있는 마을이에요」)
+    const note = $('#vNote');
+    note.textContent = v.note ?? '';
+    note.hidden = !v.note;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
   });

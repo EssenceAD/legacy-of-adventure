@@ -2519,3 +2519,5 @@ body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2
 .nbex{margin-top:10px}
 .nbex summary{cursor:pointer;color:#cfd8ff;font-size:var(--f-small);padding:4px 0}
 #nbAgain{margin-top:6px}
+.stp.showcase{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #e8b84a}.stp.showcase b{color:#ffd36b}
+#visitbar .vtxt small#vNote{white-space:normal;overflow:visible;text-overflow:clip;color:#ffd36b}
