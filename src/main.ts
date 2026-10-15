@@ -83,7 +83,7 @@ import { lookMem } from './engine/sprites';
 import { clampCam, N, resizeCanvas, scr, sx, sy, toLogical, toTile, updateOrigin, view } from './engine/iso';
 import * as game from './game';
 import { settleOfflineCons } from './game';
-import { getPref, readSave, savesHalted, setPref, writeSave } from './save/save';
+import { getPref, savesHalted, setPref, writeSave } from './save/save';
 import { arrive, enter, fastHooks, queueChemTalk, queueProposal, updActors } from './world/actors';
 import { hourNow } from './world/clock';
 import { blendNight, decorDayOn, NL, onNightChange, tickDayNight } from './world/daynight';
@@ -118,7 +118,7 @@ import { directionStarted, initDirection } from './ui/opsbox';
 import { initSpriteGuard, spriteGuardDebug, spriteGuardFrame } from './engine/spriteGuard';
 import { flush as flushTelemetry, initTelemetry, track as trackEv } from './net/telemetry';
 import { setBusy } from './audio/scene';
-import { hasSave, migrateFailed } from './save/save';
+import { hasSave, isFutureSave, migrateFailed } from './save/save';
 import { combatOn, foldedTick } from './combat/ui';
 import { devAdvance as combatAdvance, devField as combatField, zoomInfo as combatZoom, combatFps } from './combat/ui';
 import * as audioEngine from './audio/engine';
@@ -1127,6 +1127,8 @@ async function boot() {
     funnel('title_tap');
     // J4 confirmSheet: 마을을 지우는 확인은 아래 확인 시트 (끄면 예전 confirm 그대로)
     const ask = () => (vis('confirmSheet') ? confirmSheet({ title: '새 여관을 열까요?', body: '지금까지의 마을이 지워져요 (되돌릴 수 없어요)', ok: '새로 시작', danger: true }) : confirm('새 여관을 열면 지금까지의 마을이 지워져요. 계속할까요?'));
+    // 새 버전 저장이 있으면 지우는 확인도 묻지 않는다 (newGame이 막고 안내)
+    if (isFutureSave()) return game.newGame();
     if (!(document.getElementById('tCont') as HTMLButtonElement).disabled && !(await ask())) return;
     game.newGame();
   };
@@ -1173,7 +1175,7 @@ async function boot() {
   game.titleBackdrop();
   // 티저: 처음 실행(저장 없음)이면 한 번 자동 · 타이틀 「미리보기」로 언제든
   document.getElementById('tTeaser')!.onclick = () => playTeaser(false, () => game.titleBackdrop());
-  if (shouldAutoTeaser(!!readSave(), getPref('teaserSeen', false))) {
+  if (shouldAutoTeaser(hasSave(), getPref('teaserSeen', false))) {
     setPref('teaserSeen', true);
     teaserTouchGate(() => game.newGame());
   }

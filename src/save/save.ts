@@ -97,8 +97,55 @@ let saveHalted = false;
 export const haltSaves = (on = true) => void (saveHalted = on);
 export const savesHalted = () => saveHalted;
 
+// ───────── 새 버전 저장 지키기 (플래그 없음 · 늘 켜짐) ─────────
+//  이 클라이언트가 아는 것보다 높은 버전(CONFIG.save.version 초과)의 저장 = 새 버전 앱이 만든 것.
+//  옮기거나 검사하지 않고 원본 그대로 두고, 이 탭에서는 덮어쓰기·지우기·클라우드 올리기를 모두 막는다 (새로고침하면 새 버전이 읽는다).
+let futureSave = false;
+export const FUTURE_SAVE_TEXT = '새 버전이 있어요 · 새로고침해 주세요';
+/** 새 버전 저장을 만났나 (이 세션 동안 계속) */
+export const isFutureSave = () => futureSave;
+/** 처음 만났을 때 한 번 (ui/update가 「새 버전이 있어요」 띠를 건다 · save가 ui를 부르지 않게 고리로) */
+export const futureHooks = { found: () => {} };
+/** 저장 버전이 이 클라이언트보다 높은가 */
+export const isFutureVersion = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > CONFIG.save.version;
+export function markFutureSave() {
+  if (futureSave) return;
+  futureSave = true;
+  try {
+    futureHooks.found();
+  } catch {
+    /* 띠를 못 걸어도 막기는 그대로 */
+  }
+}
+/** 시험용: 새 버전 저장 표시 지우기 */
+export const _resetFutureSave = () => void (futureSave = false);
+/** 저장소에 있는 원본이 새 버전 저장인가 (있으면 표시) */
+function checkStoredFuture(raw?: string | null): boolean {
+  try {
+    const r = raw === undefined ? localStorage.getItem(CONFIG.save.key) : raw;
+    if (r && isFutureVersion(JSON.parse(r)?.version)) markFutureSave();
+  } catch {
+    /* 읽지 못하면 그냥 둔다 */
+  }
+  return futureSave;
+}
+let storedChecked = false;
+// 다른 탭(새 버전)이 저장을 바꾸면 바로 알아챈다 — 이 탭의 자동 저장이 덮지 않게
+try {
+  addEventListener('storage', (e) => {
+    if (e.key === CONFIG.save.key && e.newValue) checkStoredFuture(e.newValue);
+  });
+} catch {
+  /* window가 없는 환경 */
+}
+
 export function writeSave(): void {
-  if (saveHalted) return;
+  if (saveHalted || futureSave) return;
+  // 처음 한 번은 저장소 원본을 직접 본다 (readSave를 아직 안 불렀어도 새 버전 저장을 덮지 않게)
+  if (!storedChecked) {
+    storedChecked = true;
+    if (checkStoredFuture()) return;
+  }
   if (!S.started && !S.innName) return; // 오프닝 도중엔 저장하지 않는다
   // 버그 고침(플래그 없음): 시작 전 연출 마을(티저·타이틀 배경 · 가짜)은 저장하지 않는다 (원정 기록 보내기 등이 그때 불러도)
   if (!S.started && teaserView.g >= 0) return;
@@ -110,10 +157,13 @@ export function writeSave(): void {
 }
 
 export function hasSave(): boolean {
-  return readSave() !== null;
+  // 새 버전 저장도 「있음」 (타이틀이 덮어쓰는 새 시작을 권하지 않게)
+  return readSave() !== null || futureSave;
 }
 
 export function clearSave() {
+  // 새 버전 저장은 지우지 않는다 (새로고침해서 새 버전으로)
+  if (futureSave || checkStoredFuture()) return;
   try {
     localStorage.removeItem(CONFIG.save.key);
   } catch {
@@ -130,6 +180,12 @@ export function readSave(): SaveData | null {
     const raw = localStorage.getItem(CONFIG.save.key);
     if (!raw) return null;
     const d = JSON.parse(raw);
+    storedChecked = true;
+    // 새 버전 저장: 옮기지도 검사하지도 않고 원본 그대로 · 이 탭은 쓰기를 멈춘다
+    if (d && isFutureVersion(d.version)) {
+      markFutureSave();
+      return null;
+    }
     // 땅 개편(v7) 전 저장: 좌표를 옮기기 전에 원본을 한 번 남겨 둔다 (옮기다 실패해도 되살릴 수 있게)
     if (d && typeof d.version === 'number' && d.version < 7 && !localStorage.getItem(CONFIG.save.key + '.bak')) localStorage.setItem(CONFIG.save.key + '.bak', raw);
     // LAND2(v8): 맵 32로 좌표를 옮기기 전 원본을 따로 한 번 (.bak7)

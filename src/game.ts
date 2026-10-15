@@ -22,7 +22,7 @@ import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
 import { camFor, lookAt, sx, sy, view } from './engine/iso';
-import { readSave, writeSave, getPref, setPref, type SaveData } from './save/save';
+import { readSave, writeSave, getPref, setPref, isFutureSave, FUTURE_SAVE_TEXT, type SaveData } from './save/save';
 import { addOwner, addPostman, afterLayoutChange, hideRunners, leave, spawnExtras, spawnStart } from './world/actors';
 import { blankActor } from './world/adventurers';
 import { settleNight } from './world/clock';
@@ -147,6 +147,8 @@ export function titleBackdrop() {
 // ───────── 새 게임 / 이어하기 ─────────
 
 export function newGame() {
+  // 새 버전 저장이 있으면 새로 시작하지 않는다 (그 마을을 덮지 않게 · 새로고침해서 새 버전으로)
+  if (isFutureSave()) return void toast(FUTURE_SAVE_TEXT);
   hideTitle();
   resetScene();
   S.land = 1;
@@ -352,7 +354,7 @@ export function refreshTitle() {
   const save = readSave();
   const b = $<HTMLButtonElement>('#tCont');
   b.disabled = !save;
-  $('#tContSub').textContent = save ? `${save.innName || '내 여관'} · ${save.day}일차` : '저장된 마을이 없어요';
+  $('#tContSub').textContent = save ? `${save.innName || '내 여관'} · ${save.day}일차` : isFutureSave() ? '새 버전에서 저장한 마을이에요' : '저장된 마을이 없어요';
   // ONBOARDING §1: 처음이면 [시작하기] 한 번에
   const st = document.getElementById('tStart');
   if (st) st.innerHTML = save ? '새 여관 열기<small>처음부터 다시</small>' : '시작하기<small>바로 내 여관으로</small>';

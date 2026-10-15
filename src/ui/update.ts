@@ -2,7 +2,7 @@
 //  - 앱으로 돌아올 때와 10분마다 version.json을 캐시 없이 확인 → 위쪽 띠 「새 버전 vX · 눌러서 업데이트」
 //  - 누르면 저장을 먼저 끝내고 새로고침 · 전투 중이면 끝난 뒤에 띠 · 날짜가 바뀌었으면 띠 없이 바로
 //  - 업데이트 후 첫 화면에 패치노트 카드 한 번
-import { getPref, hasSave, setPref, writeSave } from '../save/save';
+import { FUTURE_SAVE_TEXT, futureHooks, getPref, hasSave, isFutureSave, setPref, writeSave } from '../save/save';
 import { HIGHLIGHTS, highlightGo, type Highlight } from './notice';
 import { track as trackEv } from '../net/telemetry';
 import { S } from '../world/state';
@@ -247,8 +247,26 @@ export function _fakeNewer(v: { version: string; build: string; force?: boolean 
   pump();
 }
 
+// ───────── 새 버전 저장 띠 (플래그 없음) ─────────
+//  이 앱보다 새 버전이 만든 저장(이 기기·클라우드)을 만나면: 저장은 멈추고, 위쪽에 늘 떠 있는 띠 [새로고침] = applyUpdate
+export function showFutureBar() {
+  let bar = document.getElementById('futBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'futBar';
+    bar.className = 'px';
+    bar.setAttribute('role', 'alert');
+    bar.innerHTML = `<span>${esc(FUTURE_SAVE_TEXT)}</span><button class="bigbtn sm" id="futReload">새로고침</button>`;
+    document.body.appendChild(bar);
+    bar.querySelector<HTMLElement>('#futReload')!.onclick = () => void applyUpdate();
+  }
+  bar.hidden = false;
+}
+
 export function initUpdate(isBusy: () => boolean) {
   busy = isBusy;
+  futureHooks.found = showFutureBar;
+  if (isFutureSave()) showFutureBar();
   addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void checkVersion());
   setInterval(() => void checkVersion(), 5 * 60 * 1000);
   setTimeout(() => void checkVersion(), 15000);

@@ -6,7 +6,7 @@ import { HEROES } from '../data/heroes';
 import { powerOf } from '../world/adventurers';
 import { markDirty, P, S, world, type RaidRecord } from '../world/state';
 import { gatesOn, pg } from '../world/paceGates';
-import { getPref, readSave, setPref, snapshot, writeSave } from '../save/save';
+import { getPref, isFutureSave, isFutureVersion, markFutureSave, readSave, setPref, snapshot, writeSave } from '../save/save';
 import { validRecord } from './local';
 import { chaptersDone, townGrade } from '../world/guide';
 import { addMail, myTitle } from '../world/meta';
@@ -83,9 +83,12 @@ export const haltCloud = (on = true) => void (cloudHalted = on);
 export const cloudBusy = () => pushing;
 
 export async function pushNow() {
-  if (cloudHalted || !online() || !ready || !S.started || pushing) return;
+  // 새 버전 저장을 만난 탭은 올리지 않는다 (옛 앱이 클라우드의 새 저장을 덮지 않게)
+  if (cloudHalted || isFutureSave() || !online() || !ready || !S.started || pushing) return;
   pushing = true;
   try {
+    // 새 버전 저장이 이 사이 생겼으면(다른 탭) 올리지 않는다
+    if (isFutureSave()) return;
     await pushSave(snapshot(), CONFIG.save.version);
     markOwner();
     await pushVillage(villageSnapshot(), S.innName, repHero());
@@ -121,7 +124,14 @@ export interface SaveChoice {
 export async function compareSaves(): Promise<SaveChoice | null> {
   const s = await pullSave();
   if (!s?.data) return null;
+  // 클라우드 저장이 이 앱보다 새 버전이면: 고르지도·불러오지도·올리지도 않는다 (새로고침해서 새 버전으로)
+  if (isFutureVersion((s.data as { version?: unknown }).version)) {
+    markFutureSave();
+    return null;
+  }
   const local = readSave();
+  // 이 기기 저장이 새 버전이면 클라우드 것으로 바꾸게 하지 않는다 (readSave가 표시)
+  if (isFutureSave()) return null;
   const d = s.data as { innName?: string; gold?: number; day?: number; savedAt?: number };
   // 저장 안에 든 시각으로 비교 (서버 기록 시각은 올린 시각이라 늘 더 늦다)
   const at = typeof d.savedAt === 'number' ? d.savedAt : new Date(s.updated_at).getTime();
@@ -138,6 +148,9 @@ export async function compareSaves(): Promise<SaveChoice | null> {
 
 /** 서버 저장으로 바꾼다 (다시 불러오기는 부르는 쪽에서) */
 export function useServerSave(data: Record<string, unknown>) {
+  // 새 버전 저장은 이 앱이 쓰지 않는다 · 이 기기의 새 버전 저장도 덮지 않는다
+  if (isFutureVersion(data?.version)) return void markFutureSave();
+  if (isFutureSave()) return;
   try {
     localStorage.setItem(CONFIG.save.key, JSON.stringify({ ...data, savedAt: Date.now() }));
     markOwner();
