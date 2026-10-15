@@ -9,7 +9,7 @@ import { frameAt, flipOf, whiteOf, type MonSheet } from './mon';
 import { GRADE_COLOR, quarterOf, screenDx, type Field, type Unit } from './field';
 import { deepen, placeProps, PROP_IMG, themeOf, type GroundPal, type Theme } from './theme';
 import { saverOn } from '../engine/fps';
-import { bgMode, drawRiftCrack, drawRiftSky, RIFT_THEME, riftCalm, riftIsland } from './riftBg';
+import { bgMode, drawRiftCrack, drawRiftSky, RIFT_THEME, riftCalm, riftDrop, riftIsland, riftView } from './riftBg';
 
 /** PARTY §3: 4인 + 보스 + 부하에서 그리기가 30fps 아래로 떨어지면 이펙트 줄이기 (배터리 절약과 같은 가벼운 그림) — ui.ts가 잰다 */
 let autoLite = false;
@@ -230,6 +230,19 @@ export function draw(ctx: CanvasRenderingContext2D, f: Field, LW: number, LH: nu
     const a = Math.round(f.shakeAmp);
     ox += Math.round((Math.random() * 2 - 1) * a);
     oy += Math.round((Math.random() * 2 - 1) * a);
+  }
+  // R34 균열 보스: 그림 위끝이 위쪽 공용 체력 막대 + 24px 밑으로 오게 화면(카메라)을 내린다 — 세계 좌표는 그대로라 맞는 자리 · 피해 숫자 · 예고 · 이펙트가 같이 움직인다
+  riftView.drop = 0;
+  if (rift && riftView.topMin > 0) {
+    const b = f.units.find((u) => u.boss && !u.dead);
+    const ay = b?.mon ? sheets[b.mon]?.meta.anchor[1] : undefined;
+    if (b && ay != null) {
+      const foot = (u: Unit) => oy + Math.round(sy(u.x, u.y));
+      const low = Math.max(foot(b), ...f.allies.filter((a) => !a.dead).map(foot));
+      riftView.drop = riftDrop(foot(b), ay, riftView.topMin, low, LH);
+      oy += riftView.drop;
+      riftView.top = foot(b) - ay - 1;
+    }
   }
   const W = (x: number, y: number): [number, number] => [ox + Math.round(sx(x, y)), oy + Math.round(sy(x, y))];
   // RIFTART 하늘 균열: 밤하늘(그라데이션 · 별 · 소품) → 구름 섬 → 빛나는 금 (싸우는 이들은 그 위)

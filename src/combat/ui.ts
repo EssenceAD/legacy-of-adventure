@@ -7,6 +7,7 @@ import type { RegionId } from '../data/items';
 import { PORTRAITS } from '../engine/assets';
 import { portrait } from '../ui/common';
 import { iconSrc, dpr } from '../ui/kit';
+import { riftTopMin, riftView } from './riftBg';
 import { battleMusic, bindSoundSettings, soundSettingsHtml } from '../ui/sound';
 import { vis } from '../world/visual';
 import { setShakeLv, SHAKE_NAME, shakeLv, type ShakeLv } from '../engine/shake';
@@ -330,6 +331,7 @@ export function zoomStep(dir: number) {
 }
 export const zoomInfo = () => ({ steps: zoomSteps(), idx: zoomIndex(), K });
 function fit() {
+  rfAt = -1e9;
   if (!root) return;
   const cv = $<HTMLCanvasElement>('#cbCv');
   const r = root.getBoundingClientRect();
@@ -389,8 +391,24 @@ function frame(now: number) {
   noteFrame(now, performance.now() - w0);
   raf = requestAnimationFrame(frame);
 }
+/** R34: 균열 HUD 공용 체력 막대(.rftop) 아래끝을 재서 보스 그림 위끝 최소 y 로 (0.5초마다 · 막대가 없으면 0) */
+let rfAt = -1e9;
+function measureRift(now: number) {
+  if (!F?.world) {
+    riftView.topMin = 0;
+    return;
+  }
+  if (now - rfAt < 500) return;
+  rfAt = now;
+  const bar = document.querySelector('.rfhud .rftop');
+  const cv = document.querySelector('#cbCv');
+  riftView.topMin = bar && cv ? riftTopMin(bar.getBoundingClientRect().bottom - cv.getBoundingClientRect().top, K, dpr()) : 0;
+  riftView.k = K / dpr();
+}
+if (import.meta.env.DEV) Object.assign(window, { __riftView: riftView });
 function render() {
   if (!F) return;
+  measureRift(performance.now());
   draw(lctx, F, LW, LH);
   drawVignette(lctx, F, LW, LH);
   const cv = $<HTMLCanvasElement>('#cbCv');

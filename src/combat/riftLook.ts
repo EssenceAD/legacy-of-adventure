@@ -131,6 +131,42 @@ export function riftLook(look: string): BossLook {
 /** RIFTART: 이 모습의 손그림 시트가 있나 (public/assets/mon/rift_<look>/ · scripts/copy-rift-art.mjs 가 목록을 만든다) */
 export const riftArtOf = (key: string, list: readonly string[] = RIFT_ART.bosses): boolean => list.includes(key);
 
+/** R34: 손그림 시트 배율 (config bosses.<look>.artScale) — 예비 그림(기존 보스를 키운 시트)엔 1 (지금 그대로) */
+export function riftArtScale(look: string, art: boolean): number {
+  if (!art) return 1;
+  const k = CONFIG.raidWeapon.world.bosses[look]?.artScale ?? 1;
+  return k > 0 && k <= 4 ? k : 1;
+}
+
+/** R34: 시트 meta 를 k 배로 (프레임 크기 · 발 기준점 · 눈) — 그리는 자리 · 숨쉬기 · 흩어지기 · 눈빛이 모두 meta 를 따르므로 이것만 맞추면 같이 줄어든다 */
+export function scaleMeta(m: MonSheet['meta'], k: number): MonSheet['meta'] {
+  if (k === 1) return m;
+  const e = (m as unknown as { eyes?: [number, number][] }).eyes;
+  return {
+    ...m,
+    frameW: Math.max(1, Math.round(m.frameW * k)),
+    frameH: Math.max(1, Math.round(m.frameH * k)),
+    anchor: [Math.round(m.anchor[0] * k), Math.round(m.anchor[1] * k)] as [number, number],
+    ...(e ? { eyes: e.map(([ex, ey]) => [Math.round(ex * k), Math.round(ey * k)] as [number, number]) } : {}),
+  };
+}
+
+/** 손그림 시트를 k 배로 (부드럽게 줄임 · 손그림이라 점 하나하나보다 모양이 중요) */
+function scaleSheet(base: MonSheet, k: number): MonSheet {
+  const meta = scaleMeta(base.meta, k);
+  const one = (c: HTMLCanvasElement) => {
+    const o = mk(meta.frameW, meta.frameH);
+    const x = o.getContext('2d')!;
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(c, 0, 0, c.width, c.height, 0, 0, meta.frameW, meta.frameH);
+    return o;
+  };
+  const frames: MonSheet['frames'] = {};
+  for (const [name, list] of Object.entries(base.frames)) frames[name] = list.map((f) => ({ r: one(f.r), l: one(f.l), w: one(f.w) }));
+  return { meta, frames };
+}
+
 /** 균열 보스 시트를 미리 만들어 sheets 에 넣는다 (이미 있으면 그대로) — 실패하면 false (그땐 startCombat 이 예비 그림)
  *  RIFTART: 손그림(rift_<look>)이 있으면 그 시트 그대로 · 없거나 못 불러오면 지금처럼 기존 보스를 키우고 색을 돌린 시트 */
 export async function prepRiftSheet(look: string): Promise<boolean> {
@@ -141,7 +177,12 @@ export async function prepRiftSheet(look: string): Promise<boolean> {
   if (riftArtOf(key)) {
     const art = await loadMon(id);
     if (art) {
-      sheets[id] = art;
+      const k = riftArtScale(key, true);
+      try {
+        sheets[id] = k === 1 ? art : scaleSheet(art, k);
+      } catch {
+        sheets[id] = art;
+      }
       return true;
     }
   }

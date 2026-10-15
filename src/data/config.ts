@@ -1426,7 +1426,7 @@ export const CONFIG = {
      *  tries 하루 도전 · seconds 한 판 · cap 한 판 피해 상한 = 파티 전투력 합 × cap (서버가 자름) · flagRatio 이 비율을 넘으면 서버가 표시만(막지 않음)
      *  hitMaxFrac 한 판 피해 상한 = 보스 최대 체력 × 이 값 (시험 보스 제외) · hpMin·hpMax 다음 날 체력 범위 · killMult 처치한 다음 날 × · missMult 못 잡은 다음 날 ×
      *  daily: 그날 참여 frags + dust(잿빛 가루) · kill 처치 성공(모두) +조각 · 상위 topN명 +top 조각 + 칭호 title(받은 날 하루) / weekly: 주간 합산 1~boxTop위 선택 상자 · ~fragTop위 조각 fragN
-     *  bosses: 3종 순환 (서버 look 키 → 바탕 그림 · 크기 · 색 돌리기(hue°) · 맞는 반지름) · notices: 공용 체력이 이 비율 아래로 내려가면 (서버가 [알림] · 화면은 토스트만)
+     *  bosses: 3종 순환 (서버 look 키 → 바탕 그림 · 크기 · 색 돌리기(hue°) · 맞는 반지름 · artScale 손그림 시트를 그릴 때 배율 (예비 그림엔 안 씀)) · notices: 공용 체력이 이 비율 아래로 내려가면 (서버가 [알림] · 화면은 토스트만)
      *  rankTop 랭킹 탭 줄 수 · pollMs 알약이 보스 상태를 다시 묻는 간격 · bossRec 보스 세기 = 내 파티 전투력 합 × 이 값 (피해만 세니까 이길 필요 없음)
      */
     world: {
@@ -1450,10 +1450,10 @@ export const CONFIG = {
       daily: { frags: 1, dust: 40, kill: 1, topN: 3, top: 2, title: '균열의 영웅' },
       weekly: { boxTop: 3, fragTop: 10, fragN: 3 },
       bosses: {
-        sky: { name: '하늘을 삼킨 것', base: 'nb_deep', minion: 'na_butterfly', scale: 1.5, hue: 40, sat: 1.2, r: 1.1 },
-        ember: { name: '잿불 거인', base: 'nb_flam', minion: 'na_lantern', scale: 1.5, hue: -40, sat: 1.1, r: 0.95 },
-        frost: { name: '서리 뱀', base: 'nb_dragong', minion: 'na_owl', scale: 1, hue: 150, sat: 0.8, r: 0.95 },
-      } as Record<string, { name: string; base: string; minion: string; scale: number; hue: number; sat: number; r: number }>,
+        sky: { name: '하늘을 삼킨 것', base: 'nb_deep', minion: 'na_butterfly', scale: 1.5, hue: 40, sat: 1.2, r: 1.1, artScale: 0.6 },
+        ember: { name: '잿불 거인', base: 'nb_flam', minion: 'na_lantern', scale: 1.5, hue: -40, sat: 1.1, r: 0.95, artScale: 0.7 },
+        frost: { name: '서리 뱀', base: 'nb_dragong', minion: 'na_owl', scale: 1, hue: 150, sat: 0.8, r: 0.95, artScale: 0.75 },
+      } as Record<string, { name: string; base: string; minion: string; scale: number; hue: number; sat: number; r: number; artScale?: number }>,
       notices: [0.5, 0.25, 0],
       rankTop: 30,
       pollMs: 60_000,

@@ -301,3 +301,19 @@ export function drawRiftCrack(ctx: CanvasRenderingContext2D, calm: boolean) {
   ctx.drawImage(crackCv, 0, 0);
   ctx.globalAlpha = 1;
 }
+
+/** R34 균열 보스 자리: 보스 그림 위끝이 공용 체력 막대 아래 24px(화면) 밑으로 오게 화면을 얼마나 내릴지 (논리 px · 0 이상)
+ *  footY 보스 발(기준점) 화면 y · ay 시트 기준점 높이(그림 위끝 = footY − ay − 1 숨쉬기) · topMin 그림 위끝이 와야 할 가장 위 (논리 px)
+ *  lowY 파티 · 보스 중 가장 아래 발 y · LH 화면 높이 — 가장 아래 발이 아래 HUD(LH × 0.22) 위에 남는 만큼만 내린다 (필드가 화면 밖으로 안 나가게) */
+export const RIFT_GAP = 24;
+export function riftDrop(footY: number, ay: number, topMin: number, lowY: number, LH: number): number {
+  const need = Math.ceil(topMin - (footY - ay - 1));
+  if (need <= 0) return 0;
+  const room = Math.floor(LH * 0.78 - lowY);
+  return Math.max(0, Math.min(need, room));
+}
+/** 막대 아래끝(화면 CSS px · 캔버스 위끝 기준) → 보스 그림 위끝 최소 y (논리 px) — 1 논리 px = K / dpr CSS px */
+export const riftTopMin = (barBottomCss: number, K: number, dpr: number): number => Math.ceil(((barBottomCss + RIFT_GAP) * dpr) / K);
+/** combat/ui 가 재어 넣는다: 지금 균열 HUD 막대 기준 보스 그림 위끝 최소 y (논리 px · 0 = HUD 없음)
+ *  점검용: drop 이번 장에 내린 만큼 · top 보스 그림 위끝 (논리 px · 숨쉬기 1px 포함) · k 논리 1px = CSS k px */
+export const riftView = { topMin: 0, drop: 0, top: 0, k: 1 };
