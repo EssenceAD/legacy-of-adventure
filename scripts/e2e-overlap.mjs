@@ -163,8 +163,13 @@ async function run(who, file, size) {
           if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
           const e = document.elementFromPoint(x, y);
           if (!e || win.contains(e)) continue;
+          // 마을 등급 축하 띠(2.6초 · 누르기 안 막음 pointer-events:none)는 일부러 창 위 — 우연히 그 사이에 열린 창은 겹침이 아니다
+          if (e.closest('.gradeban')) continue;
           const d = (e.id ? '#' + e.id : e.tagName.toLowerCase()) + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '');
-          bad.push(`${d} @${label}`);
+          // 이름 없는 요소면 어느 부모 안인지 (예: #toast > b)
+          const up = [];
+          for (let q = e.parentElement; q && q !== document.body && up.length < 3; q = q.parentElement) up.push(q.id ? '#' + q.id : q.tagName.toLowerCase() + (typeof q.className === 'string' && q.className ? '.' + q.className.trim().split(/\s+/)[0] : ''));
+          bad.push(`${d}${!e.id && !e.className && up.length ? ' (' + up.reverse().join(' > ') + ')' : ''} @${label}`);
         }
         for (const [e, v] of touched) e.style.pointerEvents = v;
         return bad;
