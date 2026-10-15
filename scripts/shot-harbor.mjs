@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const URL = process.env.URL ?? 'http://localhost:4190/';
-const OUT = 'shots/showcase';
+const OUT = process.env.OUT ?? 'shots/showcase';
 fs.mkdirSync(OUT, { recursive: true });
 const SAVE = fs.readFileSync('tests/fixtures/real_lotte.json', 'utf8');
 const b = await chromium.launch({ channel: 'chrome' });
@@ -90,6 +90,8 @@ async function run(dev, nights) {
     await W(1200);
     await frames(30);
     await p.screenshot({ path: `${OUT}/harbor_${dev}_${night ? 'night' : 'day'}.png` });
+    const ft = await p.evaluate(() => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = () => (++n >= 120 ? res((performance.now() - t0) / n) : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+    console.log(`   프레임 ${ft.toFixed(1)}ms (${night ? '밤' : '낮'})`);
   }
   ok(!errs.length, '페이지 에러 없음 ' + errs.join(' | '));
   console.log('   zoom', zMin);

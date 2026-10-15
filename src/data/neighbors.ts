@@ -2,6 +2,7 @@
 // 그릴 때 world/town.ts의 placeLayout()이 내 마을과 같은 배치 검사를 한 번 더 한다.
 import type { Kind } from './catalog';
 import { CONFIG } from './config';
+import { HARBOR_FILL } from './harbor_fill';
 
 export interface Neighbor {
   id: string;
@@ -305,6 +306,8 @@ const HARBOR: Neighbor = {
     // ── 나무 액자: 뒤쪽 두 가장자리 촘촘 · 앞쪽 성기게
     ...cycle(['pine', 'birch', 'pine', 'cherry'], [...alongX(0, span(0, 41)), ...alongY(0, span(1, 41))]),
     ...cycle(['pine', 'maple'], [...alongX(41, [3, 7, 12, 27, 32, 37]), ...alongY(41, [3, 8, 12, 17, 22, 26])]),
+    // 10/17 빈 잔디 채우기 (구역별 새 장식 · 꽃밭 · 나무 — 길·문 앞·입구는 비움 · data/harbor_fill)
+    ...HARBOR_FILL,
   ],
 };
 
