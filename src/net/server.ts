@@ -283,6 +283,41 @@ export async function listVillages(n: number = CONFIG.cloud.neighborPage): Promi
   const { data } = await q;
   return ((data as VillageRow[]) ?? []).filter((r) => !hide.has(r.user_id)).slice(0, n + 1);
 }
+/** 서버에 함수가 아직 없나 (SQL 적용 전) */
+const noFn = (e: { code?: string; message?: string } | null) => !!e && (e.code === 'PGRST202' || e.code === '42883' || /Could not find the function|does not exist/i.test(e.message ?? ''));
+/**
+ * SOCIAL_SPEC §1 「추천」: n곳 (서버 neighbors_suggest — 활성·땅 단계 ±2·새로 온 여관 섞기 · 매번 무작위) · exclude = 방금 보여 준 곳.
+ *  함수가 아직 없으면 예전 목록(최근 7일)에서 무작위로
+ */
+export async function suggestVillages(n: number, exclude: string[] = []): Promise<VillageRow[]> {
+  if (!sb) return [];
+  const { data, error } = await sb.rpc('neighbors_suggest', { p_n: n, p_exclude: exclude });
+  if (!error) return ((data as VillageRow[]) ?? []).slice(0, n);
+  if (!noFn(error)) return [];
+  const ex = new Set(exclude);
+  const all = (await listVillages(60)).filter((r) => !ex.has(r.user_id));
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  return all.slice(0, n);
+}
+/** SOCIAL_SPEC §1 「찾기」: 여관 이름·닉네임 (2글자 이상 · 10개) · 함수가 아직 없으면 profiles에서 찾아 마을을 붙인다 */
+export async function searchVillages(q: string): Promise<VillageRow[]> {
+  const s = q.trim().slice(0, 20);
+  if (!sb || [...s].length < 2) return [];
+  const { data, error } = await sb.rpc('search_villages', { p_q: s });
+  if (!error) return ((data as VillageRow[]) ?? []).slice(0, 10);
+  if (!noFn(error)) return [];
+  // PostgREST or() 안에서 쉼표·괄호는 구분자라 빼고 · % _ 는 글자 그대로
+  const like = `%${s.replace(/[,()]/g, ' ').replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+  const hide = await testIds();
+  const { data: ps } = await sb.from('profiles').select('id').or(`inn_name.ilike.${like},nickname.ilike.${like}`).limit(20);
+  const ids = ((ps as { id: string }[]) ?? []).map((p) => p.id).filter((id) => !hide.has(id) && id !== me.profile?.id);
+  if (!ids.length) return [];
+  const { data: vs } = await sb.from('villages').select('user_id,snapshot,likes,updated_at').in('user_id', ids).limit(10);
+  return (vs as VillageRow[]) ?? [];
+}
 /** 내 여관 (목록 맨 위 고정 · ♥ 확인용) */
 export async function myVillage(): Promise<VillageRow | null> {
   return me.profile ? getVillage(me.profile.id) : null;

@@ -2511,3 +2511,11 @@ body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2
 .wd-cell em.wd-on{color:var(--gold)}.wd-cell em.wd-lock{color:#8a84a8}
 .wd-how{color:#c8b8e8!important}
 .wd-sw{display:flex;gap:5px;justify-content:center;margin:2px 0}.wd-sw i{display:block;width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 2px var(--ink)}
+/* SOCIAL_SPEC §1 nbTabs: 이웃 목록 4탭 */
+.nbsub{flex-wrap:wrap}
+.nbmine:empty{display:none}
+.nbfind{display:flex;gap:6px;align-items:center;margin:8px 0}
+.nbfind input{flex:1;min-width:0;font:inherit;font-size:var(--f-ui);padding:6px 8px;background:#0f1330;color:#fff;border:0;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--line)}
+.nbex{margin-top:10px}
+.nbex summary{cursor:pointer;color:#cfd8ff;font-size:var(--f-small);padding:4px 0}
+#nbAgain{margin-top:6px}

@@ -59,6 +59,8 @@ export const FLAG_DEFAULTS = {
   gateFix: true,
   /** v0.25.58 (10/16 에펨) 마을 캔버스 글자(이름표·간판·팻말·공사 시간…)를 10px 도트로 — 알파 문턱 · 글자별 캐시 (world/pixText) · 끄면 같은 자리에 예전처럼 fillText */
   pixText: true,
+  /** v0.25.60 SOCIAL_SPEC §1 이웃 목록 4탭 (⭐ 각별한 이웃 · 추천 8곳 · 인기 10 · 찾기) · 예시 마을은 이웃 5곳 미만일 때만 접어서 · 서버 reports/_tmp/nb_tabs.sql (없으면 예전 목록에서 골라 보여 줌) */
+  nbTabs: true,
   /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
   zoomDedupe: true,
   /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */

@@ -802,6 +802,26 @@ export const CONFIG = {
     goldStepsSeconds: 12,
   },
   /** 3단계 2차: 서버 */
+  /** SOCIAL_SPEC (10/16): 이웃 목록 4탭(§1) · 각별한 이웃(§2~§4 · 주말 friends) 숫자 한 곳 */
+  social: {
+    /** 추천 한 번에 · 인기 몇 곳 · 예시 마을은 실제 이웃이 이보다 적을 때만 · 「다른 여관 보기」로 빼 둘 곳 */
+    suggestN: 8,
+    popTop: 10,
+    exampleUnder: 5,
+    seenMax: 40,
+    friendMax: 20,
+    helpPerDay: 10,
+    helpPerFriend: 3,
+    conCutPct: 0.1,
+    conCutMaxMin: 30,
+    conFriendCapPct: 0.3,
+    gardenCutPct: 0.15,
+    petMult: 1.5,
+    tokenPerHelp: 1,
+    tokenThanks: 1,
+    tokenDayMax: 10,
+    newFriendLockMin: 60,
+  },
   cloud: {
     /** 클라우드 저장 간격 (초) */
     pushSeconds: 60,
