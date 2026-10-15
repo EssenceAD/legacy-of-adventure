@@ -9,7 +9,8 @@ import { S, world } from '../../src/world/state';
 import { def, type Kind } from '../../src/data/catalog';
 import { N } from '../../src/engine/iso';
 
-it('gen', () => {
+// 다시 만들 때만: GEN=1 npx vitest run tests/_gen/harborfill.test.ts (평소 테스트에선 건너뜀 — 파일을 쓰지 않게)
+it.skipIf(!process.env.GEN)('gen', () => {
   const v = NEIGHBORS.find((n) => n.id === 'harbor')!;
   S.visiting = v as never;
   // 배치표에서 예전 채움(HARBOR_FILL 줄) 빼기 — 손으로 둔 3칸짜리 줄과 겹칠 수 있어 같은 줄 수만큼만
