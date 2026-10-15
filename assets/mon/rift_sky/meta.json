@@ -1,0 +1,49 @@
+{
+ "frameW": 161,
+ "frameH": 120,
+ "anchor": [
+  80,
+  118
+ ],
+ "boss": true,
+ "code": true,
+ "source": "RIFTART 하늘 균열 sky (asset_raw/rift/src/rb_sky.png)",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "move": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "attack": {
+   "row": 1,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "charge": {
+   "row": 1,
+   "frames": 1,
+   "fps": 1,
+   "loop": true
+  },
+  "hurt": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  "die": {
+   "row": 0,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  }
+ }
+}
