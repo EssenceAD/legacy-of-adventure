@@ -389,9 +389,31 @@ export function autoEntranceX(): number {
  */
 export function entranceX(): number {
   const [a, b] = landBounds();
+  // 10/16 왈왈콩 gateFix: 울타리 앞 가장자리에 정문이 있으면 입구는 정문이 정한다 (정문을 옮기면·되돌리면 입구도 같이)
+  //  옮겨 둔 입구 x가 정문 두 칸 안이면 그대로 (예전 저장 그대로) · 아니면 정문 왼쪽 칸
+  const fg = S.visiting ? undefined : frontGate();
+  if (fg) {
+    const e = P.decor?.entX;
+    return typeof e === 'number' && e >= fg.tx && e < fg.tx + fg.fw ? e : fg.tx;
+  }
   const v = S.visiting ? S.visiting.ent : P.decor?.entX;
   const x = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : autoEntranceX();
   return Math.max(a, Math.min(b - 1, x));
+}
+/** gateFix: 울타리 앞 가장자리(발판 아랫줄 = 앞줄)에 선 정문 (내 마을) */
+export function frontGate(): Building | undefined {
+  if (!flag('gateFix')) return undefined;
+  const [, b] = landBounds();
+  return world.objs.find((o) => o.kind === 'gate' && o.ty + o.fh === b);
+}
+/**
+ * gateFix: 입구 고정 — 옮긴 적 없는 입구(entX 없음)는 지금 자리를 한 번 적어 둔다.
+ *  예전엔 여관 문 x를 따라다녀 여관을 옮기면 입구·길이 통째로 바뀌었다. 불러올 때 · 건물을 옮기기 직전에 부른다. 적었으면 true
+ */
+export function pinEntrance(): boolean {
+  if (!flag('gateFix') || S.visiting || !P.decor || typeof P.decor.entX === 'number' || !findKind('inn')) return false;
+  P.decor.entX = entranceX();
+  return true;
 }
 /** 마을 입구: 울타리 앞쪽(화면 아래) 가장자리에서 입구 줄(기본 = 여관 문과 같은 줄)에 가장 가까운 빈 칸 */
 export function entrance(hx = entranceX()): [number, number] {
@@ -477,6 +499,8 @@ export function canPlace(o: { kind: Kind; tx: number | null; ty: number | null; 
 /** 정문: 마을 입구 길 위에만 — 발자국이 울타리 앞줄의 입구 칸을 덮어야 한다 */
 export function gateOk(o: { tx: number | null; ty: number | null; fw: number; fh: number }): boolean {
   if (o.tx == null || o.ty == null) return false;
+  // gateFix: 울타리 앞 가장자리 어디든 (발판 아랫줄이 앞줄) — 놓은 자리가 곧 입구
+  if (flag('gateFix') && o.ty + o.fh === landBounds()[1]) return true;
   const [ex, ey] = entrance();
   return ex >= o.tx && ex < o.tx + o.fw && ey >= o.ty && ey < o.ty + o.fh;
 }
@@ -584,6 +608,8 @@ export function buildableKinds(): Kind[] {
     if (k.startsWith('fish_')) return (P.meta.giftDeco?.[k] ?? 0) > 0;
     // HARVEST §1-5: 수확제 새 장식은 교환소·연감에서 받은 게 있을 때만 (무료)
     if (HV_NEW_DECO.includes(k)) return (P.meta.giftDeco?.[k] ?? 0) > 0;
+    // gateFix: 정문은 하나 — 보관함에 있으면(4등급 정문 · 넣어 둔 정문) 새로 짓지 않는다
+    if (k === 'gate' && flag('gateFix') && (P.decor?.store ?? []).some((s) => s.kind === 'gate')) return false;
     // HOTFIX14 §1: 한 채뿐인 건물(여관 본관·던전)과 unique 장식만 이미 있으면 못 지음 — 나머지는 여러 채 (두 번째부터 비용 ↑)
     return !d.fixed && !((d.unique || SINGLE(k)) && world.objs.some((o) => o.kind === k));
   });

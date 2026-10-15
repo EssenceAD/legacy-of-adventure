@@ -93,5 +93,7 @@
   "decorDayLight": true,
   "communityLinks": false,
   "guestLetters": true,
-  "giftDecoFree": true
+  "giftDecoFree": true,
+  "repPick": true,
+  "gateFix": true
 }

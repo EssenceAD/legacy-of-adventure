@@ -25,6 +25,7 @@ import { openGuestsEquip } from './guests';
 import { cardsOn } from './checkin';
 import { firstCamFx, pullOnChapter, takePull } from '../world/firstCam';
 import { zoomsNow } from './screen';
+import { grantGradeGate } from '../world/gradeGate';
 
 let handTarget: string | null = null;
 let handUntil = 0;
@@ -64,6 +65,8 @@ export function playGradeUp(to: number, then: () => void) {
   tempZoom(1);
   startGradeAnim(from, to);
   sfx('grade_up');
+  // 10/16 gateFix: 4등급(도시) 아치 → 진짜 정문 (덮어쓰기 연출이 끝난 뒤)
+  if (to >= 4) setTimeout(() => grantGradeGate(), 1700);
   setTimeout(() => {
     const name = `${S.innName || '여관'}`;
     const b = document.createElement('div');

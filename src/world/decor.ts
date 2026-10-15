@@ -238,14 +238,29 @@ export function entranceWhy(x: number | null): string | null {
   if (x == null || !Number.isInteger(x) || x < a || x >= b) return '입구는 울타리 앞쪽 가장자리에만 놓아요';
   const gate = gateOnEntrance();
   const g = grid[y]?.[x];
-  if (g && g !== gate) return '건물·장식이 있는 칸엔 입구를 못 놓아요';
+  if (g && g !== gate) return flag('gateFix') ? `${def(g.kind).name}${josaI(def(g.kind).name)} 있는 칸엔 입구를 못 놓아요` : '건물·장식이 있는 칸엔 입구를 못 놓아요';
   if (isPond(x, y)) return '연못 위엔 입구를 못 놓아요';
   if (gate) {
     const t = { kind: gate.kind, tx: gate.tx + x - entrance()[0], ty: gate.ty, fw: gate.fw, fh: gate.fh };
     // 정문 규칙(canPlace의 gateOk)은 「지금 입구 위」를 보므로 쓰지 않는다 — 같은 만큼 밀리니 새 입구 칸은 저절로 덮인다
-    if (!canPlaceIgnoringGateRule(t, gate)) return '정문이 따라갈 자리가 없어요 (정문 옆을 비워 주세요)';
+    if (!canPlaceIgnoringGateRule(t, gate)) return flag('gateFix') ? gateBlockWhy(t, gate) : '정문이 따라갈 자리가 없어요 (정문 옆을 비워 주세요)';
   }
   return null;
+}
+const josaI = (w: string) => ((w.charCodeAt(w.length - 1) - 0xac00) % 28 ? '이' : '가');
+/** gateFix: 정문이 따라갈 자리가 막힌 까닭 — 어느 쪽 몇 칸을 비우면 되는지 */
+function gateBlockWhy(t: { tx: number; ty: number; fw: number; fh: number }, gate: Building): string {
+  for (let j = 0; j < t.fh; j++)
+    for (let i = 0; i < t.fw; i++) {
+      const x = t.tx + i;
+      const y = t.ty + j;
+      if (!inLand(x, y)) return '정문이 울타리 밖으로 나가요 · 입구를 한 칸 안쪽으로 옮겨 주세요';
+      const side = x >= gate.tx + gate.fw ? `오른쪽 ${x - (gate.tx + gate.fw) + 1}칸` : x < gate.tx ? `왼쪽 ${gate.tx - x}칸` : '자리';
+      if (isPond(x, y)) return `정문 ${side}에 연못이 있어요 · 다른 자리로 옮겨 주세요`;
+      const g = grid[y]?.[x];
+      if (g && g !== gate) return `정문 ${side}을 비워 주세요 (${def(g.kind).name}${josaI(def(g.kind).name)} 있어요)`;
+    }
+  return '정문이 다른 건물의 문 앞을 막아요 · 다른 자리로 옮겨 주세요';
 }
 /** 정문 규칙(입구 위)만 빼고 놓을 수 있나 — 입구를 옮기는 중엔 새 입구 기준이라 */
 function canPlaceIgnoringGateRule(t: { kind: Building['kind']; tx: number; ty: number; fw: number; fh: number }, gate: Building): boolean {

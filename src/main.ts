@@ -94,7 +94,8 @@ import { bubbleAt, setBldHover, tapBubble } from './world/bldStatusDraw';
 import { markDirty, P, runJobs, S, takeDirty, uiHooks, world } from './world/state';
 import { def, type Kind } from './data/catalog';
 import { firstCamClose, firstCamFx, firstCamZoom, placeFirstCam, pullOnLand, pullZoom, resetPull } from './world/firstCam';
-import { addObj, autoEntranceX, canMoveKind, dungeonHome, capacity, doorOf, entrance, findKind, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
+import { grantGradeGate } from './world/gradeGate';
+import { addObj, autoEntranceX, canMoveKind, canPlace, dungeonHome, capacity, doorOf, entrance, findKind, grid, landBounds, pathT, placing, rebuildPaths } from './world/town';
 import { ground } from './world/ground';
 import { initChat, openChat } from './ui/chat';
 import { openBoard } from './ui/expedition';
@@ -1186,7 +1187,7 @@ async function boot() {
 
   // 개발 중 콘솔에서 살펴보기용
   // FEEDBACK23 e2e: 마을 입구 칸 · 던전 숲속 원래 자리
-  if (import.meta.env.DEV) Object.assign(window, { __ent: () => entrance(), __autoEntX: () => autoEntranceX(), __dgHome: () => dungeonHome(), __hitAt: (cx: number, cy: number) => { const [mx, my] = toLogical(cv, cx, cy); const [fx, fy] = toTile(cv, cx, cy); return { sprite: buildingAt(mx, my, alphaAt)?.kind ?? null, floor: grid[Math.floor(fy)]?.[Math.floor(fx)]?.kind ?? null }; } });
+  if (import.meta.env.DEV) Object.assign(window, { __ent: () => entrance(), __canPlace: canPlace, __pathAt: (x: number, y: number) => pathT.has(y * N + x), __gradeGate: grantGradeGate, __autoEntX: () => autoEntranceX(), __dgHome: () => dungeonHome(), __hitAt: (cx: number, cy: number) => { const [mx, my] = toLogical(cv, cx, cy); const [fx, fy] = toTile(cv, cx, cy); return { sprite: buildingAt(mx, my, alphaAt)?.kind ?? null, floor: grid[Math.floor(fy)]?.[Math.floor(fx)]?.kind ?? null }; } });
   // GROWTH e2e: 손님(번호)·모모의 화면 좌표
   // LUXE §3: 게시판 탭 바로 열기 (봇·스크린샷)
   if (import.meta.env.DEV) Object.assign(window, { __openBoard: (t?: number) => openBoard(t) });

@@ -39,7 +39,7 @@ import { fitDay } from './ui/dayfit';
 import { ensureGoals, stars, track } from './world/progress';
 import { gsState } from './world/goldsink';
 import { clearJobs, later, markDirty, P, resetProgress, S, uiHooks, world, type Building } from './world/state';
-import { addObj, astar, blocksDoor, buildCost, canPlace, countKind, maxCopies, MULTI, SINGLE, doorOf, findKind, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
+import { addObj, astar, blocksDoor, buildCost, canPlace, countKind, maxCopies, MULTI, SINGLE, doorOf, entranceX, findKind, frontGate, pinEntrance, inLand, landBounds, landNeedFor, sizeFor, neighborTown, nextLevelCost, placeLayout, rebuildPaths, startTown, type Placement } from './world/town';
 import { conHooks, conSlots, slotFree, startNew, startUp, tickCons, type Con } from './world/construct';
 import { talk } from './ui/dialogue';
 import { openCreate, openingFor, openingShort, syncOwnerButton } from './ui/owner';
@@ -53,6 +53,7 @@ import { gbServer } from './net/guestbook';
 import { mythicHeart } from './world/mythic';
 import { refreshNoticeDot } from './ui/notice';
 import { grantLevelDeco, lvlDecoHooks } from './world/levelDeco';
+import { grantGradeGate } from './world/gradeGate';
 import { closeWin, isWinOpen, toast } from './ui/windows';
 import { bannerFx } from './ui/checkin';
 import { maybeShowPatchCard } from './ui/update';
@@ -311,6 +312,9 @@ function applySave(d: SaveData) {
   rebuildPaths();
   loadingDeco = true;
   grantLevelDeco(true);
+  // 10/16 gateFix: 입구 고정(옮긴 적 없으면 지금 자리) · 4등급 아치 → 진짜 정문 (한 번)
+  pinEntrance();
+  if (grantGradeGate()) rebuildPaths();
   loadingDeco = false;
   // 핫픽스 10: 예전 저장은 「마을 등급 장식을 옮겨 놓은 것」 표시가 없다 → 옮긴 기록(종류별 개수)으로 추정
   const movedKinds = P.harmony.moved.map((k) => k.split('@')[0]);
@@ -497,6 +501,10 @@ export function placeBuilding(pl: Placement): boolean {
   const newDeco = isDropKind(pl.kind) && !ownedDrops().includes(pl.kind);
   const o = addObj(pl.kind, pl.tx!, pl.ty!, { flip: !!pl.flip, builtAt: Date.now(), ...(cost !== d.cost ? { paid: cost } : {}), ...(pl.prop || giftDeco ? { fromProp: true } : {}) });
   startNew(o);
+  if (o.kind === 'gate') {
+    followGate();
+    rebuildPaths();
+  }
   trackEv('build', { kind: pl.kind });
   if (pl.kind === 'fire') track('buildFire');
   // DECO_DROP §3: 오늘의 목표 — 장식 놓기 · 새 장식 1종
@@ -616,13 +624,23 @@ export function demolish(o: Building): boolean {
 }
 
 /** 지은 건물 옮기기·방향 바꾸기 (무료). 안에 있던 손님은 새 문 앞으로 나온다 */
+/** gateFix: 정문이 울타리 앞 가장자리에 서 있으면 저장된 입구 x를 정문 자리로 맞춘다 */
+function followGate() {
+  if (!flag('gateFix') || S.visiting) return;
+  if (frontGate()) P.decor.entX = entranceX();
+}
+
 export function moveBuilding(pl: Placement): boolean {
   const o = pl.move;
   if (!o || pl.tx == null || pl.ty == null) return false;
+  // 10/16 gateFix: 옮기기 전에 입구를 지금 자리로 고정 (여관을 옮겨도 입구·길이 따라가지 않게)
+  pinEntrance();
   const inside = [...o.inside];
   o.inside = [];
   for (const a of world.actors) if (a.door?.o === o) a.door = null;
   Object.assign(o, { tx: pl.tx, ty: pl.ty, flip: !!pl.flip, sprite: pl.sprite, pop: 1 });
+  // gateFix: 정문을 옮기면 입구도 같이 (울타리 앞 가장자리에 섰으면 그 자리 · 이웃이 보는 입구도)
+  if (o.kind === 'gate') followGate();
   rebuildPaths();
   const d = doorOf(o);
   for (const a of inside) Object.assign(a, { hidden: false, at: null, x: d[0], y: d[1], st: 'idle', t: 0.3, pop: 0.4 });

@@ -4,7 +4,9 @@ import { CONFIG } from '../data/config';
 import { baseDexGuests, GUEST_DEX_TOTAL, ITEM_DEX_TOTAL, today } from '../world/progress';
 import { HEROES } from '../data/heroes';
 import { powerOf } from '../world/adventurers';
-import { markDirty, P, S, world, type RaidRecord } from '../world/state';
+import { markDirty, P, S, world, type Actor, type RaidRecord } from '../world/state';
+import { flag } from '../world/flags';
+import { entranceX } from '../world/town';
 import { gatesOn, pg } from '../world/paceGates';
 import { getPref, isFutureSave, isFutureVersion, markFutureSave, readSave, setPref, snapshot, writeSave } from '../save/save';
 import { validRecord } from './local';
@@ -18,11 +20,28 @@ import { petSnapshot } from '../world/pets';
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
 
 /** 대표 영웅: 가장 센 전설·영웅 (없으면 가장 센 단골의 직업) → 초상화 키 */
+/** 대표로 고를 수 있는 사람의 고정 키 (전설·영웅은 이름 · 단골은 손님 번호) */
+export const repKeyOf = (a: Actor) => (a.legendId ? 'legend_' + a.legendId : a.heroId ? 'hero_' + a.heroId : 'g:' + a.id);
+export const repEligible = (a: Actor) => !a.role && (a.status === 'regular' || a.status === 'hero');
+const portKey = (a: Actor) => (a.legendId ? 'legend_' + a.legendId : a.heroId ? 'hero_' + a.heroId : a.kind);
+/** 10/16 에펨: 유저가 고른 대표 (아직 마을에 있을 때만) */
+export function repPicked(): Actor | null {
+  if (!flag('repPick') || !P.repPick) return null;
+  return (world.home?.actors ?? world.actors).find((a) => repEligible(a) && repKeyOf(a) === P.repPick) ?? null;
+}
 export function repHero(): string | null {
-  const list = (world.home?.actors ?? world.actors).filter((a) => !a.role && (a.status === 'regular' || a.status === 'hero'));
+  const picked = repPicked();
+  if (picked) return portKey(picked);
+  const list = (world.home?.actors ?? world.actors).filter(repEligible);
   if (!list.length) return null;
   const best = list.sort((a, b) => (b.legendId ? 1e6 : b.heroId ? 5e5 : 0) + powerOf(b) - ((a.legendId ? 1e6 : a.heroId ? 5e5 : 0) + powerOf(a)))[0];
-  return best.legendId ? 'legend_' + best.legendId : best.heroId ? 'hero_' + best.heroId : best.kind;
+  return portKey(best);
+}
+/** 대표 영웅 고르기 (null = 자동으로) → 채팅 얼굴·방명록·인기 랭킹이 같이 바뀌게 마을 모습을 한 번 올린다 */
+export function setRepPick(key: string | null) {
+  P.repPick = key;
+  markDirty();
+  if (online() && ready && S.started && !isFutureSave()) void pushVillage(villageSnapshot(), S.innName, repHero()).catch(() => {});
 }
 
 export function villageSnapshot() {
@@ -44,7 +63,7 @@ export function villageSnapshot() {
     title: myTitle(),
     trophies: [...P.trophies],
     // FEEDBACK23 §5: 옮긴 마을 입구 x (v4 좌표 · 옮긴 적 없으면 빼서 보는 쪽이 자동으로)
-    ...(typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
+    ...(flag('gateFix') && !S.visiting ? { ent: entranceX() } : typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
     // LUXE §2: 꺼내 둔 펫 (켰고 있을 때만 — 보는 쪽은 아는 id만 그린다)
     ...(petSnapshot().length ? { pets: petSnapshot() } : {}),
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.con?.from?.[0] ?? o.tx, o.con?.from?.[1] ?? o.ty, o.lvl, o.hue, !!o.flip]),

@@ -121,7 +121,7 @@ function draw() {
     // v0.25.4 actionsTidy: 실제 동작(짧게 눌러도 건물·장식을 바로 든다)에 맞춘 안내 — 정보는 꾸미기 밖에서 누르면
     sub = `<span class="hint">${vis('actionsTidy') ? '누르면 들어서 옮겨요 · 끌면 둘러보기 · 정보는 꾸미기 밖에서' : '꾹 눌러 들어서 옮겨요 · 그냥 누르면 정보 · 끌면 둘러보기'}</span><button data-act="ent" title="손님이 드나드는 울타리 앞 입구를 좌우로 옮겨요">🚪 입구 옮기기</button>`;
   const n = storeList().length;
-  bar.innerHTML = `<div class="dt">${TABS.map(([t, nm]) => `<button class="tl ${tab === t ? 'on' : ''}" data-tab="${t}">${nm}</button>`).join('')}</div>
+  bar.innerHTML = `<div class="dt">${TABS.map(([t, nm]) => `<button class="tl ${tab === t ? 'on' : ''}" data-tab="${t}">${nm}</button>`).join('')}${flag('gateFix') ? '<button class="tl ent" data-act="ent" title="손님이 드나드는 울타리 앞 입구를 좌우로 옮겨요 (정문이 있으면 같이)">🚪 입구</button>' : ''}</div>
     <div class="ds">${sub}</div>
     <div class="dd"><button data-act="undo" ${canUndo() ? '' : 'disabled'} title="${esc(undoLabel())}" aria-label="되돌리기">↶</button><button data-act="redo" ${canRedo() ? '' : 'disabled'} title="${esc(redoLabel())}" aria-label="다시 하기">↷</button><button data-act="fade" class="${decorView.fadeOn ? 'on' : ''}">건물 흐리게 ${decorView.fadeOn ? '켬' : '끔'}</button><button data-act="grid" class="${decorView.grid ? 'on' : ''}">격자 ${decorView.grid ? '켬' : '끔'}</button><button data-act="store">📦 보관함${n ? ` ${n}` : ''}</button><button data-act="exit" class="ex">✓ 다 했어요</button></div>`;
   bar.querySelectorAll<HTMLElement>('[data-tab]').forEach(

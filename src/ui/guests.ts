@@ -44,6 +44,14 @@ import { bindWardrobeBtn, wardrobeBtnHtml } from './wardrobe';
 import { heroCardHtml, sagaFirst } from './heroCard';
 import { bindExBag, bindExItem, exBagLine, exItemHtml, exWear } from './exWeapons';
 import { exWhy } from '../world/exGate';
+import { repEligible, repKeyOf, repPicked, setRepPick } from '../net/sync';
+
+/** 10/16 에펨: 대표 영웅 버튼 (내 마을 · 단골·영웅·전설만) */
+function repBtnHtml(a: Actor): string {
+  if (!flag('repPick') || S.visiting || !repEligible(a)) return '';
+  const on = repPicked() === a;
+  return `<button class="bigbtn sm ${on ? '' : 'ghost'}" id="aRep" title="이웃 목록·채팅·방명록·인기 랭킹에 보이는 얼굴">${on ? '⭐ 대표 영웅 · 자동으로 되돌리기' : '⭐ 대표 영웅으로'}</button>`;
+}
 
 const homeActors = () => world.home?.actors ?? world.actors;
 
@@ -249,9 +257,17 @@ export function showActor(a: Actor) {
     ${a.legendId ? legendPanel(a) : ''}${mythicStarPanel(a)}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
     ${a.status === 'hero' && !a.starId && (a.stars ?? 1) < CONFIG.heroes.maxStars ? '<p class="note">영웅은 케미 친밀도가 오를 때마다 별이 올라요 (★5까지)</p>' : ''}
-    <div class="btnrow">${personActionsHtml(a, { talk: true })}${wardrobeBtnHtml(a, !!S.visiting)}${byeBtn(a)}</div>`,
+    <div class="btnrow">${personActionsHtml(a, { talk: true })}${wardrobeBtnHtml(a, !!S.visiting)}${repBtnHtml(a)}${byeBtn(a)}</div>`,
   );
   bindPersonActions(a, talkGuest);
+  const rp = document.getElementById('aRep');
+  if (rp)
+    rp.onclick = () => {
+      const on = repPicked() === a;
+      setRepPick(on ? null : repKeyOf(a));
+      toast(on ? '대표 영웅을 자동(가장 센 동료)으로 되돌렸어요' : `⭐ ${a.name} — 대표 영웅 · 이웃 목록·채팅·방명록에 이 얼굴이 보여요`);
+      showActor(a);
+    };
   // LUXE §1-3: [의상] → 옷장 (2×n 미리보기)
   bindWardrobeBtn(a, () => showActor(a));
   // GROWTH §3-1: 장비 칸 → 그 장비 강화 창 바로 (빈 칸이면 고르기)

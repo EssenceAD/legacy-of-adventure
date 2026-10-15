@@ -157,7 +157,7 @@ describe('§5 마을 입구 옮기기', () => {
     expect(entranceWhy(a + 1.5)).toBeTruthy();
     addObj('training', a + 3, b - 2);
     rebuildPaths();
-    expect(entranceWhy(a + 3)).toMatch(/건물/);
+    expect(entranceWhy(a + 3)).toMatch(/건물|있는 칸엔 입구를 못/);
     P.decor.paint[`${a + 6},${b - 1}`] = 'pond';
     expect(entranceWhy(a + 6)).toMatch(/연못/);
   });
@@ -191,7 +191,7 @@ describe('§5 마을 입구 옮기기', () => {
     // 정문이 따라갈 자리에 건물이 있으면 거절
     addObj('training', a + 1, b - 3);
     rebuildPaths();
-    expect(entranceWhy(a + 1)).toMatch(/정문|건물/);
+    expect(entranceWhy(a + 1)).toMatch(/정문|건물|있는 칸엔 입구를 못/);
   });
   it('저장: entX가 남고, 옛 저장(entX 없음)은 null(자동)로 읽힌다', () => {
     const [a] = landBounds();

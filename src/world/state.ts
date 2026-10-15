@@ -435,6 +435,8 @@ export function freshProgress() {
     /** 보스 전용 재료 */
     bossMats: {} as Record<string, number>,
     trophies: [] as string[],
+    /** 10/16 에펨: 유저가 고른 대표 영웅 (legend_<id> · hero_<id> · g:<단골 id>) · 없거나 떠났으면 자동 (net/sync repHero) */
+    repPick: null as string | null,
     titles: [] as string[],
     /** 핫픽스 12 §6: 케미 소식(대화창 대신 모아 두기) · 오늘 띄운 케미 대화 수 · 5단계를 찍은 짝 */
     chemNews: { list: [] as { t: number; text: string }[], unread: 0, day: '', shown: 0 },
