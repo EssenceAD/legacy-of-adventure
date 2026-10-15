@@ -21,6 +21,7 @@ import { brag, uniqueSalvageMult } from './growth';
 import { windHarvest } from './wind';
 import { perkEnhDust } from './bundlePerks';
 import { petEnhDust, petHarvestPlus, petTry } from './pets';
+import { addFlour, millCut } from './buildings2';
 
 const SM = CONFIG.smith;
 const homeObjs = () => world.home?.objs ?? world.objs;
@@ -363,7 +364,10 @@ export function harvest(o: Building, i: number): number {
   // LUXE §2 꼬마 두더지(꺼내 둔 펫): 10% 확률로 +1
   const n = windHarvest(GD.crops[p.crop!].yield + bfx(o, 'harvest')) + petHarvestPlus();
   // BUILDINGS_SPEC §3: 작물별 창고 (주점은 먹을 수 있는 것을 자동으로 · 공방은 골라 쓴다)
-  addCrop(p.crop!, n);
+  // BUILDINGS2 풍차 방앗간: 수확물 일부가 밀가루로 (나머지만 창고에)
+  const flour = millCut(n);
+  addCrop(p.crop!, n - flour);
+  addFlour(flour);
   P.counters.harvests++;
   // LUXE §2 펫: 텃밭 수확 = 꼬마 두더지 시도 1
   petTry('harvest');

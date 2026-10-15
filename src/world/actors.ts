@@ -33,6 +33,7 @@ import { windMoodDecay, windPasser, windRegularCut } from './wind';
 import { fsay } from './visual';
 import { perkMealMult } from './bundlePerks';
 import { petMealMood, petTry } from './pets';
+import { breadStay, stageChem, stageMood, storeMult } from './buildings2';
 
 const A = CONFIG.actors;
 const G = CONFIG.guests;
@@ -199,8 +200,8 @@ function needTarget(a: Actor): { b: Building; why: string } | null {
     let opts: Building[] = [];
     const passer = a.status === 'passer';
     if (k === 'hp') opts = passer ? byAct(['bath']) : S.night ? byAct(['sleep']) : byAct(['bath']).concat(byAct(['sleep']));
-    if (k === 'food') opts = byAct(['drink']).length || passer ? byAct(['drink']) : byAct(['sleep']);
-    if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink', 'pray', 'stargaze', 'read']) : byAct(['bath', 'drink', 'farm', 'pet', 'read', 'brew', 'mail', 'brag', 'pray']);
+    if (k === 'food') opts = byAct(['drink', 'eat']).length || passer ? byAct(['drink', 'eat']) : byAct(['sleep']);
+    if (k === 'mood') opts = S.night && !passer ? byAct(['fire', 'bath', 'drink', 'pray', 'stargaze', 'read']) : byAct(['bath', 'drink', 'farm', 'pet', 'read', 'brew', 'mail', 'brag', 'pray', 'shop', 'mill', 'fish', 'study']);
     if (opts.length) return { b: nearestSame(a, pick(opts), opts), why: { hp: '쉬러 가는 중', food: '밥 먹으러 가는 중', mood: '기분 전환하러 가는 중' }[k] };
   }
   return null;
@@ -229,7 +230,10 @@ function choose(a: Actor) {
     } else if (S.night) {
       const fire = blds.find((o) => o.kind === 'fire');
       const beds = blds.filter((o) => def(o.kind).act === 'sleep');
-      if (fire && r < A.nightFireChance) want = fire;
+      // BUILDINGS2 음유시인 무대: 밤엔 공연 보러 (모닥불보다 먼저 한 번 굴림)
+      const stage = blds.find((o) => def(o.kind).act === 'perform');
+      if (stage && r < CONFIG.buildings2.stage.nightChance) want = stage;
+      else if (fire && r < A.nightFireChance) want = fire;
       else if (beds.length) want = nearestSame(a, pick(beds), beds);
     } else if (r < A.dayBuildingChance) {
       const day = blds.filter((o) => def(o.kind).act !== 'fire');
@@ -372,7 +376,12 @@ function fillNeeds(a: Actor, act: Act | undefined) {
   } else if (act === 'forge') a.mood = clamp(a.mood + 4);
   // BUILDINGS_SPEC §2: 새 기능 건물 — 말 쓰다듬기·기도(밤엔 더)·책·공방 구경·편지·별 보기·의뢰 자랑
   else if (act === 'pray') a.mood = clamp(a.mood + CONFIG.newBuildings.chapel.prayMood * (S.night ? 1.5 : 1) * moodMult());
-  else if (act && ['pet', 'read', 'brew', 'mail', 'stargaze', 'brag'].includes(act)) a.mood = clamp(a.mood + 5 * moodMult());
+  else if (act && ['pet', 'read', 'brew', 'mail', 'stargaze', 'brag', 'shop', 'perform', 'mill', 'fish', 'study'].includes(act)) a.mood = clamp(a.mood + 5 * moodMult());
+  // BUILDINGS2 빵집: 빵 냄새 — 배 · 기분
+  else if (act === 'eat') {
+    a.food = clamp(a.food + CONFIG.buildings2.bakery.food);
+    a.mood = clamp(a.mood + 3 * moodMult());
+  }
   // 지친 손님이 쉬고 일어났다 (성녀 아리아의 부탁)
   const rested = act === 'sleep' || act === 'bath';
   if (!S.visiting && rested && ((tired && a.hp >= 30) || (advTired && a.hp >= CONFIG.legends.tiredHp))) {
@@ -401,11 +410,14 @@ function goInside(a: Actor, o: Building) {
   }
   // 4단계: 요리(주점) · 계절 행사 · 유산 보너스
   // 땅 개편: 주점 레벨당 수입 +15% (Lv.2 = +15% … Lv.6 = +75%)
-  const lvMult = o.kind === 'tavern' ? 1 + CONFIG.upgrade.tavernIncomePerLevel * (o.lvl - 1) : 1;
+  // BUILDINGS2: 잡화점 = 주점 기본 × 1.2 (레벨마다 ↑)
+  const lvMult = o.kind === 'tavern' ? 1 + CONFIG.upgrade.tavernIncomePerLevel * (o.lvl - 1) : o.kind === 'general_store' ? storeMult(o.lvl) : 1;
+  // BUILDINGS2 빵집: 빵이 있으면 묵는 손님이 하나 먹고 숙박비 + · 어울림 「빵 굽는 냄새」 숙박비 +
+  const stayB2 = act === 'sleep' && !S.visiting ? breadStay() * (1 + hfx('stay')) : 1;
   // TOWN T3: 같은 건물 두 번째 채부터 수입 70%
-  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * lvMult * incomeMult(act) * incMult(o) * copyIncomeMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1)) : 0;
+  const income = act && CONFIG.economy.income[act] ? Math.round(CONFIG.economy.income[act] * lvMult * incomeMult(act) * incMult(o) * copyIncomeMult(o) * (1 + hfx('gold')) * (act === 'sleep' ? 1 + hfx('stayH') * CONFIG.harmony.stayIncome : 1) * stayB2) : 0;
   if (income && !S.visiting) {
-    earn(income, act as 'sleep' | 'drink' | 'forge' | 'bath');
+    earn(income, act === 'shop' ? 'stall' : (act as 'sleep' | 'drink' | 'forge' | 'bath'));
     floatW(o.tx + o.fw / 2, o.ty + o.fh / 2, 40, '+' + income);
   }
 }
@@ -483,7 +495,8 @@ function chem(a: Actor): boolean {
   a.back = false;
   // 땅 개편: 주점 Lv.4부터 「단골 테이블」 — 케미 확률 ↑
   const tav = findKind('tavern');
-  const chemP = A.chemChance * (tav && tav.lvl >= CONFIG.upgrade.tavernChemFrom ? CONFIG.upgrade.tavernChemMult : 1);
+  // BUILDINGS2: 음유시인 무대 · 어울림 「한밤의 공연」 케미 +
+  const chemP = A.chemChance * (tav && tav.lvl >= CONFIG.upgrade.tavernChemFrom ? CONFIG.upgrade.tavernChemMult : 1) * (1 + stageChem() + hfx('chem'));
   if (Math.random() > chemP) return false;
   const resting = (b: Actor) => b.st === 'idle' || b.st === 'sit';
   const o = world.actors.find(
@@ -973,6 +986,9 @@ function tickGuests(dt: number) {
   hourAcc += gh;
   if (hourAcc < 1) return;
   hourAcc -= 1;
+  // BUILDINGS2 음유시인 무대: 밤 한 시간마다 마을 손님 기분 +
+  const sm = S.visiting ? 0 : stageMood();
+  if (sm) for (const a of list) if (!a.role && !a.leaving) a.mood = clamp(a.mood + sm);
   // 한 시간마다: 기분 기록 · 손님 도착 · 영웅
   for (const a of list) {
     if (a.status !== 'visitor' && a.status !== 'passer') continue;

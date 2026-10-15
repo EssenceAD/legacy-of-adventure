@@ -29,6 +29,7 @@ import { perkRaidMats, perkRaidTries } from './bundlePerks';
 import { petRaidDmg, petTry } from './pets';
 import { raidFrags } from './exWeapons';
 import { burnMats, burnRaidTries } from './burn';
+import { academyXp } from './buildings2';
 
 const R = CONFIG.raid;
 const homeActors = () => world.home?.actors ?? world.actors;
@@ -393,7 +394,8 @@ export function settle(t: RaidTarget, members: Actor[], damage: number, mode: 'a
   P.counters.goldTotal += gold;
   P.bossMats[b.id] = (P.bossMats[b.id] ?? 0) + mats;
   for (const m of members) {
-    gainXp(m, xp);
+    // BUILDINGS2 마법 학원: 전투 경험치 +
+    gainXp(m, Math.round(xp * (1 + academyXp())));
     m.hp = Math.max(1, m.hp - R.hpCost);
   }
   markAdventured(members);

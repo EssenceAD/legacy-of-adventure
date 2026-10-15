@@ -326,6 +326,8 @@ export function freshProgress() {
     pantry: 0,
     /** BUILDINGS_SPEC §3: 수확물 창고 (작물별 개수) · 물약 칸 · 켜진 물약 */
     crops: {} as Record<string, number>,
+    /** BUILDINGS2 (10/16): 밀가루 · 빵 · 빵 굽기 시계 · 잡화점 꾸러미·은행 이자 받은 날(KST) */
+    b2: { flour: 0, bread: 0, bakeAt: 0, kitDay: '', bankDay: '' },
     potions: {} as Record<string, number>,
     buff: null as null | { id: string; until: number },
     /** 물약 재료 남겨 두기 (연금술 공방 창 · 기본 켬 · 옛 저장도 켬) — 주점 손님이 물약 몫은 안 먹는다 */

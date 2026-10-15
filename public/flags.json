@@ -97,5 +97,6 @@
   "repPick": true,
   "gateFix": true,
   "pixText": true,
-  "nbTabs": true
+  "nbTabs": true,
+  "buildings2": true
 }

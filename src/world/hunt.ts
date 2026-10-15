@@ -27,6 +27,7 @@ import { fsay, vis } from './visual';
 import { settleAuto } from './harvest';
 import { perkHuntSlot, perkHuntSlotMax } from './bundlePerks';
 import { petHuntGold, petTry } from './pets';
+import { academyXp } from './buildings2';
 
 const H = CONFIG.hunt;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -122,7 +123,8 @@ function reward(r: RegionId, s: number, members: Actor[], first: boolean, mult =
   const levelUps: string[] = [];
   // 핫픽스 12 §2-3: 멘토 경험치 (레벨이 오르기 전에 잡아 둔다)
   const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
-  for (const m of members) if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
+  // BUILDINGS2 마법 학원: 전투 경험치 +
+  for (const m of members) if (gainXp(m, xp * xpMult.get(m)! * (1 + academyXp()))) levelUps.push(`${m.name} Lv.${m.lvl}`);
   const items: Item[] = [];
   if (dropItem && (isBoss(s) || Math.random() < H.dropChance * (1 + buffOf('luck') + blessFx('drop')))) {
     // 원정과 같은 등급표 · 같은 천장(지역별)

@@ -12,6 +12,8 @@ import { gotGold, markDirty, P, S, uiHooks, world } from './state';
 import { windMealGrade } from './wind';
 import { perkBait, perkFishWin } from './bundlePerks';
 import { petFishWin, petTry } from './pets';
+import { dockReward, dockTrophy } from './buildings2';
+import { hfx } from './harmony';
 
 const F = () => CONFIG.growth.fish;
 export type FishWhere = 'pond' | 'sea';
@@ -78,7 +80,9 @@ export const fishPool = (where: FishWhere, t = timeNow()) => FISH.filter((f) => 
 
 export function pickFish(where: FishWhere, rng: () => number = Math.random, t = timeNow()): FishDef {
   const pool = fishPool(where, t);
-  const w = pool.map((f) => F().weight[f.grade] ?? 1);
+  // BUILDINGS2 낚시 선착장: 박제가 되는 물고기가 더 잘 걸린다
+  const tw = dockTrophy();
+  const w = pool.map((f) => (F().weight[f.grade] ?? 1) * ((f.use as readonly string[] | undefined)?.includes('trophy') ? tw : 1));
   let r = rng() * w.reduce((s, v) => s + v, 0);
   for (let i = 0; i < pool.length; i++) if ((r -= w[i]) < 0) return pool[i];
   return pool[pool.length - 1];
@@ -144,10 +148,12 @@ const take = (id: string) => {
 export function sellFish(id: string): number {
   const f = fishById(id);
   if (!f || !take(id)) return 0;
-  S.gold += f.price;
-  gotGold(f.price, 'fish');
+  // BUILDINGS2 낚시 선착장 · 어울림 「작은 항구」: 파는 값 +
+  const price = Math.round(f.price * (1 + dockReward() + hfx('fish')));
+  S.gold += price;
+  gotGold(price, 'fish');
   markDirty();
-  return f.price;
+  return price;
 }
 /** 주점 물고기 요리: 원정 금화 + (지속 시간 동안 · 새로 하면 바뀐다) */
 export function cookFish(id: string, now = Date.now()): string | null {

@@ -595,6 +595,8 @@ export function buildableKinds(): Kind[] {
     // DECO_DROP §1: 쇼케이스 장식 41종도 건설 목록에 (땅 단계·값은 CONFIG.deco) · §2 용 뼈 화석은 별의 심연 10(보스)을 깬 뒤
     // EASTER: 개척자 전용 장식은 편지로만
     if (d.pioneerDeco || d.levelDeco) return false;
+    // BUILDINGS2: 플래그 끄면 건설 목록에서만 숨김 (지어 둔 건 그대로) · 우정 상점 장식은 friendShop(SOCIAL P3) 전엔 안 보임
+    if (d.b2 && (!flag('buildings2') || d.friendShop)) return false;
     // LUXE §1: 명품관 장식은 명품관에서만 (산 건 보관함에서 꺼내 놓는다)
     if (d.luxe) return false;
     if (k === 'dragon_fossil' && (P.hunt.best.abyss ?? 0) < 10 && !world.objs.some((o) => o.kind === k)) return false;

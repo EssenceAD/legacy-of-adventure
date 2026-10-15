@@ -61,6 +61,8 @@ export const FLAG_DEFAULTS = {
   pixText: true,
   /** v0.25.60 SOCIAL_SPEC §1 이웃 목록 4탭 (⭐ 각별한 이웃 · 추천 8곳 · 인기 10 · 찾기) · 예시 마을은 이웃 5곳 미만일 때만 접어서 · 서버 reports/_tmp/nb_tabs.sql (없으면 예전 목록에서 골라 보여 줌) */
   nbTabs: true,
+  /** v0.25.61 BUILDINGS2_SPEC 땅 6~10 새 건물 7(잡화점·음유시인 무대·풍차 방앗간·빵집·낚시 선착장·은행·마법 학원) · 새 장식 29(+우정 상점 6은 숨김) · 끄면 건설 목록에서만 숨김 */
+  buildings2: true,
   /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
   zoomDedupe: true,
   /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */

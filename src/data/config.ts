@@ -25,6 +25,10 @@ export interface HarmonyFx {
   stayH?: number;
   arrive?: number;
   drunk?: number;
+  /** BUILDINGS2 (10/16): 숙박비 + · 낚시 파는 값 + · 케미 발생 + */
+  stay?: number;
+  fish?: number;
+  chem?: number;
 }
 
 export const CONFIG = {
@@ -129,7 +133,7 @@ export const CONFIG = {
     /** 시안은 2,400으로 시작. 실제 게임은 오프닝 뒤 이 금액으로 시작 */
     startGold: 1240,
     /** 손님이 건물에 들어갈 때 버는 돈 (행동별) */
-    income: { sleep: 12, drink: 6, forge: 8, bath: 10 } as Record<string, number>,
+    income: { sleep: 12, drink: 6, forge: 8, bath: 10, shop: 6 } as Record<string, number>,
     /**
      * ECONOMY_SPEC §1: 수입 조정 — 사냥 금화 ↓ · 지역 배수 2.5 → 2.0 (사냥·의뢰) · 재료 ↑ · 방치 8시간
      * (이미 쌓인 금화는 그대로 · gold_gain 하루 집계로 다시 맞춘다)
@@ -234,6 +238,13 @@ export const CONFIG = {
     mail: ['집에 편지 써야지', '답장 왔을까?'],
     stargaze: ['별이 많다', '저 별 이름이 뭐더라'],
     brag: ['내가 그 보스를…', '다음 의뢰는 내 거!', '길드에 이름 올렸다!'],
+    // BUILDINGS2 (10/16)
+    shop: ['이거 얼마예요?', '여행 필수품 챙겨야지', '덤으로 하나 더!'],
+    perform: ['오늘 노래 최고!', '앵콜! 앵콜!', '이 곡 들으려고 왔어'],
+    mill: ['풍차 소리 좋다', '갓 빻은 밀가루 냄새~', '바람이 일하네'],
+    eat: ['갓 구운 빵이다!', '이 냄새 못 참지', '바게트 하나요!'],
+    fish: ['오늘은 큰 놈 잡는다', '입질이 왔어!', '물 냄새 좋다'],
+    study: ['마법진 외우는 중…', '불꽃 마법 배워야지', '시험 망했다…'],
     train: ['하앗!', '받아라!'],
     farm: ['쑥쑥 자라라~'],
     bath: ['아~ 시원하다', '피로가 싹…'],
@@ -298,12 +309,17 @@ export const CONFIG = {
     groups: {
       둘레: ["hedge", "picket_gate", "stonewall2", "rose_arch", "gate"],
       정원: ["flowerbed", "tulip_box", "bird_bath", "topiary", "rose_bench", "bench", "arbor", "lily_pond", "koi_pond", "rock_fall", "foot_bridge", "gazebo", "swing", "fountain", "well"],
-      시장: ["stall", "barrels", "flower_cart", "fruit_stall", "barrel_stack", "shop_sign", "harvest_cart", "picnic"],
-      마을: ["signpost", "water_pump", "statue", "knight_statue", "clock_tower", "windmill", "banner", "target", "board"],
+      시장: ["stall", "barrels", "flower_cart", "fruit_stall", "barrel_stack", "shop_sign", "harvest_cart", "picnic", "market_tent", "crate_pile", "scale_stand", "basket_pile", "shop_board"],
+      마을: ["signpost", "water_pump", "statue", "knight_statue", "clock_tower", "windmill", "banner", "target", "board", "coin_fountain", "vault_cart", "plaza_clock"],
       나무: ["tree", "pine", "maple", "cherry", "birch", "mushroom_dark"],
       계절: ["pumpkins", "hay_scarecrow", "snowman"],
       빛: ["fire", "lamppost", "double_lamp", "string_lights", "brazier", "mushroom_lamp"],
       동물: ["birdhouse", "dog_house", "cat_crate", "chicken_coop", "beehives"],
+      // BUILDINGS2 (10/16): 땅 6~10 세트 (시장 거리는 「시장」에 · 은행·광장은 「마을」에도 · 나머지는 세트 이름 탭)
+      축제: ["audience_bench", "garland_post", "festival_drum", "music_stand", "stage_light"],
+      농촌: ["flour_sacks", "water_wheel", "bread_rack", "stone_oven", "straw_bale", "milk_cans"],
+      물가: ["wood_pier", "row_boat", "net_rack", "mini_lighthouse", "gull_post"],
+      마법: ["magic_circle", "float_crystal", "spell_shelf", "owl_perch", "star_pot"],
     } as Record<string, string[]>,
     book: [
       { n: 10, gold: 3000, title: "" },
@@ -802,6 +818,23 @@ export const CONFIG = {
     goldStepsSeconds: 12,
   },
   /** 3단계 2차: 서버 */
+  /** BUILDINGS2_SPEC (10/16): 땅 6~10 새 건물 효과 — 레벨(1~5)마다 lv 배열 [Lv1, Lv2, Lv3, Lv4, Lv5] */
+  buildings2: {
+    /** 잡화점: 손님이 내는 금화 = 주점 기본 × mult · 하루 한 번 「잡화점 꾸러미」 작은 재료 n종 */
+    store: { mult: [1.2, 1.3, 1.4, 1.5, 1.6], kitN: 3 },
+    /** 음유시인 무대: 밤(from~to시) 마을 손님 기분 +mood(1분마다 한 번만 올리는 게 아니라 밤 동안 최소 이만큼 위) · 케미 발생 ×(1+chem) */
+    stage: { from: 18, to: 6, mood: [5, 6, 7, 8, 10], chem: [0.1, 0.12, 0.14, 0.17, 0.2], nightChance: 0.35 },
+    /** 풍차 방앗간: 텃밭 수확물 중 이 비율이 밀가루로 */
+    mill: { pct: [0.2, 0.22, 0.25, 0.28, 0.32] },
+    /** 빵집: 밀가루 1 → 빵 1 (bakeMin분마다 · 재고 최대 stockMax) · 빵이 있으면 숙박비 +stay (손님 한 명 묵을 때 빵 1 소비) */
+    bakery: { bakeMin: [10, 9, 8, 7, 6], stockMax: [20, 30, 40, 55, 70], stay: [0.1, 0.11, 0.12, 0.14, 0.16], food: 25 },
+    /** 낚시 선착장: 낚시 보상 ×(1+reward) · 박제 확률 ×trophy */
+    dock: { reward: [0.2, 0.23, 0.26, 0.3, 0.35], trophy: [1.5, 1.6, 1.7, 1.85, 2] },
+    /** 은행: 매일 한국 0시 이자 = 보유 금화 × pct · 하루 상한 = 땅 단계 × capPerLand */
+    bank: { pct: [0.005, 0.0055, 0.006, 0.007, 0.008], capPerLand: [200000, 220000, 250000, 280000, 320000] },
+    /** 마법 학원: 마을에 있는 단골·영웅 전투 경험치 +xp */
+    academy: { xp: [0.1, 0.1, 0.15, 0.17, 0.2] },
+  },
   /** SOCIAL_SPEC (10/16): 이웃 목록 4탭(§1) · 각별한 이웃(§2~§4 · 주말 friends) 숫자 한 곳 */
   social: {
     /** 추천 한 번에 · 인기 몇 곳 · 예시 마을은 실제 이웃이 이보다 적을 때만 · 「다른 여관 보기」로 빼 둘 곳 */
@@ -1039,6 +1072,10 @@ export const CONFIG = {
       43: { harvest: 1 },
       44: { arrive: 0.05 },
       45: { mood: 5, talkBond: 1 },
+      // BUILDINGS2 (10/16): 빵 굽는 냄새 · 작은 항구 · 한밤의 공연
+      46: { stay: 0.05 },
+      47: { fish: 0.1 },
+      48: { chem: 0.05 },
     } as Record<number, HarmonyFx>,
   },
   /**

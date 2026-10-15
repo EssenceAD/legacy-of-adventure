@@ -70,6 +70,10 @@ export const HARMONIES: HarmonyDef[] = [
   { id: 44, name: '시계탑 광장', parts: [{ k: K('clock_tower', 'grand_clock') }, { k: K('bench', 'rose_bench'), n: 2 }, { k: K('signpost') }], text: '새 손님 방문 +5% (전역)', hint: '시계탑 아래 벤치 둘과 이정표…' },
   // STORY v2 사랑 루트: 「꽃길」
   { id: 45, name: '꽃길', parts: [{ k: K('rose_arch') }, { k: K('rose_bench') }, { k: K('flowerbed', 'tulip_box') }], text: '기분 +5 · 짝 케미 경험치 ↑', hint: '장미 아치 아래 앉을 자리와 꽃밭이 있으면…' },
+  // BUILDINGS2 (10/16): 땅 8~9 새 건물 어울림
+  { id: 46, name: '빵 굽는 냄새', parts: [{ k: K('bakery') }, { k: K('stone_oven') }, { k: K('bread_rack') }], text: '숙박비 +5% (전역)', hint: '빵집 옆 화덕과 진열대에서 고소한 냄새가…' },
+  { id: 47, name: '작은 항구', parts: [{ k: K('fishing_dock') }, { k: K('wood_pier') }, { k: K('row_boat') }], text: '물고기 파는 값 +10% (전역)', hint: '선착장 곁에 부두와 작은 배가 있으면…' },
+  { id: 48, name: '한밤의 공연', parts: [{ k: K('bard_stage') }, { k: K('audience_bench'), n: 2 }, { k: K('garland_post') }], text: '케미 발생 +5% (전역)', hint: '무대 앞에 관객 의자 두 줄과 꽃등이 켜지면…' },
   { id: 24, name: '대문 앞 환영', parts: [{ k: K('gate') }, { k: K('lamppost'), n: 2 }], text: '새 손님 방문 +20% (전역)', hint: '큰 문 양옆에 불이 밝혀져 있으면 누구라도 들어오고 싶겠지…' },
 ];
 HARMONIES.sort((a, b) => a.id - b.id);

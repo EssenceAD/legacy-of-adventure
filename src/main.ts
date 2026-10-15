@@ -172,6 +172,7 @@ import type { TalkLine } from './world/state';
 import { initPets, openPetMenu } from './ui/pets';
 import { initExWeapons } from './ui/exWeapons';
 import { petAt } from './world/petsDraw';
+import { tickB2 } from './world/buildings2';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -235,6 +236,8 @@ function update(dt: number) {
       // 4단계: 매일 첫 접속 능력치 · 계절 · 놓친 인연 이벤트 · 밤이면 불씨 독백/선택
       dailyOwner();
       dailyFishing();
+      // BUILDINGS2: 잡화점 꾸러미 · 빵 굽기 · 은행 이자
+      for (const m of tickB2()) setTimeout(() => toast(m), 3500);
       if (S.night) nightOwner(true);
       // 베타: v6 마이그레이션 (어울림 발견 보상 우편 · 장부 번호) → 장부 — 이미 해 둔 일은 바로 완료
       betaMigrate();
@@ -271,6 +274,7 @@ function update(dt: number) {
         maybeAlarm();
         dailyOwner();
         dailyFishing();
+        for (const m of tickB2()) toast(m);
         // ONBOARDING §1: 첫날(누적 1일)은 도장만 찍고 창은 띄우지 않는다 (첫 조작을 막지 않게)
       if ((dailyAttend() ?? 0) > 1) queueEvent(() => openAttend(), 'attend');
         void dailyStats();

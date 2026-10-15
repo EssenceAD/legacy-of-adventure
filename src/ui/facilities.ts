@@ -7,6 +7,7 @@ import { esc } from './common';
 import { lockAttr, lockNote } from './lockBtn';
 import { objExtra, showObj, toast } from './windows';
 import { track as trackEv } from '../net/telemetry';
+import { academyXp, b2, breadMax, dockReward, dockTrophy, stageChem, storeMult } from '../world/buildings2';
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const PO = CONFIG.potions;
@@ -20,6 +21,14 @@ function effectLine(kind: string): string {
     case 'alchemy': return `물약 칸 ${potionSlots()} · 물약 효과 ×${potionBoost().toFixed(2)}`;
     case 'postoffice': return `편지 보상 ×${postMailMult().toFixed(2)}${lv >= CONFIG.newBuildings.postoffice.giftLv ? ' · 이웃 선물 (준비 중)' : ''}`;
     case 'tower': return `강화 성공 +${pct(towerEnhance())}p${lv >= CONFIG.newBuildings.tower.starLv ? ' · 운명의 별 하루 2번' : ` · Lv${CONFIG.newBuildings.tower.starLv}에 운명의 별 하루 2번`}`;
+    // BUILDINGS2 (10/16)
+    case 'general_store': return `손님 금화 주점의 ×${storeMult(lv).toFixed(1)} · 하루 한 번 잡화점 꾸러미`;
+    case 'bard_stage': return `밤 손님 기분 +${CONFIG.buildings2.stage.mood[Math.min(5, lv) - 1]}/시간 · 케미 +${pct(stageChem())}`;
+    case 'grain_mill': return `수확의 ${pct(CONFIG.buildings2.mill.pct[Math.min(5, lv) - 1])}가 밀가루로 · 밀가루 ${b2().flour}`;
+    case 'bakery': return `빵 ${b2().bread}/${breadMax()} · 밀가루 ${b2().flour} · 빵이 있으면 숙박비 +${pct(CONFIG.buildings2.bakery.stay[Math.min(5, lv) - 1])}`;
+    case 'fishing_dock': return `물고기 파는 값 +${pct(dockReward())} · 박제 물고기 ×${dockTrophy().toFixed(2)}`;
+    case 'bank': return `매일 0시 이자 ${(CONFIG.buildings2.bank.pct[Math.min(5, lv) - 1] * 100).toFixed(2)}% · 하루 최대 ${(S.land * CONFIG.buildings2.bank.capPerLand[Math.min(5, lv) - 1]).toLocaleString('ko-KR')}G`;
+    case 'mage_academy': return `전투 경험치 +${pct(academyXp())}`;
     case 'guild': return `의뢰 보상 +${pct(guildGold())}${guildSlot() ? ' · 의뢰 자리 +1' : ` · Lv${CONFIG.newBuildings.guild.slotLv}에 의뢰 자리 +1`}${guildSpecial() ? ' · 길드 특별 의뢰' : ''}`;
   }
   return '';

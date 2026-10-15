@@ -35,6 +35,7 @@ import { partySpecial, rollUniqueAny } from './uniques';
 import { windQuestGold } from './wind';
 import { blessFx, payRefresh } from './goldsink';
 import { expRibbons, hvNow } from './hvLite';
+import { academyXp } from './buildings2';
 
 const E = CONFIG.expedition;
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -319,7 +320,8 @@ export function resolveRun(run: Run, bondGains: BondGain[]): RunResult {
   const xpMult = new Map(members.map((m) => [m, xpMultIn(m, members)]));
   for (const m of members) {
     // 핫픽스 12 §2-3: 파티 최고 레벨 −5 이하는 경험치 ×1.5 · §2-2: 탱·힐·딜이면 체력 소모 −20%
-    if (gainXp(m, xp * xpMult.get(m)!)) levelUps.push(`${m.name} Lv.${m.lvl}`);
+    // BUILDINGS2 마법 학원: 전투 경험치 +
+    if (gainXp(m, xp * xpMult.get(m)! * (1 + academyXp()))) levelUps.push(`${m.name} Lv.${m.lvl}`);
     const loss = (win ? E.winHp : E.failHp) * (1 - Math.min(0.8, optSum(m, 'hpSave') / 100)) * roleHpMult(members) * (1 - expHpCut(syn)) * fiveHpMult(members);
     m.hp = Math.max(1, Math.round(m.hp - loss));
     m.mood = Math.max(0, Math.min(100, m.mood + (win ? 10 : -10)));

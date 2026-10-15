@@ -3,7 +3,9 @@ import { vis } from '../world/visual';
 import { CONFIG } from './config';
 import { LUXE_SHOP } from './luxe_cfg';
 
-export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon' | 'pet' | 'pray' | 'read' | 'brew' | 'mail' | 'stargaze' | 'brag';
+export type Act = 'sleep' | 'drink' | 'forge' | 'bath' | 'train' | 'farm' | 'fire' | 'dungeon' | 'pet' | 'pray' | 'read' | 'brew' | 'mail' | 'stargaze' | 'brag'
+  // BUILDINGS2: 잡화점 · 무대 · 방앗간 · 빵집 · 선착장 · 마법 학원
+  | 'shop' | 'perform' | 'mill' | 'eat' | 'fish' | 'study';
 
 export interface BuildingDef {
   name: string;
@@ -48,6 +50,10 @@ export interface BuildingDef {
   pioneerDeco?: boolean;
   /** v0.24.2: 여관·주점 레벨 장식 (그 레벨이 되면 저절로 · 건설 목록에 없음 · 팔 수 없음 · 값 0) */
   levelDeco?: boolean;
+  /** BUILDINGS2 (10/16): 땅 6~10 새 건물·장식 (플래그 buildings2 끄면 건설 목록에서만 숨김) */
+  b2?: boolean;
+  /** BUILDINGS2: 우정 상점 장식 (SOCIAL P3 friendShop 전엔 건설 목록에 안 나옴) */
+  friendShop?: boolean;
   desc: string;
 }
 
@@ -224,6 +230,49 @@ export const CATALOG = {
   rose_arch: { name: '장미 아치', sprite: 'rose_arch', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '장미 아치' },
   stonewall2: { name: '돌담', sprite: 'stonewall2', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '돌담' },
   picket_gate: { name: '흰 울타리 문', sprite: 'picket_gate', size: [1, 1], cost: 0, deco: true, showcase: true, unlock: 1, desc: '흰 울타리 문' },
+  // ───────── BUILDINGS2_SPEC (10/16): 땅 6~10 새 건물 7 · 새 장식 35 (목록·임시 그림 data/buildings2.json · 효과 CONFIG.buildings2 · 플래그 buildings2) ─────────
+  general_store: { name: '잡화점', sprite: 'general_store', size: [3,3], cost: 300000, act: 'shop', unique: true, unlock: 6, b2: true, levels: [450000, 660000, 960000, 1350000], levelText: '효과 ↑', desc: '손님이 들러 장을 봐요 · 금화 수입 · 하루 한 번 잡화점 꾸러미' },
+  bard_stage: { name: '음유시인 무대', sprite: 'bard_stage', size: [3,3], cost: 600000, act: 'perform', unique: true, unlock: 7, b2: true, levels: [900000, 1320000, 1920000, 2700000], levelText: '효과 ↑', desc: '밤(18~6시)엔 마을 손님 기분 ↑ · 케미가 더 잘 생겨요' },
+  grain_mill: { name: '풍차 방앗간', sprite: 'grain_mill', size: [3,3], cost: 1200000, act: 'mill', unique: true, unlock: 8, b2: true, levels: [1800000, 2640000, 3840000, 5400000], levelText: '효과 ↑', desc: '텃밭 수확의 일부가 밀가루로' },
+  bakery: { name: '빵집', sprite: 'bakery', size: [3,3], cost: 1500000, act: 'eat', unique: true, unlock: 8, b2: true, levels: [2250000, 3300000, 4800000, 6750000], levelText: '효과 ↑', desc: '밀가루로 빵을 구워요 · 빵이 있으면 숙박비 ↑' },
+  fishing_dock: { name: '낚시 선착장', sprite: 'fishing_dock', size: [3,3], cost: 2500000, act: 'fish', unique: true, unlock: 9, b2: true, levels: [3750000, 5500000, 8000000, 11250000], levelText: '효과 ↑', desc: '낚시 보상 ↑ · 박제 확률 ↑' },
+  bank: { name: '은행', sprite: 'bank', size: [3,3], cost: 3000000, unique: true, unlock: 9, b2: true, levels: [4500000, 6600000, 9600000, 13500000], levelText: '효과 ↑', desc: '매일 0시 이자를 우편으로' },
+  mage_academy: { name: '마법 학원', sprite: 'mage_academy', size: [4,4], cost: 5000000, act: 'study', unique: true, unlock: 10, b2: true, levels: [7500000, 11000000, 16000000, 22500000], levelText: '효과 ↑', desc: '마을에 있는 단골·영웅 전투 경험치 ↑' },
+  market_tent: { name: '천막 노점', sprite: 'market_tent', size: [2,1], cost: 100000, deco: true, unlock: 6, b2: true, desc: '시장 거리 세트' },
+  crate_pile: { name: '짐 상자 더미', sprite: 'crate_pile', size: [1,1], cost: 50000, deco: true, unlock: 6, b2: true, desc: '시장 거리 세트' },
+  scale_stand: { name: '저울대', sprite: 'scale_stand', size: [1,1], cost: 50000, deco: true, unlock: 6, b2: true, desc: '시장 거리 세트' },
+  basket_pile: { name: '바구니 더미', sprite: 'basket_pile', size: [1,1], cost: 50000, deco: true, unlock: 6, b2: true, desc: '시장 거리 세트' },
+  shop_board: { name: '상점 간판', sprite: 'shop_board', size: [1,1], cost: 50000, deco: true, unlock: 6, b2: true, desc: '시장 거리 세트' },
+  audience_bench: { name: '관객 의자 줄', sprite: 'audience_bench', size: [2,1], cost: 100000, deco: true, unlock: 7, b2: true, desc: '축제 무대 세트' },
+  garland_post: { name: '꽃등 기둥', sprite: 'garland_post', size: [1,1], cost: 50000, deco: true, unlock: 7, b2: true, desc: '축제 무대 세트' },
+  festival_drum: { name: '큰 북', sprite: 'festival_drum', size: [1,1], cost: 50000, deco: true, unlock: 7, b2: true, desc: '축제 무대 세트' },
+  music_stand: { name: '악보대', sprite: 'music_stand', size: [1,1], cost: 50000, deco: true, unlock: 7, b2: true, desc: '축제 무대 세트' },
+  stage_light: { name: '무대 조명', sprite: 'stage_light', size: [1,1], cost: 50000, deco: true, unlock: 7, b2: true, desc: '축제 무대 세트' },
+  flour_sacks: { name: '밀가루 포대', sprite: 'flour_sacks', size: [1,1], cost: 50000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  water_wheel: { name: '물레방아 개울', sprite: 'water_wheel', size: [2,2], cost: 200000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  bread_rack: { name: '빵 진열대', sprite: 'bread_rack', size: [1,1], cost: 50000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  stone_oven: { name: '화덕', sprite: 'stone_oven', size: [1,1], cost: 50000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  straw_bale: { name: '짚더미', sprite: 'straw_bale', size: [1,1], cost: 50000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  milk_cans: { name: '우유통', sprite: 'milk_cans', size: [1,1], cost: 50000, deco: true, unlock: 8, b2: true, desc: '농촌 세트' },
+  wood_pier: { name: '나무 부두', sprite: 'wood_pier', size: [2,1], cost: 100000, deco: true, unlock: 9, b2: true, desc: '물가 세트' },
+  row_boat: { name: '작은 보트', sprite: 'row_boat', size: [2,1], cost: 100000, deco: true, unlock: 9, b2: true, desc: '물가 세트' },
+  net_rack: { name: '그물 걸이', sprite: 'net_rack', size: [1,1], cost: 50000, deco: true, unlock: 9, b2: true, desc: '물가 세트' },
+  mini_lighthouse: { name: '등대 모형', sprite: 'mini_lighthouse', size: [1,1], cost: 50000, deco: true, unlock: 9, b2: true, desc: '물가 세트' },
+  gull_post: { name: '갈매기 기둥', sprite: 'gull_post', size: [1,1], cost: 50000, deco: true, unlock: 9, b2: true, desc: '물가 세트' },
+  coin_fountain: { name: '동전 분수', sprite: 'coin_fountain', size: [2,2], cost: 200000, deco: true, unlock: 9, b2: true, desc: '은행·광장 세트' },
+  vault_cart: { name: '금고 마차', sprite: 'vault_cart', size: [2,1], cost: 100000, deco: true, unlock: 9, b2: true, desc: '은행·광장 세트' },
+  plaza_clock: { name: '광장 시계', sprite: 'plaza_clock', size: [1,1], cost: 50000, deco: true, unlock: 9, b2: true, desc: '은행·광장 세트' },
+  magic_circle: { name: '마법진 바닥', sprite: 'magic_circle', size: [2,2], cost: 200000, deco: true, unlock: 10, b2: true, desc: '마법 세트' },
+  float_crystal: { name: '떠다니는 수정', sprite: 'float_crystal', size: [1,1], cost: 50000, deco: true, unlock: 10, b2: true, desc: '마법 세트' },
+  spell_shelf: { name: '마법 책장', sprite: 'spell_shelf', size: [1,1], cost: 50000, deco: true, unlock: 10, b2: true, desc: '마법 세트' },
+  owl_perch: { name: '부엉이 횃대', sprite: 'owl_perch', size: [1,1], cost: 50000, deco: true, unlock: 10, b2: true, desc: '마법 세트' },
+  star_pot: { name: '별 화분', sprite: 'star_pot', size: [1,1], cost: 50000, deco: true, unlock: 10, b2: true, desc: '마법 세트' },
+  friend_bench: { name: '우정 벤치', sprite: 'friend_bench', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
+  neighbor_mailbox: { name: '이웃 우체통', sprite: 'neighbor_mailbox', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
+  twin_trees: { name: '두 그루 나무', sprite: 'twin_trees', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
+  friend_flag: { name: '우정 깃발', sprite: 'friend_flag', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
+  welcome_lantern: { name: '마중 등불', sprite: 'welcome_lantern', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
+  help_cart: { name: '품앗이 수레', sprite: 'help_cart', size: [1,1], cost: 50000, deco: true, unlock: 1, b2: true, friendShop: true, desc: '우정 상점 세트' },
 } satisfies Record<string, BuildingDef>;
 
 // DECO_DROP §1: 꾸미기 장식 41종 값·여는 땅 단계는 CONFIG.deco에서
@@ -272,6 +321,13 @@ export const ROOFS: [string, number | null][] = [
 
 /** 건물 안에 있을 때 하는 일 */
 export const INSIDE_TEXT: Partial<Record<Act, string>> = {
+  // BUILDINGS2 (10/16)
+  shop: '장 보는 중',
+  perform: '공연 보는 중',
+  mill: '방앗간 구경 중',
+  eat: '빵 먹는 중',
+  fish: '낚시하는 중',
+  study: '공부하는 중',
   pet: '말 쓰다듬는 중',
   pray: '기도하는 중',
   read: '책 읽는 중',

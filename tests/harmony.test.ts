@@ -14,7 +14,7 @@ const B = (kind: Kind, tx: number, ty: number): Building => {
 const kindOf = (k: Kind[] | 'trophy' | 'plaque'): Kind => (k === 'trophy' ? ('trophy_boar' as Kind) : k === 'plaque' ? ('plaque_bronze' as Kind) : k[0]);
 
 describe('어울림', () => {
-  it('TOWN T4: 44조합 + STORY 「꽃길」 = 45', () => expect(HARMONIES.length).toBe(45));
+  it('TOWN T4: 44조합 + STORY 「꽃길」 = 45', () => expect(HARMONIES.length).toBe(48));
   it('범위는 2칸 · 한 건물은 최대 3세트', () => {
     expect(CONFIG.harmony.range).toBe(2);
     expect(CONFIG.harmony.perBuilding).toBe(3);
