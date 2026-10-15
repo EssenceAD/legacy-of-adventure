@@ -92,5 +92,6 @@
   "worldRaid": true,
   "decorDayLight": true,
   "communityLinks": false,
-  "guestLetters": true
+  "guestLetters": true,
+  "giftDecoFree": true
 }

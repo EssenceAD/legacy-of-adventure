@@ -16,6 +16,8 @@ import { confirmSheet } from './confirmSheet';
 import { cancelPlace, rotatePlacement, startMoveEntrance, startPlace, startTakeOut } from './hud';
 import { esc } from './common';
 import { syncHud } from '../game';
+import { flag } from '../world/flags';
+import { isTalking, skipTalk } from './dialogue';
 
 type Tool = 'hand' | 'path' | 'ground' | 'erase' | 'select';
 type Tab = 'hand' | 'place' | 'path' | 'ground' | 'select';
@@ -49,6 +51,11 @@ export const decorOn = () => decorView.on;
 
 export function enterDecor() {
   if (S.visiting) return;
+  // 10/16 OhSara: 대화(처음 해 본 선물 대사 등)가 떠 있으면 「건너뛰기」처럼 끝내고 들어간다 (끝난 뒤 이어지는 대화도) · 이름 짓기·고르기는 못 끝내니 들어가지 않음
+  if (flag('giftDecoFree')) {
+    for (let i = 0; i < 5 && isTalking(); i++) skipTalk();
+    if (isTalking()) return toast('대화를 마치고 꾸며요');
+  }
   closeWin();
   decorView.on = true;
   decorView.picked = [];
@@ -77,6 +84,8 @@ export function exitDecor() {
   document.getElementById('decorHint')?.remove();
   bar?.remove();
   bar = null;
+  // 10/16 OhSara: 꾸미기 중에 연 창(＋ 놓기 건설 목록 · 보관함…)도 같이 닫는다
+  if (flag('giftDecoFree') && isWinOpen()) closeWin();
   markDirty();
 }
 

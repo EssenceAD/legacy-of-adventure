@@ -1,5 +1,6 @@
 // 게임 진행 동작: 새 게임·이어하기·땅 넓히기·건설·레벨업·지붕 색·이웃 방문·타이틀
 import { bigNum, vis } from './world/visual';
+import { flag } from './world/flags';
 import { sfx } from './audio/sfx';
 import { extendAriaOnce } from './world/legends';
 import { migrateGradeKeys, teaserView } from './world/grade';
@@ -456,7 +457,8 @@ export function placeBuilding(pl: Placement): boolean {
   // HOTFIX14 §1: 같은 건물 두 번째 채부터 비용 ↑ (CONFIG.town.copyCost)
   // EASTER: 고느끼 선물 — 장식 하나 10% 할인 (다음 장식 한 번)
   // HARVEST §1-5: 수확제 교환소·연감에서 받은 장식은 무료로 놓는다 (금화 값이 있는 호박 더미·단풍나무… 포함)
-  const hvGift = !pl.prop && isHvDeco(pl.kind) && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0;
+  // 10/16 OhSara: 선물 장식(처음 해 본 선물 튤립 화단·새집 · 우편 · 어울림 분수…)은 금화 값이 있어도 무료 — 예전엔 값 0인 것만 무료라 180G를 냈다
+  const hvGift = !pl.prop && (isHvDeco(pl.kind) || !!flag('giftDecoFree')) && (P.meta.giftDeco?.[pl.kind] ?? 0) > 0;
   const coupon = !pl.prop && !hvGift && d.deco && d.cost > 0 ? decoCoupon() : 0;
   const cost = pl.prop || hvGift ? 0 : Math.round(buildCost(pl.kind) * (1 - coupon));
   if (S.gold < cost) {

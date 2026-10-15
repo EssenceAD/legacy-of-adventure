@@ -21,7 +21,7 @@ import { feature, featureChapter } from '../world/guide';
 import { decoLock } from '../world/harmony';
 import { isHvDeco } from '../world/harvest';
 /** HARVEST §1-5: 수확제에서 받은 무료 장식 수 (땅 단계와 상관없이 놓을 수 있다) */
-const hvGiftN = (k: Kind) => (isHvDeco(k) ? (PG.meta.giftDeco?.[k] ?? 0) : 0);
+const hvGiftN = (k: Kind) => (isHvDeco(k) || flag('giftDecoFree') ? (PG.meta.giftDeco?.[k] ?? 0) : 0);
 import { online, sendLetter } from '../net/server';
 import { openAccount } from './account';
 import { APP_VERSION } from './update';
@@ -553,7 +553,7 @@ export function openBuild(target?: Kind) {
       // CHECKIN §J3 (uiCards): 그림 타일 — 금화가 모자라면 어둡게 + 그 숫자만 빨갛게 (모자란 만큼 −n) · HARVEST: 수확제 선물은 무료라 그대로
       const hvN = hvGiftN(k);
       const j3 = cardsOn() && poor && !locked && !hvN;
-      const sub = hvN ? `<small class="g">수확제 선물 · 무료 ${hvN}개</small>` : why ? `<small class="lock">${why}</small>` : j3 ? `<small class="miss">${fmt(cost)} G <u>−${fmt(cost - S.gold)}</u></small>` : `<small>${fmt(cost)} G</small>`;
+      const sub = hvN ? `<small class="g">${isHvDeco(k) ? '수확제 선물' : '🎁 선물'} · 무료 ${hvN}개</small>` : why ? `<small class="lock">${why}</small>` : j3 ? `<small class="miss">${fmt(cost)} G <u>−${fmt(cost - S.gold)}</u></small>` : `<small>${fmt(cost)} G</small>`;
       const nthName = nth ? `${['', '두', '세', '네', '다섯'][nth] ?? nth + 1} 번째 ` : '';
       return `<button data-k="${k}" class="${locked ? 'locked' : j3 ? 'poor' : ''}" ${poor && !locked && !hvN ? 'disabled' : ''}><img src="${thumb(k)}" alt=""><b>${nthName}${d.name}</b>${sub}${locked ? '<u class="lk"></u>' : ''}</button>`;
     };
@@ -565,6 +565,9 @@ export function openBuild(target?: Kind) {
   const topRow = top ? `<p class="sub">장부 임무</p><div class="cat mtarget">${card(top)}</div>` : '';
   // BUILDUX §1-8: 최근 놓은 장식 5개 바로가기
   const recent = (PG.decor.recent ?? []).filter((k) => kinds.includes(k as Kind)) as Kind[];
+  // 10/16 OhSara: 받은 선물 장식은 맨 앞 한 줄 (꾸미기 「＋ 놓기」도 이 창) + 열 때 반짝
+  const gifts = flag('giftDecoFree') ? kinds.filter((k) => hvGiftN(k) > 0 && k !== top) : [];
+  const giftRow = gifts.length ? `<p class="sub">🎁 선물 받은 장식 · 무료로 놓아요</p><div class="cat gifts">${gifts.map(card).join('')}</div>` : '';
   const recentRow = recent.length ? `<p class="sub">최근 놓은 것</p><div class="cat recent">${recent.map(card).join('')}</div>` : '';
   // 건물 → 장식 (장식은 어울림 재료)
   // DECO_DROP §1: 장식은 묶음 탭(둘레·정원·시장·마을·나무·계절·빛·동물) · 안 본 장식은 NEW
@@ -575,9 +578,10 @@ export function openBuild(target?: Kind) {
   const gtabs = `<div class="dgrp">${['전체', ...GROUPS()].filter((n) => n === '전체' || decoKinds.some((k) => groupOf(k) === n)).map((n) => `<button data-dg="${n}" class="${n === g ? 'on' : ''}">${n}${n !== '전체' && gcount(n) ? ` <i class="newb">${gcount(n)}</i>` : ''}</button>`).join('')}</div>`;
   const decoCard = (k: Kind) => card(k).replace('<button data-k=', `<button data-g="${groupOf(k)}" ${g !== '전체' && groupOf(k) !== g ? 'hidden' : ''} data-k=`).replace('</b>', unseen.has(k) ? '</b><i class="newb">NEW</i>' : '</b>');
   const items = (ord ? ord.rest : kinds).filter((k) => !def(k).deco || k === 'board').map(card).join('') + `</div><p class="sub">장식 · 가까이 두면 「어울림」이 생겨요${unseen.size ? ` · <b class="g">새 장식 ${unseen.size}</b>` : ''}</p>${gtabs}<div class="cat deco">` + decoKinds.map(decoCard).join('');
-  const html = `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${topRow}${recentRow}<div class="cat">${items}</div>`;
+  const html = `<div class="tabs" id="bT"><button class="tab on">건물</button><button class="tab" id="toLand">땅 넓히기</button><button class="tab" id="toLux">✨ 특별 장식</button><button class="tab" id="toDecor">🎨 꾸미기 모드</button></div><p class="sub">원하는 자리에 지어요 · 금화 <b class="g">${fmt(S.gold)}</b></p>${topRow}${giftRow}${recentRow}<div class="cat">${items}</div>`;
   openWin('건설', cardsOn() ? html.replace(/<div class="cat/g, '<div class="cat j3') : html);
   if (top) glowOnce(document.querySelector<HTMLElement>('.cat.mtarget button'), CONFIG.firstFlow.glowMs);
+  else document.querySelectorAll<HTMLElement>('.cat.gifts button').forEach((b) => glowOnce(b, CONFIG.firstFlow.glowMs));
   $('#toLand').onclick = openLand;
   $('#toDecor').onclick = () => buildHooks.decor();
   $('#toLux').onclick = () => openLuxury();
