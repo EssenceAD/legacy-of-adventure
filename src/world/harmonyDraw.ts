@@ -1,5 +1,6 @@
 // 베타 1장: 어울림 그리기 — 금빛 점선(발견·「어울림 보기」) · 배치 중 범위 타일·짝 건물 초록·미리보기 말풍선
 import { flag } from './flags';
+import { pixText, pixW } from './pixText';
 import { av } from '../engine/ver';
 import { CONFIG } from '../data/config';
 import { harmonyById } from '../data/harmony';
@@ -40,18 +41,14 @@ function dotted(ctx: CanvasRenderingContext2D, a: [number, number], b: [number, 
 }
 
 function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, gold = true) {
-  ctx.font = '10px "Galmuri9"';
-  const w = Math.ceil(ctx.measureText(text).width) + 8;
+  const w = pixW(text) + 8;
   // 화면 밖으로 안 나가게
   const X = Math.max(2, Math.min(view.LW - w - 2, Math.round(x - w / 2)));
   const Y = Math.round(y);
   const p = PX(ctx);
   p.rect(X, Y, w, 13, '#161420');
   p.rect(X + 1, Y + 1, w - 2, 11, gold ? '#3a2a12' : '#1e2a1a');
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = gold ? '#ffd36b' : '#b8ffb0';
-  ctx.fillText(text, X + 4, Y + 2);
+  pixText(ctx, text, X + 4, Y + 2, { color: gold ? '#ffd36b' : '#b8ffb0', baseline: 'top' });
 }
 
 function drawSet(ctx: CanvasRenderingContext2D, s: HSet, f: number, withName: boolean) {

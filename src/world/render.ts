@@ -28,6 +28,7 @@ import { showerOn, starAvailable } from './legends';
 import { drawAmbient, drawForgeGlow, drawLight, glow, NL, sceneNight, setDecorDay, setPhotoNL } from './daynight';
 import { decorMixStep } from './decorLight';
 import { flag } from './flags';
+import { pixText, pixW, SHADOW3 } from './pixText';
 import { puff, updDrawParts } from './fx';
 import { calmForest, ground, ensureGround, groundFor, groundKey, groundMem, litGround, lookFor, signSpot, treeImg, trimGround, type Wild } from './ground';
 import { litHex } from './nightLook';
@@ -556,16 +557,12 @@ function drawSignLabel(ctx: CanvasRenderingContext2D) {
   const Y = Math.round(view.OY + sy(sg[0] + 0.5, sg[1] + 0.5) - 44);
   // FIRSTLOOK §1 flFirstCam: 「땅 넓히기 ○G」 글씨는 장부 1장을 마친 뒤에만 (그 전엔 팻말 그림만 · 누르는 자리는 그대로)
   if (starOk && !signLabelOn()) return void Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
-  ctx.font = '8px "Galmuri9"';
-  const w = Math.ceil(ctx.measureText(txt).width) + 6;
+  // 10/16 pixText: 10px 도트 글자 (팻말도 1칸 키움)
+  const w = pixW(txt) + 6;
   const p = P(ctx);
-  p.rect(X - (w >> 1), Y - 9, w, 11, '#3a2414');
-  p.rect(X - (w >> 1) + 1, Y - 8, w - 2, 9, '#f3d9a4');
-  ctx.fillStyle = '#3a2414';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(txt, X, Y);
-  ctx.textAlign = 'start';
+  p.rect(X - (w >> 1), Y - 11, w, 13, '#3a2414');
+  p.rect(X - (w >> 1) + 1, Y - 10, w - 2, 11, '#f3d9a4');
+  pixText(ctx, txt, X, Y, { color: '#3a2414', align: 'center' });
   Object.assign(SIGN, { on: true, x: X, y: Y + 20 });
 }
 /** 탭한 곳이 팻말 근처인가 */
@@ -938,26 +935,22 @@ function drawObj(ctx: CanvasRenderingContext2D, o: Building) {
     const X = Math.round(x + im.width / 2);
     const Y = Math.round(y - 4 + Math.sin(S.T * 4) * 2);
     const pp = P(ctx);
-    pp.rect(X - 15, Y - 9, 30, 11, '#1c1018');
-    pp.rect(X - 14, Y - 8, 28, 9, '#6fd04b');
-    ctx.font = '8px "Galmuri9"';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#1c1018';
-    ctx.fillText('수확!', X, Y);
+    const hw = Math.max(30, pixW('수확!') + 6);
+    pp.rect(X - (hw >> 1), Y - 11, hw, 13, '#1c1018');
+    pp.rect(X - (hw >> 1) + 1, Y - 10, hw - 2, 11, '#6fd04b');
+    pixText(ctx, '수확!', X, Y, { color: '#1c1018', align: 'center' });
   }
   // 지붕 위 인원 숫자
   if (o.inside.length) {
     const X = x + im.width / 2;
     const Y = y - 6 + Math.round(Math.sin(S.T * 3) * 1.5);
     const p = P(ctx);
-    p.rect(X - 7, Y - 5, 14, 8, '#fff3d6');
-    p.rect(X - 6, Y - 6, 12, 1, '#fff3d6');
+    const nTxt = String(o.inside.length);
+    const bw = Math.max(14, pixW(nTxt) + 6);
+    p.rect(X - (bw >> 1), Y - 8, bw, 11, '#fff3d6');
+    p.rect(X - (bw >> 1) + 1, Y - 9, bw - 2, 1, '#fff3d6');
     p.px(X, Y + 3, '#fff3d6');
-    ctx.fillStyle = '#1c1018';
-    ctx.font = '8px "Galmuri9"';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(String(o.inside.length), X, Y + 2);
+    pixText(ctx, nTxt, X, Y + 2, { color: '#1c1018', align: 'center' });
   }
 }
 
@@ -1151,15 +1144,13 @@ const quietTag = (a: Actor, tier: 'legend' | 'mythic' | 'hero' | null, T: number
   nameTagRule({ quiet: quietOn(), names: guestNamesOn(), tier, regular: a.status === 'regular' || a.status === 'hero', zoom: S.zoom, tapped: (TAG_TAP.get(a) ?? -1) > T });
 /** 이름표 한 번에: 전설·신화는 화면 가운데에 가까운 3명까지 · 겹치면 위로 한 줄씩 비켜 쌓는다 · 영웅(흰)은 그 다음
  *  「손님 이름 항상 보기」: 그 뒤에 나머지 전설·신화 → 평범한 손님(흐린 베이지) — 둘 다 비킬 자리가 없으면 안 그린다 (앞 이름표를 가리지 않게) */
+const GUEST_SH = [[1, 1], [0, 2]] as const;
 function drawNamedTags(ctx: CanvasRenderingContext2D) {
   if (!TAGS.length) return;
   const names = allNames();
   const p = P(ctx);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
-  ctx.font = '8px "Galmuri9"';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
   const byD = (q: { d: number }, r: { d: number }) => q.d - r.d;
   const allLeg = TAGS.filter((t) => t.tier === 'legend' || t.tier === 'mythic').sort(byD);
   const legends = allLeg.slice(0, 3);
@@ -1172,12 +1163,13 @@ function drawNamedTags(ctx: CanvasRenderingContext2D) {
     const guest = t.tier === 'guest';
     // 앞 3명 밖의 전설·평범한 손님 = 「손님 이름 항상 보기」로 더 그리는 것 — 덜 비켜 쌓고 자리가 없으면 쉰다
     const extra = guest || ((t.tier === 'legend' || t.tier === 'mythic') && !legends.includes(t));
-    const w = Math.ceil(ctx.measureText(t.name).width) + (t.tier === 'mythic' ? 6 : 0);
+    // 10/16 pixText: 10px 도트 글자 — 한 줄 높이 9 → 11
+    const w = pixW(t.name) + (t.tier === 'mythic' ? 6 : 0);
     let ty = t.top - 1;
-    const box = (): [number, number, number, number] => [t.X - w / 2 - 2, ty - 8, t.X + w / 2 + 2, ty + 2];
+    const box = (): [number, number, number, number] => [t.X - w / 2 - 2, ty - 10, t.X + w / 2 + 2, ty + 3];
     let b = box();
     for (let n = 0; n < (extra ? 2 : 6) && hit(b); n++) {
-      ty -= 9;
+      ty -= 11;
       b = box();
     }
     // 영웅 이름표는 비킬 자리가 없으면 그리지 않는다 (전설 이름표를 가리지 않게)
@@ -1187,27 +1179,18 @@ function drawNamedTags(ctx: CanvasRenderingContext2D) {
     const tx = t.X - (t.tier === 'mythic' ? 3 : 0);
     // 평범한 손님은 흐리게 (테두리도 한 겹 덜)
     ctx.globalAlpha = t.alpha ?? (guest ? 0.78 : 1);
-    ctx.fillStyle = '#1a1220';
-    ctx.fillText(t.name, tx + 1, ty + 1);
-    if (!guest) ctx.fillText(t.name, tx - 1, ty + 1);
-    ctx.fillText(t.name, tx, ty + 2);
+    const offs = guest ? GUEST_SH : SHADOW3;
     if (t.rainbow) {
-      // 무지갯빛: 글자마다 다른 색 (가운데 정렬 그대로 · 왼쪽부터 한 글자씩)
+      // 무지갯빛: 테두리는 이름 통째로 한 번 · 글자마다 다른 색 (가운데 정렬 그대로 · 왼쪽부터 한 글자씩)
+      pixText(ctx, t.name, tx, ty, { color: '#1a1220', shadow: '#1a1220', offs, align: 'center' });
       const sh = calmNow() ? 0 : Math.floor(S.T * 2);
-      const chars = [...t.name];
-      const tw2 = ctx.measureText(t.name).width;
-      let cx2 = tx - tw2 / 2;
-      ctx.textAlign = 'left';
-      chars.forEach((ch, k) => {
-        ctx.fillStyle = RAINBOW[(k + sh) % RAINBOW.length];
-        ctx.fillText(ch, cx2, ty);
-        cx2 += ctx.measureText(ch).width;
+      let cx2 = Math.round(tx - pixW(t.name) / 2);
+      [...t.name].forEach((ch, k) => {
+        pixText(ctx, ch, cx2, ty, { color: RAINBOW[(k + sh) % RAINBOW.length] });
+        cx2 += pixW(ch);
       });
-      ctx.textAlign = 'center';
-    } else {
-      ctx.fillStyle = col;
-      ctx.fillText(t.name, tx, ty);
-    }
+    } else pixText(ctx, t.name, tx, ty, { color: col, shadow: '#1a1220', offs, align: 'center' });
+    if (import.meta.env.DEV && placed.length === 1) (window as unknown as { __tagAt?: DOMPoint }).__tagAt = ctx.getTransform().transformPoint(new DOMPoint(tx, ty));
     ctx.globalAlpha = 1;
     if (t.tier === 'mythic') {
       const sx3 = tx + Math.ceil((w - 6) / 2) + 4;
@@ -1341,18 +1324,14 @@ function drawActor(ctx: CanvasRenderingContext2D, a: Actor, pose?: { pos: [numbe
   } else if (a.rarity === 'legend' && Math.random() < 0.03) puff(X - view.OX + (Math.random() * 12 - 6), Y - 20 - view.OY - Math.random() * 10, '#ffd36b', 0, -8, 0.5, 1);
   // EASTER §2: 놀러 온 개척자 — 금색 이름표
   if (a.cameo && fade === 1) {
-    ctx.font = '8px "Galmuri9"';
-    ctx.textAlign = 'center';
-    const tw = Math.ceil(ctx.measureText(a.name).width) + 6;
+    const tw = pixW(a.name) + 6;
     const ty = Y - 44 + Math.round(Math.sin(T * 2 + a.ph));
+    const L = Math.round(X - tw / 2);
     ctx.fillStyle = '#5a3a10';
-    ctx.fillRect(X - tw / 2 - 1, ty - 9, tw + 2, 12);
+    ctx.fillRect(L - 1, ty - 11, tw + 2, 14);
     ctx.fillStyle = '#e8b84a';
-    ctx.fillRect(X - tw / 2, ty - 8, tw, 10);
-    ctx.fillStyle = '#3a2408';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(a.name, X, ty - 3);
-    ctx.textBaseline = 'alphabetic';
+    ctx.fillRect(L, ty - 10, tw, 12);
+    pixText(ctx, a.name, X, ty, { color: '#3a2408', align: 'center' });
     // 머리 위 ★ 하나
     const st = P(ctx);
     st.rect(X - 1, ty - 14, 3, 3, '#ffd36b');
@@ -1394,8 +1373,7 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, nt: number) {
   // 핫픽스 13: 크기표에 없는 그림이면 (옛 meta.json + 새 코드) 이름판은 건너뛴다 — 예전엔 여기서 i.w 오류로 멈췄다
   if (!m) return missingMeta(inn.sprite);
   const [x, y] = objTL(inn);
-  ctx.font = '10px "Galmuri9"';
-  const w = Math.ceil(ctx.measureText(name).width) + 10;
+  const w = pixW(name) + 10;
   const X = Math.round(x + m.w / 2 - w / 2);
   const Y = y - 16;
   const p = P(ctx);
@@ -1408,12 +1386,9 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, nt: number) {
   p.rect(X, Y, w, 13, '#5a3a24');
   p.rect(X + 1, Y + 1, w - 2, 11, '#a06a3c');
   p.hline(X + 1, Y + 1, w - 2, '#c08050');
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#5a3420';
-  ctx.fillText(name, X + 5, Y + 3);
-  ctx.fillStyle = nt > 0.5 ? '#ffe7a8' : '#fff3d6';
-  ctx.fillText(name, X + 5, Y + 2);
+  pixText(ctx, name, X + 5, Y + 2, { color: nt > 0.5 ? '#ffe7a8' : '#fff3d6', shadow: '#5a3420', offs: [[0, 1]], baseline: 'top' });
+  // 시험용: 간판이 화면(캔버스 픽셀) 어디에 그려졌나 (전후 사진 자르기)
+  if (import.meta.env.DEV) (window as unknown as { __signAt?: DOMPoint }).__signAt = ctx.getTransform().transformPoint(new DOMPoint(X + w / 2, Y + 6));
   if (gold) {
     const k = Math.floor((S.T * 18) % (2 * (w + 15)));
     const sx2 = k < w + 15 ? X - 1 + k : X - 1 + (2 * (w + 15) - k);
@@ -1575,19 +1550,15 @@ function drawLuxury(ctx: CanvasRenderingContext2D, o: Building, x: number, y: nu
   }
   const text = o.kind === 'hero_statue' ? (S.visiting ? '' : statueName()) : o.kind === 'gold_sign' ? S.innName || '여관' : '';
   if (!text) return;
-  ctx.font = '8px "Galmuri9"';
-  ctx.textAlign = 'center';
-  const tw = Math.ceil(ctx.measureText(text).width) + 6;
+  const tw = pixW(text) + 6;
   const X = Math.round(x + im.width / 2);
   const Y = Math.round(y + im.height - (o.kind === 'gold_sign' ? im.height * 0.55 : 10));
+  const L = Math.round(X - tw / 2);
   ctx.fillStyle = '#5a3a10';
-  ctx.fillRect(X - tw / 2 - 1, Y - 9, tw + 2, 12);
+  ctx.fillRect(L - 1, Y - 11, tw + 2, 14);
   ctx.fillStyle = '#e8b84a';
-  ctx.fillRect(X - tw / 2, Y - 8, tw, 10);
-  ctx.fillStyle = '#3a2408';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, X, Y - 3);
-  ctx.textBaseline = 'alphabetic';
+  ctx.fillRect(L, Y - 10, tw, 12);
+  pixText(ctx, text, X, Y, { color: '#3a2408', align: 'center' });
 }
 
 function drawPioneer(ctx: CanvasRenderingContext2D, o: Building, x: number, y: number, im: { width: number; height: number }) {

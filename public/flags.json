@@ -95,5 +95,6 @@
   "guestLetters": true,
   "giftDecoFree": true,
   "repPick": true,
-  "gateFix": true
+  "gateFix": true,
+  "pixText": true
 }

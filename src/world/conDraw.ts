@@ -10,6 +10,7 @@ import { clock, conLeft, conProgress } from './construct';
 import { NL } from './daynight';
 import { floatW, puff } from './fx';
 import { S, type Building } from './state';
+import { OUTLINE4, pixText } from './pixText';
 
 const INK = '#2a1a14';
 /** 청사진 실루엣 (그림마다 한 번) */
@@ -210,12 +211,5 @@ export function drawConstruction(ctx: CanvasRenderingContext2D, o: Building, im:
   p.rect(bx, by, 32, 4, '#3a3048');
   p.rect(bx, by, Math.max(1, Math.round(32 * prog)), 4, '#6fd04b');
   p.rect(bx, by, Math.max(1, Math.round(32 * prog)), 1, '#a8f080');
-  ctx.font = '8px "Galmuri9"';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  const t = clock(conLeft(o));
-  ctx.fillStyle = INK;
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.fillText(t, bx + 16 + dx, by - 2 + dy);
-  ctx.fillStyle = '#fff3d6';
-  ctx.fillText(t, bx + 16, by - 2);
+  pixText(ctx, clock(conLeft(o)), bx + 16, by - 2, { color: '#fff3d6', shadow: INK, offs: OUTLINE4, align: 'center' });
 }

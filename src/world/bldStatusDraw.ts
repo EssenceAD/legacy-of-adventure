@@ -3,6 +3,7 @@
 //  말풍선 22×24 (아이콘 16 + 테두리 3) · 아이콘은 (3,2) · 2~3초마다 1px 살랑 · 밤엔 등불색 테두리 · 밤 색조를 안 먹음(늘 또렷)
 //  줌 ≥ textZoom(CSS px/도트) 이거나 PC에서 마우스를 올리면 짧은 글 한 줄이 옆에 붙는다.
 import { CONFIG } from '../data/config';
+import { pixText } from './pixText';
 import { META } from '../engine/assets';
 import { scr, view } from '../engine/iso';
 import { canvas, P } from '../engine/pixel';
@@ -243,10 +244,7 @@ function label(ctx: CanvasRenderingContext2D, X: number, Y: number, text: string
   const p = P(ctx);
   p.rect(L, T, w, 14, nt > 0.5 ? '#e8a040' : '#161420');
   p.rect(L + 1, T + 1, w - 2, 12, '#2a2436');
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#fff3d6';
-  ctx.fillText(text, L + 4, T + 2);
+  pixText(ctx, text, L + 4, T + 2, { color: '#fff3d6', baseline: 'top' });
 }
 
 // ───────── WAYFIND 「!」와 겹침 ─────────
