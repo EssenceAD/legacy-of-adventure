@@ -1075,9 +1075,11 @@ export function gotGold(v: number, src = 'other') {
   const G = (P.goldLog ??= { day: '', by: {} });
   G.by[src] = (G.by[src] ?? 0) + Math.round(v);
   goldAcc += v;
-  while (goldAcc >= 500) {
-    goldAcc -= 500;
-    legendHooks.bond('goldEarn');
+  // 500G마다 한 번 — 한꺼번에 n번으로 알린다 (방치 사냥 수천 판에서 하나씩 부르면 이어하기가 몇 초 멈췄다)
+  const n = Math.floor(goldAcc / 500);
+  if (n > 0) {
+    goldAcc -= n * 500;
+    legendHooks.bond('goldEarn', n);
   }
   legendHooks.req('goldEarned', v);
 }
