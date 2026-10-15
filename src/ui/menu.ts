@@ -131,7 +131,7 @@ function groups(): [string, Item[]][] {
       // DIRECTION §2-1: 운영자 계정만 「제보함」
       ...(amAdmin() ? [{ icon: 'm_mail' as IconKey, name: '제보함', open: () => void openOpsBox() }] : []),
       { icon: 'm_album', name: '만든 사람', open: () => openCredits() },
-      { icon: 'm_chat', name: '💬 유저 톡방', open: () => openCommunity('menu') },
+      ...(flag('communityLinks') ? [{ icon: 'm_chat' as IconKey, name: '💬 유저 톡방', open: () => openCommunity('menu') }] : []),
     ]],
   ];
 }

@@ -10,6 +10,7 @@ import { CONFIG } from '../data/config';
 import { FISH } from '../data/story/fish';
 import { CATALOG } from '../data/catalog';
 import { track } from '../net/telemetry';
+import { flag } from './flags';
 import { HEROES, HERO_SETS } from '../data/heroes';
 import { REGIONS, type RegionId } from '../data/items';
 import { LEGENDS } from '../data/legends';
@@ -224,7 +225,7 @@ export function dailyAttend(): number | null {
   const big = ATTEND28[((a.total - 1) % 28) + 1];
   if (big) addMail({ from: 'attend', title: `누적 출석 ${((a.total - 1) % 28) + 1}일 보상`, body: fsay('꾸준히 와 줘서 고마워요!', '꾸준히 들러 주셔서 고마워요!'), reward: big });
   // 출석 3일째: 모모 편지 한 통 — 유저 톡방 (한 번만)
-  if (a.total >= 3 && !P.meta.kakaoMail) {
+  if (a.total >= 3 && !P.meta.kakaoMail && flag('communityLinks')) {
     P.meta.kakaoMail = true;
     addMail({ from: 'system', title: '💌 모모의 편지', body: '다른 여관 주인님들도 만나 볼래요? 용사님들이 모이는 카톡방이 있어요!', reward: {}, link: 'kakao' });
   }

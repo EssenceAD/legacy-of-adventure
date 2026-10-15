@@ -90,5 +90,6 @@
   "exWeapons": true,
   "burnWeekend": true,
   "worldRaid": true,
-  "decorDayLight": true
+  "decorDayLight": true,
+  "communityLinks": false
 }
