@@ -2,7 +2,7 @@
 // 그릴 때 world/town.ts의 placeLayout()이 내 마을과 같은 배치 검사를 한 번 더 한다.
 import type { Kind } from './catalog';
 import { CONFIG } from './config';
-import { HARBOR_FILL } from './harbor_fill';
+import { HARBOR_LAYOUT, HARBOR_NPCS, HARBOR_PAINT } from './harbor';
 
 export interface Neighbor {
   id: string;
@@ -26,6 +26,12 @@ export interface Neighbor {
   /** 예시 마을: 방문 화면 맨 위 한 줄 · 돌아다니는 전설 영웅 */
   note?: string;
   legends?: string[];
+  /** 10/17 이야기 마을: 바닥 칠 (「x,y」 → 돌길·흙길·자갈·모래·연못 …) — 방문할 때만 */
+  paint?: Record<string, string>;
+  /** 길을 손으로 깐 마을 (자동 길 끔 · 칠한 길만) */
+  manualPaths?: boolean;
+  /** 전시용 사람 (제자리에서 뭔가 하는 중 · 내 저장과 상관없음) — kind 직업 그림 · legend 전설 영웅 · dir 1 오른쪽 / -1 왼쪽 */
+  npcs?: { kind?: string; legend?: string; name: string; x: number; y: number; dir?: 1 | -1 }[];
   /** [종류, x, y, 레벨, 지붕 hue, 좌우 반전] */
   layout: [Kind, number, number, number?, (number | null)?, boolean?][];
 }
@@ -251,64 +257,15 @@ const SPA: Neighbor = {
   ],
 };
 
+// 10/16 → 10/17 「별무리 항구」 (땅 10 · ♥ 1등 · 목록 맨 위) — RPG 마을처럼 이야기가 보이게: 배치·바닥·전시용 사람은 data/harbor.ts
 const HARBOR: Neighbor = {
-  // 별무리 항구 (10/16 · 땅 10단계 42×42 · 맵 44 좌표 그대로 — toV4 안 함) — 「이만큼 키울 수 있다」 최종 목표 마을 · 지붕 하늘색 200
-  //  입구 정문(20,40) → 큰길 x=20 → 중앙 광장(동전 분수 · 광장 시계) → 여관 Lv.10 · 광장 옆 은행 + 금고 마차
-  //  구역: 뒤 왼쪽 농촌(방앗간·빵집·텃밭 — 빵 굽는 냄새) · 뒤 가운데 온천·마구간·훈련장 · 뒤 오른쪽 항구(선착장 — 작은 항구)
-  //        왼쪽 가운데 마법(학원) + 대장간·서재·공방 · 오른쪽 가운데 별채 마을 · 앞 왼쪽 시장 거리(잡화점 · 주점) · 앞 오른쪽 축제(무대 — 한밤의 공연) + 길드·탑
   id: 'harbor', name: '별무리 항구', owner: '여관왕 베르나', land: 10, like: 3200, grade: 4, title: '여관왕', ent: 20,
   note: '땅 10단계 · 새 건물 7종이 모두 있는 마을이에요',
   pets: ['otter', 'starcat', 'puppy'],
-  legends: ['elysia', 'leon', 'luna', 'grom'],
-  layout: [
-    ['inn', 18, 9, 10, 200], ['dungeon', 41, 30],
-    // ── 중앙 광장 · 은행
-    ['coin_fountain', 22, 17], ['plaza_clock', 18, 17], ['double_lamp', 19, 15], ['double_lamp', 22, 15], ['double_lamp', 19, 21], ['double_lamp', 22, 21],
-    ['flowerbed', 17, 19], ['flowerbed', 24, 20], ['tulip_box', 18, 19], ['rose_bench', 17, 17], ['bench', 24, 17],
-    ['bank', 25, 14, 3, 200], ['vault_cart', 26, 18], ['lamppost', 28, 18], ['statue', 16, 15],
-    // ── 큰길 (x=20) 양쪽 엇갈린 가로등·꽃 → 정문
-    ['lamppost', 19, 24], ['tulip_box', 22, 24], ['lamppost', 22, 27], ['flowerbed', 19, 27], ['lamppost', 19, 30], ['tulip_box', 22, 30],
-    ['lamppost', 22, 33], ['flowerbed', 19, 33], ['lamppost', 19, 36], ['tulip_box', 22, 36],
-    ['gate', 20, 40], ['double_lamp', 19, 40], ['double_lamp', 22, 40], ['signpost', 18, 41], ['banner', 23, 41],
-    // ── 뒤 왼쪽: 농촌 (빵 굽는 냄새 = 빵집 + 화덕 + 빵 진열대)
-    ['grain_mill', 2, 2, 3], ['bakery', 7, 2, 3, 200], ['stone_oven', 10, 3], ['bread_rack', 10, 4], ['flour_sacks', 5, 3], ['flour_sacks', 6, 3], ['milk_cans', 5, 4],
-    ['water_wheel', 12, 2], ['garden', 2, 7, 6], ['garden', 7, 7, 6], ['straw_bale', 6, 9], ['hay_scarecrow', 6, 7], ['pumpkins', 11, 8], ['harvest_cart', 11, 9], ['wheat_sheaf', 12, 6],
-    ['lamppost', 5, 6], ['lamppost', 10, 6], ['chicken_coop', 13, 9], ['beehives', 1, 10],
-    // ── 뒤 가운데: 온천 · 마구간 · 훈련장 · 우체국
-    ['bath', 15, 2, 5], ['stable', 19, 2, 5], ['training', 23, 2, 6], ['postoffice', 15, 6, 5, 200], ['brazier', 18, 6], ['target', 22, 6], ['target', 23, 6], ['lamppost', 26, 6],
-    // ── 뒤 오른쪽: 항구 (작은 항구 = 선착장 + 나무 부두 + 작은 보트) · 연못
-    ['fishing_dock', 32, 3, 3], ['wood_pier', 35, 4], ['row_boat', 35, 2], ['net_rack', 31, 6], ['mini_lighthouse', 37, 6], ['gull_post', 30, 3], ['gull_post', 36, 7],
-    ['koi_pond', 38, 1], ['lily_pond', 28, 1], ['foot_bridge', 30, 1], ['lantern_post', 29, 6], ['lantern_post', 34, 8], ['bench', 32, 8], ['barrel_stack', 38, 4], ['barrel_stack', 39, 4],
-    // ── 왼쪽 가운데: 마법 (학원 + 마법진·수정·책장·부엉이·별 화분) · 대장간 · 서재 · 공방 · 예배당
-    ['mage_academy', 4, 15, 4, 265], ['magic_circle', 9, 15], ['float_crystal', 9, 18], ['float_crystal', 2, 18], ['spell_shelf', 3, 15], ['owl_perch', 3, 17], ['star_pot', 8, 20], ['star_pot', 4, 20],
-    ['mushroom_lamp', 11, 17], ['aurora_pillar', 2, 14],
-    ['smith', 11, 21, 7], ['library', 1, 22, 5], ['alchemy', 14, 16, 5], ['chapel', 11, 12, 5],
-    ['weapon_rack', 14, 21], ['brazier', 14, 23], ['float_books', 4, 22], ['lamppost', 7, 24], ['lamppost', 15, 20],
-    // ── 오른쪽 가운데: 별채 마을 · 마을 회관
-    ['cottage', 30, 13, 1, 200], ['cottage', 33, 13, 1, 200], ['cottage', 36, 13, 1, 200], ['cottage', 30, 18, 1, 200], ['cottage', 33, 18, 1, 200], ['cottage', 36, 18, 1, 200],
-    ['flowerbed', 39, 14], ['tulip_box', 39, 19], ['lamppost', 32, 16], ['lamppost', 35, 21], ['dog_house', 38, 22], ['birdhouse', 29, 22], ['well', 33, 23],
-    ['town_hall', 26, 22, 1, 200],
-    // ── 앞 왼쪽: 시장 거리 (잡화점 + 천막 노점·짐 상자·저울대·바구니·간판) · 주점
-    ['general_store', 8, 29, 3, 200], ['market_tent', 12, 29], ['market_tent', 12, 31], ['crate_pile', 6, 30], ['scale_stand', 6, 32], ['basket_pile', 7, 33], ['shop_board', 11, 33],
-    ['stall', 3, 29], ['fruit_stall', 3, 32], ['flower_cart', 14, 33], ['string_lights', 15, 29], ['string_lights', 5, 28],
-    ['tavern', 2, 35, 6, 200], ['barrel_stack', 6, 36], ['barrels', 7, 37], ['bench', 9, 37], ['fire', 11, 37], ['lamppost', 13, 36], ['double_lamp', 15, 38],
-    // ── 앞 오른쪽: 축제 (한밤의 공연 = 무대 + 관객 의자 줄 2 + 꽃등 기둥) · 길드 · 탑
-    ['bard_stage', 29, 29, 3], ['audience_bench', 28, 34], ['audience_bench', 31, 34], ['garland_post', 33, 30], ['garland_post', 27, 30], ['festival_drum', 33, 32],
-    ['music_stand', 27, 32], ['stage_light', 33, 28], ['stage_light', 28, 27], ['firework_stand', 26, 36], ['string_lights', 34, 35],
-    ['guild', 36, 28, 5, 200], ['tower', 37, 34, 5], ['lamppost', 35, 33], ['brazier', 39, 33], ['knight_statue', 25, 26],
-    // ── 빈 잔디 메우기: 큰길 양옆 쉼터 · 구역 사이 꽃·나무·등불
-    ['maple', 16, 25], ['flowerbed', 17, 26], ['bench', 16, 28], ['picnic', 17, 30], ['birch', 16, 32], ['flowerbed', 17, 34], ['cherry', 16, 36], ['tulip_box', 17, 38], ['lamppost', 17, 32],
-    ['flowerbed', 24, 29], ['bench', 24, 31], ['cherry', 24, 34], ['flowerbed', 24, 38], ['lamppost', 25, 33],
-    ['flowerbed', 31, 25], ['flowerbed', 35, 25], ['lamppost', 37, 25], ['bench', 33, 26], ['maple', 39, 26],
-    ['tulip_box', 25, 9], ['birch', 27, 10], ['flowerbed', 24, 11], ['lamppost', 27, 12],
-    ['flowerbed', 6, 26], ['tulip_box', 5, 25], ['mushroom_lamp', 9, 25], ['flowerbed', 15, 10], ['pine', 16, 11], ['lamppost', 15, 13],
-    ['flowerbed', 9, 40], ['birch', 12, 40], ['tulip_box', 6, 40], ['lamppost', 3, 40],
-    // ── 나무 액자: 뒤쪽 두 가장자리 촘촘 · 앞쪽 성기게
-    ...cycle(['pine', 'birch', 'pine', 'cherry'], [...alongX(0, span(0, 41)), ...alongY(0, span(1, 41))]),
-    ...cycle(['pine', 'maple'], [...alongX(41, [3, 7, 12, 27, 32, 37]), ...alongY(41, [3, 8, 12, 17, 22, 26])]),
-    // 10/17 빈 잔디 채우기 (구역별 새 장식 · 꽃밭 · 나무 — 길·문 앞·입구는 비움 · data/harbor_fill)
-    ...HARBOR_FILL,
-  ],
+  manualPaths: true,
+  paint: HARBOR_PAINT,
+  npcs: HARBOR_NPCS,
+  layout: HARBOR_LAYOUT,
 };
 
 /** LAND10: 위 배치표는 LAND2(맵 32) 좌표 그대로 적어 두고, 맵 44에 맞게 +12 해서 내보낸다 (이웃 모습 v3 → v4와 같은 규칙) */

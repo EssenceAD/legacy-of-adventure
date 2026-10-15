@@ -93,6 +93,26 @@ async function run(dev, nights) {
     const ft = await p.evaluate(() => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = () => (++n >= 120 ? res((performance.now() - t0) / n) : requestAnimationFrame(f)); requestAnimationFrame(f); }));
     console.log(`   프레임 ${ft.toFixed(1)}ms (${night ? '밤' : '낮'})`);
   }
+  // PC: 구역별 확대 (시장 · 항구 · 축제) — 배율 2
+  if (dev === 'pc') {
+    for (let i = 0; i < 8 && (await p.evaluate(() => window.__S.zoom)) !== 2; i++) {
+      await p.evaluate(() => document.querySelector('#bZoom')?.click());
+      await W(200);
+    }
+    const ZONES = [['market', 15, 34], ['harbor', 7, 7], ['festival', 32, 33]];
+    for (const [name, x, y] of ZONES) {
+      await p.evaluate(([x, y]) => {
+        const v = window.__view;
+        const N = window.__N;
+        v.goal = null;
+        v.cam.x = ((x - y) * 32) / 2;
+        v.cam.y = ((x + y - N) * 16) / 2;
+      }, [x, y]);
+      await frames(40);
+      await W(500);
+      await p.screenshot({ path: `${OUT}/harbor_zoom_${name}.png` });
+    }
+  }
   ok(!errs.length, '페이지 에러 없음 ' + errs.join(' | '));
   console.log('   zoom', zMin);
   await ctx.close();

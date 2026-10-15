@@ -5,7 +5,7 @@ import { copyIncomeMult } from './town';
 import { cycleLines, storyLines } from './story';
 import { chapelHeal, passerExtraHours, takeMeal } from './facilities';
 import { blessed, blessFx } from './goldsink';
-import { GUEST_KINDS, KIND_LINES, RARE_LINES, RARITY_INFO, type GuestKind } from '../data/classes';
+import { GUEST_KINDS, KIND_LINES, RARE_LINES, RARITY_INFO, type GuestKind, type ClassKey } from '../data/classes';
 import { hvLine, soupBonus } from './harvest';
 import { CONFIG } from '../data/config';
 import { josa } from '../data/josa';
@@ -77,11 +77,20 @@ export function spawnExtras(n = capacity()) {
     world.actors.push(a);
   }
   // 10/16 별무리 항구: 예시 마을에 돌아다니는 전설 영웅 (구경용 — 내 저장·인연에는 닿지 않는다)
-  for (const key of (S.visiting && !S.visiting.uid ? S.visiting.legends : null) ?? []) {
+  const v = S.visiting && !S.visiting.uid ? S.visiting : null;
+  for (const key of v?.legends ?? []) {
     const L = legendByKey(key);
     if (!L) continue;
     const a = blankActor(L.kind, L.name, d[0] + (Math.random() * 4 - 2), d[1] + 1 + Math.random() * 2);
     Object.assign(a, { legendId: key, race: L.race, hair: L.hair, rarity: 'legend', lvl: 15, stars: 1 });
+    world.actors.push(a);
+  }
+  // 10/17 이야기 마을: 제자리에서 뭔가 하는 전시용 사람 (노점 손님 · 낚시꾼 · 마법사 · 음유시인 · 분수 옆 전설) — npc라 돌아다니지 않는다
+  for (const n of v?.npcs ?? []) {
+    const L = n.legend ? legendByKey(n.legend) : null;
+    const a = blankActor((L?.kind ?? n.kind ?? 'hero') as ClassKey, n.name, n.x + 0.5, n.y + 0.5, 'npc');
+    if (L) Object.assign(a, { legendId: n.legend, race: L.race, hair: L.hair, rarity: 'legend', lvl: 15, stars: 1 });
+    if (n.dir) a.dir = n.dir;
     world.actors.push(a);
   }
 }

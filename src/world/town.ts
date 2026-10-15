@@ -221,7 +221,7 @@ export function capacity(objs = world.objs): number {
 // ───────── 점유 격자·길 ─────────
 
 /** TOWN T2: 칠한 칸 (이웃 구경 중엔 없음) — 연못은 걸을 수 없고 그 위엔 못 짓는다 · 길 재질 칸은 길 */
-export const paintOf = (x: number, y: number): string | undefined => (S.visiting ? undefined : P.decor?.paint?.[`${x},${y}`]);
+export const paintOf = (x: number, y: number): string | undefined => (S.visiting ? S.visiting.paint?.[`${x},${y}`] : P.decor?.paint?.[`${x},${y}`]);
 /** BUILDUX §3-3: 모서리를 둥글린 길 칸 */
 export const roundOf = (x: number, y: number): boolean => !S.visiting && !!P.decor?.round?.[`${x},${y}`];
 export const pondAt = (x: number, y: number) => paintOf(x, y) === 'pond';
@@ -325,7 +325,8 @@ export function rebuildPaths() {
     if (p) for (const [x, y] of p) if (inMap(x, y) && !grid[y][x] && !(outsideOnly && inLand(x, y))) into.add(y * N + x);
   };
   // TOWN T2: 자동 길을 끄면 건물↔여관 길은 깔지 않는다 (던전 가는 숲길·칠한 길만)
-  const auto = S.visiting || P.decor?.autoPath !== false;
+  // 10/17: 길을 손으로 깐 이웃 마을(manualPaths)은 자동 길 없이 칠한 길만
+  const auto = S.visiting ? !S.visiting.manualPaths : P.decor?.autoPath !== false;
   for (const o of world.objs) {
     if (!auto) break;
     if (o === inn || o.kind === 'dungeon') continue;
@@ -346,7 +347,7 @@ export function rebuildPaths() {
   for (const k of avoidNo) pathT.delete(k);
   avoidNo = null;
   // TOWN T2: 칠한 길 (자동 길과 상관없이)
-  if (!S.visiting) for (const [k, c] of Object.entries(P.decor?.paint ?? {})) if (PAINT_PATHS.has(c)) { const [x, y] = k.split(',').map(Number); if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x); }
+  for (const [k, c] of Object.entries((S.visiting ? S.visiting.paint : P.decor?.paint) ?? {})) if (PAINT_PATHS.has(c)) { const [x, y] = k.split(',').map(Number); if (inMap(x, y) && !grid[y][x]) pathT.add(y * N + x); }
   layoutHooks.after();
 }
 
