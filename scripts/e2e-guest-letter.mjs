@@ -30,6 +30,8 @@ async function run(mode) {
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 120)));
   await p.goto(URL, { waitUntil: 'domcontentloaded' });
   await p.waitForSelector('#tLetter', { state: 'visible', timeout: 60000 });
+  // 라이브: 그림 불러오기 막이 걷힐 때까지
+  await p.waitForFunction(() => { const l = document.getElementById('loading'); return !l || !l.offsetParent; }, null, { timeout: 90000 });
   await p.waitForTimeout(600);
   const talk = async () => {
     for (let i = 0; i < 15; i++) {
