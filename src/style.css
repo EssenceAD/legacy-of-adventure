@@ -849,6 +849,9 @@ html:not([data-size="phone"]) #evalbar{top:calc(env(safe-area-inset-top,0px) + 1
 /* ── 베타 6장: BETA 띠 · 타이틀 편지 ── */
 #title .logo{position:relative}
 #title .beta{position:absolute;right:-6px;top:-10px;padding:2px 8px;background:#c84a3a;color:#fff3d6;font-weight:700;font-size:var(--f-small);letter-spacing:2px;box-shadow:0 0 0 2px var(--ink);transform:rotate(8deg)}
+/* 1.0 정식 오픈: BETA 띠 → 작은 금빛 「정식 오픈」 리본 */
+#title .open1{position:absolute;right:-4px;top:-8px;padding:1px 7px;background:linear-gradient(#f5d27a,#d9a640);color:#3a2408;font-weight:700;font-size:var(--f-small);letter-spacing:1px;box-shadow:0 0 0 2px var(--ink);transform:rotate(6deg)}
+#tVer:empty{visibility:hidden}
 .tbtns button.sm{padding:6px;font-size:var(--f-small);opacity:.9}
 
 /* ── 핫픽스 6(소리): 스피커 버튼 · 설정 「소리」 · 음악 목록 ── */

@@ -29,7 +29,7 @@ export function betaMigrate() {
     addRep(CONFIG.harmony.rep * fresh.length);
     addMail({
       from: 'system',
-      title: `어울림 ${fresh.length}개 발견 · 베타 업데이트`,
+      title: `어울림 ${fresh.length}개 발견`,
       body: `이미 마을에 어울림이 있었어요: ${fresh.map((s) => `「${harmonyById(s.id).name}」`).join(' ')} · 평판 +${CONFIG.harmony.rep * fresh.length}`,
       reward: { gold },
     });
