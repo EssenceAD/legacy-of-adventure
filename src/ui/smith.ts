@@ -6,7 +6,9 @@ import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
 import { openBulkSalvage } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
-import { craftWhet, gardenLevelState, gardenPlots } from '../world/craft';
+import { bulkCrop, craftWhet, emptyAll, gardenLevelState, gardenList, gardenPlots, harvestAll, plantAll, ripeAll } from '../world/craft';
+import { flag } from '../world/flags';
+import { N, sx, sy, view } from '../engine/iso';
 import { vis, fsay } from '../world/visual';
 import { def } from '../data/catalog';
 import { maxLevel } from '../world/town';
@@ -277,7 +279,70 @@ export function bindCraft(o: Building, redraw: () => void) {
   if (up) up.onclick = () => (game.upgrade(o), redraw());
 }
 
+// ───────── 10/17 gardenNav (따스한밤 님 건의): ◀ ▶ 옆 텃밭 넘기기 · 모두 수확 · 모두 심기 ─────────
+const navOn = () => flag('gardenNav') && !S.visiting;
+/** 지금 텃밭 창에 띄운 밭 (← → 키) */
+let gardenNow: Building | null = null;
+/** 그 텃밭이 보이게 카메라를 살짝 옮긴다 (부드럽게) */
+function peekGarden(o: Building) {
+  const x = o.tx + o.fw / 2;
+  const y = o.ty + o.fh / 2;
+  view.goal = { x: sx(x, y) - sx(N / 2, N / 2), y: sy(x, y) - sy(N / 2, N / 2) - view.LH * 0.15 };
+}
+/** 옆 텃밭으로 (끝에서 처음으로 돌아감) — 같은 창 안에서 내용만 바꾼다 */
+function stepGarden(d: number) {
+  const gs = gardenList();
+  const i = gardenNow ? gs.indexOf(gardenNow) : -1;
+  if (gs.length < 2 || i < 0) return;
+  const next = gs[(i + d + gs.length) % gs.length];
+  peekGarden(next);
+  openGarden(next);
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const tag = (e.target as HTMLElement)?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || !navOn() || !gardenNow) return;
+  const win = document.getElementById('win');
+  if (!win?.classList.contains('on') || document.getElementById('winT')?.textContent !== '텃밭' || !document.getElementById('gNav')) return;
+  e.preventDefault();
+  stepGarden(e.key === 'ArrowLeft' ? -1 : 1);
+});
+function gardenNavHtml(o: Building): string {
+  const gs = gardenList();
+  const i = gs.indexOf(o);
+  const nav = gs.length > 1 && i >= 0 ? `<div class="gnav" id="gNav"><button id="gPrev" aria-label="이전 텃밭">◀</button><b>텃밭 ${i + 1}/${gs.length}</b><button id="gNext" aria-label="다음 텃밭">▶</button></div>` : '';
+  const ripe = ripeAll();
+  const empty = emptyAll();
+  const crop = CONFIG.garden.crops[bulkCrop()];
+  const can = crop.seed > 0 ? Math.min(empty, Math.floor(S.gold / crop.seed)) : empty;
+  const short = empty > 0 && can < empty ? `<p class="note">금화가 모자라 ${can}칸만 심어요</p>` : '';
+  return `${nav}<div class="btnrow gbulk"><button id="gHarvAll" class="bigbtn sm" ${ripe ? '' : 'disabled'}>다 자란 것 모두 수확 (${ripe})</button><button id="gPlantAll" class="bigbtn sm" ${can ? '' : 'disabled'}>${empty ? `빈 밭 모두 심기 · ${crop.name} ${empty}칸 · ${fmt(crop.seed * empty)} G` : '빈 밭 모두 심기 (0)'}</button></div>${short}`;
+}
+function bindGardenNav(o: Building) {
+  const p = document.getElementById('gPrev');
+  const n = document.getElementById('gNext');
+  if (p) p.onclick = () => stepGarden(-1);
+  if (n) n.onclick = () => stepGarden(1);
+  const h = document.getElementById('gHarvAll') as HTMLButtonElement | null;
+  if (h)
+    h.onclick = () => {
+      const r = harvestAll();
+      if (r.n) toast(fsay(`${r.n}칸 수확! +${r.got}`, `${r.n}칸 거둬 뒀어요 +${r.got}`));
+      openGarden(o);
+    };
+  const pl = document.getElementById('gPlantAll') as HTMLButtonElement | null;
+  if (pl)
+    pl.onclick = () => {
+      const crop = bulkCrop();
+      const r = plantAll(crop);
+      if (r.n) toast(`${CONFIG.garden.crops[crop].name} ${r.n}칸 심었어요 (−${fmt(r.cost)} G)${r.left ? ` · 금화가 모자라 ${r.left}칸 남았어요` : ''}`);
+      else toast('금화가 모자라요');
+      openGarden(o);
+    };
+}
+
 export function openGarden(o: Building) {
+  gardenNow = o;
   const plots = plotsOf(o);
   const now = Date.now();
   const rows = plots
@@ -293,7 +358,7 @@ export function openGarden(o: Building) {
     })
     .join('');
   // v0.25.4: 맨 위 정보 한 줄(actionsTidy) · 텃밭 레벨 줄(gardenLevelUp)
-  const head = (vis('actionsTidy') ? `<p class="sub objinfo">${esc(def('garden').desc)} · ${esc(def('garden').levelText ?? '')}</p>` : '') + (vis('gardenLevelUp') ? gardenLine(o) : '');
+  const head = (navOn() ? gardenNavHtml(o) : '') + (vis('actionsTidy') ? `<p class="sub objinfo">${esc(def('garden').desc)} · ${esc(def('garden').levelText ?? '')}</p>` : '') + (vis('gardenLevelUp') ? gardenLine(o) : '');
   openWin(
     '텃밭',
     `${head}<p class="sub">창고: ${Object.entries(P.crops).filter(([k, n]) => n > 0 || tavernAteToday(k) > 0).map(([k, n]) => `${CONFIG.garden.crops[k]?.name ?? k} <b class="g">${n}</b>${tavernAteToday(k) ? ` <small class="tate">오늘 주점 −${tavernAteToday(k)}</small>` : ''}`).join(' · ') || '비어 있어요'}${P.pantry ? ` · 채소 <b class="g">${P.pantry}</b>` : ''}</p><p class="note">먹을 수 있는 작물은 주점 식사에 자동으로${fLv('alchemy') && P.keepAlch !== false ? ' (물약 재료 몫은 남겨요)' : ''} · 약초·별꽃은 연금술 공방 재료</p>${rows}<p class="note">꺼 둬도 작물은 자라요</p>`,
@@ -315,8 +380,11 @@ export function openGarden(o: Building) {
       }),
   );
   // 핫픽스 10 §10: 열어 둔 사이 다 자라면 「수확」 버튼으로 바로
+  if (navOn()) bindGardenNav(o);
   const ripe = new Set(plots.map((p, i) => (plotLeft(p, now) === 0 ? i : -1)));
-  liveWin('텃밭', () => plotsOf(o).some((p, i) => plotLeft(p, Date.now()) === 0 && !ripe.has(i)), () => {
+  // gardenNav: 다른 밭이 익어도 「모두 수확 (n)」 숫자가 바뀌게
+  const ripeN = navOn() ? ripeAll() : 0;
+  liveWin('텃밭', () => plotsOf(o).some((p, i) => plotLeft(p, Date.now()) === 0 && !ripe.has(i)) || (navOn() && ripeAll() !== ripeN), () => {
     const fresh = plotsOf(o).map((p, i) => (plotLeft(p, Date.now()) === 0 && !ripe.has(i) ? i : -1)).filter((i) => i >= 0);
     openGarden(o);
     for (const i of fresh) document.querySelector(`[data-h="${i}"]`)?.closest('.plot')?.classList.add('fresh');

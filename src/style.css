@@ -243,6 +243,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .regs small{display:block;color:#9aa6d8}
 .flash{animation:rdy .5s steps(2) 4}
 .plot{padding:6px 8px;background:#0e1430;margin-top:6px;display:flex;flex-direction:column;gap:4px}.plot.ripe{box-shadow:inset 0 0 0 2px var(--leaf)}
+/* 10/17 gardenNav: ◀ 텃밭 n/m ▶ · 모두 수확 · 모두 심기 */
+.gnav{display:flex;align-items:center;justify-content:center;gap:12px;margin:2px 0 6px}.gnav button{min-width:44px;min-height:44px;font-size:18px}.gnav b{min-width:84px;text-align:center}
+.gbulk{flex-wrap:wrap;margin-bottom:4px}.gbulk button{flex:1 1 140px}
 /* 도감 */
 .dexg{display:flex;flex-direction:column;gap:4px;overflow-x:auto}
 .dexrow{display:flex;gap:2px;align-items:center}.dexrow span{width:52px;flex:none}

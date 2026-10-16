@@ -353,6 +353,8 @@ export function plant(o: Building, i: number, crop: string): string | null {
   S.gold -= c.seed;
   p.crop = crop;
   p.at = Date.now();
+  // 10/17 gardenNav: 「빈 밭 모두 심기」는 마지막으로 심은 작물로
+  P.meta.gardenLast = crop;
   markDirty();
   return null;
 }
@@ -386,6 +388,56 @@ export function ripeCount(): number {
   let n = 0;
   for (const o of homeObjs()) if (o.kind === 'garden') for (const p of plotsOf(o)) if (plotLeft(p) === 0) n++;
   return n;
+}
+
+// ───────── 10/17 gardenNav (따스한밤 님 건의): 텃밭 넘기기 · 모두 수확 · 모두 심기 ─────────
+/** 쓸 수 있는 텃밭 (새로 짓는 중인 밭은 빼고 · 마을 위치 순 y → x 고정) */
+export function gardenList(): Building[] {
+  return homeObjs()
+    .filter((o) => o.kind === 'garden' && o.build === undefined)
+    .sort((a, b) => a.ty - b.ty || a.tx - b.tx);
+}
+/** 쓸 수 있는 텃밭의 익은 칸 수 */
+export function ripeAll(): number {
+  return gardenList().reduce((n, o) => n + plotsOf(o).filter((p) => plotLeft(p) === 0).length, 0);
+}
+/** 모든 텃밭의 익은 칸 전부 수확 → 거둔 칸 수 · 얻은 작물 수 */
+export function harvestAll(): { n: number; got: number } {
+  let n = 0;
+  let got = 0;
+  for (const o of gardenList())
+    plotsOf(o).forEach((p, i) => {
+      if (plotLeft(p) !== 0) return;
+      got += harvest(o, i);
+      n++;
+    });
+  return { n, got };
+}
+/** 「빈 밭 모두 심기」 작물: 마지막으로 심은 것 (없거나 지금 땅에서 못 심으면 첫 작물) */
+export function bulkCrop(): string {
+  const land = world.home?.land ?? S.land;
+  const ok = (k: string) => !!GD.crops[k] && !(GD.crops[k].land && land < GD.crops[k].land!);
+  const last = P.meta.gardenLast;
+  return last && ok(last) ? last : Object.keys(GD.crops).find(ok)!;
+}
+/** 빈 칸 수 (쓸 수 있는 텃밭 전체) */
+export function emptyAll(): number {
+  return gardenList().reduce((n, o) => n + plotsOf(o).filter((p) => !p.crop).length, 0);
+}
+/** 빈 칸 전부 심기 (금화가 모자라면 살 수 있는 만큼) → 심은 칸 · 쓴 금화 · 못 심은 칸 */
+export function plantAll(crop = bulkCrop()): { n: number; cost: number; left: number } {
+  let n = 0;
+  let cost = 0;
+  let left = 0;
+  for (const o of gardenList())
+    plotsOf(o).forEach((p, i) => {
+      if (p.crop) return;
+      const before = S.gold;
+      if (plant(o, i, crop)) return void left++;
+      cost += before - S.gold;
+      n++;
+    });
+  return { n, cost, left };
 }
 
 // ───────── v0.25.4 텃밭 레벨업 (gardenLevelUp) ─────────
