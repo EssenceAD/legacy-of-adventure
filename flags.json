@@ -101,5 +101,6 @@
   "buildings2": true,
   "winReturn": true,
   "decoFlip": true,
+  "gardenNav": true,
   "friends": true
 }
