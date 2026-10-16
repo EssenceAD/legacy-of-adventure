@@ -111,7 +111,8 @@ for (const dev of which) {
   await p.evaluate(() => document.querySelector('#nbS [data-ns="friend"]')?.click());
   await W(300);
   s = await st();
-  ok(/각별한 이웃/.test(s.text) && /곧 열려요/.test(s.text), '⭐ 각별한 이웃 안내');
+  await W(1200); s = await st();
+  ok(/각별한 이웃/.test(s.text), '⭐ 각별한 이웃 탭 (안내·목록·로그인 안내 중 하나)');
   ok(!s.overflowX, '가로 넘침 없음');
   await p.screenshot({ path: `${OUT}/${dev}_friend.png` });
 

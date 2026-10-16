@@ -101,5 +101,5 @@
   "buildings2": true,
   "winReturn": true,
   "decoFlip": true,
-  "friends": false
+  "friends": true
 }

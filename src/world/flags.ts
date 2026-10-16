@@ -67,8 +67,8 @@ export const FLAG_DEFAULTS = {
   winReturn: true,
   /** v0.25.66 (10/17 이카몰리 건의) 장식 🔄 좌우 반전 — 꾸미기에서 장식을 누르면 🔄 (안 옮겼으면 그 자리에서 바로) · 정사각형 아닌 장식은 발판 가로·세로도 바뀜(자리 없으면 「공간이 부족해요」) · 글자 있는 장식은 버튼 없음(noFlip) */
   decoFlip: true,
-  /** SOCIAL_SPEC §2~§4 각별한 이웃 (맺기 · ⭐ 목록 · 공사 거들기 · 선물 · 🤝 증표 · 편지함 고마워요) — 서버 reports/_tmp/friends.sql 적용 뒤 켠다 */
-  friends: false,
+  /** SOCIAL_SPEC §2~§4 각별한 이웃 (맺기 · ⭐ 목록 · 공사 거들기 · 선물 · 🤝 증표 · 편지함 고마워요) — 서버 friends.sql 적용됨 (10/17) */
+  friends: true,
   /** v0.24.4 화면에서 크기가 같은 줌 단계는 하나만 */
   zoomDedupe: true,
   /** v0.24.5 끝없는 심연: 나가도 그 층부터 무료로 이어가기 · 10층 체크포인트(입장료) */
