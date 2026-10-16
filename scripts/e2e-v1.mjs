@@ -20,6 +20,7 @@ await ctx.addInitScript((s) => {
   localStorage.setItem('legacy-of-adventure-lastVersion', JSON.stringify('0.25.66-beta'));
 }, SAVE);
 const p = await ctx.newPage();
+const VER = (await (await ctx.request.get(URL + 'version.json')).json()).version;
 const errs = [];
 p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
 const W = (ms) => p.waitForTimeout(ms);
@@ -28,25 +29,25 @@ await p.waitForSelector('#tCont', { state: 'visible', timeout: 60000 });
 await W(800);
 const title = await p.evaluate(() => ({ ribbon: document.querySelector('#title .open1')?.textContent, beta: !!document.querySelector('#title .beta'), ver: document.getElementById('tVer')?.textContent, text: document.getElementById('title').innerText }));
 ok(title.ribbon === '정식 오픈' && !title.beta, `타이틀 「${title.ribbon}」 리본 · BETA 띠 없음`);
-ok(/^v1\.0\.0/.test(title.ver ?? ''), `버전 「${title.ver}」`);
+ok((title.ver ?? '').startsWith(`v${VER}`), `버전 「${title.ver}」`);
 ok(!/beta|베타/i.test(title.text), '타이틀 화면에 beta/베타 없음');
 await p.locator('#tCont').click();
 await W(4000);
 // 다른 창(방치 요약 등)을 닫으며 패치노트 카드를 찾는다
 let card = null;
 for (let i = 0; i < 40 && !card; i++) {
-  card = await p.evaluate(() => {
+  card = await p.evaluate((ver) => {
     const t = document.querySelector('#win.on #winT')?.textContent ?? '';
-    if (/v1\.0\.0 업데이트|새로 생긴 것/.test(t)) return t + ' | ' + (document.querySelector('#winB')?.innerText ?? '').slice(0, 80);
+    if (t.includes(`v${ver} 업데이트`) || t.includes('새로 생긴 것')) return t + ' | ' + (document.querySelector('#winB')?.innerText ?? '').slice(0, 80);
     if (!document.querySelector('#dlg').hidden) document.querySelector('#dlg').click();
     else if (document.querySelector('#win').classList.contains('on')) document.querySelector('#winX').click();
     return null;
-  });
+  }, VER);
   if (!card) await W(300);
 }
-ok(!!card && /정식 오픈/.test(card), `1.0.0 카드 한 번: ${card}`);
+ok(!!card, `v${VER} 카드 한 번: ${card}`);
 const lv = await p.evaluate(() => localStorage.getItem('legacy-of-adventure-lastVersion'));
-ok(lv === JSON.stringify('1.0.0'), `본 버전 기록 ${lv}`);
+ok(lv === JSON.stringify(VER), `본 버전 기록 ${lv}`);
 // 새로고침 → 카드 다시 안 뜸 · 새 버전 띠 없음
 await p.reload({ waitUntil: 'domcontentloaded' });
 await p.waitForSelector('#tCont', { state: 'visible', timeout: 60000 });
@@ -61,7 +62,7 @@ for (let i = 0; i < 20; i++) {
     else if (document.querySelector('#win').classList.contains('on') && !/업데이트/.test(t)) document.querySelector('#winX').click();
     return t;
   });
-  if (/v1\.0\.0 업데이트/.test(t)) again = true;
+  if (t.includes(`v${VER} 업데이트`)) again = true;
   await W(250);
 }
 ok(!again, '새로고침 뒤 카드 다시 안 뜸');
