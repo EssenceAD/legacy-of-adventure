@@ -100,5 +100,6 @@
   "nbTabs": true,
   "buildings2": true,
   "winReturn": true,
-  "decoFlip": true
+  "decoFlip": true,
+  "friends": true
 }
