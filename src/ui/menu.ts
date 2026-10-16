@@ -63,6 +63,7 @@ import { APP_VERSION, openPatchNotes } from './update';
 import { labOn, setLab, vis, fsay } from '../world/visual';
 import { CHEM_NOTICE_NAME, chemNoticeMode, chemUnread, type ChemNotice } from '../world/chemNews';
 import { ACTION_NAME, COMBAT_ACTIONS, keyLabel, keysShown, resetKeys, setKey, VILLAGE_ACTIONS, type Action } from '../engine/keys';
+import { bindMailExtra, mailExtraHtml } from './friends';
 
 const has = (k: string) => (world.home?.objs ?? world.objs).some((o) => o.kind === k && o.build === undefined);
 
@@ -300,7 +301,7 @@ let attendStamped = 0;
 
 // ───────── 우편함 ─────────
 
-const FROM: Record<string, string> = { attend: '출석', rank: '랭킹', admin: '운영자', prev: '앞 주인', system: '여관', rift: '하늘 균열' };
+const FROM: Record<string, string> = { attend: '출석', rank: '랭킹', admin: '운영자', prev: '앞 주인', system: '여관', rift: '하늘 균열', friend: '각별한 이웃' };
 let mailDelArmed = false;
 export function openMail() {
   const list = P.meta.mail;
@@ -308,7 +309,7 @@ export function openMail() {
     '우편함',
     `<p class="sub">출석·랭킹 보상 · 운영자 선물 · 앞 주인 편지</p>
     <div class="btnrow">${mailWaiting() ? `<button class="bigbtn" id="mlAll">모두 받기 (${mailWaiting()})</button>` : ''}${readMailCount() && flag('mailDelete') ? `<button class="bigbtn ghost ${mailDelArmed ? 'red' : ''}" id="mlDel">${mailDelArmed ? '한 번 더 누르면 지워요' : `읽은 편지 지우기 (${readMailCount()})`}</button>` : ''}</div>
-    <div class="mails">${list.length ? list.map((m) => `<div class="mail ${m.claimed ? 'got' : ''}"><span><small>${FROM[m.from] ?? ''} · ${new Date(m.at).toLocaleDateString('ko-KR')}</small><b>${esc(m.title)}</b><small>${esc(m.body)}</small>${m.link === 'kakao' ? communityLink('mail', '톡방 가기 →') : ''}${rewardLine(m.reward) ? `<small class="g">${esc(rewardLine(m.reward))}</small>` : ''}</span>${m.claimed && !flag('mailDelete') ? '<em>받음</em>' : m.claimed ? `<button class="mldel" data-mldel="${m.id}" aria-label="이 편지 지우기">✕</button>` : `<button data-ml="${m.id}">${rewardLine(m.reward) ? '받기' : '읽음'}</button>`}</div>`).join('') : '<p class="note">편지가 없어요</p>'}</div>`,
+    <div class="mails">${list.length ? list.map((m) => `<div class="mail ${m.claimed ? 'got' : ''}"><span><small>${FROM[m.from] ?? ''} · ${new Date(m.at).toLocaleDateString('ko-KR')}</small><b>${esc(m.title)}</b><small>${esc(m.body)}</small>${m.link === 'kakao' ? communityLink('mail', '톡방 가기 →') : ''}${mailExtraHtml(m)}${rewardLine(m.reward) ? `<small class="g">${esc(rewardLine(m.reward))}</small>` : ''}</span>${m.claimed && !flag('mailDelete') ? '<em>받음</em>' : m.claimed ? `<button class="mldel" data-mldel="${m.id}" aria-label="이 편지 지우기">✕</button>` : `<button data-ml="${m.id}">${rewardLine(m.reward) ? '받기' : '읽음'}</button>`}</div>`).join('') : '<p class="note">편지가 없어요</p>'}</div>`,
   );
   $$('[data-ml]').forEach(
     (b) =>
@@ -318,6 +319,7 @@ export function openMail() {
         openMail();
       }),
   );
+  bindMailExtra(() => openMail());
   $$('[data-mldel]').forEach(
     (b) =>
       (b.onclick = () => {

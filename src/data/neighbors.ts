@@ -26,6 +26,8 @@ export interface Neighbor {
   /** 예시 마을: 방문 화면 맨 위 한 줄 · 돌아다니는 전설 영웅 */
   note?: string;
   legends?: string[];
+  /** SOCIAL §4 각별한 이웃: 그 마을 공사 중인 건물 (「종류@x,y」 → [끝 ms, 원래 초]) — 친구가 거들 수 있게 */
+  con?: Record<string, [number, number]>;
   /** 10/17 이야기 마을: 바닥 칠 (「x,y」 → 돌길·흙길·자갈·모래·연못 …) — 방문할 때만 */
   paint?: Record<string, string>;
   /** 길을 손으로 깐 마을 (자동 길 끔 · 칠한 길만) */

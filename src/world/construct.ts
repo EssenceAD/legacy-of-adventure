@@ -22,6 +22,8 @@ export interface Con {
   to: number;
   /** 탭으로 줄인 초 */
   cut: number;
+  /** SOCIAL §3: 각별한 이웃이 거들어 줄인 초 (원래 시간의 30%까지) */
+  friendCut?: number;
   /** 업그레이드에 낸 금화 (철거 때 전액 환불) */
   cost: number;
   /** 커지는 업그레이드: 공사 전 자리 (이웃 스냅샷용) */

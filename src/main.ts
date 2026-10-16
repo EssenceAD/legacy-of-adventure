@@ -173,6 +173,7 @@ import { initPets, openPetMenu } from './ui/pets';
 import { initExWeapons } from './ui/exWeapons';
 import { petAt } from './world/petsDraw';
 import { tickB2 } from './world/buildings2';
+import { friendBuildingTap, initFriends } from './ui/friends';
 
 const host = document.getElementById('view')!;
 const cv = document.getElementById('scene') as HTMLCanvasElement;
@@ -831,6 +832,8 @@ function tap(e: PointerEvent) {
     const ls = partProgress(o);
     if (ls.length) return toast(ls.join(' · '));
   }
+  // SOCIAL §3: 각별한 이웃 마을의 공사 중인 건물 → 「공사 거들기」
+  if (o && S.visiting && friendBuildingTap(o)) return;
   if (o) return showObj(o);
   // 베타: 울타리 밖 마을 등급 장식 → 마을 안으로 옮기기
   const [fx, fy] = toTile(cv, e.clientX, e.clientY);
@@ -1026,6 +1029,8 @@ async function boot() {
   // 서버: 남아 있는 로그인 이어서 → 저장 맞추기·쌓인 기록 올리기, 클라우드 저장 시작, 서버 공지
   // GUEST_SPEC §1: 로그인이 없으면 게임을 시작한 뒤 조용히 게스트 계정 → 이 기기 저장·마을을 올린다 (서버 저장이 없는 새 계정이라 덮어쓸 일 없음)
   //  다른 계정 저장인 기기(로그인 만료)·직접 로그아웃한 기기는 건너뛴다
+  // SOCIAL §2~§4: 각별한 이웃 — 받은 도움·고마워요·새 신청을 접속 중 주기적으로
+  initFriends();
   void initAuth().then(() => {
     if (online()) return void afterLogin();
     const tryGuest = window.setInterval(() => {

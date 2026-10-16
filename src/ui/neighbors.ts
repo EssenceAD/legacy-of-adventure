@@ -18,6 +18,7 @@ import { isWinOpen, openWin, toast } from './windows';
 import { portSrc } from './outfitPort';
 import { isOutfitId } from '../data/outfits';
 import { outfitsOn } from '../world/outfits';
+import { bindFriendTab, friendsOn, friendTabHtml, loadFriends } from './friends';
 
 /** 서버 마을 모습 → 이웃 (모양이 이상하면 null — 화면은 안 깨지게) */
 export function toNeighbor(r: VillageRow): Neighbor | null {
@@ -57,7 +58,16 @@ export function toNeighbor(r: VillageRow): Neighbor | null {
     ...(ver >= 3 && Number.isFinite((s as { ent?: unknown }).ent) ? { ent: Math.round(Number((s as { ent: number }).ent)) + (ver < 4 ? CONFIG.v8.shift : 0) } : {}),
     // LUXE §2: 꺼내 둔 펫 (아는 id · 3개까지 · 없으면 빼기)
     ...(cleanPetIds((s as { pets?: unknown }).pets).length ? { pets: cleanPetIds((s as { pets?: unknown }).pets) } : {}),
+    // SOCIAL §4: 공사 중인 건물 (v4 좌표 · 모양이 맞는 것만)
+    ...(ver >= 4 && (s as { con?: unknown }).con && typeof (s as { con?: unknown }).con === 'object' ? { con: cleanCon((s as { con: Record<string, unknown> }).con) } : {}),
   };
+}
+
+/** SOCIAL §4: 스냅샷 공사 표 다듬기 (「종류@x,y」 → [끝 ms, 원래 초] · 이상한 값은 버림 · 40개까지) */
+function cleanCon(c: Record<string, unknown>): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  for (const [k, v] of Object.entries(c).slice(0, 40)) if (/^[a-z0-9_]+@\d+,\d+$/.test(k) && Array.isArray(v) && Number.isFinite(v[0]) && Number.isFinite(v[1]) && v[1] > 0) out[k] = [Number(v[0]), Number(v[1])];
+  return out;
 }
 
 /** LUXE §1-3: 대표 영웅 초상화 (그 마을이 입힌 의상 색 · outfits 꺼짐이면 원래 그림) */
@@ -178,6 +188,7 @@ const goalHtml = () => {
 
 function subBody(loading: boolean): string {
   if (!sb) return `<p class="note">서버에 연결하지 못해 예시 마을만 보여요</p>${exampleHtml()}`;
+  if (nbSub === 'friend' && friendsOn()) return friendTabHtml();
   if (nbSub === 'friend')
     return `<p class="note">⭐ <b>각별한 이웃</b>은 곧 열려요 — 서로 맺으면 친구 마을에 들러 공사를 거들고 선물을 주고받을 수 있어요${online() ? '' : '<br>로그인하면 각별한 이웃을 맺을 수 있어요'}</p>`;
   if (nbSub === 'sug') {
@@ -221,6 +232,7 @@ function drawNb(loading = false) {
   if (tb) tb.onclick = () => void visitUser(tb.dataset.gbtop!);
   const again = document.getElementById('nbAgain');
   if (again) again.onclick = () => void loadSug(true);
+  if (nbSub === 'friend' && friendsOn()) bindFriendTab((uid) => void visitUser(uid), () => drawNb(false));
   const f = document.getElementById('nbFind') as HTMLFormElement | null;
   if (f)
     f.onsubmit = (e) => {
@@ -279,6 +291,12 @@ async function switchSub(k: NbSub) {
     /* 기억 못 해도 괜찮다 */
   }
   if (k === 'sug' && !sugCache) return loadSug(false);
+  if (k === 'friend' && friendsOn()) {
+    drawNb(false);
+    await loadFriends(true);
+    if (stillHere() && nbSub === 'friend') drawNb(false);
+    return;
+  }
   if (k === 'pop') return loadPop();
   drawNb(false);
 }
@@ -287,7 +305,7 @@ async function openNbTabs() {
   try {
     const k = localStorage.getItem('legacy-of-adventure-nbSub') as NbSub | null;
     // 각별한 이웃(P2 friends)이 아직이면 추천부터
-    if (k && NB_SUBS.some(([x]) => x === k) && k !== 'friend') nbSub = k;
+    if (k && NB_SUBS.some(([x]) => x === k) && (k !== 'friend' || friendsOn())) nbSub = k;
   } catch {
     /* 기본 = 추천 */
   }
@@ -299,7 +317,8 @@ async function openNbTabs() {
   if (!stillHere()) return;
   if (nbSub === 'sug') return loadSug(false);
   if (nbSub === 'pop') return loadPop();
-  drawNb(false);
+  if (nbSub === 'friend' && friendsOn()) await loadFriends(true);
+  if (stillHere()) drawNb(false);
 }
 
 /** 랭킹에서 누르면 그 마을로 */
@@ -326,3 +345,5 @@ export async function likeReal(v: Neighbor): Promise<boolean> {
   }
   return true;
 }
+
+if (import.meta.env.DEV) Object.assign(window, { __visitUser: visitUser, __openVillage: openVillage });

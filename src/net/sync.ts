@@ -16,6 +16,7 @@ import { pollGuestbook } from './gbSync';
 import { charOfPort, wornOf } from '../world/outfits';
 import { isGuest, me, mine, online, postNotice, pullSave, pushSave, pushVillage, submitRaid, updateStats } from './server';
 import { petSnapshot } from '../world/pets';
+import { conSnapshot } from '../world/friends';
 
 // ───────── 마을 모습 (이웃이 보는 것) ─────────
 
@@ -66,6 +67,8 @@ export function villageSnapshot() {
     ...(flag('gateFix') && !S.visiting ? { ent: entranceX() } : typeof P.decor.entX === 'number' ? { ent: P.decor.entX } : {}),
     // LUXE §2: 꺼내 둔 펫 (켰고 있을 때만 — 보는 쪽은 아는 id만 그린다)
     ...(petSnapshot().length ? { pets: petSnapshot() } : {}),
+    // SOCIAL §4: 공사 중인 건물 (각별한 이웃이 거들 수 있게)
+    ...(flag('friends') ? { con: conSnapshot(objs) } : {}),
     layout: objs.filter((o) => o.build === undefined).map((o) => [o.kind, o.con?.from?.[0] ?? o.tx, o.con?.from?.[1] ?? o.ty, o.lvl, o.hue, !!o.flip]),
   };
 }
@@ -303,3 +306,5 @@ export async function dailyStats() {
   P.statsDay = today();
   await updateStats(P.rep, codexPct());
 }
+
+if (import.meta.env.DEV) Object.assign(window, { __villageSnapshot: villageSnapshot });

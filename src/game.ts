@@ -62,6 +62,7 @@ import { track as trackEv } from './net/telemetry';
 import { refundOf, removeBuilding, spentOn } from './world/demolish';
 import { addMail } from './world/meta';
 import { markNewSave } from './world/firstCam';
+import { applyVisitCon, hideFriendBar, visitFriendBar } from './ui/friends';
 declare const __APP_VERSION__: string;
 const APP_VER = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
@@ -686,6 +687,8 @@ export function visit(v: Neighbor) {
     neighborTown(v);
     rebuildPaths();
     spawnExtras();
+    // SOCIAL §4: 각별한 이웃 마을이면 공사 중인 건물 표시
+    applyVisitCon();
     resetCamera();
     // 핫픽스 9: 방문 중엔 내 마을 HUD를 숨기고 방문 전용 HUD (위 카드 1장 · 아래 「← 내 마을로」 「다음 이웃 ›」)
     document.body.classList.add('visiting');
@@ -699,6 +702,7 @@ export function visit(v: Neighbor) {
     note.hidden = !v.note;
     updateLike();
     $('#bVillage .lbl').textContent = '돌아가기';
+    void visitFriendBar();
   });
 }
 
@@ -770,6 +774,7 @@ export function goHome() {
     resetCamera();
     $('#visitbar').hidden = true;
     $('#visitfoot').hidden = true;
+    hideFriendBar();
     document.body.classList.remove('visiting');
     $('#bVillage .lbl').textContent = '마을';
   });

@@ -328,6 +328,8 @@ export function freshProgress() {
     crops: {} as Record<string, number>,
     /** BUILDINGS2 (10/16): 밀가루 · 빵 · 빵 굽기 시계 · 잡화점 꾸러미·은행 이자 받은 날(KST) */
     b2: { flour: 0, bread: 0, bakeAt: 0, kitDay: '', bankDay: '' },
+    /** SOCIAL §3 각별한 이웃: 🤝 우정 증표 (돕고 받음 · 우정 상점은 P3) */
+    social: { tokens: 0, reqSeen: [] as string[] },
     potions: {} as Record<string, number>,
     buff: null as null | { id: string; until: number },
     /** 물약 재료 남겨 두기 (연금술 공방 창 · 기본 켬 · 옛 저장도 켬) — 주점 손님이 물약 몫은 안 먹는다 */
@@ -898,7 +900,7 @@ export interface DayLog {
 /** 우편함: 출석·랭킹·운영자 선물·앞 주인 편지 */
 export interface Mail {
   id: number;
-  from: 'attend' | 'rank' | 'admin' | 'prev' | 'system' | 'rift';
+  from: 'attend' | 'rank' | 'admin' | 'prev' | 'system' | 'rift' | 'friend';
   title: string;
   body: string;
   reward: { gold?: number; dust?: number; tokens?: number; shards?: number; gift?: string; dustR?: number; cheer?: number; deco?: string; /** ONBOARDING §4: 장비 한 개 (등급) */ gear?: string; /** EASTER: 개척자 금빛 편지 */ pioneer?: string; /** RAIDWEAPON §3' 하늘 균열: 무기 조각 · 선택 상자 · 하루 칭호(받은 날 05:00~다음 05:00 · titleUntil = 받은 균열의 하루) */ frags?: number; boxes?: number; title?: string; titleUntil?: string };
@@ -908,6 +910,11 @@ export interface Mail {
   ver?: string;
   /** 편지 안 링크 버튼 (유저 톡방) */
   link?: 'kakao';
+  /** SOCIAL §3 각별한 이웃 도움 기록: 그 도움 번호 (「고마워요」 버튼) · 눌렀으면 thanked */
+  thank?: number;
+  thanked?: boolean;
+  /** 각별한 이웃 신청 편지: 보낸 사람 id (수락/거절 버튼) */
+  freq?: string;
   at: number;
   claimed: boolean;
 }

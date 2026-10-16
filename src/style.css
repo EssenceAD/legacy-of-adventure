@@ -2524,3 +2524,13 @@ body.hud2.flrail #bRail.rdot::before{display:block;left:auto;bottom:auto;right:2
 #nbAgain{margin-top:6px}
 .stp.showcase{box-shadow:0 0 0 2px var(--ink),0 0 0 4px #e8b84a}.stp.showcase b{color:#ffd36b}
 #visitbar .vtxt small#vNote{white-space:normal;overflow:visible;text-overflow:clip;color:#ffd36b}
+
+/* SOCIAL §2~§4 각별한 이웃 */
+#vFriend{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:calc(var(--z-hud) + 1);display:flex;gap:6px;align-items:center;padding:4px 10px;background:#1c1830e6;color:#ffe7a8;box-shadow:0 0 0 2px var(--ink),0 0 0 3px #e8b84a;max-width:calc(100vw - 24px)}
+#vFriend small{font-size:var(--f-small)}
+body:not(.visiting) #vFriend{display:none}
+.stp.fr{display:flex;align-items:center;gap:6px}
+.stp.fr .frgo{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:none;border:0;color:inherit;font:inherit;text-align:left;padding:0}
+.stp.fr em{display:flex;gap:4px}
+.mail .frbtns{display:flex;gap:4px;margin-top:4px}
+#vFriend button{white-space:nowrap;flex:none}
