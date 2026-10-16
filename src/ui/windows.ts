@@ -196,6 +196,14 @@ export function openWin(title: string, html: string, cls = '') {
     sfx('open');
     stack.length = 0;
     pushHist();
+  } else if ($('#winT').textContent !== title && !winLocked && flag('winReturn') && stack.some((s) => s.title === title)) {
+    // 10/17 이카몰리: 이미 쌓여 있는 창(캐릭터 창 → 무기 고르기 → 다시 캐릭터 창)이면 새로 쌓지 않고 그 창으로 「돌아간다」
+    //  — 그 위 항목을 잘라내고 history도 같은 수만큼 (예전엔 캐릭터·무기 창이 번갈아 쌓여 뒤로가기마다 바꾸기 전 창이 차례로 다시 떴다)
+    let i = stack.length - 1;
+    while (i >= 0 && stack[i].title !== title) i--;
+    const cut = stack.length - i;
+    stack.length = i;
+    dropHist(cut);
   } else if ($('#winT').textContent !== title && !winLocked) {
     // 다른 창으로 들어간다: 지금 창을 쌓아 둔다 (같은 제목이면 다시 그리기일 뿐)
     stack.push({ title: $('#winT').textContent ?? '', cls: $('#win').className.replace(/\bon\b/, '').trim(), nodes: [...$('#winB').childNodes], foot: [...$('#winF').childNodes] });
