@@ -49,9 +49,17 @@ export function sizeFor(kind: Kind, lvl: number): [number, number] {
 /** 땅 개편: 다음 레벨에 필요한 땅 단계 (없으면 0) */
 export const landNeedFor = (o: { kind: Kind; lvl: number }) => def(o.kind).needLand?.[o.lvl] ?? 0;
 
+/**
+ * 10/17 decoFlip: 발판 — 아이소에서 좌우 반전 = 격자 x↔y 바꿈이라, 반전한 정사각형 아닌 장식(2×1 · 3×2 …)은 가로·세로를 바꾼다.
+ *  건물은 그대로 (문 방향은 doorOf가 따로) · 플래그 끄면 예전처럼 늘 같은 발판
+ */
+export function footFor(kind: Kind, lvl: number, flip?: boolean): [number, number] {
+  const [w, h] = sizeFor(kind, lvl);
+  return flip && w !== h && def(kind).deco && flag('decoFlip') ? [h, w] : [w, h];
+}
 export function addObj(kind: Kind, tx: number, ty: number, extra: Partial<Building> = {}): Building {
   const lvl = extra.lvl ?? 1;
-  const [fw, fh] = sizeFor(kind, lvl);
+  const [fw, fh] = footFor(kind, lvl, extra.flip);
   const o: Building = {
     kind, tx, ty, fw, fh, lvl, hue: null, inside: [], ...extra, sprite: spriteFor(kind, lvl, extra.flip),
   };
@@ -146,13 +154,13 @@ export function placeLayout(entries: LayoutEntry[], land: number): { moved: numb
   const dupes = new Set(removed.map((r) => r.e));
   dropped += dupes.size;
   // 여관·던전 먼저, 그다음 큰 건물(발판 넓이 내림차순), 장식은 마지막 (자리를 빼앗지 않게)
-  const area = (e: LayoutEntry) => (e.extra?.fw && e.extra?.fh ? e.extra.fw * e.extra.fh : sizeFor(e.kind, e.lvl)[0] * sizeFor(e.kind, e.lvl)[1]);
+  const area = (e: LayoutEntry) => (e.extra?.fw && e.extra?.fh ? e.extra.fw * e.extra.fh : footFor(e.kind, e.lvl, e.flip)[0] * footFor(e.kind, e.lvl, e.flip)[1]);
   const order = (e: LayoutEntry) => (e.kind === 'inn' ? 0 : e.kind === 'dungeon' ? 1 : def(e.kind).deco ? 3 : 2);
   const list = valid.filter((e) => !dupes.has(e)).sort((a, b) => order(a) - order(b) || area(b) - area(a));
   const occupied = (x: number, y: number) => world.objs.some((o) => x >= o.tx && x < o.tx + o.fw && y >= o.ty && y < o.ty + o.fh);
   const fits = (e: LayoutEntry, tx: number, ty: number) => {
     // CONSTRUCTION_SPEC: 커지는 업그레이드 공사 중이면 새 발판 크기로
-    const [fw, fh] = e.extra?.fw && e.extra?.fh ? [e.extra.fw, e.extra.fh] : sizeFor(e.kind, e.lvl);
+    const [fw, fh] = e.extra?.fw && e.extra?.fh ? [e.extra.fw, e.extra.fh] : footFor(e.kind, e.lvl, e.flip);
     const fixed = !!def(e.kind).fixed;
     for (let j = 0; j < fh; j++)
       for (let i = 0; i < fw; i++) {

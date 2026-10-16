@@ -54,6 +54,8 @@ export interface BuildingDef {
   b2?: boolean;
   /** BUILDINGS2: 우정 상점 장식 (SOCIAL P3 friendShop 전엔 건설 목록에 안 나옴) */
   friendShop?: boolean;
+  /** 10/17 decoFlip: 글자·새김이 있는 장식 — 좌우 반전하면 글자가 거꾸로라 🔄 버튼을 숨긴다 */
+  noFlip?: boolean;
   desc: string;
 }
 
@@ -280,6 +282,9 @@ for (const [land, row] of Object.entries(CONFIG.deco.land)) for (const [k, cost]
 for (const [k, s] of Object.entries(CONFIG.deco.seasonal)) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { cost: s.cost, unlock: 1 });
 // LUXE §1: 명품관 값 (data/luxe_cfg LUXE_SHOP 한 곳)
 for (const it of [...LUXE_SHOP.sets.flatMap((x) => x.items), ...LUXE_SHOP.weekly, ...LUXE_SHOP.small]) Object.assign((CATALOG as Record<string, BuildingDef>)[it.kind], { cost: it.price });
+
+// 10/17 decoFlip: 글자·새김이 보이는 장식 (스프라이트를 보고 고름 — 명판 3 · 금빛 간판 · 의뢰 게시판 · 간판 기둥 · 상점 간판 · 유산의 기념비)
+for (const k of ['plaque_bronze', 'plaque_silver', 'plaque_gold', 'gold_sign', 'board', 'shop_sign', 'shop_board', 'monument']) Object.assign((CATALOG as Record<string, BuildingDef>)[k], { noFlip: true });
 
 export type Kind = keyof typeof CATALOG;
 export const def = (k: Kind): BuildingDef => CATALOG[k];

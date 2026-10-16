@@ -10,6 +10,7 @@ import { track as trackEv } from '../net/telemetry';
 import { HARMONIES } from '../data/harmony';
 import { enterPhoto } from './photo';
 import { def, type Kind } from '../data/catalog';
+import { flag } from '../world/flags';
 import { P } from '../engine/pixel';
 import * as game from '../game';
 
@@ -82,6 +83,10 @@ function check(pl: Placement) {
 function placeText(pl: Placement) {
   $('#placeOk').toggleAttribute('disabled', !pl.ok);
   $('#placeRot').toggleAttribute('disabled', !pl.sprite);
+  // 10/17 decoFlip: 장식은 🔄 (글자 있는 장식은 숨김) · 건물은 예전 ↔
+  const decoF = flag('decoFlip') && !!def(pl.kind).deco && !pl.ent;
+  $('#placeRot').hidden = decoF && !!def(pl.kind).noFlip;
+  $('#placeRot').textContent = decoF ? '🔄' : vis('actionsTidy') ? '↔' : '↻';
   const verb = pl.move || pl.prop || pl.ent ? ' 옮기기' : pl.store ? ' 꺼내 놓기' : pl.chain ? ' 이어 놓기' : '';
   $('#placeTxt').textContent = `${pl.ent ? '마을 입구' : def(pl.kind).name}${verb} · ${pl.ok ? '여기 괜찮아요' : '여기엔 못 놓아요'}${pl.chain && pl.ok ? ' · ✕로 끝내요' : ''}`;
   const w = $('#placeWhy');
@@ -339,11 +344,30 @@ export function movePlacement(fx: number, fy: number) {
 export function rotatePlacement() {
   const pl = placing.pl;
   if (!pl || !pl.sprite) return;
-  pl.flip = !pl.flip;
-  pl.sprite = baseKey(pl.sprite) + (pl.flip ? FLIP : '');
+  // 10/17 decoFlip: 장식 🔄 — 글자 있는 장식은 안 됨 · 정사각형 아니면 발판 가로·세로도 바꾸고, 그 자리가 막히면 되돌림
+  const d = def(pl.kind);
+  const decoF = flag('decoFlip') && !!d.deco;
+  if (decoF && d.noFlip) return toast('글자가 있는 장식은 뒤집을 수 없어요');
+  const wasOk = pl.ok;
+  const swap = decoF && pl.fw !== pl.fh;
+  const flipIt = () => {
+    pl.flip = !pl.flip;
+    pl.sprite = baseKey(pl.sprite!) + (pl.flip ? FLIP : '');
+    if (swap) [pl.fw, pl.fh] = [pl.fh, pl.fw];
+  };
+  flipIt();
   pl.snapT = S.T;
   check(pl);
+  if (swap && wasOk && !pl.ok) {
+    flipIt();
+    check(pl);
+    placeText(pl);
+    sfx('place_bad');
+    return toast('공간이 부족해요');
+  }
   placeText(pl);
+  // 꾸미기에서 눌러 든 장식을 옮기지 않았으면 그 자리에서 바로 뒤집고 끝 (한 번 누르면 끝)
+  if (decoF && pl.move && pl.ok && pl.tx === pl.move.tx && pl.ty === pl.move.ty) confirmPlace();
 }
 
 /** 배치 끝내기 · byUser = ✕·오른쪽 클릭·Esc (BUILDUX §6: edit_cancel) */

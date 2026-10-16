@@ -638,7 +638,7 @@ export function moveBuilding(pl: Placement): boolean {
   const inside = [...o.inside];
   o.inside = [];
   for (const a of world.actors) if (a.door?.o === o) a.door = null;
-  Object.assign(o, { tx: pl.tx, ty: pl.ty, flip: !!pl.flip, sprite: pl.sprite, pop: 1 });
+  Object.assign(o, { tx: pl.tx, ty: pl.ty, flip: !!pl.flip, sprite: pl.sprite, pop: 1, ...(def(o.kind).deco ? { fw: pl.fw, fh: pl.fh } : {}) });
   // gateFix: 정문을 옮기면 입구도 같이 (울타리 앞 가장자리에 섰으면 그 자리 · 이웃이 보는 입구도)
   if (o.kind === 'gate') followGate();
   rebuildPaths();

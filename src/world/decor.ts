@@ -5,7 +5,7 @@ import { track as trackGoal } from './progress';
 import { patchTiles } from './ground';
 import { N } from '../engine/iso';
 import { markDirty, P, S, world, type Building } from './state';
-import { blocksDoor, canPlace, entrance, grid, inLand, landBounds, pathT, rebuildPaths, spriteFor } from './town';
+import { blocksDoor, canPlace, entrance, footFor, grid, inLand, landBounds, pathT, rebuildPaths, spriteFor } from './town';
 import { track as trackEv } from '../net/telemetry';
 import { flag } from './flags';
 import { vis } from './visual';
@@ -218,7 +218,12 @@ export function moveGroup(group: Building[], dx: number, dy: number): string | n
 /** 하나씩 옮긴 것도 되돌리기에 (꾸미기 모드에서 옮기기 창을 쓸 때) */
 export function noteMove(o: Building, tx: number, ty: number, flip: boolean | undefined) {
   const [nx, ny, nf] = [o.tx, o.ty, o.flip];
-  const set = (x: number, y: number, f: boolean | undefined) => ((o.tx = x), (o.ty = y), (o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
+  const set = (x: number, y: number, f: boolean | undefined) => {
+    Object.assign(o, { tx: x, ty: y, flip: f, sprite: spriteFor(o.kind, o.lvl, f) });
+    // 10/17 decoFlip: 반전으로 바뀐 발판도 같이
+    if (def(o.kind).deco) [o.fw, o.fh] = footFor(o.kind, o.lvl, f);
+    rebuildPaths();
+  };
   pushUndo({ label: `${def(o.kind).name} 옮기기`, undo: () => set(tx, ty, flip), redo: () => set(nx, ny, nf) });
   trackEv('edit_action', { tool: 'move', n: 1 });
 }
@@ -321,12 +326,24 @@ export const decorView = {
 /** 고른 장식 모두 좌우 반전 (발판이 정사각형이라 자리는 그대로) */
 export function flipGroup(group: Building[]): string | null {
   if (!group.length) return '고른 장식이 없어요';
-  const before = group.map((o) => [o, !!o.flip] as const);
-  for (const o of group) {
-    o.flip = !o.flip;
-    o.sprite = spriteFor(o.kind, o.lvl, o.flip);
+  // 10/17 decoFlip: 글자 있는 장식은 빼고 · 정사각형 아닌 장식은 발판이 바뀌니 자리가 되는지 먼저
+  if (flag('decoFlip')) {
+    group = group.filter((o) => !def(o.kind).noFlip);
+    if (!group.length) return '글자가 있는 장식은 뒤집을 수 없어요';
+    for (const o of group) {
+      if (o.fw === o.fh) continue;
+      const t = { kind: o.kind, tx: o.tx, ty: o.ty, fw: o.fh, fh: o.fw };
+      if (!canPlace(t, o) || blocksDoor(t, o) || world.objs.some((b) => b !== o && !group.includes(b) && t.tx < b.tx + b.fw && b.tx < t.tx + t.fw && t.ty < b.ty + b.fh && b.ty < t.ty + t.fh)) return '공간이 부족해요';
+    }
   }
-  const setF = (o: Building, f: boolean) => ((o.flip = f), (o.sprite = spriteFor(o.kind, o.lvl, f)));
+  const before = group.map((o) => [o, !!o.flip] as const);
+  const setF = (o: Building, f: boolean) => {
+    o.flip = f;
+    o.sprite = spriteFor(o.kind, o.lvl, f);
+    if (flag('decoFlip') && def(o.kind).deco) [o.fw, o.fh] = footFor(o.kind, o.lvl, f);
+  };
+  for (const o of group) setF(o, !o.flip);
+  rebuildPaths();
   pushUndo({ label: `장식 ${group.length}개 ${vis('actionsTidy') ? '좌우 뒤집기' : '반전'}`, undo: () => before.forEach(([o, f]) => setF(o, f)), redo: () => before.forEach(([o, f]) => setF(o, !f)) });
   trackEv('edit_action', { tool: 'flip', n: group.length });
   markDirty();
