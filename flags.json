@@ -99,5 +99,6 @@
   "pixText": true,
   "nbTabs": true,
   "buildings2": true,
-  "winReturn": true
+  "winReturn": true,
+  "decoFlip": true
 }
