@@ -1,6 +1,6 @@
 // RAIDWEAPON §2 전용 무기 (플래그 exWeapons · 실험실 vis) — 화면 없는 규칙 (화면은 ui/exWeapons.ts · 끼우는 조건은 exGate.ts)
 //  · 19자루 (data/exweapons) · 등급은 유물(a) 그대로(강화·초월·재련 같은 규칙) + item.ex = 주인 키 → 이름표 「전용」
-//  · 바탕 능력치 = 그 사람이 열 수 있는 가장 높은 지역(사냥 지역이 열린 곳 중 고유 장비가 있는 지역)의 고유 무기 × exMult (무작위 없음 · 가운데 값)
+//  · 바탕 능력치 = 그 사람이 연 가장 높은 사냥 지역의 유물 무기 × exMult (무작위 없음 · 가운데 값) · 더 높은 지역이 열리면 가진 전용 무기도 그 지역 기준으로 (exRescale)
 //  · 옵션 = 고정 1 (그 영웅 스킬 k · 스킬 값 × fixedPct · 재련 불가 u) + 일반 rolled개 (고유 장비와 같은 굴림)
 //  · 무기 조각 perBox개 = 선택 상자 1 → 영입한 영웅 중 아직 전용 무기가 없는 사람 (다 있으면 아무나 = 같은 무기 하나 더 · 재료/전수용)
 //  · 조각 나오는 곳: 주간 토벌(raid.ts settle) · 심연 25층마다(abyss.ts clearFloor · 주마다 새 층만) · 회관 「토벌 전리품」(bundles.ts · 옛 저장도 1번)
@@ -10,7 +10,6 @@ import { EX_WEAPONS, exDef, type ExWeaponDef } from '../data/exweapons';
 import { isStarId, STARS } from '../data/fivestars';
 import { OPT_INFO, REGIONS, ROLL_KEYS, BASE_REGIONS, type OptKey, type RegionId } from '../data/items';
 import { legendByKey } from '../data/legends';
-import { UNIQUES } from '../data/story/uniques';
 import { exOwnerKey, exOwnerName } from './exGate';
 import { addFrags, exOn, rwState } from './frags';
 import { kstWeek } from './goldsink';
@@ -37,11 +36,26 @@ export function exKind(d: ExWeaponDef): GuestKind {
   const k = d.owner === 'star' && isStarId(d.id) ? STARS[d.id].kind : legendByKey(d.id)?.kind;
   return k && (GUEST_KINDS as readonly string[]).includes(k) ? (k as GuestKind) : 'knight';
 }
-/** 바탕 지역: 사냥 지역이 열린 곳 중 고유 무기가 있는 가장 높은 지역 (없으면 첫 지역) */
+/** 바탕 지역: 사냥 지역이 열린 곳 중 가장 높은 지역 (없으면 첫 지역)
+ *  예전엔 고유 무기가 있는 지역(1~5)만 봐서 6~10 지역을 연 사람도 별의 심연 기준(공격 246)에 머물렀음 — 같은 가방 심연의 바닥 유물은 공격 4,000대 (웅스 10/19) */
 export function exBaseRegion(): RegionId {
   let best = 0;
-  for (let i = 0; i < REGIONS.length; i++) if (UNIQUES.some((u) => u.slot === 'weapon' && u.region === REGIONS[i].id) && (i === 0 || huntRegionOpen(i))) best = i;
+  for (let i = 1; i < REGIONS.length; i++) if (huntRegionOpen(i)) best = i;
   return REGIONS[best].id;
+}
+/** 가진 전용 무기를 지금 연 가장 높은 지역 기준 바탕 능력치로 (내려가지는 않음 · 강화·초월·옵션은 그대로) → 바뀐 자루 수 */
+export function exRescale(): number {
+  const to = exBaseRegion();
+  const ti = REGIONS.findIndex((r) => r.id === to);
+  let n = 0;
+  for (const it of P.bag) {
+    if (!it.ex || REGIONS.findIndex((r) => r.id === it.region) >= ti) continue;
+    it.region = to;
+    it.stats = exBaseStats(to);
+    n++;
+  }
+  if (n) markDirty();
+  return n;
 }
 /** 바탕 능력치 (공격 · 마력) — 고유 무기(유물) 가운데 값 × exMult */
 export function exBaseStats(region: RegionId): { atk: number; mag: number } {
