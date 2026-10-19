@@ -21,6 +21,7 @@ import { featureChapter, guideHooks } from '../world/guide';
 import {
   autoSlotOf, autoSlots, best, clearStage, failStage, freeSlot, huntCrew, huntRegionOpen, isBoss, MOB_NAME, MOBS, partyPower, recPower, regionBossOf, regionIdx, setAuto, slotChapter, slotMembers, slotsOn, slotsOpen, stageOpen, stopAuto, sweepStage, type HuntReward,
 } from '../world/hunt';
+import { exRescale } from '../world/exWeapons';
 import { markDirty, P, type Actor } from '../world/state';
 import { skipFrame } from '../engine/fps';
 import { battleHints, drawChar, LANES, LH, LW, mountBattle, sfx, type BattleView } from './battle';
@@ -843,7 +844,7 @@ function settleHunt(r: RegionId, s: number, ms: Actor[], res: CombatResult, fold
   const newRegion = res.win && !!out.first && s === H.stages && ri + 1 < REGIONS.length && huntRegionOpen(ri + 1) ? REGIONS[ri + 1] : null;
   // REGIONS2 §5-5: 별을 삼킨 것 처치 → 용사 루트(최종 토벌 앞까지 마침)면 HERO 컷 + 최종 토벌 완료 · 아니면 PLAIN (회차마다 한 번)
   if (res.win && r === 'deep' && s === H.stages) deepDefeat();
-  if (newRegion) trackEv('region_open', { region: newRegion.id });
+  if (newRegion) (trackEv('region_open', { region: newRegion.id }), exRescale());
   lastUnlock = newRegion?.name ?? '';
   // 사냥 창이 뒤에 열려 있었으면 끝난 뒤 다시 그린다 (탭·스테이지 칸이 🔒 그대로 남지 않게)
   queueEvent(() => {
