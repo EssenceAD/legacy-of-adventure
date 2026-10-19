@@ -811,7 +811,7 @@ export function freshGrowth() {
     /** 물고기 선물로 알아낸 좋아함 ("bondId:fishId") */
     fishLike: [] as string[],
     /** 낚시: 오늘 쓴 미끼 · 만든 미끼 · 가방 · 기록(마리 수·최대 cm) · 놓아준 고래 날 */
-    fish: { day: '', used: 0, extra: 0, bag: {} as Record<string, number>, rec: {} as Record<string, { n: number; max: number }>, whaleDay: '', trophies: 0 },
+    fish: { day: '', used: 0, extra: 0, bag: {} as Record<string, number>, rec: {} as Record<string, { n: number; max: number }>, whaleDay: '', trophies: 0, aim: undefined as { id: string; miss: number } | undefined },
     /** 물고기 요리 (원정 금화 +) */
     meal: null as null | { until: number; v: number; name: string },
   };
