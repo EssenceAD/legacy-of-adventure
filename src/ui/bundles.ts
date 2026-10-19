@@ -4,11 +4,19 @@
 import { LUXE, type BundleDef, type RoomDef } from '../data/luxe_cfg';
 import type { SLine } from '../data/story/v1';
 import {
-  bdState, bundleDone, bundleDoneLine, hallFirstLines, hallRestoredLines, bundleRewardText, donate, filledN, haveOf, putOf, readySlots, recValue, reservedOf, ROOMS, roomById, roomDone, roomDoneLines, roomDoneN, roomOpen, roomsDoneN, slotFull, slotName, slotWhere,
+  bdState, bundleDone, bundleDoneLine, hallFirstLines, hallRestoredLines, bundleRewardText, donate, filledN, haveOf, putOf, readySlots, recValue, reservedOf, ROOMS, roomById, roomDone, roomDoneLines, roomDoneN, roomOpen, roomsDoneN, seaLocked, slotFull, slotName, slotWhere,
 } from '../world/bundles';
 import { track as trackEv } from '../net/telemetry';
 import { esc, fmt } from './common';
-import { fishImg } from './fishing';
+import { fishImg, openFishing } from './fishing';
+import { fishById, fishPool, timeNow } from '../world/fishing';
+import { josa } from '../data/josa';
+
+const FISH_TIME_NAME: Record<string, string> = { night: '밤', dawn: '새벽', day: '낮' };
+const timeNowName = () => {
+  const t = timeNow();
+  return t.dawn ? '새벽' : t.night ? '밤' : '낮';
+};
 import { playStory } from './story';
 import { toast } from './windows';
 
@@ -70,7 +78,8 @@ function slotRow(b: BundleDef, i: number, done: boolean): string {
       : rec
         ? `<button data-bdgive="${b.id}:${i}" ${recValue(s.id) >= s.n ? '' : 'disabled'}>기록 바치기</button>`
         : `<button data-bdgive="${b.id}:${i}" ${have > 0 ? '' : 'disabled'}>바치기</button>`;
-  return `<div class="bd-slot ${full ? 'full' : ''}">${ic}<span><b>${esc(slotName(s))} ${rec ? '' : `${fmt(put)}/`}${fmt(s.n)}</b><i><u style="width:${Math.round((Math.min(s.n, rec ? recValue(s.id) : put) / s.n) * 100)}%"></u></i><small>${full ? '채웠어요' : state} · ${esc(slotWhere(s))}</small></span>${btn}</div>`;
+  // FISH_QOL_1019 A: 물고기 칸을 누르면 그 낚시 창으로
+  return `<div class="bd-slot ${full ? 'full' : ''}${s.k === 'fish' ? ' fishgo' : ''}" ${s.k === 'fish' ? `data-bdfish="${s.id}"` : ''}>${ic}<span><b>${esc(slotName(s))} ${rec ? '' : `${fmt(put)}/`}${fmt(s.n)}</b><i><u style="width:${Math.round((Math.min(s.n, rec ? recValue(s.id) : put) / s.n) * 100)}%"></u></i><small>${full ? '채웠어요' : state} · ${esc(slotWhere(s))}</small></span>${btn}</div>`;
 }
 
 function roomHtml(r: RoomDef): string {
@@ -106,6 +115,17 @@ export function bindBundles(redraw: () => void) {
       redraw();
       top();
     };
+  document.querySelectorAll<HTMLElement>('[data-bdfish]').forEach(
+    (row) =>
+      (row.onclick = (e) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        const f = fishById(row.dataset.bdfish!);
+        if (!f) return;
+        if (f.where === 'sea' && seaLocked()) return toast('「가라앉은 등대 해안」은 별의 심연 10단계를 돌파하면 열려요');
+        openFishing(f.where);
+        if (!fishPool(f.where).includes(f)) toast(`지금은 ${timeNowName()}이에요 — ${f.name}${josa(f.name, '은')} ${FISH_TIME_NAME[f.time!]}에 나와요`);
+      }),
+  );
   document.querySelectorAll<HTMLElement>('[data-bdgive]').forEach(
     (b) =>
       (b.onclick = () => {

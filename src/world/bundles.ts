@@ -5,7 +5,7 @@
 //  플래그를 끄면: 바치기·보상 효과 모두 멈춤 (바친 것·받은 것은 지우지 않는다)
 import { CONFIG } from '../data/config';
 import { bossById } from '../data/bosses';
-import { DUST_NAME, REGIONS, regionById, type Grade, type RegionId } from '../data/items';
+import { BASE_REGIONS, DUST_NAME, REGIONS, regionById, type Grade, type RegionId } from '../data/items';
 import { FISH } from '../data/story/fish';
 import { BUNDLE_DONE, HALL_FIRST, HALL_RESTORED, ROOM_DONE, type HallRoom } from '../data/story/bundles';
 import type { SLine } from '../data/story/v1';
@@ -15,6 +15,7 @@ import { bdOn } from './bundlePerks';
 import { bundleFrags } from './exWeapons';
 import { alchReserve, cropSpare, fLv } from './facilities';
 import { chaptersDone } from './guide';
+import { huntRegionOpen } from './hunt';
 import { freshBundles, gotGold, markDirty, P, S, world, type BundleState } from './state';
 
 export { bdOn };
@@ -115,11 +116,33 @@ export const REC_NAME: Record<BundleRec, string> = {
   trusted: '인연 「신뢰」 이상',
   gifts: '선물한 횟수',
 };
+// FISH_QOL_1019 A: 물고기 칸 = 장소 · 시간대 · 등급 (해안이 잠겼으면 언제 열리는지)
+const FISH_TIME: Record<string, string> = { night: '🌙 밤', dawn: '🌅 새벽', day: '☀️ 낮' };
+const FISH_GRADE: Record<string, string> = { n: '흔함', r: '희귀', e: '영웅', l: '전설' };
+export const seaLocked = () => !huntRegionOpen(BASE_REGIONS);
+export function fishWhere(id: string): string {
+  const f = FISH.find((x) => x.id === id);
+  if (!f) return '낚시';
+  if (f.where === 'sea' && seaLocked()) return '🔒 등대 해안 — 별의 심연 10단계 돌파 후';
+  return `${f.where === 'sea' ? '등대 해안' : '마을 연못'} · ${f.time ? FISH_TIME[f.time] : '언제나'} · ${FISH_GRADE[f.grade]}`;
+}
+/** 회관이 지금 바라는 물고기 (열린 방 · 아직 안 끝난 꾸러미 · 안 채운 칸) */
+export function wantedFish(): Set<string> {
+  const out = new Set<string>();
+  for (const r of ROOMS()) {
+    if (!roomOpen(r)) continue;
+    for (const b of r.bundles) {
+      if (bundleDone(b)) continue;
+      b.slots.forEach((sl, i) => sl.k === 'fish' && !slotFull(b, i) && out.add(sl.id));
+    }
+  }
+  return out;
+}
 /** 얻는 곳 한 줄 */
 export function slotWhere(s: BundleSlot): string {
   switch (s.k) {
     case 'crop': return '텃밭';
-    case 'fish': return FISH.find((f) => f.id === s.id)?.where === 'sea' ? '등대 해안 낚시' : '마을 연못 낚시';
+    case 'fish': return fishWhere(s.id);
     case 'mat': return `${regionById(s.id as RegionId)?.name ?? ''} 사냥·원정`;
     case 'dust': return '대장간 분해';
     case 'boss': return `${bossById(s.id)?.name ?? ''} 토벌`;

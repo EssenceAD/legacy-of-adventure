@@ -2,7 +2,7 @@
 import { CONFIG } from '../data/config';
 import { FISH, FISH_LINES, type FishDef } from '../data/story/fish';
 import { josa } from '../data/josa';
-import { hourNow } from './clock';
+import { DAY_MINUTES, hourNow } from './clock';
 import { cropSpare } from './facilities';
 import { brag } from './growth';
 import { addMail } from './meta';
@@ -74,15 +74,49 @@ export function timeNow(): { night: boolean; dawn: boolean } {
   const [a, b] = F().dawn;
   return { night: S.night, dawn: h >= a && h < b };
 }
+/** FISH_QOL_1019 E: 다음 시간대까지 현실 분 (게임 시계 · 낮→밤 22시 / 밤→아침 6시) + 새벽(4시)까지 (새벽이 아니고 밤 4시 전일 때) */
+export function timeLeft(): { next: '밤' | '낮'; min: number; dawnMin: number | null } {
+  const C = CONFIG.clock;
+  const real = (gameMin: number) => Math.max(1, Math.ceil(((gameMin / 60) * C.realSecondsPerGameHour) / 60));
+  const nightAt = (C.nightStartHour - C.dayStartHour) * 60;
+  const dawnAt = (((F().dawn[0] - C.dayStartHour) % 24) + 24) % 24 * 60;
+  const t = timeNow();
+  const dawnMin = !t.dawn && S.clock < dawnAt ? real(dawnAt - S.clock) : null;
+  return S.night ? { next: '낮', min: real(DAY_MINUTES - S.clock), dawnMin } : { next: '밤', min: real(nightAt - S.clock), dawnMin };
+}
 const timeOk = (f: FishDef, t = timeNow()) => !f.time || (f.time === 'night' ? t.night : f.time === 'day' ? !t.night : t.dawn);
 /** 지금 낚을 수 있는 물고기 */
 export const fishPool = (where: FishWhere, t = timeNow()) => FISH.filter((f) => f.where === where && timeOk(f, t));
 
+// ───────── FISH_QOL_1019 🎯 노리기 (이카몰리 건의) ─────────
+
+/** 노릴 수 있는 물고기 (지금 시간대 · 전설 빼고) */
+export const aimPool = (where: FishWhere, t = timeNow()) => fishPool(where, t).filter((f) => f.grade !== 'l');
+/** 지금 노리는 물고기 — 그 자리·시간대에 없으면 「아무거나」로 되돌리고 셈도 처음부터 */
+export function aimOf(where: FishWhere, t = timeNow()): FishDef | null {
+  const a = P.growth.fish.aim;
+  if (!a) return null;
+  const f = aimPool(where, t).find((x) => x.id === a.id);
+  if (!f) {
+    P.growth.fish.aim = undefined;
+    markDirty();
+  }
+  return f ?? null;
+}
+/** 노리기 고르기 ('' = 아무거나) */
+export function setAim(id: string) {
+  P.growth.fish.aim = id && fishById(id)?.grade !== 'l' ? { id, miss: 0 } : undefined;
+  markDirty();
+}
+
 export function pickFish(where: FishWhere, rng: () => number = Math.random, t = timeNow()): FishDef {
   const pool = fishPool(where, t);
+  const aim = aimOf(where, t);
+  // 노린 채 다른 물고기만 pity번 걸렸으면 이번 입질은 그 물고기
+  if (aim && P.growth.fish.aim!.miss >= F().aim.pity) return aim;
   // BUILDINGS2 낚시 선착장: 박제가 되는 물고기가 더 잘 걸린다
   const tw = dockTrophy();
-  const w = pool.map((f) => (F().weight[f.grade] ?? 1) * ((f.use as readonly string[] | undefined)?.includes('trophy') ? tw : 1));
+  const w = pool.map((f) => (F().weight[f.grade] ?? 1) * ((f.use as readonly string[] | undefined)?.includes('trophy') ? tw : 1) * (f === aim ? F().aim.mult : 1));
   let r = rng() * w.reduce((s, v) => s + v, 0);
   for (let i = 0; i < pool.length; i++) if ((r -= w[i]) < 0) return pool[i];
   return pool[pool.length - 1];
@@ -105,6 +139,9 @@ export function cast(where: FishWhere, rng: () => number = Math.random): Cast | 
   if (!useBait()) return null;
   const fish = (fishForce.id && fishById(fishForce.id)) || pickFish(where, rng);
   fishForce.id = '';
+  // 노린 물고기가 아닌 게 걸리면 셈 +1 (노린 물고기를 놓치면 셈은 그대로 · 낚으면 land에서 0)
+  const a = P.growth.fish.aim;
+  if (a && a.id !== fish.id) a.miss++;
   const bite = F().biteFrom + rng() * (F().biteTo - F().biteFrom);
   return { where, fish, size: rollSize(fish, rng), bite, win: fish.win + perkFishWin() + petFishWin(), len: F().seconds };
 }
@@ -126,6 +163,7 @@ export function land(c: Pick<Cast, 'fish' | 'size'>): Catch {
   r.n++;
   if (record) r.max = c.size;
   f.bag[c.fish.id] = (f.bag[c.fish.id] ?? 0) + 1;
+  if (f.aim?.id === c.fish.id) f.aim.miss = 0;
   // LUXE §2 펫: 낚시 성공 = 아기 수달 시도 1
   petTry('fish');
   markDirty();

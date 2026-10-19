@@ -5,7 +5,8 @@ import { CONFIG } from '../data/config';
 import { FISH, FISH_LINES, type FishDef } from '../data/story/fish';
 import { josa } from '../data/josa';
 import { huntRegionOpen } from '../world/hunt';
-import { baitLeft, baitMax, biteLine, cast, cookFish, fishById, fishForce, fishPool, GRADE_FISH, judge, land, missLine, releaseFish, sellFish, stuffFish, timeNow, makeBait, type Cast, type FishWhere } from '../world/fishing';
+import { aimOf, aimPool, baitLeft, baitMax, biteLine, cast, cookFish, fishById, fishForce, fishPool, GRADE_FISH, judge, land, missLine, releaseFish, sellFish, setAim, stuffFish, timeLeft, timeNow, makeBait, type Cast, type FishWhere } from '../world/fishing';
+import { wantedFish } from '../world/bundles';
 import { mealGold } from '../world/growth';
 import { P } from '../world/state';
 import { $, $$, esc, fmt } from './common';
@@ -37,12 +38,29 @@ export function openFishing(where: FishWhere = lastWhere, result = '') {
   const pool = fishPool(where);
   const bag = FISH.filter((f) => (P.growth.fish.bag[f.id] ?? 0) > 0);
   const crops = Object.values(P.crops).reduce((s, n) => s + Math.max(0, n), 0);
+  // FISH_QOL_1019 C·D·E: 🎯 노리기 · 지금 사는 물고기 아이콘 · 다음 시간대까지
+  const want = wantedFish();
+  const aim = aimOf(where);
+  const aims = aimPool(where).sort((a, b) => +want.has(b.id) - +want.has(a.id));
+  const pity = CONFIG.growth.fish.aim.pity;
+  const aimHtml = `<div class="faim"><b>🎯 노리는 물고기</b> <select id="fAim"><option value="">아무거나</option>${aims.map((f) => `<option value="${f.id}" ${aim?.id === f.id ? 'selected' : ''}>${want.has(f.id) ? '★ ' : ''}${esc(f.name)} · ${GRADE_FISH[f.grade].name}</option>`).join('')}</select>${aim ? `<small>잘 걸려요 · ${Math.min(pity, P.growth.fish.aim!.miss)}/${pity} (다 차면 다음 입질은 ${esc(aim.name)})</small>` : ''}</div>`;
+  const nowIcons = pool
+    .map((f) => {
+      const seen = (P.growth.fish.rec[f.id]?.n ?? 0) > 0;
+      return `<button class="fnowic ${seen ? '' : 'unseen'} ${aim?.id === f.id ? 'on' : ''}" data-faim="${f.id}" ${f.grade === 'l' ? 'disabled' : ''} title="${esc(seen ? f.name : '???')}">${fishImg(f.id)}${want.has(f.id) ? '<i>★</i>' : ''}</button>`;
+    })
+    .join('');
+  const tl = timeLeft();
+  const dawnFish = fishPool(where, { night: true, dawn: true }).some((f) => f.time === 'dawn');
+  const timeNote = `지금은 ${timeName()} · ${tl.next}까지 ${tl.min}분${dawnFish && tl.dawnMin != null ? ` · 새벽(${CONFIG.growth.fish.dawn[0]}시)까지 ${tl.dawnMin}분` : ''}`;
   openWin(
     `🎣 낚시 · ${WHERE_NAME[where]}`,
     `<p class="sub">미끼 <b class="g" id="fBaitN">${bait}</b>개 <small>(하루 ${baitMax()} · 여관 ${CONFIG.growth.fish.baitPerInnLv}레벨마다 +1)</small> <button class="bagb" id="fBait" ${crops ? '' : 'disabled'}>🥕 작물 1개로 미끼 만들기</button></p>
+    ${aimHtml}
     <div class="fstage" id="fStage"><div class="fwater"></div><div class="fbob" id="fBob"><i></i></div><div class="fbang" id="fBang">!</div><div class="fmsg" id="fMsg">${result || '[던지기]를 누르고 찌를 지켜보세요 · 「!」가 뜨는 순간 화면을 톡!'}</div></div>
     <div class="btnrow"><button class="bigbtn" id="fCast" ${bait ? '' : 'disabled'}>🎣 던지기</button></div>
-    <p class="note">지금은 ${timeName()} · 이 시간에 사는 물고기 ${pool.length}종 · 희귀할수록 「!」가 짧아요</p>
+    <p class="note">${timeNote} · 이 시간에 사는 물고기 ${pool.length}종 · 희귀할수록 「!」가 짧아요</p>
+    <div class="fnow">${nowIcons}</div>
     <div class="qhd"><b class="g">물고기 가방</b><span class="note">팔기 · 주점에서 요리(원정 버프) · 선물 · 박제(장식)</span></div>
     <div class="ilist fbag">${
       bag
@@ -55,6 +73,13 @@ export function openFishing(where: FishWhere = lastWhere, result = '') {
     'fishw',
   );
   $('#fCast').onclick = () => startCast(where);
+  // 던진 동안 다시 그리면 그 판이 끊기니 (미끼만 쓰고) — 노리기만 바꾸고 판이 끝난 뒤 다시 그린다
+  const reAim = (id: string) => {
+    setAim(id);
+    if (!cur || cur.done) openFishing(where);
+  };
+  ($('#fAim') as HTMLSelectElement).onchange = (e) => reAim((e.target as HTMLSelectElement).value);
+  $$('[data-faim]').forEach((b) => (b.onclick = () => reAim(aimOf(where)?.id === b.dataset.faim ? '' : b.dataset.faim!)));
   $('#fBait').onclick = () => {
     const err = makeBait();
     toast(err ?? '미끼 +1');

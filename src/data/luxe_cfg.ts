@@ -127,7 +127,7 @@ export const LUXE = {
         bundles: [
           { id: 'k_veg', name: '채소', need: 3, slots: [S('crop', 'carrot', 20), S('crop', 'pumpkin', 10), S('crop', 'cabbage', 8), S('crop', 'wheat', 10)] },
           { id: 'k_fish', name: '생선', need: 3, slots: [S('fish', 'minnow', 6), S('fish', 'crucian', 4), S('fish', 'loach', 5), S('fish', 'sardine', 5), S('fish', 'flounder', 4)] },
-          { id: 'k_feast', name: '잔칫상', need: 2, slots: [S('fish', 'seabream', 1), S('fish', 'mackerel', 3), S('fish', 'catfish', 1)] },
+          { id: 'k_feast', name: '잔칫상', need: 2, slots: [S('fish', 'seabream', 1), S('fish', 'mackerel', 3), S('fish', 'catfish', 1), S('fish', 'koi', 1), S('fish', 'crucian', 5)] },
         ],
       },
       {

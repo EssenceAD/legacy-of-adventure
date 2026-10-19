@@ -2537,3 +2537,10 @@ body:not(.visiting) #vFriend{display:none}
 .stp.fr em{display:flex;gap:4px}
 .mail .frbtns{display:flex;gap:4px;margin-top:4px}
 #vFriend button{white-space:nowrap;flex:none}
+/* ───────── FISH_QOL_1019 🎯 노리기 · 지금 사는 물고기 · 회관 물고기 칸 ───────── */
+.faim{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:4px 0 6px}.faim select{font:inherit;background:var(--navy2);color:#fff;border:0;box-shadow:0 0 0 2px var(--ink);padding:4px 6px;min-height:34px;max-width:100%}
+.faim small{color:#9aa6d8;font-size:var(--f-small);flex-basis:100%}
+.fnow{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px}.fnowic{position:relative;border:0;background:#141a3a;box-shadow:0 0 0 2px var(--ink);padding:3px;min-width:40px;min-height:40px;cursor:pointer}
+.fnowic.on{box-shadow:0 0 0 2px var(--gold);background:#3a3010}.fnowic.unseen img{filter:brightness(0) opacity(.55)}.fnowic:disabled{cursor:default;opacity:.8}
+.fnowic i{position:absolute;right:1px;top:-3px;color:var(--gold);font-style:normal;font-size:12px;text-shadow:0 0 2px #000}
+.bd-slot.fishgo{cursor:pointer}.bd-slot.fishgo:hover{background:#1e1838}

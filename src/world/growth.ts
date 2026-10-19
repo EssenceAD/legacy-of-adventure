@@ -49,6 +49,8 @@ export function sanitizeGrowth() {
       ) as Record<string, { n: number; max: number }>,
       whaleDay: typeof f.whaleDay === 'string' ? f.whaleDay : '',
       trophies: Math.max(0, num(f.trophies)),
+      // FISH_QOL_1019 🎯 노리기 (없거나 모르는 물고기면 아무거나)
+      aim: typeof obj(f.aim).id === 'string' && FISH.some((x) => x.id === obj(f.aim).id && x.grade !== 'l') ? { id: obj(f.aim).id as string, miss: Math.max(0, num(obj(f.aim).miss)) } : undefined,
     },
     meal: typeof meal.until === 'number' && typeof meal.v === 'number' ? { until: meal.until, v: meal.v, name: String(meal.name ?? '') } : null,
   };

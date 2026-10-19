@@ -1301,6 +1301,8 @@ export const CONFIG = {
       weight: { n: 60, r: 28, e: 10, l: 2 } as Record<string, number>,
       /** 새벽 = 게임 시각 [시작, 끝) */
       dawn: [4, 7] as [number, number],
+      /** FISH_QOL_1019 🎯 노리기: 노린 물고기 가중치 × mult · 다른 물고기만 pity번 연속이면 다음 입질은 확정 (전설은 노릴 수 없음) */
+      aim: { mult: 4, pity: 6 },
       /** 물고기 요리: 원정 금화 + (등급별) · 지속(분) */
       meal: { v: { n: 0.05, r: 0.1, e: 0.15, l: 0.2 } as Record<string, number>, minutes: 120 },
     },
