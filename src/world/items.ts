@@ -159,6 +159,15 @@ export function unequip(a: Actor, slot: Slot) {
   a.equip[slot] = null;
 }
 
+/** BASE_POWER_1021 §C: 끼운 장비 모두 벗기 — 가방 빈칸만큼만 (moved = 벗긴 수 · short = 모자란 칸) */
+export function unequipAll(a: Actor): { moved: number; short: number } {
+  const worn = SLOTS.filter((s) => itemById(a.equip[s]));
+  const free = Math.max(0, bagSize() - P.bag.filter((x) => !x.owner).length);
+  const take = worn.slice(0, free);
+  for (const s of take) unequip(a, s);
+  return { moved: take.length, short: worn.length - take.length };
+}
+
 /** 장비 옵션 + 세트 효과 + 영웅 기술의 합 (예: timeCut 12 → −12%) */
 export function optSum(a: Actor, k: OptKey, region?: RegionId): number {
   return optSumOf(a, equippedItems(a), k, region);

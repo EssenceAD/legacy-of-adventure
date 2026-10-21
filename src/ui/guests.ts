@@ -17,14 +17,14 @@ import { CLASS_WEAPON, CLASSES, KIND_LINES, RACE_NAME, RARE_LINES, RARITY_INFO }
 import { hvLine } from '../world/harvest';
 import { ribbonLine } from './harvest';
 import { RARITIES } from '../data/classes';
-import { powerOf, totalStats, xpToNext } from '../world/adventurers';
+import { basePower, baseStats, powerOf, totalStats, xpToNext } from '../world/adventurers';
 import { flag } from '../world/flags';
 import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
 import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvageOne, salvageText, smithObj } from '../world/craft';
 import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage, openTidyConfirm, tidyBtnHtml, exSalvageOk } from './bulkSalvage';
-import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
+import { bagSize, equip, equippedItems, fitsClass, itemPower, itemStat, unequip, unequipAll } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
 import { markDirty, P, S, world, type Actor, type Item, type TalkLine } from '../world/state';
@@ -68,7 +68,16 @@ function regLine(a: Actor): string {
   return good ? `<small class="regp good">💛 단골 후보 · ${m} · D-${d} 아침 결정</small>` : `<small class="regp">${m} · 조금만 더 챙겨 주세요</small>`;
 }
 let gTab = 0;
+/** 손님 줄 오른쪽 전투력 (내보내기 모드 = 맨몸이 크게) */
+function bareEm(a: Actor, out: boolean): string {
+  const worn = equippedItems(a).length > 0;
+  if (out) return `<em>맨몸 ${fmt(basePower(a))}${worn ? `<small class="bare">장비 포함 ${fmt(powerOf(a))}</small>` : ''}</em>`;
+  return `<em>전투력 ${fmt(powerOf(a))}${worn ? `<small class="bare">맨몸 ${fmt(basePower(a))}</small>` : ''}</em>`;
+}
 let gSort = 0;
+/** BASE_POWER_1021 §B: 내보내기 모드 = 맨몸 전투력 낮은 순 (나가면 원래 정렬로) */
+let outMode = false;
+let preSort = 0;
 /** CHECKIN §B-3: 이번 한 번 그릴 때 반짝일 사람 (장비 임무 바로가기) */
 let sparkIds: number[] = [];
 /** CHECKIN §B-3 장비 임무 바로가기: 늘 「단골」 탭 · 가방의 희귀 이상 장비를 낄 수 있는 사람에 반짝 3초 */
@@ -84,28 +93,36 @@ export function openGuestsEquip() {
     sparkIds = [];
   }
 }
-const SORTS = ['레벨', '전투력', '희귀도'];
+const SORTS = ['레벨', '전투력', '맨몸 전투력', '희귀도'];
+/** BASE_POWER_1021: 정렬 키 (시험용으로도) */
+export const guestSortKey = (i: number) => [(a: Actor) => a.lvl, (a: Actor) => powerOf(a), (a: Actor) => basePower(a), (a: Actor) => RARITIES.indexOf(a.rarity) * 1000 + a.lvl][i];
+/** 내보내기 모드 순서: ★ 아닌 사람 먼저 · 맨몸 전투력 낮은 순 */
+export const outOrder = (list: Actor[]) => list.slice().sort((a, b) => +isFav(a) - +isFav(b) || basePower(a) - basePower(b) || a.id - b.id);
 
 export function openGuests() {
   const all = homeActors().filter((a) => !a.role && !a.leaving);
   const regs = all.filter((a) => a.status === 'regular' || a.status === 'hero');
   const vis = all.filter((a) => a.status === 'visitor' || a.status === 'passer');
   const list = (gTab === 0 ? regs : gTab === 1 ? vis : []).slice();
-  const key = [(a: Actor) => a.lvl, (a: Actor) => powerOf(a), (a: Actor) => RARITIES.indexOf(a.rarity) * 1000 + a.lvl][gSort];
+  const key = guestSortKey(gSort);
+  const out = outMode && gTab <= 1;
   // v0.25.2 §I #19: ★ 맨 위 고정 켜기/끄기 · ★ 묶음과 나머지 사이 구분 줄 · 지금 정렬 기준 한 줄
   const pinUi = visOn('guestSortPin');
   const pin = pinUi ? getPref<boolean>('guestFavPin', true) : true;
   // GROWTH §3-1: ★ 아끼는 영웅이 늘 맨 위 (플래그 끄면 예전: ★끼리는 ★한 순서)
-  if (pinUi) list.splice(0, list.length, ...sortGuests(list, key, P.growth.favs, pin, (a) => sagaFirst(a)));
+  if (out) list.splice(0, list.length, ...outOrder(list));
+  else if (pinUi) list.splice(0, list.length, ...sortGuests(list, key, P.growth.favs, pin, (a) => sagaFirst(a)));
   else list.sort((a, b) => favRank(a) - favRank(b) || key(b) - key(a) || sagaFirst(b) - sagaFirst(a));
-  const divAt = pinUi && pin ? list.findIndex((a) => !isFav(a)) : -1;
-  const sortLine = pinUi
-    ? `<div class="sortb gsortln"><span>지금: <b>${SORTS[gSort]}</b> 높은 순${gSort === 2 ? '(같으면 레벨)' : ''}${pin ? ' · ★ 먼저' : ' · ★도 섞어서'}</span><button id="gPin" class="${pin ? 'on' : ''}" aria-pressed="${pin}">★ 맨 위 고정</button></div>`
+  const divAt = !out && pinUi && pin ? list.findIndex((a) => !isFav(a)) : -1;
+  const sortLine = out
+    ? `<div class="sortb gsortln"><span>지금: <b>맨몸 전투력</b> 낮은 순 · 장비 뺀 값으로 비교해요</span></div>`
+    : pinUi
+    ? `<div class="sortb gsortln"><span>지금: <b>${SORTS[gSort]}</b> 높은 순${gSort === 3 ? '(같으면 레벨)' : ''}${pin ? ' · ★ 먼저' : ' · ★도 섞어서'}</span><button id="gPin" class="${pin ? 'on' : ''}" aria-pressed="${pin}">★ 맨 위 고정</button></div>`
     : '';
   // CHECKIN §J6 (heroCards · 실험실): 단골 탭 = 영웅 카드 격자 (누르면 상세 · 정렬·★ 고정 그대로)
   const cards = visOn('heroCards') && gTab === 0;
   const rows = list
-    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + (cards ? heroCardHtml(a) : `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${portrait(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span><em>전투력 ${fmt(powerOf(a))}</em></button></div>`))
+    .map((a, i) => (i === divAt && i > 0 ? '<div class="gdiv" role="separator"></div>' : '') + (cards ? heroCardHtml(a, { bare: out }) : `<div class="grow">${gTab === 1 && !dismissWhy(a) ? `<label class="gpick"><input type="checkbox" data-pick="${a.id}" ${picked.has(a.id) ? 'checked' : ''}></label>` : ''}<button data-id="${a.id}"><img src="${portrait(a)}" alt=""><span>${isFav(a) ? '<b class="favstar">★</b> ' : ''}${nameTag(a)} · Lv.${a.lvl} ${kindText(a)}<small>${doingText(a)}</small>${regLine(a)}</span>${bareEm(a, out)}</button></div>`))
     .join('');
   openWin(
     `손님 ${all.length}명`,
@@ -119,8 +136,8 @@ export function openGuests() {
           }</div>`
         : `<div class="sortb${visOn('heroCards') ? ' gsort1' : ''}">${
             // J6 다듬기(R6): 카드 모드는 정렬 한 버튼(누를 때마다 레벨 → 전투력 → 희귀도) — 폭 360에서 글자가 세로로 꺾이지 않게
-            visOn('heroCards') ? `<button class="on" data-s="${(gSort + 1) % SORTS.length}" title="정렬 바꾸기">정렬 · ${SORTS[gSort]}</button>` : `정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}`
-          }${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? fsay('한 번 더 누르면 내보내기', '한 번 더 누르면 체크아웃') : fsay(`한꺼번에 내보내기 (${picked.size})`, `한꺼번에 체크아웃 (${picked.size})`)}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
+            out ? '' : visOn('heroCards') ? `<button class="on" data-s="${(gSort + 1) % SORTS.length}" title="정렬 바꾸기">정렬 · ${SORTS[gSort]}</button>` : `정렬 ${SORTS.map((s, i) => `<button class="${i === gSort ? 'on' : ''}" data-s="${i}">${s}</button>`).join('')}`
+          }<button id="gMode" class="bagb ${out ? 'on' : ''}" aria-pressed="${out}">${out ? '내보내기 모드 끝' : '내보내기 모드'}</button>${gTab === 1 ? `<button id="gOut" class="bagb ${outArmed ? 'red' : ''}" ${picked.size ? '' : 'disabled'}>${outArmed ? fsay('한 번 더 누르면 내보내기', '한 번 더 누르면 체크아웃') : fsay(`한꺼번에 내보내기 (${picked.size})`, `한꺼번에 체크아웃 (${picked.size})`)}</button>` : ''}<button id="gAuto" class="bagb">모두 자동 장착</button><button id="gBag" class="bagb">가방</button></div>${sortLine}
     <div class="glist${cards ? ' hcgrid' : ''}">${rows || `<p class="note">${gTab === 0 ? '아직 단골이 없어요 · 기분 좋게 묵은 손님이 단골이 되고 싶어 해요' : '지금은 방문 손님이 없어요'}</p>`}</div>`
     }`,
   );
@@ -135,6 +152,14 @@ export function openGuests() {
         openGuests();
       }),
   );
+  const gm = document.getElementById('gMode');
+  if (gm)
+    gm.onclick = () => {
+      if (outMode) gSort = preSort;
+      else preSort = gSort;
+      outMode = !outMode;
+      openGuests();
+    };
   const pinB = document.getElementById('gPin');
   if (pinB)
     pinB.onclick = () => {
@@ -234,6 +259,10 @@ export function showActor(a: Actor) {
     return;
   }
   const st = totalStats(a);
+  // BASE_POWER_1021 §A: 장비 포함 / 맨몸 두 열 (장비가 없으면 한 열)
+  const worn = equippedItems(a).length;
+  const bs = baseStats(a);
+  const bareOf = (k: (typeof STATS)[number]) => (worn ? `<small class="bare"> / ${bs[k]}</small>` : '');
   const status =
     starOf(a) ? `신화 「다섯 별」 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId && a.status === 'hero' ? `전설 동료 ${'★'.repeat(a.stars ?? 1)}` : a.legendId ? '전설 영웅 방문 중' : a.status === 'hero' ? `영웅 동료 ${'★'.repeat(a.stars ?? 1)}` : a.status === 'regular' ? '단골' : a.status === 'passer' ? '지나가는 손님 · 저녁 전에 떠나요' : `방문 손님 · ${a.leaveDay}일차까지 묵어요`;
   const slots = SLOTS.map((s) => {
@@ -251,8 +280,8 @@ export function showActor(a: Actor) {
       ${bar('체력', a.hp, '#e0544a')}${bar('포만', a.food, '#e8a23a')}${bar('기분', a.mood, '#6fb04b')}
       ${bar('경험', a.xp, '#6f8fff', xpToNext(a.lvl))}
     </div></div>
-    <div class="stats">${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b>${k === 'def' && flag('rolesV2') ? `<small class="defcut"> 받는 피해 −${Math.round(Math.min(CONFIG.combat.roles.defMax, Math.max(0, st.def) / (Math.max(0, st.def) + CONFIG.combat.roles.defK)) * 100)}%</small>` : ''}</span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b></span></div>
-    ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? '<button class="bigbtn sm best" id="aBest">✨ 가장 좋은 걸로 입히기</button>' : ''}${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
+    <div class="stats">${worn ? '<span class="sthd">장비 포함 / <span class="bare">맨몸</span></span>' : ''}${STATS.map((k) => `<span>${STAT_NAME[k]} <b>${st[k]}</b>${bareOf(k)}${k === 'def' && flag('rolesV2') ? `<small class="defcut"> 받는 피해 −${Math.round(Math.min(CONFIG.combat.roles.defMax, Math.max(0, st.def) / (Math.max(0, st.def) + CONFIG.combat.roles.defK)) * 100)}%</small>` : ''}</span>`).join('')}<span class="pw">전투력 <b>${fmt(powerOf(a))}</b>${worn ? `<small class="bare">맨몸 ${fmt(basePower(a))}</small>` : ''}</span></div>
+    ${a.status === 'regular' || a.status === 'hero' ? `${a.runId == null ? '<button class="bigbtn sm best" id="aBest">✨ 가장 좋은 걸로 입히기</button>' : ''}${a.runId == null ? `<div class="eqbar"><button class="bigbtn sm" id="aRec">추천 장착</button><label class="tog"><input type="checkbox" id="aTake" ${takeOthers ? 'checked' : ''}> 다른 단골 것도 가져오기</label></div>` : ''}<div class="slots">${slots}</div>${worn && a.runId == null ? '<button class="bigbtn sm ghost" id="aStrip">장비 모두 벗기</button>' : ''}` : `<p class="note">기분 평균 ${Math.round(avg)} · ${CONFIG.guests.regularMood} 이상이면 떠날 때 단골 제안을 해요</p>`}
     ${hero ? `<p class="sub hero">「${hero.title}」 기술: ${hero.skill.name} (${OPT_INFO[hero.skill.k].label(hero.skill.v)})${a.status !== 'hero' ? `<br>부탁: ${hero.request.text}${hero.request.prog ? ` (${Math.min(...hero.request.prog(heroCtx()))}/${hero.request.prog(heroCtx())[1]})` : ''}` : ''}</p>${a.status !== 'hero' && hero.request.prog ? '<button class="bigbtn sm ghost" data-goboard>의뢰 게시판 가기</button>' : ''}` : ''}
     ${a.legendId ? legendPanel(a) : ''}${mythicStarPanel(a)}
     <div class="chips">${chem}<span class="chip q">??? 미발견</span></div>
@@ -288,6 +317,14 @@ export function showActor(a: Actor) {
       toast(isFav(a) ? `★ ${a.name} — 아끼는 영웅 (목록·자동 장착 우선)` : `${a.name} ★ 해제`);
       showActor(a);
     };
+  const strip = document.getElementById('aStrip');
+  if (strip)
+    strip.onclick = () => {
+      const r = unequipAll(a);
+      markDirty();
+      toast(r.short ? `가방 ${r.short}칸 모자라요${r.moved ? ` · ${r.moved}개만 벗겼어요` : ''}` : `${a.name} 장비 ${r.moved}개를 가방으로`);
+      showActor(a);
+    };
   const bst = document.getElementById('aBest');
   if (bst) bst.onclick = () => openBestPreview(a);
   const tk2 = document.getElementById('aTake') as HTMLInputElement | null;
@@ -318,7 +355,7 @@ export function showActor(a: Actor) {
         const reg = a.status === 'regular';
         void confirmSheet({
           title: reg ? `${a.name}${josa(a.name, '와')} 작별할까요?` : fsay(`${a.name}${josa(a.name, '을')} 내보낼까요?`, `${a.name}님 체크아웃 도와드릴까요?`),
-          body: reg ? `끼고 있던 장비는 가방으로 돌아와요 · ${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : fsay('오늘 밤 체크아웃해요', '오늘 밤 체크아웃 도와드릴게요'),
+          body: reg ? `${worn ? `끼운 장비 ${worn}개는 자동으로 가방에 돌아와요 · ` : ''}${CONFIG.dismiss.recallDays}일 안에는 「옛 단골」에서 다시 부를 수 있어요` : fsay('오늘 밤 체크아웃해요', '오늘 밤 체크아웃 도와드릴게요'),
           ok: reg ? '작별하기' : fsay('내보내기', '체크아웃'),
           danger: reg,
         }).then((ok) => ok && doBye());

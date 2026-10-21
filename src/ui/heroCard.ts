@@ -5,7 +5,8 @@ import { CLASSES, RARITY_INFO } from '../data/classes';
 import { GRADE_INFO } from '../data/items';
 import { CONFIG } from '../data/config';
 import { pairById } from '../data/chem';
-import { powerOf } from '../world/adventurers';
+import { basePower, powerOf } from '../world/adventurers';
+import { equippedItems } from '../world/items';
 import { bondOf } from '../world/chem';
 import { isFav } from '../world/growth';
 import { isMythic } from '../world/mythic';
@@ -67,6 +68,8 @@ export interface CardOpts {
   glow?: boolean;
   pop?: boolean;
   heart?: boolean;
+  /** BASE_POWER_1021: 내보내기 모드 — 맨몸 전투력을 크게 */
+  bare?: boolean;
   /** 누를 수 없는 그림 카드 (단골 제안) */
   still?: boolean;
   /** 원정 중 · 쉬는 중을 스스로 표시할지 (손님 창 = 예) */
@@ -90,6 +93,8 @@ export function heroCardData(a: Actor, o: CardOpts = {}) {
     name: a.name,
     lvl: a.lvl,
     power: Math.round(powerOf(a)),
+    /** BASE_POWER_1021: 맨몸 전투력 (장비가 하나도 없으면 null = 안 보임) */
+    bare: equippedItems(a).length ? Math.round(basePower(a)) : null,
     fav: isFav(a),
     dim: !!why,
     why: why ?? null,
@@ -109,7 +114,7 @@ export function heroCardHtml(a: Actor, o: CardOpts = {}): string {
   const lf = (d.tier === 'saga' || d.tier === 'mythic') && vis('legendFrame');
   const cls = ['hcd', sm ? 'sm' : 'md', `t-${d.tier}`, lf ? 'lf' : '', lf && lfCalm() ? 'calm' : '', o.on ? 'on' : '', d.dim ? 'dim' : '', o.glow ? 'rglow' : '', o.pop ? 'pop' : '', d.dot ? 'dotf' : ''].filter(Boolean).join(' ');
   const tag = o.still ? 'div' : 'button';
-  const title = `${d.name} · ${d.tierName} ${d.cls} · ${d.roleName} · Lv.${d.lvl} · 전투력 ${fmt(d.power)}${d.why ? ` · ${d.why}` : ''}`;
+  const title = `${d.name} · ${d.tierName} ${d.cls} · ${d.roleName} · Lv.${d.lvl} · 전투력 ${fmt(d.power)}${d.bare != null ? ` (맨몸 ${fmt(d.bare)})` : ''}${d.why ? ` · ${d.why}` : ''}`;
   const role = `<span class="hcd-role r-${d.role}"><i>${ROLE_ICON[d.role]}</i>${sm ? '' : `<small>${d.roleName}</small>`}</span>`;
   const fav = d.fav ? '<b class="hcd-fav">★</b>' : '';
   const heart = o.heart ? `<img class="hcd-heart" src="${uiSrc('heart')}" alt="케미">` : '';
@@ -118,7 +123,7 @@ export function heroCardHtml(a: Actor, o: CardOpts = {}): string {
   const pic1 = `<span class="hcd-pic"><img src="${d.src}" alt=""></span>`;
   const txt = sm
     ? `<span class="hcd-txt"><b class="hcd-nm">${esc(d.name)}</b></span>`
-    : `<span class="hcd-txt"><b class="hcd-nm">${esc(d.name)}</b><span class="hcd-ln"><small class="hcd-lv">Lv.${d.lvl}</small><em class="hcd-pw">${fmt(d.power)}</em></span>${
+    : `<span class="hcd-txt"><b class="hcd-nm">${esc(d.name)}</b><span class="hcd-ln"><small class="hcd-lv">Lv.${d.lvl}</small><em class="hcd-pw">${o.bare ? fmt(d.bare ?? d.power) : fmt(d.power)}</em></span>${o.bare ? `<small class="hcd-bare">${d.bare != null ? `장비 ${fmt(d.power)}` : '장비 없음'}</small>` : d.bare != null ? `<small class="hcd-bare">맨몸 ${fmt(d.bare)}</small>` : ''}${
         d.why ? `<small class="hcd-why">${esc(d.why)}</small>` : o.note ? `<small class="hcd-note">${esc(o.note)}</small>` : o.extra ? `<small class="hcd-ex">${o.extra}</small>` : ''
       }</span>`;
   return `<${tag} class="${cls}" ${o.still ? '' : `type="button" data-hc="${a.id}" data-id="${a.id}"`} style="--rc:${d.color}" title="${esc(title)}" aria-label="${esc(title)}">${pic1}${frame}${role}${fav}${heart}${badge}${txt}${sm && d.why ? `<small class="hcd-why">${esc(d.why)}</small>` : ''}</${tag}>`;
@@ -128,7 +133,7 @@ export function heroCardHtml(a: Actor, o: CardOpts = {}): string {
 
 type Filter = 'all' | Role;
 const FILTERS: Filter[] = ['all', 'tank', 'heal', 'dps'];
-const SORTS = ['전투력', '레벨', '★'] as const;
+const SORTS = ['전투력', '맨몸 전투력', '레벨', '★'] as const;
 let filter: Filter = 'all';
 let sortI = 0;
 /** 방금 자리에 들어간 사람 (한 번 그릴 때만 쏙) */
@@ -207,7 +212,7 @@ export function deckTopHtml(c: DeckCfg): string {
   return `<div class="hdk-top">${slotsHtml(c)}<div class="hdk-rs">${roleRow(c.sel)}${synRow(c.sel, ready, c.max, c.synWhere)}</div>${bar}${c.info ? `<p class="hdk-info">${c.info}</p>` : ''}<div class="hdk-btns">${rec}${c.go}</div></div>`;
 }
 
-const sortKey = (a: Actor) => [powerOf(a), a.lvl * 1e6 + powerOf(a), (isFav(a) ? 1e12 : 0) + powerOf(a)][sortI];
+const sortKey = (a: Actor) => [powerOf(a), basePower(a), a.lvl * 1e6 + powerOf(a), (isFav(a) ? 1e12 : 0) + powerOf(a)][sortI];
 /** legendFrame: 정렬 값이 같으면 전설 영웅(신화 포함) 먼저 (끄면 0 = 예전 그대로) */
 export const sagaFirst = (a: Pick<Actor, 'legendId'>, lf = vis('legendFrame')) => (lf && a.legendId ? 1 : 0);
 

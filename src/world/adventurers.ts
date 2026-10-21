@@ -153,6 +153,9 @@ export function powerOf(a: Actor, chemMult = 1): number {
   return powerCalc(a, chemMult)(equippedItems(a));
 }
 /** 핫픽스 12 §1: 장비만 바꿔 가며 전투력을 빨리 재는 함수 (장비와 상관없는 배수는 한 번만) */
+/** BASE_POWER_1021: 맨몸 전투력 (장비 뺀 값 · 장비 무관 배수는 그대로) */
+export const basePower = (a: Actor): number => powerCalc(a)([]);
+
 export function powerCalc(a: Actor, chemMult = 1): (items: Item[]) => number {
   const base = Object.values(baseStats(a)).reduce((s, v) => s + v, 0);
   const m0 = 1 + dexBonus() + heroStarBonus() + ownerBonus() + legacyPower(a);

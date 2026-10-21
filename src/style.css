@@ -2098,6 +2098,10 @@ body.uihide #hud>*,body.uihide :is(.wfbub,.gradeban,#undoSnack){visibility:hidde
 .hcd-ln{display:flex;align-items:baseline;justify-content:space-between;gap:2px;flex-wrap:wrap;min-width:0}
 .hcd-lv{font-size:var(--f-tiny);color:#5a3a24}
 .hcd-pw{font-style:normal;font-weight:700;font-size:var(--f-notice);line-height:1.1;color:#7a4210;letter-spacing:-.5px}
+/* BASE_POWER_1021: 맨몸 전투력 (작은 회색) */
+.hcd-bare{display:block;font-size:var(--f-tiny);line-height:1.15;color:#857565;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats .bare{color:#a9a49b;font-weight:400}.stats .pw .bare{grid-column:2;text-align:right}.stats .sthd{flex-basis:100%;font-size:var(--f-tiny);color:#a9a49b}
+.grow em .bare{display:block;font-size:var(--f-tiny);font-weight:400;font-style:normal;opacity:.75}
 .hcd-why,.hcd-note,.hcd-ex{font-size:var(--f-tiny);line-height:1.25;color:#8a2a30;overflow-wrap:anywhere}
 .hcd-note{color:#7a5a10}.hcd-ex{color:#3a3050}.hcd-ex .good{color:#2f7a2a}.hcd-ex .bad{color:#8a2a30}
 .hcd.dim .hcd-pic img{filter:grayscale(.85) brightness(.6)}
