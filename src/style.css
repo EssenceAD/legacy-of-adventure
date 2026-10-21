@@ -2544,3 +2544,10 @@ body:not(.visiting) #vFriend{display:none}
 .fnowic.on{box-shadow:0 0 0 2px var(--gold);background:#3a3010}.fnowic.unseen img{filter:brightness(0) opacity(.55)}.fnowic:disabled{cursor:default;opacity:.8}
 .fnowic i{position:absolute;right:1px;top:-3px;color:var(--gold);font-style:normal;font-size:12px;text-shadow:0 0 2px #000}
 .bd-slot.fishgo{cursor:pointer}.bd-slot.fishgo:hover{background:#1e1838}
+/* ───────── EVAL_HINT_1021 평가 재료 「어떻게 올려요?」 · 어울림 목록 ───────── */
+.evhow{display:block;color:#9aa6d8;font-size:var(--f-small);margin:-2px 0 6px;line-height:1.35}
+.evhl{display:flex;flex-direction:column;gap:3px;margin:0 0 8px 8px}.evhl .evhow{margin:0 0 2px}
+.evh{border:0;text-align:left;background:#161a30;box-shadow:0 0 0 2px var(--ink);color:#cfd8ff;padding:6px 8px;min-height:36px;cursor:pointer;font-size:var(--f-small);line-height:1.35}
+.evh b{color:#fff}.evh.on{background:#1e3020}.evh.on b{color:#9fe07a}
+.hcell.flash{animation:hcFlash 1.6s ease-out 2}
+@keyframes hcFlash{0%{box-shadow:0 0 0 2px var(--gold)}100%{box-shadow:0 0 0 2px var(--ink)}}

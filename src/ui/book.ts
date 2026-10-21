@@ -55,6 +55,14 @@ export function openDexTab(name: string, page?: number) {
   const i = dexNames().indexOf(name);
   openDex(i < 0 ? 0 : i);
 }
+/** EVAL_HINT_1021: 도감 → 어울림 → 그 칸으로 (반짝) */
+export function openDexHarmony(id: number) {
+  openDexTab('어울림');
+  const c = document.querySelector<HTMLElement>(`.hcell[data-hid="${id}"]`);
+  if (!c) return;
+  c.scrollIntoView({ block: 'center' });
+  c.classList.add('flash');
+}
 /** PARTY §1: 손님 도감 직업 필터 ('' = 전체) */
 let gKind = '';
 
@@ -175,9 +183,9 @@ export function openDex(tab = dTab) {
     const cells = HARMONIES.map((h) => {
       const found = P.harmony.found.includes(h.id);
       const lv = hintLv(h);
-      if (found) return `<div class="hcell on"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small class="g">${h.text}</small></div>`;
-      if (h.open) return `<div class="hcell open"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small>${h.text}</small></div>`;
-      return `<div class="hcell"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
+      if (found) return `<div class="hcell on" data-hid="${h.id}"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small class="g">${h.text}</small></div>`;
+      if (h.open) return `<div class="hcell open" data-hid="${h.id}"><em>${h.id}</em><b>${h.name}</b><small>${partsText(h)}</small><small>${h.text}</small></div>`;
+      return `<div class="hcell" data-hid="${h.id}"><em>${h.id}</em><b>???</b><small>${hintText(h)}</small><small class="lv">힌트 ${'●'.repeat(lv)}${'○'.repeat(3 - lv)}</small></div>`;
     }).join('');
     // LUXE §1: 「명품 세트」 4칸 (명품관이 켜졌을 때만 · 발견 수에는 안 셈)
     const lxCells = lxOn()

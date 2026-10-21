@@ -347,6 +347,14 @@ const partName = (p: HarmonyPart) => {
   return p.n && p.n > 1 ? `${n} ${p.n}개` : n;
 };
 export const partsText = (h: HarmonyDef) => h.parts.map(partName).join(' + ');
+/** EVAL_HINT_1021: 바꿔 놓아도 되는 부품까지 — 「벤치(또는 장미 벤치)」 */
+const partNameAlt = (p: HarmonyPart) => {
+  if (p.k === 'trophy' || p.k === 'plaque') return partName(p);
+  const [a, ...rest] = p.k.map((k) => def(k as Kind).name);
+  const n = `${a}${rest.length ? `(또는 ${rest.join(' · ')})` : ''}`;
+  return p.n && p.n > 1 ? `${n} ${p.n}개` : n;
+};
+export const partsTextAlt = (h: HarmonyDef) => h.parts.map(partNameAlt).join(' + ');
 /** 숨은 조합 힌트 한 줄 (단계별) */
 export function hintText(h: HarmonyDef, lv = hintLv(h)): string {
   if (lv >= 3) return partsText(h);
