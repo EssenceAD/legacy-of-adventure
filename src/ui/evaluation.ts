@@ -5,7 +5,7 @@ import { CONFIG } from '../data/config';
 import { def, type Kind } from '../data/catalog';
 import { submitEval } from '../net/server';
 import {
-  ensureSeason, evalHooks, evalOpen, evalParts, evalScore, judge, nextTier, sampleMood, THEME_ICON, themeName, tierName, tierOf, tourDue, type EvalResult,
+  ensureSeason, evalHarmonies, evalHooks, evalHow, evalOpen, evalParts, evalScore, evalSummary, judge, nextTier, sampleMood, THEME_ICON, themeName, tierName, tierOf, tourDue, type EvalResult,
 } from '../world/evaluation';
 import { startTour, stepTour, tour } from '../world/evalTour';
 import { queueEvent } from '../world/events';
@@ -15,6 +15,7 @@ import { talk, isTalking } from './dialogue';
 import { esc, fmt } from './common';
 import { iconSrc } from './kit';
 import { isWinOpen, openWin } from './windows';
+import { openDexHarmony } from './book';
 import { placing } from '../world/town';
 
 const E = CONFIG.evaluation;
@@ -27,8 +28,17 @@ export function openEval() {
   const parts = evalParts();
   const score = evalScore();
   const nx = nextTier(score);
+  // EVAL_HINT_1021 (아자 건의): 재료마다 「어떻게 올려요?」 한 줄 · 어울림은 목록으로 펼쳐서 (누르면 도감 그 칸)
+  const hs = evalHarmonies();
+  const hlist = (need: number) =>
+    `<div class="evhl"><small class="evhow">아래 ${hs.length}개 중 ${need}개를 완성하면 만점</small>${hs
+      .map((h) => `<button class="evh ${h.done ? 'on' : ''}" data-evh="${h.id}">${h.done ? '✅' : '⬜'} <b>${esc(h.name)}</b> — ${esc(h.text)}</button>`)
+      .join('')}</div>`;
   const rows = parts
-    .map((p) => `<div class="evrow"><span>${p.label}</span><i><b style="width:${Math.round((p.pts / p.max) * 100)}%"></b></i><em>${fmt(p.pts)}/${p.max}</em><small>${fmt(p.value)} / ${fmt(p.need)}</small></div>`)
+    .map(
+      (p) =>
+        `<div class="evrow"><span>${p.label}</span><i><b style="width:${Math.round((p.pts / p.max) * 100)}%"></b></i><em>${fmt(p.pts)}/${p.max}</em><small>${fmt(p.value)} / ${fmt(p.need)}</small></div><small class="evhow">${esc(evalHow(p.key))}</small>${p.key === 'harmonies' && hs.length ? hlist(p.need) : ''}`,
+    )
     .join('');
   const hist = ev.history
     .slice(-4)
@@ -43,6 +53,7 @@ export function openEval() {
     <p class="note">브론즈 ${E.tiers[0]} · 실버 ${E.tiers[1]} · 골드 ${E.tiers[2]} · 전설 ${E.tiers[3]} — 첫 브론즈·실버·골드는 평가 현판(장식)을 받아요</p>
     ${hist ? `<p class="sub">지난 평가</p><div class="evhist">${hist}</div>` : ''}`,
   );
+  document.querySelectorAll<HTMLElement>('[data-evh]').forEach((b) => (b.onclick = () => openDexHarmony(+b.dataset.evh!)));
 }
 
 function showResult(r: EvalResult) {
@@ -64,7 +75,7 @@ function showResult(r: EvalResult) {
 }
 
 function seasonStart(t: number) {
-  addMail({ from: 'system', title: `평가 시즌 시작 · ${themeName(t)} 부문`, body: `이번 주 『여행자 안내서』 평가단은 「${themeName(t)}」 부문을 봅니다. 일요일 저녁에 마을을 찾아와요.`, reward: {} });
+  addMail({ from: 'system', title: `평가 시즌 시작 · ${themeName(t)} 부문`, body: `이번 주 『여행자 안내서』 평가단은 「${themeName(t)}」 부문을 봅니다. 일요일 저녁에 마을을 찾아와요. ${evalSummary(t)}`, reward: {} });
   const lines: TalkLine[] = [
     ['keeper', `이번 시즌 『여행자 안내서』는 「${themeName(t)}」 부문을 본다더군.`, undefined, '노주인 버나드'],
     ['keeper', '일요일 저녁에 깃 달린 모자를 쓴 평가단이 올 걸세. 어울리는 배치가 점수를 크게 올려 주지.', undefined, '노주인 버나드'],

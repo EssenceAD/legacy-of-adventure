@@ -3,7 +3,7 @@
 import { CONFIG } from '../data/config';
 import { def } from '../data/catalog';
 import { HARMONIES } from '../data/harmony';
-import { bumpHint, harmonySets } from './harmony';
+import { bumpHint, harmonySets, hintText, partsTextAlt } from './harmony';
 import { chaptersDone, setEvalScoreHook, townGrade } from './guide';
 import { hourNow } from './clock';
 import { mondayKey } from './raid';
@@ -95,6 +95,58 @@ export function evalParts(theme = P.evaluation.theme): EvalPart[] {
       ];
     }
   }
+}
+// ───────── EVAL_HINT_1021 (아자 건의): 재료마다 「어떻게 올려요?」 · 어울림 목록 ─────────
+
+const HOW: Record<string, string> = {
+  'gourmet.meals': '단골이 주점에서 식사하면 1 (이번 시즌 시작 뒤부터 셈)',
+  'gourmet.harvests': '텃밭에서 수확하면 1',
+  'gourmet.harmonies': '아래 「식사 어울림」 중 완성한 수',
+  'gourmet.mood': '손님 평균 기분 — 식사·온천·벤치·어울림으로 올라요',
+  'relax.mood': '손님 평균 기분',
+  'relax.harmonies': '아래 「휴식 어울림」 중 완성한 수',
+  'relax.decos': '마을에 놓은 장식 수',
+  'adventure.wins': '의뢰 성공',
+  'adventure.huntBest': '사냥 스테이지 합',
+  'adventure.trains': '훈련 횟수',
+  'adventure.raids': '토벌 도전 횟수',
+  'adventure.harmonies': '아래 「모험가 어울림」 중 완성한 수',
+  'scenery.decos': '장식 수',
+  'scenery.kinds': '장식 종류 수',
+  'scenery.found': '발견한 어울림 수',
+  'scenery.grade': '마을 등급',
+  'scenery.roofs': '지붕 색 가짓수',
+};
+/** 이 재료를 어떻게 올리나 (한 줄) */
+export const evalHow = (key: string, theme = P.evaluation.theme) => HOW[`${THEME_KEYS[theme]}.${key}`] ?? '';
+export interface EvalHarmony {
+  id: number;
+  done: boolean;
+  /** 이름이 보이나 (공개 · 이미 찾음) */
+  known: boolean;
+  /** 알면 「이름 — 부품」, 숨은 건 지금 단계 힌트 */
+  name: string;
+  text: string;
+}
+/** 이번 테마 어울림 재료 목록 (풍경은 없음) */
+export function evalHarmonies(theme = P.evaluation.theme): EvalHarmony[] {
+  const ids = (E.themeHarmony as Record<string, number[]>)[THEME_KEYS[theme]] ?? [];
+  const done = new Set(harmonySets().map((x) => x.id));
+  return ids.flatMap((id) => {
+    const h = HARMONIES.find((x) => x.id === id);
+    if (!h) return [];
+    // 이미 완성한 것도 이름을 보여 줌 (발견 처리 전이어도)
+    const known = !!h.open || P.harmony.found.includes(id) || done.has(id);
+    return [{ id, done: done.has(id), known, name: known ? h.name : '숨은 어울림', text: known ? partsTextAlt(h) : `「${hintText(h)}」` }];
+  });
+}
+/** 시즌 시작 편지 한 줄: 이번 시즌 점수 재료 (어울림은 이름 아는 것 + 숨은 n개) */
+export function evalSummary(theme = P.evaluation.theme): string {
+  const hs = evalHarmonies(theme);
+  const known = hs.filter((h) => h.known).map((h) => h.name);
+  const hidden = hs.length - known.length;
+  const hz = `${known.join('·')}${hidden ? `${known.length ? ' + ' : ''}숨은 ${hidden}개` : ''}`;
+  return `이번 시즌 점수 재료: ${evalParts(theme).map((p) => (p.key === 'harmonies' ? `${p.label}(${hz})` : p.label)).join(' · ')}`;
 }
 /** 지금 점수 (0~1000 + 암행 보너스) */
 export const evalScore = () => evalParts().reduce((s, p) => s + p.pts, 0) + P.evaluation.bonus;
