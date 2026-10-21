@@ -12,6 +12,7 @@ import { OPT_INFO, REGIONS, ROLL_KEYS, BASE_REGIONS, type OptKey, type RegionId 
 import { legendByKey } from '../data/legends';
 import { exOwnerKey, exOwnerName } from './exGate';
 import { addFrags, exOn, rwState } from './frags';
+import { addMail } from './meta';
 import { kstWeek } from './goldsink';
 import { huntRegionOpen } from './hunt';
 import { addToBag } from './items';
@@ -90,6 +91,8 @@ export function makeEx(id: string, rng: () => number = Math.random, region: Regi
   return {
     id: P.nextItemId++, region, slot: 'weapon', grade: 'a', wkind: CLASS_WEAPON[exKind(d)], name: d.name,
     stats: exBaseStats(region), opts, enh: 0, set: false, ex: d.id,
+    // EX_SALVAGE_1021: 받는 순간 🔒 (풀 수는 있음)
+    locked: true,
   };
 }
 
@@ -182,6 +185,22 @@ export function bundleFrags(): number {
   st.bundle = true;
   addFrags(F().bundle, 'bundle');
   return F().bundle;
+}
+/** EX_SALVAGE_1021 B: 분해로 사라진 전용 무기 → 조각 환불 (한 번만 · 받은 수 − 가진 수 − 이미 환불) → 환불한 자루 수 */
+export function exRefundLost(): number {
+  const st = rwState();
+  let lost = 0;
+  for (const [id, granted] of Object.entries(st.got)) {
+    const have = P.bag.filter((x) => x.ex === id).length;
+    const n = Math.max(0, granted - have - (st.refunded[id] ?? 0));
+    if (!n) continue;
+    st.refunded[id] = (st.refunded[id] ?? 0) + n;
+    lost += n;
+  }
+  if (!lost) return 0;
+  addMail({ from: 'system', title: '전용 무기 조각 환불', body: `분해로 사라진 전용 무기 ${lost}자루의 조각을 돌려드려요. 이제 전용 무기는 일괄 분해에 들어가지 않아요.`, reward: { frags: lost * F().perBox } });
+  markDirty();
+  return lost;
 }
 /** 불러온 뒤 · 창 열 때: 놓친 것 한 번 (회관 방) */
 export function exRetro(): void {

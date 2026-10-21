@@ -11,6 +11,7 @@ import { BOSSES, bossById } from '../data/bosses';
 import { josa } from '../data/josa';
 import { REGIONS, type Grade, type RegionId, type Slot } from '../data/items';
 import { addToBag, itemPower, makeItem, optSum, rollGrade, TEST } from './items';
+import { addFrags } from './frags';
 import { track } from './progress';
 import { legendHooks, markDirty, P, S, wfHit, world, type Building, type Item } from './state';
 import { mimiAlt } from './paceGates';
@@ -99,7 +100,16 @@ export function bulkTargets(grades: Grade[], o: BulkOpts = {}): Item[] {
       const best = P.bag.filter((it) => it.slot === s && it.owner == null).sort((a, b) => itemPower(b) - itemPower(a))[0];
       if (best) keep.add(best);
     }
-  return P.bag.filter((it) => grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
+  // EX_SALVAGE_1021: 전용 무기는 어떤 일괄 분해에도 안 들어감 (이카몰리 사고)
+  return P.bag.filter((it) => !it.ex && grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
+}
+/** 일괄 분해에서 빠지는 전용 무기 (안 낀 것) */
+export const bulkExSkipped = () => P.bag.filter((it) => it.ex && it.owner == null).length;
+/** 한 개씩 분해: 전용 무기면 무기 조각 perBox개 돌려줌 (선택 상자 1개 값 · 실수해도 되돌릴 길) — 전수(salvage 직접)는 그대로 */
+export function salvageOne(it: Item): number {
+  const n = salvage(it);
+  if (n && it.ex) addFrags(CONFIG.raidWeapon.frag.perBox, 'exSalvage');
+  return n;
 }
 /** 미리 보기: 등급별 개수 · 얻을 가루 */
 export function bulkPreview(grades: Grade[], o: BulkOpts = {}): Record<Grade, { n: number; dust: number; ash?: number }> {

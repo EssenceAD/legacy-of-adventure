@@ -18,7 +18,8 @@ import { migrateOnboarding } from './world/guide';
 import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
-import { exRescale, exRetro } from './world/exWeapons';
+import { exRefundLost, exRescale, exRetro } from './world/exWeapons';
+import { exOn } from './world/frags';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
 import { NEIGHBORS, type Neighbor } from './data/neighbors';
@@ -309,6 +310,8 @@ function applySave(d: SaveData) {
   migrateGradeKeys();
   // 전용 무기 바탕 능력치를 연 가장 높은 지역 기준으로 (6~10 지역을 열어도 별의 심연 기준에 머물던 것 · 웅스 10/19)
   exRescale();
+  // EX_SALVAGE_1021: 분해로 사라진 전용 무기 조각 환불 (한 번만 · 이카몰리 사고)
+  if (exOn()) exRefundLost();
   // 핫픽스 v0.23.1: 아리아 부탁 남은 시간 다시 3일 (한 번)
   extendAriaOnce();
   // v0.24.2 innDecoObj: 옛 저장 — 지금 레벨만큼 레벨 장식을 한 번 (제자리가 막혔으면 보관함)

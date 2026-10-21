@@ -363,6 +363,7 @@ export function offerItem(itemId: number): string | null {
   const i = P.bag.findIndex((x) => x.id === itemId);
   const it = P.bag[i];
   if (!it || it.owner != null) return '끼우지 않은 장비만 바칠 수 있어요';
+  if (it.ex) return '전용 무기는 바칠 수 없어요';
   if (!'ela'.includes(it.grade) || !it.opts.length) return '옵션 붙은 영웅 등급 이상이어야 해요';
   P.bag.splice(i, 1);
   req('offer');

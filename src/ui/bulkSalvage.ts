@@ -1,8 +1,9 @@
 // HOTFIX14 §2: 등급별 일괄 분해 창 + 자동 분해 등급 고르기 (가방 · 대장간 분해 탭 · 설정에서 같이 씀)
 //  · 등급 체크(기본 일반만) · 등급마다 「개수 · 얻을 가루」 · 끼운 것·잠금은 늘 빠짐 · 강화·세트는 「포함」 체크 때만
 //  · 부위별 최고 장비 1개 남기기(기본 켬) · 전설·유물이 있으면 빨간 버튼 + 경고 · confirm() 대신 두 번 누르기
+import { CONFIG } from '../data/config';
 import { DUST_NAME, GRADE_INFO, type Grade } from '../data/items';
-import { bulkPreview, bulkTargets, salvageBulk } from '../world/craft';
+import { bulkExSkipped, bulkPreview, bulkTargets, salvageBulk } from '../world/craft';
 import { markDirty, P } from '../world/state';
 import { $, $$, fmt } from './common';
 import { openWin, toast } from './windows';
@@ -26,7 +27,7 @@ export function openBulkSalvage(back: () => void) {
   ).join('');
   openWin(
     '일괄 분해',
-    `<p class="sub">끼운 장비와 🔒 잠근 장비는 빠져요</p>
+    `<p class="sub">끼운 장비와 🔒 잠근 장비는 빠져요${bulkExSkipped() ? ` · 전용 무기 ${bulkExSkipped()}자루는 빠져요` : ''}</p>
     <div class="bulk">${rows}</div>
     <label class="tog"><input type="checkbox" id="bkBest" ${opts.keepBest ? 'checked' : ''}> 부위별 최고 장비 1개 남기기 (무기·갑옷·장신구)</label>
     <label class="tog"><input type="checkbox" id="bkUp" ${opts.upgraded ? 'checked' : ''}> 강화·세트 장비도 포함</label>
@@ -116,7 +117,7 @@ export function openTidyConfirm(back: () => void) {
     `<div class="bulk">${TIDY.filter((g) => pv[g].n)
       .map((g) => `<div class="tog bulkg"><b style="color:${GRADE_INFO[g].color}">${GRADE_INFO[g].name}</b> <span>${pv[g].n}개 · ${DUST_NAME[g]} +${fmt(pv[g].dust)}${pv[g].ash ? ` · ${DUST_NAME.n} +${fmt(pv[g].ash)}` : ''}</span></div>`)
       .join('')}</div>
-    <p class="note">끼운 장비 · 🔒 잠근 장비 · 강화·세트 장비는 빠져요${P.salvage.keepBest ? ' · 부위별 최고 장비 1개는 남겨요' : ''}</p>
+    <p class="note">끼운 장비 · 🔒 잠근 장비 · 강화·세트 장비 · 전용 무기는 빠져요${P.salvage.keepBest ? ' · 부위별 최고 장비 1개는 남겨요' : ''}</p>
     <div class="btnrow"><button class="bigbtn ghost" id="tdBack">돌아가기</button><button class="bigbtn red" id="tdGo">분해하기 (${n}개)</button></div>`,
   );
   $('#tdBack').onclick = back;
@@ -126,4 +127,10 @@ export function openTidyConfirm(back: () => void) {
     toast(r.count ? `${r.count}개 ${fsay('분해', '분해해 드렸어요')} · ${parts.join(' · ')}` : '분해할 장비가 없어요');
     back();
   };
+}
+
+/** EX_SALVAGE_1021: 전용 무기 한 개 분해 — 「분해」를 직접 입력해야 진행 (조각 perBox개는 돌려받음) */
+export function exSalvageOk(name: string): boolean {
+  const v = prompt(`⚠ 「${name}」은 전용 무기예요!\n분해하면 무기는 사라지고 무기 조각 ${CONFIG.raidWeapon.frag.perBox}개만 돌려받아요.\n정말 분해하려면 「분해」를 입력해 주세요.`);
+  return (v ?? '').trim() === '분해';
 }
