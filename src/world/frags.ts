@@ -26,6 +26,8 @@ export function rwState(): RaidWeaponState {
   if (typeof f.bundle !== 'boolean') f.bundle = false;
   if (typeof f.abyssWk !== 'string') f.abyssWk = '';
   if (!okN(f.abyssHi)) f.abyssHi = 0;
+  if (!f.refunded || typeof f.refunded !== 'object' || Array.isArray(f.refunded)) f.refunded = {};
+  for (const [k, v] of Object.entries(f.refunded)) if (!okN(v)) delete f.refunded[k];
   return f;
 }
 

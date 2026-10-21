@@ -22,8 +22,8 @@ import { flag } from '../world/flags';
 import { doingText, regularNeed } from '../world/actors';
 import { capacity } from '../world/town';
 import { bondsOf } from '../world/chem';
-import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvage, salvageText, smithObj } from '../world/craft';
-import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage, openTidyConfirm, tidyBtnHtml } from './bulkSalvage';
+import { bossHint, enhance, enhanceBossCost, enhanceCost, enhanceRate, salvageOne, salvageText, smithObj } from '../world/craft';
+import { autoSalvageHtml, bindAutoSalvage, openBulkSalvage, openTidyConfirm, tidyBtnHtml, exSalvageOk } from './bulkSalvage';
 import { bagSize, equip, fitsClass, itemPower, itemStat, unequip } from '../world/items';
 import { autoEquipAll, recommendEquip, upgradeFor } from '../world/autoEquip';
 import { track as trackEv } from '../net/telemetry';
@@ -589,10 +589,12 @@ export function showItem(it: Item, back: () => void = openBag) {
   };
   $('#iSal').onclick = async () => {
     // J4 confirmSheet: 희귀 이상은 아래 확인 시트 (끄면 예전 confirm 그대로)
-    if (it.grade !== 'n' && !(visOn('confirmSheet') ? await confirmSheet({ title: `${g.name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${g.name} 장비를 분해할까요?`))) return;
+    // EX_SALVAGE_1021: 전용 무기는 「분해」를 직접 입력해야 · 무기 조각 10개 돌려받음
+    if (it.ex && !exSalvageOk(it.name)) return;
+    if (!it.ex && it.grade !== 'n' && !(visOn('confirmSheet') ? await confirmSheet({ title: `${g.name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${g.name} 장비를 분해할까요?`))) return;
     if (!P.bag.includes(it)) return;
-    salvage(it);
-    toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}`);
+    salvageOne(it);
+    toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}${it.ex ? ` · 무기 조각 +${CONFIG.raidWeapon.frag.perBox}` : ''}`);
     back();
   };
   $('#iBack').onclick = back;

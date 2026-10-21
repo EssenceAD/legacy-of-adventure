@@ -107,7 +107,7 @@ export function addToBag(it: Item): 'ok' | 'salvaged' | 'full' {
   if (inBag >= bagSize()) {
     // HOTFIX14 §2: 자동 분해 등급 (옛 저장의 켬 = 일반)
     const lv = P.salvage?.auto || (P.autoSalvage ? 'n' : '');
-    if (!it.locked && ((lv === 'n' && it.grade === 'n') || (lv === 'r' && (it.grade === 'n' || it.grade === 'r')))) {
+    if (!it.locked && !it.ex && ((lv === 'n' && it.grade === 'n') || (lv === 'r' && (it.grade === 'n' || it.grade === 'r')))) {
       P.dust[it.grade] += CONFIG.smith.salvage[it.grade];
       return 'salvaged';
     }

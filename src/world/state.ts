@@ -688,7 +688,7 @@ export function freshProgress() {
  *  · bundle = 「토벌 전리품」 방 조각을 줬나 (1번만 · 옛 저장도) · abyssWk/abyssHi = 이번 주(한국 시간) 심연 조각을 준 가장 높은 층
  */
 export function freshRaidWeapon() {
-  return { frags: 0, boxes: 0, got: {} as Record<string, number>, awoke: [] as string[], inh: [] as string[], bundle: false, abyssWk: '', abyssHi: 0 };
+  return { frags: 0, boxes: 0, got: {} as Record<string, number>, awoke: [] as string[], inh: [] as string[], bundle: false, abyssWk: '', abyssHi: 0, refunded: {} as Record<string, number> };
 }
 export type RaidWeaponState = ReturnType<typeof freshRaidWeapon>;
 

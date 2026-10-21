@@ -4,7 +4,7 @@ import { huntRegionOpen } from '../world/hunt';
 import { CONFIG } from '../data/config';
 import { craftMany, craftMax, missingSetSlots } from '../world/bulk';
 import { craftSummary, nextGoal, openBulkEnhance, runToGoal } from './bulkSmith';
-import { openBulkSalvage } from './bulkSalvage';
+import { openBulkSalvage, exSalvageOk } from './bulkSalvage';
 import { DUST_NAME, GRADE_INFO, GRADES, REGIONS, SLOT_NAME, SLOTS, type Grade, type RegionId, type Slot } from '../data/items';
 import { bulkCrop, craftWhet, emptyAll, gardenLevelState, gardenList, gardenPlots, harvestAll, plantAll, ripeAll } from '../world/craft';
 import { flag } from '../world/flags';
@@ -16,7 +16,7 @@ import { fLv, tavernAteToday } from '../world/facilities';
 import { favActors, favRank } from '../world/growth';
 import { openReforge, reforgeTab } from './reforge';
 import type { Item } from '../world/state';
-import { craft, craftCost, enhance, enhanceCost, harvest, plant, plotLeft, plotsOf, salvage, smithLvl, transcend, transcendCost, transcendOpen, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
+import { craft, craftCost, enhance, enhanceCost, harvest, plant, plotLeft, plotsOf, salvageOne, smithLvl, transcend, transcendCost, transcendOpen, fillAsh, salvageText, swapDust, swappableAsh } from '../world/craft';
 import { nextLevelCost } from '../world/town';
 import { bagSize, itemPower } from '../world/items';
 import { P, S, world, type Building } from '../world/state';
@@ -192,10 +192,12 @@ export function bindSalvage(redraw: () => void) {
       (b.onclick = async () => {
         const it = P.bag.find((x) => x.id === +b.dataset.sal!)!;
         // J4 confirmSheet: 희귀 이상 분해는 아래 확인 시트 (끄면 예전 confirm 그대로)
-        if (it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
+        // EX_SALVAGE_1021: 전용 무기는 「분해」를 직접 입력해야 · 무기 조각 10개 돌려받음
+        if (it.ex && !exSalvageOk(it.name)) return;
+        if (!it.ex && it.grade !== 'n' && !(vis('confirmSheet') ? await confirmSheet({ title: `${GRADE_INFO[it.grade].name} 장비를 분해할까요?`, body: `${it.name} → ${salvageText(it.grade)}`, ok: '분해하기', danger: true }) : confirm(`${GRADE_INFO[it.grade].name} 장비를 분해할까요?`))) return;
         if (!P.bag.includes(it)) return;
-        salvage(it);
-        toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}`);
+        salvageOne(it);
+        toast(`${fsay('분해', '분해해 드렸어요')} · ${salvageText(it.grade)}${it.ex ? ` · 무기 조각 +${CONFIG.raidWeapon.frag.perBox}` : ''}`);
         redraw();
       }),
   );
