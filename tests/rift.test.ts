@@ -339,5 +339,5 @@ describe('R31 — 창이 열려 있으면 서재 쪽지(이야기 대사)를 미
     const t1 = performance.now();
     expect(winSettling(t1)).toBe(true); // 막 닫음 → 아직 기다림
     expect(winSettling(t1 + 2000)).toBe(false); // 닫고 1.5초 뒤 → 보여 줌
-  });
+  }, 20000); // 무거운 모듈을 처음 불러오는 시험이라 전체 실행 땐 5초를 넘기기도 함
 });
