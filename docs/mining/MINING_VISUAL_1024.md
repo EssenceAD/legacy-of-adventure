@@ -47,5 +47,7 @@
 
 ## 7. Code 작업 지시 (비주얼 프로토타입)
 1. `~/.claude/skills/pxl-pixel-art`에 `crsolver/claude-pxl` 클론. `examples/no_magic.px.js`를 끝까지 읽는다.
-2. 같은 문법으로 `art/mine.px.js` 작성: 팔레트 하나(흙 갈색·바위 회보라·금 주황·발광 청록·랜턴 따뜻한 주황) → 갱도 타일 6종(노멀맵) · 광차 · 랜턴 · 광부 자리(임시) · 금광석/발광 광석 anim · 갱도 장면 1장(`lamp` 2개 + `lighting ambient 0.3` + `glow`).
-3. 산출 PNG를 PixiJS에 올리고, 랜턴 하나만 런타임 라이트로 움직이게. 곡괭이 주스(§3). 웹 링크 → 형철 폰 확인.
+2. **초안이 이미 있다** — `docs/mining/art/shaft.px.js`(갱도 장면: 타일 13종 + 노멀맵 `bump("luma")` + 광차·랜턴·광부 + `lamp` 조명)와 `docs/mining/art/office.px.js`(사무소 내부 장면: 소품 25종 + 벽난로·램프·발광 광석 조명). 미리보기 `office_night.png` · `shaft_night.png` 동봉. 이걸 `art/`로 옮겨 **그대로 빌드**(`node bin/pxl.js build art/shaft.px.js`)하고 팔레트·문법을 이어받는다. 새로 짤 건 타일 변형 추가와 폰 성능용 정리 정도.
+   - 주의: `bump()`는 `"bevel" | "dome" | "luma"` 문자열 + 옵션. anim 프레임은 `frame(grid(x, y, "..."))` 문법(`|` 구분 아님).
+3. 산출 PNG를 PixiJS에 올리고, 랜턴 하나만 런타임 라이트로 움직이게(`@pixi/lights` + 타일 노멀맵). 곡괭이 주스(§3). 웹 링크 → 형철 폰 확인.
+4. 캐릭터 도트(GPT 「채굴하실게요 그림」 프로젝트 산출): 돌망치 할아범 · 광부 3인 · 꼬마 두더지 · 모모 광산복 · 브로크 매입자 · 떠돌이 상인 — 형철 사무실 PC 다운로드 폴더 `mine_*.png`(1254px, 마젠타 배경). Code가 64×64로 최근접 축소 + 마젠타 제거해 `public/assets/portraits/`에 넣는다.
