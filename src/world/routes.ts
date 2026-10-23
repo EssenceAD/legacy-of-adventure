@@ -85,7 +85,7 @@ export function routeGoals(route: RouteId): Goal[] {
   if (route === 'hero') {
     const it = routeHooks.atticItem();
     return [
-      mk('h_gear', t(0), it?.enh ?? 0, 5, it ? `+${it.enh}/+5 · 대장간에서 「다락의 옛 칼」을 강화해요` : '다락의 옛 칼'),
+      kept(mk('h_gear', t(0), it?.enh ?? 0, 5, it ? `+${it.enh}/+5 · 대장간에서 「다락의 옛 칼」을 강화해요` : '가방에 「다락의 옛 칼」이 없어요 · 갈림길 창을 열면 다시 받아요')),
       kept(mk('h_abyss', t(1), P.hunt.best.deep ?? 0, 9, `심연의 바닥 ${Math.min(9, P.hunt.best.deep ?? 0)}/9`)),
       mk('h_party', t(2), maxChem(), 4, `가장 깊은 케미 ${maxChem()}/4단계`),
       mk('h_final', t(3), flag('final') ? 1 : 0, 1, flag('final') ? '완료' : '앞의 목표를 마치면 최종 토벌'),

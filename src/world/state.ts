@@ -462,7 +462,7 @@ export function freshProgress() {
     week: [] as { day: number; gold: number }[],
     autoSalvage: false,
     /** HOTFIX14 §2: 일괄 분해 마지막 선택 · 자동 분해 등급(끔 / 일반 / 희귀 이하) */
-    salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, auto: '' as '' | 'n' | 'r' },
+    salvage: { grades: ['n'] as string[], upgraded: false, keepBest: true, keepUnique: true as boolean | undefined, auto: '' as '' | 'n' | 'r' },
     /** 단골 자리가 없을 때 단골이 되고 싶어 한 손님 (최대 3명, 자리가 나면 다시 찾아온다) */
     waitlist: [] as WaitGuest[],
     /** 핫픽스: 모험에서 지쳐 돌아온 손님 id (아리아 부탁) */

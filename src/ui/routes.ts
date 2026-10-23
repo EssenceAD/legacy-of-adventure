@@ -43,6 +43,8 @@ routeHooks.atticGear = () => {
   const it = makeItem('abyss', 'e', 'weapon', false);
   it.name = ATTIC;
   it.enh = 0;
+  // ATTIC_1023 (아자 제보): 일괄 분해에 갈리지 않게 잠근 채로
+  it.locked = true;
   addToBag(it);
   (st().flags ??= {}).attic = it.id;
   toast(`가방에 「${ATTIC}」이 들어왔어요 · 대장간에서 +5까지 강화해요`);
@@ -51,8 +53,22 @@ routeHooks.atticItem = () => P.bag.find((it) => it.id === st().flags?.attic || i
 
 // ───────── 목표 창 ─────────
 
+/** ATTIC_1023 (아자 제보): 용사 루트인데 「다락의 옛 칼」이 가방에 없으면(분해 등) 다시 넣고 · 있으면 잠근다 — 목표를 이미 이뤘으면 그대로 */
+export function atticRepair(): boolean {
+  if (st().route !== 'hero' || st().seen.includes('goal:h_gear')) return false;
+  const it = routeHooks.atticItem() as { locked?: boolean } | null;
+  if (it) {
+    if (!it.locked) (it.locked = true), markDirty();
+    return false;
+  }
+  routeHooks.atticGear();
+  track('route_event', { route: 'hero', ev: 'attic_regrant' });
+  return true;
+}
+
 export function openGoals(api: RouteStoryApi) {
   const r = st().route as RouteId;
+  atticRepair();
   const gs = routeGoals(r);
   const night = S.night;
   const actions: string[] = [];

@@ -3,7 +3,8 @@
 //  · 부위별 최고 장비 1개 남기기(기본 켬) · 전설·유물이 있으면 빨간 버튼 + 경고 · confirm() 대신 두 번 누르기
 import { CONFIG } from '../data/config';
 import { DUST_NAME, GRADE_INFO, type Grade } from '../data/items';
-import { bulkExSkipped, bulkPreview, bulkTargets, salvageBulk } from '../world/craft';
+import { bulkExSkipped, bulkPreview, bulkTargets, bulkUniqueKept, salvageBulk } from '../world/craft';
+import { flag } from '../world/flags';
 import { markDirty, P } from '../world/state';
 import { $, $$, fmt } from './common';
 import { openWin, toast } from './windows';
@@ -16,7 +17,8 @@ let armed = false;
 export function openBulkSalvage(back: () => void) {
   const pref = P.salvage;
   const grades = new Set(pref.grades as Grade[]);
-  const opts = { upgraded: pref.upgraded, keepBest: pref.keepBest };
+  const opts = { upgraded: pref.upgraded, keepBest: pref.keepBest, keepUnique: pref.keepUnique ?? true };
+  const uKept = bulkUniqueKept(opts);
   const pv = bulkPreview(GRADES, opts);
   const sel = GRADES.filter((g) => grades.has(g));
   const total = sel.reduce((s, g) => s + pv[g].n, 0);
@@ -30,6 +32,7 @@ export function openBulkSalvage(back: () => void) {
     `<p class="sub">끼운 장비와 🔒 잠근 장비는 빠져요${bulkExSkipped() ? ` · 전용 무기 ${bulkExSkipped()}자루는 빠져요` : ''}</p>
     <div class="bulk">${rows}</div>
     <label class="tog"><input type="checkbox" id="bkBest" ${opts.keepBest ? 'checked' : ''}> 부위별 최고 장비 1개 남기기 (무기·갑옷·장신구)</label>
+    ${flag('keepUnique') ? `<label class="tog"><input type="checkbox" id="bkUniq" ${opts.keepUnique ? 'checked' : ''}> 고유 장비 남기기 (유물 중 ★고유 옵션 장비)${uKept ? ` · <b class="g">${uKept}개 남김</b>` : ''}</label>` : ''}
     <label class="tog"><input type="checkbox" id="bkUp" ${opts.upgraded ? 'checked' : ''}> 강화·세트 장비도 포함</label>
     <p class="sub">합계 <b class="g">${total}개</b> · ${totalLine(sel, pv) || '얻을 가루 없음'}</p>
     ${rare.length ? `<p class="sub bad">⚠ ${rare.map((g) => `${GRADE_INFO[g].name} ${pv[g].n}개`).join(' · ')} 포함</p>` : ''}
@@ -39,6 +42,8 @@ export function openBulkSalvage(back: () => void) {
     pref.grades = GRADES.filter((g) => grades.has(g));
     pref.upgraded = ($('#bkUp') as HTMLInputElement).checked;
     pref.keepBest = ($('#bkBest') as HTMLInputElement).checked;
+    const ku = document.getElementById('bkUniq') as HTMLInputElement | null;
+    if (ku) pref.keepUnique = ku.checked;
     markDirty();
     armed = false;
     openBulkSalvage(back);
@@ -53,6 +58,8 @@ export function openBulkSalvage(back: () => void) {
   );
   ($('#bkUp') as HTMLInputElement).onchange = save;
   ($('#bkBest') as HTMLInputElement).onchange = save;
+  const ku = document.getElementById('bkUniq');
+  if (ku) ku.onchange = save;
   $('#bkGo').onclick = async () => {
     // J4 confirmSheet: 두 번 누르기 대신 아래 확인 시트 하나
     if (vis('confirmSheet')) {
@@ -101,7 +108,7 @@ function totalLine(sel: Grade[], pv: ReturnType<typeof bulkPreview>): string {
 //  끼운 것 · 🔒 잠금 · 강화·세트는 늘 빠짐 · 「부위별 최고 1개 남기기」는 일괄 분해 창에서 고른 그대로 · 자동 분해 설정은 건드리지 않음
 //  (팔기는 아직 없는 기능이라 분해만)
 const TIDY: Grade[] = ['n', 'r'];
-const tidyOpts = () => ({ upgraded: false, keepBest: P.salvage.keepBest });
+const tidyOpts = () => ({ upgraded: false, keepBest: P.salvage.keepBest, keepUnique: P.salvage.keepUnique ?? true });
 export const tidyCount = () => bulkTargets(TIDY, tidyOpts()).length;
 /** 가방 창 버튼 (0개면 회색) */
 export const tidyBtnHtml = () => {

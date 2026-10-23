@@ -19,6 +19,7 @@ import { migrateChemNotice } from './world/chemNews';
 import { initStory } from './world/story';
 import { repairRaidTries } from './world/raid';
 import { exRefundLost, exRescale, exRetro } from './world/exWeapons';
+import { atticRepair } from './ui/routes';
 import { exOn } from './world/frags';
 import { def, type Kind } from './data/catalog';
 import { CONFIG } from './data/config';
@@ -312,6 +313,8 @@ function applySave(d: SaveData) {
   exRescale();
   // EX_SALVAGE_1021: 분해로 사라진 전용 무기 조각 환불 (한 번만 · 이카몰리 사고)
   if (exOn()) exRefundLost();
+  // ATTIC_1023 (아자 제보): 용사 루트 「다락의 옛 칼」이 분해 등으로 사라졌으면 다시 (잠근 채)
+  atticRepair();
   // 핫픽스 v0.23.1: 아리아 부탁 남은 시간 다시 3일 (한 번)
   extendAriaOnce();
   // v0.24.2 innDecoObj: 옛 저장 — 지금 레벨만큼 레벨 장식을 한 번 (제자리가 막혔으면 보관함)

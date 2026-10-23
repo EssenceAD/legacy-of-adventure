@@ -462,6 +462,13 @@ function bindLegend(a: Actor) {
 }
 
 /** 장비 칸을 누르면: 가방에서 그 부위를 고른다 (전투력 차이 초록/빨강) */
+/** UNIQUE_KEEP_1023 (플래그 gearOptLine): 장비 줄 옵션 한 줄 — ★고유는 하늘색 · 강화 · 세트 (지금 낀 것과 나란히 비교) */
+export function optLine(it: Item): string {
+  if (!flag('gearOptLine')) return '';
+  const parts = it.opts.map((o) => `<span class="${o.u ? 'uopt' : ''}">${o.u ? '★' : ''}${esc(OPT_INFO[o.k].label(o.v, o.region ? regionById(o.region).name : undefined))}</span>`);
+  if (it.set) parts.push('<span>세트</span>');
+  return parts.length ? `<small class="optln">${parts.join(' · ')}</small>` : '<small class="optln">옵션 없음</small>';
+}
 export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActor(a)) {
   const cur = P.bag.find((x) => x.id === a.equip[slot]);
   const before = powerOf(a);
@@ -477,12 +484,12 @@ export function pickGear(a: Actor, slot: Slot, back: () => void = () => showActo
       const diff = powerOf(a) - before;
       a.equip[slot] = old;
       const owner = it.owner != null ? homeActors().find((x) => x.id === it.owner)?.name : null;
-      return `<button class="irow" data-id="${it.id}">${itemCell(it)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}</b><small>${owner ? `${esc(owner)} 착용 중` : regionById(it.region).name}${fitTag(a, it)}</small></span><em class="${diff >= 0 ? 'good' : 'bad'}">${diff >= 0 ? '+' : ''}${diff}</em></button>`;
+      return `<button class="irow" data-id="${it.id}">${itemCell(it)}<span><b style="color:${GRADE_INFO[it.grade].color}">${esc(it.name)}</b><small>${owner ? `${esc(owner)} 착용 중` : regionById(it.region).name}${fitTag(a, it)}</small>${optLine(it)}</span><em class="${diff >= 0 ? 'good' : 'bad'}">${diff >= 0 ? '+' : ''}${diff}</em></button>`;
     })
     .join('');
   openWin(
     `${a.name} · ${SLOT_NAME[slot]}`,
-    `${cur ? `<div class="irow cur">${itemCell(cur)}<span><b>${esc(cur.name)}</b><small>지금 착용</small></span><button id="unEq">빼기</button></div>` : ''}
+    `${cur ? `<div class="irow cur">${itemCell(cur)}<span><b>${esc(cur.name)}</b><small>지금 착용</small>${optLine(cur)}</span><button id="unEq">빼기</button></div>` : ''}
     <div class="ilist">${rows || '<p class="note">가방에 이 부위 장비가 없어요 · 원정에서 얻어요</p>'}</div>`,
   );
   $$('.ilist button.irow').forEach(

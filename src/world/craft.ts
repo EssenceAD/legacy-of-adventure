@@ -19,6 +19,7 @@ import { enhanceBonus, ownerGain, stat } from './owner';
 import { bfx, hfx } from './harmony';
 import { enhRateOf, rollEnhance, rollTranscend, trRateOf } from './enhRules';
 import { brag, uniqueSalvageMult } from './growth';
+import { flag } from './flags';
 import { windHarvest } from './wind';
 import { perkEnhDust } from './bundlePerks';
 import { petEnhDust, petHarvestPlus, petTry } from './pets';
@@ -91,6 +92,8 @@ export interface BulkOpts {
   upgraded?: boolean;
   /** 부위(무기·갑옷·장신구)마다 가방에서 전투력 가장 높은 것 하나는 남김 (기본 켬) */
   keepBest?: boolean;
+  /** UNIQUE_KEEP_1023 (아자 건의): 고유 장비(uid)는 남김 (기본 켬 · 플래그 keepUnique) */
+  keepUnique?: boolean;
 }
 /** 분해 대상 (끼운 것 · 잠금은 늘 빠짐) */
 export function bulkTargets(grades: Grade[], o: BulkOpts = {}): Item[] {
@@ -101,8 +104,11 @@ export function bulkTargets(grades: Grade[], o: BulkOpts = {}): Item[] {
       if (best) keep.add(best);
     }
   // EX_SALVAGE_1021: 전용 무기는 어떤 일괄 분해에도 안 들어감 (이카몰리 사고)
-  return P.bag.filter((it) => !it.ex && grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
+  const keepU = flag('keepUnique') && (o.keepUnique ?? true);
+  return P.bag.filter((it) => !it.ex && !(keepU && it.uid) && grades.includes(it.grade) && it.owner == null && !it.locked && !keep.has(it) && (o.upgraded || (it.enh < 1 && !it.set)));
 }
+/** 일괄 분해에서 「고유 남기기」로 빠지는 고유 장비 (안 낀 것 · 잠금 아님) */
+export const bulkUniqueKept = (o: BulkOpts = {}) => (flag('keepUnique') && (o.keepUnique ?? true) ? P.bag.filter((it) => it.uid && !it.ex && it.owner == null && !it.locked).length : 0);
 /** 일괄 분해에서 빠지는 전용 무기 (안 낀 것) */
 export const bulkExSkipped = () => P.bag.filter((it) => it.ex && it.owner == null).length;
 /** 한 개씩 분해: 전용 무기면 무기 조각 perBox개 돌려줌 (선택 상자 1개 값 · 실수해도 되돌릴 길) — 전수(salvage 직접)는 그대로 */

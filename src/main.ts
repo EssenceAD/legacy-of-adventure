@@ -392,7 +392,10 @@ function tick(dt: number) {
     view.cam.x += (view.goal.x - view.cam.x) * k;
     view.cam.y += (view.goal.y - view.cam.y) * k;
     if (Math.abs(view.goal.x - view.cam.x) + Math.abs(view.goal.y - view.cam.y) < 0.5) view.goal = null;
+    const bx = view.cam.x, by = view.cam.y;
     clampCam();
+    // GARDEN_CAM_1023 (아자 제보): 목표가 카메라 한계 밖이면 영영 못 닿아 손으로 못 움직이던 것 — 한계에 걸리면 목표를 놓는다
+    if (view.goal && (bx !== view.cam.x || by !== view.cam.y)) view.goal = null;
   }
   // 규칙은 고정 간격(30fps)으로
   acc = Math.min(acc + dt, 0.25);
@@ -677,6 +680,8 @@ function bindInput() {
       return;
     }
     if (moved) {
+      // GARDEN_CAM_1023: 손으로 끌면 부드러운 이동(목표)은 그만
+      view.goal = null;
       view.cam.x = drag.cx - dx / view.SC;
       view.cam.y = drag.cy - dy / view.SC;
       clampCam();
