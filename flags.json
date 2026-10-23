@@ -49,6 +49,8 @@
   "welcomeBack": true,
   "redDots": true,
   "bulkTidy": true,
+  "keepUnique": true,
+  "gearOptLine": true,
   "resendRun": true,
   "gardenLevelUp": true,
   "personActionsV2": true,
