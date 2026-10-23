@@ -7,6 +7,7 @@ import { computeSets } from '../src/world/harmony';
 import { S, world } from '../src/world/state';
 import { def } from '../src/data/catalog';
 import { N } from '../src/engine/iso';
+import { HV_NEW_DECO, HV_SHOP } from '../src/data/harvest_cfg';
 
 const v = NEIGHBORS.find((n) => n.id === 'harbor')!;
 const ents = v.layout.map(([kind, tx, ty, lvl, hue, flip]) => ({ kind, tx, ty, lvl: lvl ?? 1, hue: hue ?? null, flip: !!flip }));
@@ -23,7 +24,7 @@ describe('별무리 항구', () => {
     expect(NEIGHBORS[0].id).toBe('harbor');
     expect(Math.max(...NEIGHBORS.map((n) => n.like))).toBe(v.like);
     expect(v.land).toBe(10);
-    expect(v.note).toBe('땅 10단계 · 새 건물 7종이 모두 있는 마을이에요');
+    expect(v.note).toBe('땅 10단계 · 새 건물 7종과 🍂 가을 수확제 장식이 모두 있는 마을이에요');
     expect(v.pets).toHaveLength(3);
     expect(v.manualPaths).toBe(true);
   });
@@ -100,6 +101,13 @@ describe('별무리 항구', () => {
     setup();
     const ids = computeSets(world.objs).map((s) => s.id);
     for (const id of [46, 47, 48]) expect(ids, String(id)).toContain(id);
+  });
+  it('🍂 가을 수확제: 수확제 장식 11종 모두 · 풍차 언덕 · 단풍 언덕 · 농장 마을', () => {
+    const kinds = new Set(ents.map((e) => e.kind as string));
+    for (const k of [...HV_NEW_DECO, ...HV_SHOP.map((x) => x.kind)]) expect(kinds.has(k), k).toBe(true);
+    setup();
+    const ids = computeSets(world.objs).map((s) => s.id);
+    for (const id of [40, 43]) expect(ids, String(id)).toContain(id);
   });
   it('전시용 사람: 시장 손님 · 낚시꾼 · 마법사 · 음유시인 · 전설 둘 이상 · 모두 땅 안', () => {
     const n = v.npcs!;

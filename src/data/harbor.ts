@@ -149,6 +149,26 @@ for (const [k, x, y] of [['pine', 25, 40], ['birch', 27, 39], ['flowerbed', 28, 
 for (const [k, x, y] of [['pine', 40, 27], ['birch', 39, 29], ['pine', 40, 32], ['flowerbed', 39, 36], ['pine', 40, 35]] as [Kind, number, number][]) put(k, x, y);
 for (const [k, x, y] of [['birch', 11, 40], ['flowerbed', 12, 39], ['pine', 14, 40], ['tulip_box', 16, 39], ['birch', 17, 40]] as [Kind, number, number][]) put(k, x, y);
 
+// ───────── 10/23 🍂 가을 수확제 (수확제 장식 11종 모두) ─────────
+//  정문 → 큰길: 등불 기둥 줄 · 호박등 · 광장 입구 수확제 아치 둘 / 여관 앞 호박 마차 · 광장 가장자리 잔칫상·밀단
+//  농촌: 풍차(풍차 언덕) · 뒤 가장자리 밀밭 줄 · 농촌 남쪽 수확 거리 · 단풍 언덕 / 축제 마당 호박등 · 주택가 위 단풍 산책길
+put('harvest_arch', 19, 28); put('harvest_arch', 22, 28);
+for (const [x, y] of [[19, 30], [19, 32], [22, 31], [22, 34], [22, 36]] as [number, number][]) put('lantern_post', x, y);
+put('jack_lantern', 18, 39); put('jack_lantern', 23, 38); put('jack_lantern', 22, 38);
+put('pumpkin_carriage', 23, 18); put('jack_lantern', 17, 18); put('jack_lantern', 17, 19); put('leaf_pile', 24, 17); put('leaf_pile', 26, 19);
+put('harvest_table', 24, 25); put('wheat_sheaf', 14, 25); put('wheat_sheaf', 27, 26); put('leaf_pile', 15, 25);
+// 농촌: 풍차 · 밀밭 줄(뒤 가장자리) · 수확 거리(농촌 남쪽) · 단풍 언덕(오른쪽 끝)
+put('windmill', 27, 1);
+for (const x of [32, 33, 34, 35, 36]) put('wheat_sheaf', x, 1);
+put('hay_scarecrow', 34, 7); put('wheat_sheaf', 29, 7); put('wheat_sheaf', 31, 7); put('pumpkins', 33, 7); put('leaf_pile', 28, 7);
+put('pumpkins', 29, 12); put('lantern_post', 30, 12); put('leaf_pile', 32, 12); put('lantern_post', 34, 12); put('jack_lantern', 36, 12); put('lantern_post', 38, 12); put('straw_bale', 31, 12); put('harvest_table', 35, 12);
+put('maple', 40, 10); put('maple', 41, 12); put('pumpkins', 40, 11); put('leaf_pile', 41, 10);
+// 축제 마당: 관객석 뒤 호박등
+put('jack_lantern', 30, 36); put('jack_lantern', 35, 36); put('leaf_pile', 33, 36);
+// 주택가 위 단풍 산책길 (시장 담 너머)
+put('jack_lantern', 3, 28); put('maple', 5, 28); put('leaf_pile', 7, 28); put('maple', 9, 28); put('pumpkins', 11, 28); put('maple', 13, 28); put('leaf_pile', 15, 28); put('jack_lantern', 17, 28);
+put('leaf_pile', 2, 27); put('leaf_pile', 32, 26); put('jack_lantern', 37, 39);
+
 // ───────── 전시용 사람 ─────────
 export const HARBOR_NPCS: NonNullable<Neighbor['npcs']> = [
   // 시장 노점 앞 손님
@@ -165,6 +185,9 @@ export const HARBOR_NPCS: NonNullable<Neighbor['npcs']> = [
   { legend: 'elysia', name: '엘리시아', x: 18, y: 23 },
   { legend: 'leon', name: '레온', x: 18, y: 25, dir: -1 },
   { legend: 'luna', name: '루나', x: 16, y: 25 },
+  // 🍂 수확제: 잔칫상 앞 손님 · 수확 거리 농부
+  { kind: 'dwarf', name: '수확제 손님', x: 23, y: 25, dir: -1 },
+  { kind: 'hunter', name: '농부', x: 33, y: 12 },
 ];
 export const HARBOR_LAYOUT = L;
 export const HARBOR_PAINT = P;

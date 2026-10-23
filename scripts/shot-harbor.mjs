@@ -63,7 +63,7 @@ async function run(dev, nights) {
   }));
   console.log('  ', JSON.stringify(st));
   ok(st.vis === 'harbor', '별무리 항구 방문');
-  ok(st.noteShown && st.note === '땅 10단계 · 새 건물 7종이 모두 있는 마을이에요', '맨 위 한 줄');
+  ok(st.noteShown && st.note === '땅 10단계 · 새 건물 7종과 🍂 가을 수확제 장식이 모두 있는 마을이에요', '맨 위 한 줄');
   ok(st.legends.length >= 3, `전설 영웅 ${st.legends.join(' ')}`);
   ok(st.objs > 200, `건물·장식 ${st.objs}`);
   // 가장 멀리 → 마을 전체
@@ -99,7 +99,7 @@ async function run(dev, nights) {
       await p.evaluate(() => document.querySelector('#bZoom')?.click());
       await W(200);
     }
-    const ZONES = [['market', 15, 34], ['harbor', 7, 7], ['festival', 32, 33]];
+    const ZONES = [['market', 15, 34], ['harbor', 7, 7], ['festival', 32, 33], ['harvest_plaza', 21, 24], ['harvest_farm', 33, 7], ['harvest_walk', 10, 27]];
     for (const [name, x, y] of ZONES) {
       await p.evaluate(([x, y]) => {
         const v = window.__view;

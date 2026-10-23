@@ -262,7 +262,7 @@ const SPA: Neighbor = {
 // 10/16 → 10/17 「별무리 항구」 (땅 10 · ♥ 1등 · 목록 맨 위) — RPG 마을처럼 이야기가 보이게: 배치·바닥·전시용 사람은 data/harbor.ts
 const HARBOR: Neighbor = {
   id: 'harbor', name: '별무리 항구', owner: '여관왕 베르나', land: 10, like: 3200, grade: 4, title: '여관왕', ent: 20,
-  note: '땅 10단계 · 새 건물 7종이 모두 있는 마을이에요',
+  note: '땅 10단계 · 새 건물 7종과 🍂 가을 수확제 장식이 모두 있는 마을이에요',
   pets: ['otter', 'starcat', 'puppy'],
   manualPaths: true,
   paint: HARBOR_PAINT,
