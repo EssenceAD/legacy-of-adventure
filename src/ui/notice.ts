@@ -91,9 +91,9 @@ export function openNotices() {
   dot().hidden = true;
   openWin(
     '새 소식',
-    `<div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
+    `<div class="mineRow">${mineButton('notice')}</div><div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
       (n, i) => `<button class="nrow" data-i="${i}"><span class="tg"></span>[${n.tag}] ${n.t}</button>`,
-    ).join('')}</div><div class="nbody" id="nbody"></div><div class="mineRow">${mineButton('notice')}</div>`,
+    ).join('')}</div><div class="nbody" id="nbody"></div>`,
     'wide',
   );
   // DIRECTION §3-2: 맨 위 「다음 업데이트」 카드 (public/next.json · 없으면 안 보임)
