@@ -2558,3 +2558,9 @@ body:not(.visiting) #vFriend{display:none}
 .evh b{color:#fff}.evh.on{background:#1e3020}.evh.on b{color:#9fe07a}
 .hcell.flash{animation:hcFlash 1.6s ease-out 2}
 @keyframes hcFlash{0%{box-shadow:0 0 0 2px var(--gold)}100%{box-shadow:0 0 0 2px var(--ink)}}
+
+/* 채굴 스핀오프로 가는 버튼 (공지 창 아래 · 마을 회관) · 공지 본문 링크 */
+a.mineGo{display:block;max-width:240px;margin:10px auto 0;padding:8px 12px;background:#7a4f2a;color:#ffe9b0;box-shadow:0 0 0 2px var(--ink),inset 0 -3px 0 #5a3820;text-align:center;font-weight:700;text-decoration:none;font-size:var(--f-ui)}
+a.mineGo:active{transform:translateY(1px)}
+.mineRow{padding-top:2px}
+.nbody a.nlink{color:#ffe14d;text-decoration:underline;overflow-wrap:anywhere}

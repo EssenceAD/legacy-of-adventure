@@ -11,6 +11,18 @@ export const communityOn = () => flag('communityLinks');
 export const communityLink = (from: string, label: string, cls = 'kakao') =>
   !communityOn() ? '' : `<a class="${cls}" href="${CONFIG.community.kakao}" target="_blank" rel="noopener noreferrer" data-cm="${from}">${label}</a>`;
 
+/** 채굴 스핀오프로 가는 버튼 (a 태그 · 새 탭) — 누르면 play_events 에 mine_click {from} */
+export const mineButton = (from: string) =>
+  `<a class="mineGo" href="${CONFIG.mine.url}" target="_blank" rel="noopener noreferrer" data-mine="${from}">⛏ 채굴하러 가기</a>`;
+
+/** 이미 이스케이프된 본문 속 http(s) 주소를 눌리는 링크로 (새 탭). 끝의 문장부호는 링크에서 뺀다 */
+export const linkify = (html: string) =>
+  html.replace(/https?:\/\/[^\s<]+/g, (m) => {
+    const tail = m.match(/[.,!?)\]…]+$/)?.[0] ?? '';
+    const url = tail ? m.slice(0, -tail.length) : m;
+    return `<a class="nlink" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
+  });
+
 /** 메뉴 버튼 등 a 태그가 아닌 곳에서 열 때 */
 export function openCommunity(from: string) {
   if (!communityOn()) return;
@@ -28,6 +40,8 @@ export function initCommunity() {
     (e) => {
       const a = (e.target as HTMLElement | null)?.closest?.('a[data-cm]') as HTMLAnchorElement | null;
       if (a) track('community_click', { from: a.dataset.cm });
+      const m = (e.target as HTMLElement | null)?.closest?.('a[data-mine]') as HTMLAnchorElement | null;
+      if (m) track('mine_click', { from: m.dataset.mine });
     },
     true,
   );

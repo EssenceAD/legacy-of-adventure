@@ -1,7 +1,7 @@
 // 공지 창(!): 탭(전체/공지/업데이트/이벤트/제보) + 목록 + 본문. 새 공지가 있으면 빨간 점.
 // 기본 공지 + 서버 공지(notices).
 import { getPref, setPref } from '../save/save';
-import { communityCard } from './community';
+import { communityCard, linkify, mineButton } from './community';
 import { openWin } from './windows';
 import { listNotices } from '../net/server';
 import { loadPatchNotes, notesListHtml } from './update';
@@ -93,7 +93,7 @@ export function openNotices() {
     '새 소식',
     `<div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
       (n, i) => `<button class="nrow" data-i="${i}"><span class="tg"></span>[${n.tag}] ${n.t}</button>`,
-    ).join('')}</div><div class="nbody" id="nbody"></div>`,
+    ).join('')}</div><div class="nbody" id="nbody"></div><div class="mineRow">${mineButton('notice')}</div>`,
     'wide',
   );
   // DIRECTION §3-2: 맨 위 「다음 업데이트」 카드 (public/next.json · 없으면 안 보임)
@@ -104,7 +104,7 @@ export function openNotices() {
   const rows = [...document.querySelectorAll<HTMLElement>('.nrow')];
   const show = (i: number) => {
     const n = NOTICES[i];
-    document.getElementById('nbody')!.innerHTML = `<b>${n.t}</b><small>${n.tag} · ${n.d}</small><p>${n.b.replace(/\n/g, '<br>')}</p>`;
+    document.getElementById('nbody')!.innerHTML = `<b>${n.t}</b><small>${n.tag} · ${n.d}</small><p>${linkify(n.b).replace(/\n/g, '<br>')}</p>`;
     rows.forEach((r) => r.classList.toggle('on', +r.dataset.i! === i));
   };
   show(0);
