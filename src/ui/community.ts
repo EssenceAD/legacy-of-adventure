@@ -17,10 +17,11 @@ export const mineButton = (from: string) =>
 
 /** 이미 이스케이프된 본문 속 http(s) 주소를 눌리는 링크로 (새 탭). 끝의 문장부호는 링크에서 뺀다 */
 export const linkify = (html: string) =>
-  html.replace(/https?:\/\/[^\s<]+/g, (m) => {
+  html.replace(/https?:\/\/[^\s<]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:io|com|net|kr|app|dev|me)(?:\/[^\s<]*)?/gi, (m) => {
     const tail = m.match(/[.,!?)\]…]+$/)?.[0] ?? '';
     const url = tail ? m.slice(0, -tail.length) : m;
-    return `<a class="nlink" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
+    const href = /^https?:/i.test(url) ? url : `https://${url}`;   // https:// 없이 쓴 주소도
+    return `<a class="nlink" href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
   });
 
 /** 메뉴 버튼 등 a 태그가 아닌 곳에서 열 때 */
