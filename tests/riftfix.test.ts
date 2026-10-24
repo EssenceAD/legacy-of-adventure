@@ -20,7 +20,8 @@ describe('손그림 배율 (artScale)', () => {
     for (const k of LOOKS) expect(riftArtScale(k, false)).toBe(1);
     expect(riftArtScale('nope', true)).toBe(1);
   });
-  it('세 모습 손그림이 다 있다 (frost 새로)', () => {
+  // asset_raw/ 는 .gitignore — 원본이 없는 기기(새로 클론한 곳)에선 이 비교만 건너뛴다
+  it.skipIf(!fs.existsSync('asset_raw/rift/rift_sky.json'))('세 모습 손그림이 다 있다 (frost 새로)', () => {
     expect([...RIFT_ART.bosses].sort()).toEqual(['ember', 'frost', 'sky']);
     for (const k of LOOKS) {
       expect(fs.existsSync(`public/assets/mon/rift_${k}/sheet.png`)).toBe(true);
