@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#07091a" />
+    <title>용사님, 체크인하실게요~ · Legacy of Adventure</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="용사님 체크인" />
+    <script type="module" crossorigin src="./assets/index-DVaha-Nk.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B-0vtUDj.css">
+  </head>
+  <body>
+    <div id="view">
+      <canvas id="scene"></canvas>
+      <div id="over"></div>
+      <div id="flash"></div>
+
+      <div id="hud" hidden>
+        <div class="top">
+          <div class="stat px">
+            <div class="nmrow"><div class="nm" id="innv">여관</div><button id="pwr" aria-label="마을 전투력"><img src="assets/icons/skill_attack_16.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" /><b id="pwrv">0</b><small id="pwrWhy" hidden></small></button></div>
+            <div class="r1">
+              <span><i class="coin"></i><span id="gold"><span id="goldv">0</span></span></span>
+              <span id="dayv">1일차 · 06시</span>
+              <span id="starv" class="star">★1</span>
+            </div>
+          </div>
+          <div class="sp"></div>
+          <button class="ibtn px hb" id="bRefetch" aria-label="그림 다시 불러오기" title="그림 다시 불러오기" hidden><b>↻</b><small>그림</small></button>
+          <button class="ibtn px hb" id="bNotice" aria-label="새 소식"><img src="assets/icons/m_notice_16.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" /><small>소식</small><span class="dot" hidden></span></button>
+          <button class="ibtn px hb" id="bDN" aria-label="낮과 밤"><b id="bDNi">☾</b><small id="bDNl">밤</small><i id="starMark" hidden title="오늘 운명의 별을 잡았어요">★</i></button>
+          <button class="ibtn px hb" id="bMenu" aria-label="메뉴"><img src="assets/icons/m_settings_16.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" /><small>메뉴</small></button>
+        </div>
+        <button class="ibtn px hb" id="bHarm" aria-label="어울림 보기" aria-pressed="false"><img src="assets/icons/harmony_16.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" /><small>어울림</small></button>
+        <button class="spk ibtn px hb" id="hSpk" aria-label="소리 끄기"><img alt="" /><small>소리</small></button>
+        <div id="hBanner" hidden></div>
+        <div id="settle" hidden></div>
+        <div id="pcard" hidden></div>
+        <button id="mission" hidden></button>
+        <button id="evalbar" class="px" hidden></button>
+        <div id="toast" class="px"></div>
+        <div id="visitbar" class="px" hidden><span class="vtxt"><b id="vName"></b><small id="vSub"></small><small id="vNote" hidden></small></span><button id="vLike">♥</button><button id="vPhoto" aria-label="이 마을 찍기" title="이 마을 찍기">📷</button></div>
+        <div id="visitfoot" hidden><button id="vHome" class="bigbtn">← 내 마을로</button><button id="vNext" class="bigbtn ghost">다음 이웃 ›</button></div>
+        <div id="runbar" hidden></div>
+        <div id="chatlog" aria-label="채팅 열기"></div>
+        <nav class="dk px">
+          <button id="bOwner"><img class="kic" src="assets/icons/m_owner.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" />주인</button>
+          <button id="bBuild"><img class="kic" src="assets/icons/m_smith.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" />건설</button>
+          <button id="bExp"><img class="kic" src="assets/icons/m_expedition.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" />원정</button>
+          <button id="bGuest"><img class="kic" src="assets/icons/m_guests.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" />손님</button>
+          <button id="bVillage"><img class="kic" src="assets/icons/m_neighbor.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" /><span class="lbl">마을</span></button>
+          <button id="bMenu2"><img class="kic" src="assets/icons/m_settings.png?v=1.0.11%2B8df45c7.mvm8qk1h" alt="" />메뉴<i class="ndot" hidden></i></button>
+        </nav>
+        <div id="placebar" class="px" hidden>
+          <p id="placeTxt">지을 곳을 눌러요</p>
+          <p id="placeWhy" hidden></p>
+          <div class="pbtns"><button id="placeNo">✕ 취소</button><button id="placeRot">↻ 회전</button><button id="placeOk">✓ 확정</button></div>
+        </div>
+        <button class="ibtn px" id="bZoom" aria-label="확대 배율">×2</button>
+      </div>
+
+      <img id="hand" alt="" hidden />
+      <div id="scrim"></div>
+      <section class="win px" id="win" role="dialog" aria-modal="true">
+        <div class="hd"><button id="winBack" aria-label="뒤로" hidden>←</button><b id="winT"></b><button id="winHelp" aria-label="안내서" hidden>?</button><button id="winX" aria-label="닫기">✕</button></div>
+        <div id="winB"></div>
+        <div id="winF" hidden></div>
+      </section>
+
+      <div id="dlg" hidden>
+        <div class="keys">Z NEXT<button id="dSkip">X SKIP</button></div>
+        <div id="dDuo" hidden><img id="dDuoL" alt="" /><img id="dDuoR" alt="" /></div>
+        <div class="box px"><img id="dPort" alt="" /><span id="dName"></span><p id="dText"></p><span class="more">▼</span></div>
+        <div id="dChoice" hidden></div>
+      </div>
+      <div id="namebox" class="px" hidden>
+        <b>새 간판에 쓸 여관 이름</b>
+        <div class="row"><input id="nameIn" maxlength="8" placeholder="예) 별빛" autocomplete="off" /><button id="nameOk">그대로 쓰기</button></div>
+        <div class="sug" id="nameSug"></div>
+      </div>
+
+      <div id="title">
+        <div class="logo">
+          <div class="ko"><small class="ko1">용사님,</small><span class="ko2">체크인하실게요<i class="wave">~</i></span></div>
+          <div class="en">LEGACY OF ADVENTURE</div>
+          <span class="ch">제1장 · 은퇴한 주인의 여관</span>
+          <span class="open1">정식 오픈</span>
+        </div>
+        <div class="tbtns">
+          <button class="px" id="tStart">새 여관 열기<small>오프닝부터</small></button>
+          <button class="px" id="tCont">이어하기<small id="tContSub">저장된 마을이 없어요</small></button>
+          <button class="px sm" id="tTeaser">미리보기<small>이런 게임이에요 (40초)</small></button>
+          <button class="px sm" id="tLetter">모모에게 편지<small>버그 · 의견 보내기</small></button>
+        </div>
+        <button class="ver" id="tVer">v1.0.11</button>
+        <button class="spk ibtn px" id="tSpk" aria-label="소리 끄기"><img alt="" /></button>
+      </div>
+      <div id="teaser" hidden>
+        <div class="tstage" id="tStage"></div>
+        <i class="tbar top"></i><i class="tbar bot"></i>
+        <div id="tCap"></div>
+        <i id="tWipe"></i><i id="tFlash"></i>
+        <button id="tSkip" hidden>건너뛰기 ▶▶</button>
+        <div class="tgate">터치해서 시작</div>
+      </div>
+      <div id="loading">불러오는 중…</div>
+      <div id="fade"></div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+{
+ "frameW": 152,
+ "frameH": 140,
+ "anchor": [
+  76,
+  128
+ ],
+ "boss": true,
+ "source": "Ninja Adventure (CC0) DragonGreen (조각 맞춤)",
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 4,
+   "fps": 6,
+   "loop": true
+  },
+  "move": {
+   "row": 1,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "attack": {
+   "row": 2,
+   "frames": 3,
+   "fps": 10,
+   "loop": false
+  },
+  "charge": {
+   "row": 3,
+   "frames": 2,
+   "fps": 10,
+   "loop": true
+  },
+  "hurt": {
+   "row": 4,
+   "frames": 1,
+   "fps": 12,
+   "loop": false
+  },
+  "die": {
+   "row": 5,
+   "frames": 2,
+   "fps": 8,
+   "loop": false
+  }
+ }
+}
