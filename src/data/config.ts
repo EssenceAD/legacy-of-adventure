@@ -40,8 +40,6 @@ export const CONFIG = {
   /** FEEDBACK: 방이 꽉 차 손님을 못 받을 때 안내 (게임 하루 한 번) */
   fullRoomToast: '방이 꽉 찼어요 — 손님을 내보내거나 별채를 더 지어요',
   community: { kakao: 'https://open.kakao.com/o/g1KwZ2Ri' },
-  /** 채굴 스핀오프 「용사님, 채굴하실게요~」 — 공지 창 · 마을 회관의 [⛏ 채굴하러 가기] (늘 새 탭) */
-  mine: { url: 'https://essencead.github.io/keep-on-digging/' },
   map: {
     /** 맵 최대 크기 (타일) — 땅 개편: 14 → 24 · LAND2: 24 → 32 (땅 30 + 앞쪽 입구 여유 2 · 뒤·옆으로 6·7단계) · LAND10: 32 → 44 (땅 42 + 여유 2 · 8~10단계) */
     size: 44,

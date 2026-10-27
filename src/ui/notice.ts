@@ -1,7 +1,7 @@
 // 공지 창(!): 탭(전체/공지/업데이트/이벤트/제보) + 목록 + 본문. 새 공지가 있으면 빨간 점.
 // 기본 공지 + 서버 공지(notices).
 import { getPref, setPref } from '../save/save';
-import { communityCard, linkify, mineButton } from './community';
+import { communityCard, linkify } from './community';
 import { openWin } from './windows';
 import { listNotices } from '../net/server';
 import { loadPatchNotes, notesListHtml } from './update';
@@ -91,7 +91,7 @@ export function openNotices() {
   dot().hidden = true;
   openWin(
     '새 소식',
-    `<div class="mineRow">${mineButton('notice')}</div><div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
+    `<div id="nxCard"></div><div class="tabs">${TABS.map((t, i) => `<button class="tab ${i ? '' : 'on'}" data-t="${t}">${t}</button>`).join('')}</div><div id="kPin">${communityCard()}</div><div class="nlist">${NOTICES.map(
       (n, i) => `<button class="nrow" data-i="${i}"><span class="tg"></span>[${n.tag}] ${n.t}</button>`,
     ).join('')}</div><div class="nbody" id="nbody"></div>`,
     'wide',

@@ -19,7 +19,6 @@ const timeNowName = () => {
 };
 import { playStory } from './story';
 import { toast } from './windows';
-import { mineButton } from './community';
 
 /** 지금 보고 있는 방 ('' = 방 목록) */
 let cur = '';
@@ -60,7 +59,7 @@ export function bundlesHtml(): string {
     })
     .join('');
   const st = bdState();
-  return `${hallArt()}<div class="bd-rooms">${cards}</div><p class="note">바친 재료는 사라져요 · 꾸러미는 칸을 다 채우지 않아도 정해진 수만 채우면 완성 · 연금술 예약분은 빼고 바쳐요${st.final ? ' · 「마을 회관」 건물은 꾸미기 보관함에 있어요' : ''}</p>${mineButton('hall')}`;
+  return `${hallArt()}<div class="bd-rooms">${cards}</div><p class="note">바친 재료는 사라져요 · 꾸러미는 칸을 다 채우지 않아도 정해진 수만 채우면 완성 · 연금술 예약분은 빼고 바쳐요${st.final ? ' · 「마을 회관」 건물은 꾸미기 보관함에 있어요' : ''}</p>`;
 }
 
 function slotRow(b: BundleDef, i: number, done: boolean): string {
